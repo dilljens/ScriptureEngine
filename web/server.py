@@ -54,8 +54,15 @@ def load_ram_cache():
     
     Eliminates disk reads for all verse and connection lookups.
     ~41K guides, ~42K verses, ~500MB total RAM.
-    Loads in under 2 seconds.
+    Automatically skips when running multi-worker (each worker loads its own).
+    
+    Set SCRIPTURE_WORKERS=1 to force RAM cache, SCRIPTURE_WORKERS=0 to skip.
     """
+    workers = int(os.environ.get("SCRIPTURE_WORKERS", "1"))
+    if workers != 1:
+        print(f"  Skipping RAM cache (multi-worker: {workers} workers). Using direct SQLite.", flush=True)
+        return
+
     print("Loading passage guides into RAM...", flush=True)
     db_path = DEFAULT_DB_PATH
     if not os.path.exists(db_path):
@@ -119,22 +126,35 @@ CONNECTION_TYPE_MAP = {
 
 @app.get("/api/v1/verses/{ref:path}")
 def get_verse(ref: str):
-    """Get verse text with connections — served from RAM cache, zero disk reads."""
+    """Get verse text with connections — served from RAM cache or SQLite."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()
     import re
 
-    # Parse reference
-    r = VERSE_CACHE.get(ref)
+    # Try RAM cache first, fall back to SQLite for multi-worker mode
+    r = VERSE_CACHE.get(ref) if VERSE_CACHE else None
     if not r:
-        m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
-        if m:
-            vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
-            r = VERSE_CACHE.get(vid)
+        conn = get_db()
+        row = conn.execute("SELECT v.*, b.title as book_title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.id=?", (ref,)).fetchone()
+        if not row:
+            m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
+            if m:
+                vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
+                row = conn.execute("SELECT v.*, b.title as book_title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.id=?", (vid,)).fetchone()
+        conn.close()
+        if row:
+            r = dict(row)  # Convert Row to dict for consistent access
     if not r:
         raise HTTPException(status_code=404, detail=f"Verse not found: {ref}")
 
     vid = r["id"]
-    guide = GUIDE_CACHE.get(vid)
+
+    # Guide from RAM cache or SQLite
+    guide = GUIDE_CACHE.get(vid) if GUIDE_CACHE else None
+    if not guide:
+        conn = get_db()
+        row = conn.execute("SELECT * FROM passage_guides WHERE verse_id=?", (vid,)).fetchone()
+        conn.close()
+        guide = dict(row) if row else None
 
     resp = {
         "verse_id": vid,
@@ -144,7 +164,7 @@ def get_verse(ref: str):
         "text_greek": r.get("text_greek") or None,
         "has_hebrew": bool(r.get("has_hebrew")),
         "has_greek": bool(r.get("has_greek")),
-        "cached": True,
+        "cached": bool(VERSE_CACHE),
     }
 
     if guide:

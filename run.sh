@@ -100,12 +100,26 @@ case "${1:-help}" in
     python3 "$DIR/scripts/cleanup_connections.py" "$@"
     ;;
   web)
+    # Usage: ./run.sh web [--workers N] [--port N]
+    WORKERS=1
+    PORT=8000
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --workers) WORKERS="$2"; shift 2 ;;
+        --port) PORT="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    export SCRIPTURE_WORKERS="$WORKERS"
     cd "$DIR/web"
-    if [ -f "$DIR/.venv/bin/python3" ]; then
-      "$DIR/.venv/bin/python3" -m uvicorn server:app --port 8000 --host 0.0.0.0
-    else
-      python3 -m uvicorn server:app --port 8000 --host 0.0.0.0
+    PY_BIN="${DIR}/.venv/bin/python3"
+    if [ ! -f "$PY_BIN" ]; then
+      PY_BIN="python3"
     fi
+    echo "  Starting server on port $PORT with $WORKERS worker(s)..."
+    echo "  API docs at http://localhost:$PORT/docs"
+    echo "  RAM cache: $([ "$WORKERS" -gt 1 ] && echo 'disabled (multi-worker)' || echo 'enabled')"
+    exec "$PY_BIN" -m uvicorn server:app --port "$PORT" --host 0.0.0.0 --workers "$WORKERS"
     ;;
   embed)
     if [ -f "$DIR/.venv/bin/python3" ]; then
@@ -204,6 +218,7 @@ conn.close()
     echo "  generate                — Run all connection generators
   validate                — Revalidate connections against null-text controls"
     echo ""
+    echo "  web                     — Start HTTP API (--workers N, --port N)"
     echo "  info                    — Database stats"
     echo "  test                    — Run smoke tests"
     echo ""
