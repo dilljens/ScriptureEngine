@@ -1,0 +1,24 @@
+# Data sources (cloned repos — not part of the project)
+data/raw/*/
+
+# Compiled Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+
+# Database (large binary)
+data/processed/*.db
+data/processed/*.db-wal
+data/processed/*.db-shm
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
