@@ -1,11 +1,13 @@
 # Data sources (cloned repos — not part of the project)
-data/raw/*/
+data/raw/*
+!data/raw/.gitkeep
 
 # Compiled Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.cpython-*.pyc
 
 # Virtual environment
 .venv/
