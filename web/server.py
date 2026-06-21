@@ -10,11 +10,11 @@ Usage:
   # Open http://localhost:8000/docs for interactive API browser
 """
 
-import sys, os, json, sqlite3
+import sys, os, json, sqlite3, time
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -23,11 +23,14 @@ from lib.db import get_db, get_db_vec, DEFAULT_DB_PATH
 from lib.gematria import compute_all, find_divine_name_matches
 from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
 from lib.sod import atbash as atb, acrostic, gematria_advanced, hidden_names
-from lib.controls.calibration import QUALITY_LEVELS, get_quality_emoji
+from lib.controls.calibration import QUALITY_LEVELS, get_quality_stars, rate_connection_row, enrich_connection
+from lib.api import TOOL_REGISTRY, call_tool
+from lib.lexicon import search_lexicon, get_lexicon_entry, get_root_family, get_concordance, get_domain_members
+from lib.patterns.intra_verse import detect_intra_verse
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
-    description="API for the scripture connection graph — 218K connections across 10 layers, Hebrew + Greek, PaRDeS levels, hidden patterns",
+    description="API for the scripture connection graph — 826K connections across 93 types in 10 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -45,6 +48,7 @@ app.add_middleware(
 GUIDE_CACHE = {}          # verse_id → {connections_json, gematria_json, quality_summary, ...}
 VERSE_CACHE = {}          # verse_id → {id, text_english, text_hebrew, text_greek, book_id, chapter, verse, book_title}
 ENTITY_CACHE = []         # all entity links
+LEXICON_CACHE = {}        # lemma → lexicon entry (loaded at startup)
 VEC_CACHE = {"available": False}  # vector search — populated by embed script
 
 
@@ -99,6 +103,12 @@ def load_ram_cache():
         ENTITY_CACHE.append(dict(r))
     print(f"  {len(ENTITY_CACHE)} entity links loaded", flush=True)
 
+    # Load lexicon
+    lex_rows = conn.execute("SELECT * FROM lexicon").fetchall()
+    for r in lex_rows:
+        LEXICON_CACHE[r["lemma"]] = dict(r)
+    print(f"  {len(LEXICON_CACHE)} lexicon entries loaded", flush=True)
+
     # Check vector availability — without loading vec0 module
     vec_table = conn.execute("""
         SELECT name FROM sqlite_master WHERE type='table' AND name='vec_verses'
@@ -125,7 +135,7 @@ CONNECTION_TYPE_MAP = {
 # ─── Verse & Passage Guide ───
 
 @app.get("/api/v1/verses/{ref:path}")
-def get_verse(ref: str):
+def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description="Enrich connections with quality signal breakdown"), context: Optional[int] = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
     """Get verse text with connections — served from RAM cache or SQLite."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()
     import re
@@ -147,6 +157,20 @@ def get_verse(ref: str):
         raise HTTPException(status_code=404, detail=f"Verse not found: {ref}")
 
     vid = r["id"]
+
+    # Track hit — increment verse hit count in background
+    try:
+        conn2 = get_db()
+        conn2.execute("UPDATE verses SET hit_count = COALESCE(hit_count, 0) + 1 WHERE id = ?", (vid,))
+        # Also increment hit_count on related connections (first 500)
+        conn2.execute("""
+            UPDATE connections SET hit_count = COALESCE(hit_count, 0) + 1
+            WHERE (source_verse = ? OR target_verse = ?) AND hit_count < 99999
+        """, (vid, vid))
+        conn2.commit()
+        conn2.close()
+    except Exception:
+        pass  # Non-critical — don't fail the response if tracking fails
 
     # Guide from RAM cache or SQLite
     guide = GUIDE_CACHE.get(vid) if GUIDE_CACHE else None
@@ -171,6 +195,13 @@ def get_verse(ref: str):
         resp["connections"] = json.loads(guide["connections_json"])
         resp["total_connections"] = guide["total_connections"]
         resp["layer_count"] = guide["layer_count"]
+        
+        # Enrich with signals if requested
+        if show_signals:
+            enriched = {}
+            for layer, items in resp["connections"].items():
+                enriched[layer] = [enrich_connection(item) for item in items]
+            resp["connections"] = enriched
         if guide.get("gematria_json") and guide["gematria_json"] != "null":
             resp["gematria"] = json.loads(guide["gematria_json"])
         if guide.get("quality_summary"):
@@ -183,29 +214,95 @@ def get_verse(ref: str):
                 pardes[lvl] = pardes.get(lvl, 0) + 1
         resp["pardes"] = pardes
 
+    # Context window — surrounding verses for inline preview
+    if context > 0:
+        parts = vid.split(".")
+        if len(parts) >= 3:
+            try:
+                bk = parts[0]
+                ch = int(parts[1])
+                vs = int(parts[2])
+                start_vs = max(1, vs - context)
+                end_vs = vs + context
+                conn_ctx = get_db()
+                ctx_rows = conn_ctx.execute("""
+                    SELECT id, book_id, chapter, verse, text_english, text_hebrew
+                    FROM verses WHERE book_id = ? AND chapter = ? AND verse BETWEEN ? AND ?
+                    ORDER BY verse
+                """, (bk, ch, start_vs, end_vs)).fetchall()
+                conn_ctx.close()
+                context_verses = []
+                for row in ctx_rows:
+                    d = dict(row)
+                    d["is_target"] = (d["verse"] == vs)
+                    context_verses.append(d)
+                resp["context_verses"] = context_verses
+            except (ValueError, IndexError):
+                pass
+
     return {"ok": True, "data": resp}
 
 
 @app.get("/api/v1/verses/{ref:path}/connections")
-def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Optional[str] = None):
-    """Get filtered connections for a verse."""
+def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Optional[str] = None, discovered_by: Optional[str] = None, min_confidence: Optional[float] = None, show_signals: Optional[bool] = False):
+    """Get filtered connections for a verse.
+    
+    Filters:
+      layer: only show this layer
+      min_quality: minimum quality tier (verified, strong, probable, suggested)
+      discovered_by: only show connections found by this method (text, tsk, llm, algorithm)
+      min_confidence: minimum overall confidence (0.0-1.0)
+      show_signals: if true, enrich each connection with the full signal breakdown
+    """
     resp = get_verse(ref)
     if not resp["ok"]:
         return resp
     data = resp["data"]
     conns = data.get("connections", {})
 
+    # Filter by layer
     if layer and layer in conns:
         conns = {layer: conns[layer]}
     elif layer:
         conns = {}
 
-    # Filter by quality if requested
-    if min_quality and conns:
-        min_rank = QUALITY_LEVELS.get(min_quality, {}).get("rank", 5)
+    # Filter by quality, discovered_by, and min_confidence
+    if min_quality or discovered_by or min_confidence or show_signals:
         filtered = {}
         for lyr, items in conns.items():
-            filtered[lyr] = [i for i in items if QUALITY_LEVELS.get(i.get("quality", "suggested"), {}).get("rank", 5) <= min_rank]
+            filtered_items = []
+            for item in items:
+                # Get signals
+                sigs = rate_connection_row({
+                    "discovered_by": item.get("discovered_by", "algorithm"),
+                    "type": item.get("type", ""),
+                    "confidence": item.get("confidence", 0.5),
+                    "confirmation_count": item.get("confirmation_count", 0),
+                    "metadata": item.get("metadata", "{}"),
+                })
+                
+                # Apply filters
+                if min_quality:
+                    star_order = {"verified": 5, "strong": 4, "probable": 3, "suggested": 2, "pattern": 1}
+                    if sigs["stars"] < star_order.get(min_quality, 1):
+                        continue
+                
+                if discovered_by:
+                    if sigs["signals"]["discovery_method"] != discovered_by:
+                        continue
+                
+                if min_confidence is not None:
+                    if sigs["overall_confidence"] < min_confidence:
+                        continue
+                
+                if show_signals:
+                    item["signals"] = sigs
+                
+                filtered_items.append(item)
+            
+            if filtered_items:
+                filtered[lyr] = filtered_items
+        
         conns = filtered
 
     return {"ok": True, "data": {"verse": ref, "layers": list(conns.keys()), "connections": conns}}
@@ -215,16 +312,48 @@ def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Op
 
 @app.get("/api/v1/search")
 def search(q: str = Query(..., description="Search term"), lang: str = "all", limit: int = 20):
-    """Search across English, Hebrew, and Greek simultaneously."""
+    """Search across English, Hebrew, and Greek simultaneously.
+
+    English uses FTS5 full-text search (50-100x faster than LIKE).
+    Hebrew searches against niqqud-stripped words (hebrew_plain) so vowel
+    marks don't prevent matching.
+    """
     conn = get_db()
     results = []
 
     if lang in ("all", "english"):
-        rows = conn.execute("SELECT id, text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ? LIMIT ?", (f"%{q}%", limit)).fetchall()
-        results.extend({"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"} for r in rows)
+        # FTS5 query - tokenize and use MATCH for speed
+        if q.strip():
+            # Clean the query for FTS5 syntax
+            fts_query = q.strip().replace('"', '""')
+            # Build prefix search: append * to each word for prefix matching
+            terms = [t.strip() for t in fts_query.split() if t.strip()]
+            fts_match = " AND ".join(f'"{t}"*' for t in terms)
+            try:
+                rows = conn.execute("""
+                    SELECT v.id, v.text_english, b.title
+                    FROM verses_fts f
+                    JOIN verses v ON v.id = f.verse_id
+                    JOIN books b ON b.id = v.book_id
+                    WHERE verses_fts MATCH ?
+                    LIMIT ?
+                """, (fts_match, limit)).fetchall()
+            except Exception:
+                # Fallback to LIKE if FTS5 fails (e.g. on special characters)
+                rows = conn.execute("SELECT id, text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ? LIMIT ?", (f"%{q}%", limit)).fetchall()
+            results.extend({"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"} for r in rows)
 
     if lang in ("all", "hebrew"):
-        rows = conn.execute("SELECT DISTINCT v.id, v.text_hebrew, v.text_english, b.title FROM gematria g JOIN verses v ON v.id=g.verse_id JOIN books b ON b.id=v.book_id WHERE g.word_hebrew LIKE ? LIMIT ?", (f"%{q}%", limit)).fetchall()
+        # Search hebrew_plain (niqqud-stripped) for better matching
+        rows = conn.execute("""
+            SELECT DISTINCT v.id, v.text_hebrew, v.text_english, b.title
+            FROM gematria g
+            JOIN verses v ON v.id=g.verse_id
+            JOIN books b ON b.id=v.book_id
+            WHERE g.hebrew_plain LIKE ?
+               OR g.word_hebrew LIKE ?
+            LIMIT ?
+        """, (f"%{q}%", f"%{q}%", limit)).fetchall()
         seen = set()
         for r in rows:
             if r["id"] not in seen:
@@ -232,7 +361,15 @@ def search(q: str = Query(..., description="Search term"), lang: str = "all", li
                 results.append({"verse": r["id"], "text": (r["text_hebrew"] or "")[:120], "english": (r["text_english"] or "")[:60], "book": r["title"], "language": "hebrew"})
 
     if lang in ("all", "greek"):
-        rows = conn.execute("SELECT DISTINCT v.id, v.text_greek, v.text_english, b.title FROM gematria_greek g JOIN verses v ON v.id=g.verse_id JOIN books b ON b.id=v.book_id WHERE g.word_greek LIKE ? OR g.lemma LIKE ? LIMIT ?", (f"%{q}%", f"%{q}%", limit)).fetchall()
+        rows = conn.execute("""
+            SELECT DISTINCT v.id, v.text_greek, v.text_english, b.title
+            FROM gematria_greek g
+            JOIN verses v ON v.id=g.verse_id
+            JOIN books b ON b.id=v.book_id
+            WHERE g.word_greek LIKE ?
+               OR g.lemma LIKE ?
+            LIMIT ?
+        """, (f"%{q}%", f"%{q}%", limit)).fetchall()
         seen = set()
         for r in rows:
             if r["id"] not in seen:
@@ -425,9 +562,549 @@ def get_info():
             "passage_guides": pg,
             "layers": {r["layer"]: r["c"] for r in layers},
             "quality": {r["quality_level"]: r["c"] for r in quality},
-            "tools_available": 10,
+            "tools_available": len(TOOL_REGISTRY),
         }
     }
+    conn.close()
+
+
+# ─── Lexicon (Word Dictionary) ───
+
+@app.get("/api/v1/lexicon/search")
+def lexicon_search(q: str = Query("", description="Search term — lemma, Hebrew, or English"), limit: int = Query(20, description="Max results")):
+    """Search the scripture lexicon by lemma number, Hebrew word, or English translation."""
+    conn = get_db()
+    results = search_lexicon(conn, q, limit)
+    conn.close()
+    return {"ok": True, "data": {"query": q, "results": results, "total": len(results)}}
+
+
+@app.get("/api/v1/lexicon/lemma/{lemma}")
+def lexicon_lemma(lemma: str):
+    """Get full lexicon entry for a lemma (Strong's number)."""
+    conn = get_db()
+    entry = get_lexicon_entry(conn, lemma)
+    conn.close()
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"Lemma not found: {lemma}")
+    return {"ok": True, "data": entry}
+
+
+@app.get("/api/v1/lexicon/root/{root_letters}")
+def lexicon_root(root_letters: str):
+    """Get all lemmas sharing a triconsonantal root."""
+    conn = get_db()
+    members = get_root_family(conn, root_letters)
+    conn.close()
+    return {"ok": True, "data": {"root": root_letters, "members": members, "total": len(members)}}
+
+
+@app.get("/api/v1/lexicon/domain/{domain_name}")
+def lexicon_domain(domain_name: str):
+    """Browse all lemmas in a semantic domain."""
+    conn = get_db()
+    members = get_domain_members(conn, domain_name)
+    conn.close()
+    return {"ok": True, "data": {"domain": domain_name, "members": members, "total": len(members)}}
+
+
+@app.get("/api/v1/lexicon/domains")
+def lexicon_domains():
+    """List all semantic domains."""
+    conn = get_db()
+    rows = conn.execute("SELECT name, description, ai_generated FROM semantic_domains ORDER BY name").fetchall()
+    conn.close()
+    return {"ok": True, "data": {"domains": [dict(r) for r in rows]}}
+
+
+@app.get("/api/v1/lexicon/concordance/{lemma}")
+def lexicon_concordance(lemma: str, limit: int = Query(50, description="Max verses to return")):
+    """Get all verses containing a lemma (Strong's number)."""
+    conn = get_db()
+    verses = get_concordance(conn, lemma, limit)
+    conn.close()
+    return {"ok": True, "data": {"lemma": lemma, "verses": verses, "total": len(verses)}}
+
+
+# ─── Grammar Coloring (Morphology) ───
+
+MORPH_COLORS = {
+    'HV': '#d4a574',  # Verb — tan
+    'HN': '#74a8d4',  # Noun — blue
+    'HA': '#a8d474',  # Adjective — green
+    'HR': '#d4d474',  # Preposition — yellow
+    'HC': '#d474a8',  # Conjunction — pink
+    'HT': '#a8a8a8',  # Particle — gray
+    'HP': '#74d4d4',  # Pronoun — cyan
+    'HD': '#d4a8d4',  # Adverb — purple
+    'AN': '#74d4a8',  # Aramaic Noun
+    'AV': '#d4a874',  # Aramaic Verb
+    'AA': '#a8d4a8',  # Aramaic Adjective
+    'AR': '#d4d4a8',  # Aramaic Preposition
+}
+
+MORPH_POS = {
+    'HV': 'verb',
+    'HN': 'noun',
+    'HA': 'adjective',
+    'HR': 'preposition',
+    'HC': 'conjunction',
+    'HT': 'particle',
+    'HP': 'pronoun',
+    'HD': 'adverb',
+    'AN': 'aramaic_noun',
+    'AV': 'aramaic_verb',
+    'AA': 'aramaic_adjective',
+    'AR': 'aramaic_preposition',
+}
+
+@app.get("/api/v1/verses/{ref:path}/grammar")
+def get_grammar(ref: str):
+    """Get a verse with morphologically-tagged words — grammar coloring data."""
+    ref = ref.replace(":", ".").replace(" ", ".").lower()
+    vid = ref
+    import re
+    m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
+    if m:
+        vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
+    
+    conn = get_db()
+    words = conn.execute("""
+        SELECT g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
+               g.value_standard, g.value_ordinal, g.value_reduced
+        FROM gematria g
+        WHERE g.verse_id = ?
+        ORDER BY g.word_index
+    """, (vid,)).fetchall()
+    
+    result = []
+    for w in words:
+        morph = w['morph'] or ''
+        prefix = morph[:2] if len(morph) >= 2 else ''
+        cat = 'unknown'
+        pos = 'unknown'
+        color = '#cccccc'
+        for pfx, c in MORPH_COLORS.items():
+            if morph.startswith(pfx):
+                color = c
+                cat = pfx
+                pos = MORPH_POS.get(pfx, 'unknown')
+                break
+        
+        result.append({
+            'hebrew': w['word_hebrew'] or '',
+            'english': w['word_english'] or '',
+            'morph': morph,
+            'lemma': w['lemma'] or '',
+            'pos': pos,
+            'category': cat,
+            'color': color,
+            'gematria': {
+                'standard': w['value_standard'],
+                'ordinal': w['value_ordinal'],
+                'reduced': w['value_reduced'],
+            },
+        })
+    
+    conn.close()
+    return {"ok": True, "data": {"verse_id": vid, "words": result}}
+
+
+@app.get("/api/v1/grammar/{ref:path}")
+def get_chapter_grammar(ref: str):
+    """Get word-level grammar/gematria data for all verses in a chapter.
+    
+    /api/v1/grammar/isa.55  → Word data for all verses in Isaiah 55
+    """
+    ref_clean = ref.strip("/")
+    parts = ref_clean.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
+    book_id = parts[0]
+    chapter_num = int(parts[1])
+
+    conn = get_db()
+    verse_prefix = f"{book_id}.{chapter_num}."
+    rows = conn.execute("""
+        SELECT g.verse_id, g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
+               g.value_standard, g.value_ordinal, g.value_reduced
+        FROM gematria g
+        WHERE g.verse_id LIKE ?
+        ORDER BY g.verse_id, g.word_index
+    """, (f"{verse_prefix}%",)).fetchall()
+
+    # Group by verse
+    verses = {}
+    for w in rows:
+        vid = w["verse_id"]
+        if vid not in verses:
+            verses[vid] = []
+        morph = w["morph"] or ""
+        prefix = morph[:2] if len(morph) >= 2 else ""
+        cat = "unknown"
+        color = "#cccccc"
+        for pfx, c in MORPH_COLORS.items():
+            if morph.startswith(pfx):
+                color = c
+                cat = pfx
+                break
+        verses[vid].append({
+            "hebrew": w["word_hebrew"] or "",
+            "english": w["word_english"] or "",
+            "morph": morph,
+            "lemma": w["lemma"] or "",
+            "word_index": w["word_index"],
+            "color": color,
+            "gematria": {"standard": w["value_standard"], "ordinal": w["value_ordinal"], "reduced": w["value_reduced"]},
+        })
+
+    conn.close()
+    return {"ok": True, "data": {"ref": ref_clean, "total_verses": len(verses), "verses": verses}}
+
+
+@app.get("/api/v1/connections/chapter/{ref:path}")
+def get_chapter_connections(ref: str):
+    """Get all non-structural connections for a chapter (intertextual, geographic, etc.).
+    
+    /api/v1/connections/chapter/isa.55
+    """
+    ref_clean = ref.strip("/")
+    parts = ref_clean.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=400, detail="Use book.chapter")
+    book_id = parts[0]
+    chapter_num = int(parts[1])
+    prefix = f"{book_id}.{chapter_num}.%"
+
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT c.source_verse, c.target_verse, c.type, c.subtype, c.layer, c.confidence, c.metadata
+        FROM connections c
+        WHERE c.source_verse LIKE ?
+        AND c.layer NOT IN ('structural', 'linguistic')
+        ORDER BY c.source_verse, c.type
+    """, (prefix,)).fetchall()
+
+    by_verse = {}
+    for r in rows:
+        vnum = r["source_verse"].split(".")[-1]
+        if vnum not in by_verse:
+            by_verse[vnum] = []
+        by_verse[vnum].append({
+            "type": r["type"],
+            "layer": r["layer"],
+            "target": r["target_verse"],
+            "subtype": r["subtype"],
+            "confidence": r["confidence"],
+        })
+
+    conn.close()
+    return {"ok": True, "data": {"ref": ref_clean, "verses": by_verse}}
+
+
+# ─── Footnotes (from LDS Church API) ───
+
+
+@app.get("/api/v1/footnotes/{ref:path}")
+def get_footnotes(ref: str):
+    """Get footnotes for a verse or chapter.
+
+    /api/v1/footnotes/isa.55.6     → Footnotes for Isa 55:6
+    /api/v1/footnotes/isa.55       → All footnotes in Isa 55
+    """
+    import json as _json
+    ref_clean = ref.strip("/")
+    conn = get_db()
+
+    # Determine match pattern
+    parts = ref_clean.split(".")
+    if len(parts) >= 3:
+        match = ref_clean  # exact verse match: isa.55.6
+        where_clause = "verse_id = ?"
+    else:
+        match = f"{ref_clean}.%"  # chapter match: isa.55.%
+        where_clause = "verse_id LIKE ?"
+
+    rows = conn.execute(f"""
+        SELECT id, verse_id, marker, word_index, context_word, category, body_html, reference_data
+        FROM footnotes
+        WHERE {where_clause}
+        ORDER BY verse_id, word_index
+    """, (match,)).fetchall()
+
+    if not rows:
+        conn.close()
+        return {"ok": True, "data": {"ref": ref_clean, "footnotes": [], "total": 0}}
+
+    footnotes = []
+    for r in rows:
+        ref_data = {}
+        try:
+            ref_data = _json.loads(r["reference_data"]) if r["reference_data"] else {}
+        except (_json.JSONDecodeError, TypeError):
+            pass
+        fn = {
+            "id": r["id"],
+            "verse_id": r["verse_id"],
+            "marker": r["marker"],
+            "word_index": r["word_index"],
+            "context_word": r["context_word"],
+            "category": r["category"],
+            "body_html": r["body_html"],
+            "references": ref_data if isinstance(ref_data, list) else [],
+        }
+        footnotes.append(fn)
+
+    conn.close()
+    return {"ok": True, "data": {
+        "ref": ref_clean,
+        "footnotes": footnotes,
+        "total": len(footnotes),
+    }}
+
+
+# ─── TSK Cross-References (Treasury of Scripture Knowledge) ───
+
+
+@app.get("/api/v1/tsk-crossrefs/{ref:path}")
+def get_tsk_crossrefs(ref: str):
+    """Get Treasury of Scripture Knowledge cross-references for a verse or chapter.
+
+    /api/v1/tsk-crossrefs/isa.55.6     → TSK refs for Isa 55:6
+    /api/v1/tsk-crossrefs/isa.55       → All TSK refs in Isa 55
+    """
+    ref_clean = ref.strip("/")
+    conn = get_db()
+
+    if ref_clean.count(".") >= 2:
+        # Verse-level: isa.55.6
+        rows = conn.execute("""
+            SELECT c.target_verse, c.type, c.confidence
+            FROM connections c
+            WHERE c.source_verse = ? AND c.discovered_by = 'tsk'
+            ORDER BY c.confidence DESC
+        """, (ref_clean,)).fetchall()
+        refs = [{
+            "source_verse": ref_clean,
+            "target_verse": r["target_verse"],
+            "type": r["type"],
+            "confidence": r["confidence"],
+        } for r in rows]
+    else:
+        # Chapter-level: isa.55
+        prefix = f"{ref_clean}.%"
+        rows = conn.execute("""
+            SELECT c.source_verse, c.target_verse, c.type, c.confidence
+            FROM connections c
+            WHERE c.source_verse LIKE ? AND c.discovered_by = 'tsk'
+            ORDER BY c.source_verse, c.confidence DESC
+        """, (prefix,)).fetchall()
+        refs = [{
+            "source_verse": r["source_verse"],
+            "target_verse": r["target_verse"],
+            "type": r["type"],
+            "confidence": r["confidence"],
+        } for r in rows]
+
+    conn.close()
+    return {"ok": True, "data": {
+        "ref": ref_clean,
+        "cross_references": refs,
+        "total": len(refs),
+    }}
+
+
+# ─── Genealogy ───
+
+@app.get("/api/v1/genealogy/{person}")
+def genealogy(person: str):
+    """Get genealogical connections for a person entity."""
+    conn = get_db()
+    
+    # Find verse IDs for this person
+    verses = conn.execute("""
+        SELECT ve.verse_id
+        FROM verse_entities ve
+        JOIN entity_links e ON e.entity_id = ve.entity_id
+        WHERE e.english_name LIKE ? AND ve.relationship_type = 'mentions'
+        ORDER BY ve.verse_id
+    """, (f'%{person}%',)).fetchall()
+    
+    if not verses:
+        # Try searching by entity_id directly
+        verses = conn.execute("""
+            SELECT ve.verse_id
+            FROM verse_entities ve
+            WHERE ve.entity_id LIKE ? AND ve.relationship_type = 'mentions'
+            ORDER BY ve.verse_id
+        """, (f'%{person}%',)).fetchall()
+    
+    verse_ids = [v[0] for v in verses]
+    
+    # Get connections between these verses
+    connections = []
+    if len(verse_ids) >= 2:
+        for i in range(len(verse_ids)):
+            for j in range(i + 1, len(verse_ids)):
+                row = conn.execute("""
+                    SELECT c.source_verse, c.target_verse, c.type, c.subtype
+                    FROM connections c 
+                    WHERE c.source_verse=? AND c.target_verse=?
+                       OR c.source_verse=? AND c.target_verse=?
+                """, (verse_ids[i], verse_ids[j], verse_ids[j], verse_ids[i])).fetchall()
+                for r in row:
+                    connections.append(dict(r))
+    
+    conn.close()
+    return {
+        "ok": True,
+        "data": {
+            "person": person,
+            "verses": verse_ids[:50],
+            "connections": connections[:100],
+            "total_verses": len(verse_ids),
+        }
+    }
+
+
+# ─── OT-in-NT Catalog ───
+
+@app.get("/api/v1/ot-in-nt")
+def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt', 'rom')")):
+    """Get all Old Testament quotations used in the New Testament.
+    
+    Aggregates direct_quotation, allusion, prophetic_fulfillment, 
+    and modified_quotation connections from OT→NT.
+    """
+    conn = get_db()
+    
+    query = """
+        SELECT c.source_verse, c.target_verse, c.type, c.strength,
+               c.confidence, c.subtype, vs.text_english as source_text,
+               vt.text_english as target_text, vs.book_id as ot_book,
+               vt.book_id as nt_book
+        FROM connections c
+        JOIN verses vs ON vs.id = c.source_verse
+        JOIN verses vt ON vt.id = c.target_verse
+        WHERE (c.type = 'direct_quotation' OR c.type = 'allusion'
+            OR c.type = 'prophetic_fulfillment' OR c.type = 'modified_quotation')
+          AND vs.has_hebrew = 1
+          AND vs.has_hebrew IS NOT NULL
+    """
+    
+    # OT books (those with Hebrew)
+    ot_books_query = """
+        AND vs.book_id IN ('gen','exo','lev','num','deu','josh','judg','ruth','1sam','2sam','1kgs','2kgs',
+                           '1chr','2chr','ezra','neh','esth','job','psa','prov','eccl','song','isa',
+                           'jer','lam','ezek','dan','hos','joel','amos','obad','jonah','mic','nah',
+                           'hab','zeph','hag','zech','mal')
+    """
+    query += ot_books_query
+    
+    # Filter by NT book
+    if book:
+        query += " AND vt.book_id = ?"
+        rows = conn.execute(query, (book,)).fetchall()
+    else:
+        rows = conn.execute(query).fetchall()
+    
+    # Group by NT book
+    by_nt_book = {}
+    for r in rows:
+        nt = r['nt_book']
+        if nt not in by_nt_book:
+            by_nt_book[nt] = []
+        by_nt_book[nt].append({
+            'ot_verse': r['source_verse'],
+            'nt_verse': r['target_verse'],
+            'type': r['type'],
+            'strength': r['strength'],
+            'confidence': r['confidence'],
+            'ot_text': (r['source_text'] or '')[:150],
+            'nt_text': (r['target_text'] or '')[:150],
+        })
+    
+    # Sort each NT book's entries by OT verse
+    for nt in by_nt_book:
+        by_nt_book[nt].sort(key=lambda x: x['ot_verse'])
+    
+    conn.close()
+    return {
+        "ok": True,
+        "data": {
+            "total": sum(len(v) for v in by_nt_book.values()),
+            "by_nt_book": by_nt_book,
+        }
+    }
+
+
+# ─── Connection Feedback ───
+
+class ConnectionFeedback(BaseModel):
+    connection_id: Optional[int] = None
+    source_verse: Optional[str] = None
+    target_verse: Optional[str] = None
+    action: str = "confirm"  # 'confirm', 'reject', 'unclear'
+
+@app.post("/api/v1/connections/feedback")
+def connection_feedback(fb: ConnectionFeedback):
+    """Submit user feedback on a connection.
+    
+    Confirming a connection increments its confirmation_count.
+    Users can confirm, reject, or mark a connection as unclear.
+    This feedback improves the quality signal over time.
+    """
+    conn = get_db()
+    
+    if fb.connection_id:
+        row = conn.execute("SELECT * FROM connections WHERE id = ?", (fb.connection_id,)).fetchone()
+    elif fb.source_verse and fb.target_verse:
+        row = conn.execute("""
+            SELECT * FROM connections 
+            WHERE source_verse = ? AND target_verse = ?
+            LIMIT 1
+        """, (fb.source_verse, fb.target_verse)).fetchone()
+    else:
+        conn.close()
+        return {"ok": False, "error": "Provide connection_id or source_verse+target_verse"}
+    
+    if not row:
+        conn.close()
+        return {"ok": False, "error": "Connection not found"}
+    
+    cid = row["id"]
+    
+    if fb.action == "confirm":
+        conn.execute("UPDATE connections SET confirmation_count = COALESCE(confirmation_count, 0) + 1 WHERE id = ?", (cid,))
+        msg = "Confirmed"
+    elif fb.action == "reject":
+        conn.execute("UPDATE connections SET deprecated = 1, deprecation_reason = 'user_reported', confirmation_count = COALESCE(confirmation_count, 0) - 1 WHERE id = ?", (cid,))
+        msg = "Rejected"
+    elif fb.action == "unclear":
+        conn.execute("UPDATE connections SET quality_level = 'speculative', confirmation_count = COALESCE(confirmation_count, 0) - 1 WHERE id = ?", (cid,))
+        msg = "Marked unclear"
+    else:
+        conn.close()
+        return {"ok": False, "error": f"Unknown action: {fb.action}"}
+    
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"connection_id": cid, "action": fb.action, "message": msg}}
+
+
+@app.get("/api/v1/connections/{connection_id}/status")
+def get_connection_status(connection_id: int):
+    """Get the current status and signals for a specific connection."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM connections WHERE id = ?", (connection_id,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    
+    result = dict(row)
+    signals = rate_connection_row(result)
+    result["signals"] = signals
+    return {"ok": True, "data": result}
 
 
 # ─── Tab State ───
@@ -465,8 +1142,1426 @@ def update_tab(tab_id: str, body: dict):
     return {"ok": True, "data": UI_TABS.get(tab_id, {})}
 
 
+# ─── Generic Tool Endpoint (auto-generated from TOOL_REGISTRY) ───
+# Every tool registered in lib/api/__init__.py is available here.
+# GET for simple args, POST for complex args (body JSON).
+
+@app.get("/api/v1/tools/{tool_name:path}")
+def call_tool_get(tool_name: str, request: Request):
+    """Call any registered tool by name — auto-generated from the shared tool registry.
+
+    Query params are passed as tool arguments. For complex tools, use POST.
+    See /docs for schema-per-tool documentation (coming in next iteration).
+    """
+    # Strip leading/trailing slashes
+    tool_name = tool_name.strip("/")
+    if tool_name not in TOOL_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
+
+    fn, schema, desc = TOOL_REGISTRY[tool_name]
+    args = dict(request.query_params)
+
+    # Parse types per schema
+    props = schema.get("properties", {})
+    typed_args = {}
+    for key, val in args.items():
+        if key in props:
+            ptype = props[key].get("type", "string")
+            try:
+                if ptype == "integer":
+                    typed_args[key] = int(val)
+                elif ptype == "number":
+                    typed_args[key] = float(val)
+                elif ptype == "boolean":
+                    typed_args[key] = val.lower() in ("true", "1", "yes")
+                elif ptype == "array":
+                    # Arrays can be passed as comma-separated or repeated params
+                    if val.startswith("[") and val.endswith("]"):
+                        typed_args[key] = json.loads(val)
+                    else:
+                        typed_args[key] = [
+                            v.strip() for v in val.split(",") if v.strip()
+                        ]
+                else:
+                    typed_args[key] = val
+            except (ValueError, json.JSONDecodeError):
+                typed_args[key] = val
+
+    conn = get_db()
+    try:
+        result = call_tool(tool_name, conn, **typed_args)
+        return {"ok": True, "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.post("/api/v1/tools/{tool_name:path}")
+def call_tool_post(tool_name: str, body: dict):
+    """Call any registered tool by name with JSON body arguments."""
+    tool_name = tool_name.strip("/")
+    if tool_name not in TOOL_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
+
+    conn = get_db()
+    try:
+        result = call_tool(tool_name, conn, **body)
+        return {"ok": True, "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+# ─── List Available Tools ───
+
+@app.get("/api/v1/tools")
+def list_api_tools():
+    """List all available tools with their schemas."""
+    from lib.api import list_tools as registry_list
+    return {"ok": True, "data": {"tools": registry_list(), "total": len(TOOL_REGISTRY)}}
+
+
+# ─── Lexicon Endpoints ───
+
+LEXICON_CACHE_BY_HEBREW = {}  # hebrew text → lemma, filled at startup
+
+def _build_lexicon_cache_index():
+    """Build Hebrew-text lookup from RAM cache."""
+    for lemma, entry in LEXICON_CACHE.items():
+        heb = entry.get("hebrew", "")
+        if heb:
+            LEXICON_CACHE_BY_HEBREW[heb] = lemma
+
+
+@app.on_event("startup")
+def _load_lexicon_cache():
+    _build_lexicon_cache_index()
+
+
+# ─── Wiki Endpoints ───
+
+WIKI_CACHE = {}  # entity/id → article, loaded at startup
+
+@app.on_event("startup")
+def _load_wiki_cache():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM wiki_articles").fetchall()
+    for r in rows:
+        WIKI_CACHE[r["id"]] = dict(r)
+    conn.close()
+    if WIKI_CACHE:
+        print(f"  {len(WIKI_CACHE)} wiki articles loaded", flush=True)
+
+
+@app.get("/api/v1/wiki/{entity_id:path}")
+def get_wiki_article(entity_id: str):
+    """Get a wiki article about a biblical entity or concept."""
+    eid = entity_id.strip("/").lower().replace(" ", "_")
+    article = WIKI_CACHE.get(eid)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
+    import json
+    result = dict(article)
+    try:
+        result["key_verses"] = json.loads(result.get("key_verses", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        result["key_verses"] = []
+    try:
+        result["cross_references"] = json.loads(result.get("cross_references", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        result["cross_references"] = []
+    return {"ok": True, "data": result}
+
+
+@app.get("/api/v1/wiki/browse/{type_name:path}")
+def browse_wiki(type_name: str = "entity"):
+    """Browse wiki articles by type (entity, concept, etc.)."""
+    t = type_name.strip("/").lower()
+    results = [
+        {"id": a["id"], "title": a["title"], "summary": a["summary"][:100]}
+        for a in WIKI_CACHE.values()
+        if a["article_type"] == t
+    ]
+    return {"ok": True, "data": {"type": t, "articles": results, "total": len(results)}}
+
+
+@app.get("/api/v1/wiki/concordance/{entity_id:path}")
+def wiki_concordance(entity_id: str):
+    """Get key verses for an entity from its wiki article."""
+    eid = entity_id.strip("/").lower().replace(" ", "_")
+    article = WIKI_CACHE.get(eid)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
+    import json
+    try:
+        verses = json.loads(article.get("key_verses", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        verses = []
+    return {"ok": True, "data": {"entity": eid, "verses": verses, "total": len(verses)}}
+
+
+# ─── Isaiah Parallel Reader ───
+
+# Chapter mapping: Isaiah N -> 2 Nephi N+10 for chapters 2-14
+# Also: Isaiah 48-49 -> 1 Nephi 20-21
+#       Isaiah 53 -> Mosiah 14-15
+ISAIAH_PARALLEL_MAP = {
+    # 2 Nephi 12-24 = Isaiah 2-14  (offset of +10 chapters)
+    **{str(i): f"2ne.{i+10}" for i in range(2, 15)},
+    # Other cross-canon Isaiah parallels
+    "48": "1ne.20",
+    "49": "1ne.21",
+    "50": "2ne.7",
+    "51": "2ne.8",
+    "52": "mosiah.12",
+    "53": "mosiah.14",
+    # Full chapters in 2 Ne
+    "2": "2ne.12", "3": "2ne.13", "4": "2ne.14", "5": "2ne.15",
+    "6": "2ne.16", "7": "2ne.17", "8": "2ne.18", "9": "2ne.19",
+    "10": "2ne.20", "11": "2ne.21", "12": "2ne.22", "13": "2ne.23",
+    "14": "2ne.24",
+}
+
+
+@app.get("/api/v1/parallel/isaiah/{chapter:path}")
+def isaiah_parallel(chapter: str):
+    """Get Isaiah side-by-side with its Book of Mormon parallel.
+
+    Isaiah chapter N maps to:
+      2-14 -> 2 Nephi N+10
+      48-49 -> 1 Nephi 20-21
+      50-53 -> Mosiah/2 Nephi parallels
+    """
+    chap = chapter.strip("/")
+    parallel_book_chapter = ISAIAH_PARALLEL_MAP.get(chap)
+
+    conn = get_db()
+
+    # Get OT Isaiah verses
+    ot_rows = conn.execute("""
+        SELECT id, chapter, verse, text_english, text_hebrew
+        FROM verses
+        WHERE book_id = 'isa' AND chapter = ?
+        ORDER BY verse
+    """, (int(chap),)).fetchall()
+
+    # Get parallel BoM verses
+    bom_rows = []
+    if parallel_book_chapter:
+        parts = parallel_book_chapter.split(".")
+        bom_book = parts[0]
+        bom_ch = int(parts[1])
+        bom_rows = conn.execute("""
+            SELECT id, chapter, verse, text_english
+            FROM verses
+            WHERE book_id = ? AND chapter = ?
+            ORDER BY verse
+        """, (bom_book, bom_ch)).fetchall()
+
+    # Build verse-by-verse alignment
+    parallel_verses = []
+    ot_by_verse = {}
+    for r in ot_rows:
+        ot_by_verse[r["verse"]] = {
+            "reference": f"Isaiah {chap}:{r['verse']}",
+            "text": r["text_english"],
+            "hebrew": r["text_hebrew"],
+        }
+
+    bom_by_verse = {}
+    for r in bom_rows:
+        bom_by_verse[r["verse"]] = {
+            "reference": f"{bom_book}.{bom_ch}:{r['verse']}",
+            "text": r["text_english"],
+        }
+
+    # Align by verse number
+    all_verses = sorted(set(list(ot_by_verse.keys()) + list(bom_by_verse.keys())))
+    for v in all_verses:
+        entry = {"verse": v, "ot": ot_by_verse.get(v), "bom": bom_by_verse.get(v)}
+        parallel_verses.append(entry)
+
+    conn.close()
+    return {"ok": True, "data": {
+        "chapter": int(chap),
+        "parallel": parallel_book_chapter or "no_direct_parallel",
+        "total_verses": len(parallel_verses),
+        "verses": parallel_verses,
+    }}
+
+
+# ─── Isaiah Parallelism Visualization ───
+
+
+@app.get("/api/v1/parallelism/isaiah/{chapter:path}")
+def isaiah_parallelism(chapter: str):
+    """Get parallelism data for an Isaiah chapter.
+
+    Returns verses with their parallelism relationships (synonymous, antithetic,
+    synthetic, staircase chains) and chiastic structures for the chapter.
+    """
+    import json as _json
+
+    chap = chapter.strip("/")
+    conn = get_db()
+
+    # 1. Get verses in the chapter
+    verse_rows = conn.execute("""
+        SELECT id, book_id, chapter, verse, text_english, text_hebrew
+        FROM verses
+        WHERE book_id = 'isa' AND chapter = ?
+        ORDER BY verse
+    """, (int(chap),)).fetchall()
+
+    if not verse_rows:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Chapter not found: Isaiah {chap}")
+
+    verse_list = [dict(r) for r in verse_rows]
+    verse_ids = [v["id"] for v in verse_list]
+    verse_num_to_id = {v["verse"]: v["id"] for v in verse_list}
+    id_to_verse_num = {v["id"]: v["verse"] for v in verse_list}
+    id_to_ref = {v["id"]: f"isa.{chap}.{v['verse']}" for v in verse_list}
+
+    # 2. Get parallelism connections for verses in this chapter
+    placeholders = ",".join("?" for _ in verse_ids)
+    conn_rows = conn.execute(f"""
+        SELECT c.type, c.subtype, c.confidence, c.metadata,
+               c.source_verse, c.target_verse
+        FROM connections c
+        WHERE c.layer = 'structural'
+        AND (c.type LIKE 'parallel_%' OR c.type = 'chiastic')
+        AND (c.source_verse IN ({placeholders}) OR c.target_verse IN ({placeholders}))
+        ORDER BY c.source_verse
+    """, verse_ids + verse_ids).fetchall()
+
+    # Build parallelism map per verse
+    verse_parallelisms = {v: [] for v in verse_ids}
+    for r in conn_rows:
+        src = r["source_verse"]
+        tgt = r["target_verse"]
+
+        def _role(vid, paired_vid):
+            return "source" if vid == src else "target"
+
+        # Add to source verse
+        if src in verse_parallelisms:
+            paired_v = tgt if src == src else tgt  # always tgt
+            ptype = r["type"]
+            # Skip chiastic in regular parallelism list
+            if ptype != "chiastic":
+                verse_parallelisms[src].append({
+                    "type": ptype,
+                    "paired_verse": id_to_verse_num.get(tgt, 0),
+                    "paired_ref": id_to_ref.get(tgt, ""),
+                    "role": "source",
+                    "confidence": round(r["confidence"], 2),
+                    "metadata": r["metadata"],
+                })
+
+        # Add to target verse
+        if tgt in verse_parallelisms and r["type"] != "chiastic":
+            verse_parallelisms[tgt].append({
+                "type": r["type"],
+                "paired_verse": id_to_verse_num.get(src, 0),
+                "paired_ref": id_to_ref.get(src, ""),
+                "role": "target",
+                "confidence": round(r["confidence"], 2),
+                "metadata": r["metadata"],
+            })
+
+    # 3. Get staircase chains overlapping this chapter
+    staircase_chains = []
+    chain_rows = conn.execute("""
+        SELECT p.id, p.start_verse, p.end_verse, p.confidence, p.metadata
+        FROM patterns p
+        WHERE p.pattern_type = 'staircase_chain'
+        AND p.book_id = 'isa'
+    """).fetchall()
+
+    for r in chain_rows:
+        meta = _json.loads(r["metadata"]) if r["metadata"] else {}
+        chain_refs = meta.get("verse_refs", [])
+        # Check if any verse in the chain is in this chapter
+        chapter_refs = [ref for ref in chain_refs if ref.startswith(f"isa.{chap}.")]
+        if chapter_refs:
+            verse_nums = []
+            for ref in chapter_refs:
+                parts = ref.split(".")
+                if len(parts) == 3:
+                    try:
+                        verse_nums.append(int(parts[2]))
+                    except ValueError:
+                        pass
+            staircase_chains.append({
+                "pattern_id": r["id"],
+                "start_verse": r["start_verse"],
+                "end_verse": r["end_verse"],
+                "verses": verse_nums or meta.get("verse_numbers", []),
+                "repeated_words": meta.get("repeated_words", []),
+                "chain_length": meta.get("chain_length", 0),
+                "confidence": round(r["confidence"], 2),
+            })
+
+    # 4. Get chiasms (known_chiasms) that overlap this chapter
+    kc_rows = conn.execute("""
+        SELECT kc.* FROM known_chiasms kc
+        WHERE kc.book_id = 'isa'
+    """).fetchall()
+
+    chiasms = []
+    for r in kc_rows:
+        kc = dict(r)
+        # Parse start/end verse to check chapter overlap
+        start_ref = kc.get("start_verse", "")
+        end_ref = kc.get("end_verse", "")
+        start_ch = 1
+        end_ch = 66
+        for ref in [start_ref, end_ref]:
+            if ref:
+                parts = ref.split(".")
+                if len(parts) >= 2:
+                    try:
+                        ch = int(parts[1])
+                        if ref == start_ref:
+                            start_ch = ch
+                        if ref == end_ref:
+                            end_ch = ch
+                    except ValueError:
+                        pass
+
+        # Does this chiasm overlap our chapter?
+        if int(chap) < start_ch or int(chap) > end_ch:
+            continue
+
+        # Parse layers_json for element labels (supporting range-based elements)
+        elements = []
+        chapter_section = None  # Which section this chapter falls into
+        layers_raw = kc.get("layers_json")
+        if layers_raw:
+            try:
+                layers = _json.loads(layers_raw)
+                for layer in layers:
+                    lv_start = layer.get("start", "") or layer.get("verse", "")
+                    lv_end = layer.get("end", "") or lv_start
+                    label = layer.get("letter", "?")
+                    lv_info = layer.get("label", "")
+                    if lv_start:
+                        lv_parts = lv_start.split(".")
+                        lv_end_parts = lv_end.split(".")
+                        if len(lv_parts) >= 2:
+                            try:
+                                lch_start = int(lv_parts[1])
+                                lch_end = int(lv_end_parts[1]) if len(lv_end_parts) >= 2 else lch_start
+                                lvs_start = int(lv_parts[2]) if len(lv_parts) >= 3 else 1
+                                lvs_end = int(lv_end_parts[2]) if len(lv_end_parts) >= 3 else 99
+
+                                # Check if this range overlaps the current chapter
+                                if lch_start <= int(chap) <= lch_end:
+                                    chapter_section = {
+                                        "label": label,
+                                        "name": lv_info,
+                                        "chapter_start": lch_start,
+                                        "chapter_end": lch_end,
+                                    }
+
+                                # Add individual verse-level elements for this chapter
+                                if lch_start == int(chap) == lch_end:
+                                    # Single-chapter range — add as element
+                                    elements.append({
+                                        "label": label,
+                                        "verse": lvs_start,
+                                        "text_snippet": lv_info,
+                                    })
+                                elif lch_start == int(chap):
+                                    # Start of range in this chapter
+                                    elements.append({
+                                        "label": label,
+                                        "verse": lvs_start,
+                                        "text_snippet": lv_info,
+                                    })
+                                elif lch_end == int(chap):
+                                    # End of range in this chapter
+                                    elements.append({
+                                        "label": label,
+                                        "verse": lvs_end,
+                                        "text_snippet": lv_info,
+                                    })
+                                elif lch_start < int(chap) < lch_end:
+                                    # Chapter is in the middle of a range
+                                    elements.append({
+                                        "label": label,
+                                        "verse": 0,
+                                        "text_snippet": lv_info or f"Section {label}",
+                                    })
+                            except ValueError:
+                                pass
+            except (_json.JSONDecodeError, TypeError):
+                pass
+
+        pivot_ref = kc.get("pivot_verse", "")
+        pivot_ch = 0
+        pivot_vs = 0
+        if pivot_ref:
+            p_parts = pivot_ref.split(".")
+            if len(p_parts) >= 3:
+                try:
+                    pivot_ch = int(p_parts[1])
+                    pivot_vs = int(p_parts[2])
+                except ValueError:
+                    pass
+            elif len(p_parts) >= 2:
+                try:
+                    pivot_ch = int(p_parts[1])
+                except ValueError:
+                    pass
+
+        chiasms.append({
+            "chiasm_id": kc["id"],
+            "scholar": kc.get("scholar", ""),
+            "confidence": round(kc.get("confidence", 0.5), 2),
+            "chiasm_type": kc.get("chiasm_type", ""),
+            "notes": kc.get("notes", ""),
+            "start_verse": start_ref,
+            "end_verse": end_ref,
+            "pivot_verse": pivot_ref,
+            "pivot_in_chapter": pivot_ch == int(chap),
+            "pivot_verse_num": pivot_vs if pivot_ch == int(chap) else None,
+            "chapter_section": chapter_section,
+            "elements": elements,
+        })
+
+    # 5. Build verse annotations (which chiasms each verse belongs to)
+    verse_in_chiasms = {v: [] for v in verse_ids}
+    for ch in chiasms:
+        for el in ch["elements"]:
+            vid = verse_num_to_id.get(el["verse"])
+            if vid and vid in verse_in_chiasms:
+                verse_in_chiasms[vid].append({
+                    "chiasm_id": ch["chiasm_id"],
+                    "scholar": ch["scholar"],
+                    "label": el["label"],
+                })
+
+    # 6. Build response verses and unique statistics
+    response_verses = []
+    stats_by_type = {}
+    seen_parallels = set()  # Track unique connection pairs to avoid double-counting
+
+    for v in verse_list:
+        vid = v["id"]
+        parallels = verse_parallelisms.get(vid, [])
+        chiasm_roles = verse_in_chiasms.get(vid, [])
+
+        for p in parallels:
+            # Deduplicate parallel pairs for statistics (type + pair key)
+            pair_key = (p["type"], min(v["verse"], p["paired_verse"]),
+                        max(v["verse"], p["paired_verse"]))
+            if pair_key not in seen_parallels:
+                seen_parallels.add(pair_key)
+                stats_by_type[p["type"]] = stats_by_type.get(p["type"], 0) + 1
+
+        # Detect intra-verse poetic lines and parallelism
+        intra = detect_intra_verse(v["text_english"], v["text_hebrew"] or "")
+
+        response_verses.append({
+            "verse": v["verse"],
+            "text_english": v["text_english"],
+            "text_hebrew": v["text_hebrew"],
+            "lines": intra["lines"],
+            "intra_parallelisms": intra["parallelisms"],
+            "parallelisms": parallels,
+            "in_chiasms": chiasm_roles,
+        })
+
+    # Add chiasmus count to stats
+    if chiasms:
+        stats_by_type["chiastic"] = len(chiasms)
+
+    total_parallels = sum(stats_by_type.values())
+
+    conn.close()
+    return {"ok": True, "data": {
+        "book": "isa",
+        "chapter": int(chap),
+        "verses": response_verses,
+        "staircase_chains": staircase_chains,
+        "chiasms": chiasms,
+        "statistics": {
+            "total_verses": len(response_verses),
+            "total_parallelisms": total_parallels,
+            "total_chiasms": len(chiasms),
+            "by_type": stats_by_type,
+        },
+    }}
+
+
+@app.get("/api/v1/parallelism/isaiah/structure")
+def isaiah_structure():
+    """Get book-wide chiastic structure overview for Isaiah.
+
+    Returns all known chiasms with their section ranges, labels,
+    and scholar info, suitable for rendering a structure diagram.
+    """
+    import json as _json
+    conn = get_db()
+
+    kc_rows = conn.execute("""
+        SELECT * FROM known_chiasms WHERE book_id = 'isa' ORDER BY confidence DESC
+    """).fetchall()
+
+    structures = []
+    for r in kc_rows:
+        kc = dict(r)
+        sections = []
+        layers_raw = kc.get("layers_json")
+        if layers_raw:
+            try:
+                layers = _json.loads(layers_raw)
+                for layer in layers:
+                    sections.append({
+                        "label": layer.get("letter", "?"),
+                        "name": layer.get("label", ""),
+                        "start": layer.get("start", ""),
+                        "end": layer.get("end", ""),
+                    })
+            except (_json.JSONDecodeError, TypeError):
+                pass
+
+        structures.append({
+            "id": kc["id"],
+            "scholar": kc.get("scholar", ""),
+            "chiasm_type": kc.get("chiasm_type", ""),
+            "confidence": round(kc.get("confidence", 0.5), 2),
+            "start_verse": kc.get("start_verse", ""),
+            "end_verse": kc.get("end_verse", ""),
+            "pivot_verse": kc.get("pivot_verse", ""),
+            "notes": kc.get("notes", ""),
+            "sections": sections,
+        })
+
+    conn.close()
+    return {"ok": True, "data": {"structures": structures, "total": len(structures)}}
+
+
+# ─── Generic Chapter Connections (any book) ───
+
+
+@app.get("/api/v1/chapter/{ref:path}")
+def get_chapter(ref: str):
+    """Get a full chapter with connections, lines, and intra-verse parallelism.
+
+    /api/v1/chapter/isa.55      → All data for Isaiah 55
+    /api/v1/chapter/matt.5      → All data for Matthew 5
+    /api/v1/chapter/gen.1       → All data for Genesis 1
+    """
+    import json as _json
+    ref_clean = ref.strip("/")
+    parts = ref_clean.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
+    book_id = parts[0]
+    chapter_num = int(parts[1])
+
+    from lib.patterns.intra_verse import detect_intra_verse
+    conn = get_db()
+
+    # 1. Get verses
+    verse_rows = conn.execute("""
+        SELECT id, book_id, chapter, verse, text_english, text_hebrew
+        FROM verses WHERE book_id = ? AND chapter = ?
+        ORDER BY verse
+    """, (book_id, chapter_num)).fetchall()
+
+    if not verse_rows:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Chapter not found: {ref_clean}")
+
+    verse_list = [dict(r) for r in verse_rows]
+    verse_ids = [v["id"] for v in verse_list]
+    id_to_verse_num = {v["id"]: v["verse"] for v in verse_list}
+    id_to_ref = {v["id"]: f"{book_id}.{chapter_num}.{v['verse']}" for v in verse_list}
+    verse_num_to_id = {v["verse"]: v["id"] for v in verse_list}
+
+    # 2. Get structural connections for verses in this chapter
+    placeholders = ",".join("?" for _ in verse_ids)
+    conn_rows = conn.execute(f"""
+        SELECT c.type, c.subtype, c.confidence, c.metadata, c.source_verse, c.target_verse
+        FROM connections c
+        WHERE c.layer = 'structural'
+        AND (c.type LIKE 'parallel_%' OR c.type = 'chiastic')
+        AND (c.source_verse IN ({placeholders}) OR c.target_verse IN ({placeholders}))
+        ORDER BY c.source_verse
+    """, verse_ids + verse_ids).fetchall()
+
+    # 3. Build parallelism map per verse
+    verse_parallelisms = {v["id"]: [] for v in verse_list}
+    for r in conn_rows:
+        for vid in [r["source_verse"], r["target_verse"]]:
+            if vid in verse_parallelisms and r["type"] != "chiastic":
+                paired = r["target_verse"] if vid == r["source_verse"] else r["source_verse"]
+                verse_parallelisms[vid].append({
+                    "type": r["type"],
+                    "paired_verse": id_to_verse_num.get(paired, 0),
+                    "paired_ref": id_to_ref.get(paired, ""),
+                    "role": "source" if vid == r["source_verse"] else "target",
+                    "confidence": round(r["confidence"], 2),
+                })
+
+    # 4. Build response verses with intra-verse lines + parallelism
+    response_verses = []
+    stats_by_type = {}
+    seen_parallels = set()
+
+    for v in verse_list:
+        vid = v["id"]
+        parallels = verse_parallelisms.get(vid, [])
+
+        # Intra-verse detection
+        intra = detect_intra_verse(v["text_english"], v["text_hebrew"] or "")
+
+        for p in parallels:
+            pair = (p["type"], min(v["verse"], p["paired_verse"]), max(v["verse"], p["paired_verse"]))
+            if pair not in seen_parallels:
+                seen_parallels.add(pair)
+                stats_by_type[p["type"]] = stats_by_type.get(p["type"], 0) + 1
+
+        response_verses.append({
+            "verse": v["verse"],
+            "text_english": v["text_english"],
+            "text_hebrew": v["text_hebrew"],
+            "lines": intra["lines"],
+            "intra_parallelisms": intra["parallelisms"],
+            "parallelisms": parallels,
+            "in_chiasms": [],
+        })
+
+    # 5. Chiastic connections (count)
+    chiastic_count = sum(1 for r in conn_rows if r["type"] == "chiastic")
+    if chiastic_count:
+        stats_by_type["chiastic"] = chiastic_count
+
+    conn.close()
+    return {"ok": True, "data": {
+        "book": book_id,
+        "chapter": chapter_num,
+        "verses": response_verses,
+        "staircase_chains": [],
+        "chiasms": [],
+        "statistics": {
+            "total_verses": len(response_verses),
+            "total_parallelisms": sum(stats_by_type.values()),
+            "total_chiasms": chiastic_count,
+            "by_type": stats_by_type,
+        },
+    }}
+
+
+# ─── Thematic Study Guides ───
+
+THEMATIC_GUIDES = {
+    "covenant": {
+        "title": "Covenant Thread",
+        "description": "God's covenant relationship with His people from Noah through the New Covenant",
+        "connections": [
+            ("gen.9.9", "Noahic Covenant — God promises never to flood the earth again"),
+            ("gen.15.18", "Abrahamic Covenant — land and seed promised"),
+            ("gen.17.10", "Circumcision as the sign of the covenant"),
+            ("exo.19.5", "Sinai Covenant — Israel as a kingdom of priests"),
+            ("exo.24.8", "Blood of the covenant ratifies the relationship"),
+            ("deu.29.1", "Covenant renewal in Moab"),
+            ("2sam.7.12", "Davidic Covenant — an eternal throne"),
+            ("jer.31.31", "New Covenant promised — law written on the heart"),
+            ("ezek.36.26", "A new heart and a new spirit"),
+            ("luke.22.20", "New Covenant in Christ's blood"),
+            ("heb.8.8", "The New Covenant makes the first obsolete"),
+        ],
+    },
+    "exodus": {
+        "title": "Exodus Pattern",
+        "description": "The Exodus as the template for God's deliverance — repeated throughout scripture",
+        "connections": [
+            ("gen.12.1", "Abraham's call begins the journey pattern"),
+            ("exo.3.1", "Moses called at the burning bush"),
+            ("exo.12.1", "Passover — the lamb's blood delivers from death"),
+            ("exo.14.21", "Red Sea crossing — deliverance through waters"),
+            ("exo.16.4", "Manna — bread from heaven"),
+            ("exo.17.6", "Water from the rock"),
+            ("isa.43.16", "A new exodus promised"),
+            ("hos.11.1", "Out of Egypt I called my son"),
+            ("matt.2.15", "Jesus recapitulates the Exodus"),
+            ("john.6.31", "Jesus as the true bread from heaven"),
+            ("1ne.17.26", "Lehi's exodus to the promised land"),
+        ],
+    },
+    "temple": {
+        "title": "Temple / Presence of God",
+        "description": "The dwelling of God with humanity — from Eden to the New Jerusalem",
+        "connections": [
+            ("gen.2.8", "Eden as God's garden-temple"),
+            ("gen.28.17", "Bethel — the gate of heaven"),
+            ("exo.25.8", "The Tabernacle — God dwells among His people"),
+            ("exo.40.34", "The glory of the LORD fills the Tabernacle"),
+            ("1kgs.8.10", "The glory fills Solomon's Temple"),
+            ("isa.6.1", "Isaiah's vision of the LORD in the Temple"),
+            ("ezek.47.1", "Water flows from the Temple"),
+            ("1cor.3.16", "Believers as the temple of God"),
+            ("rev.21.22", "The Lord God Almighty is the Temple"),
+        ],
+    },
+    "temple_symbolism": {
+        "title": "Temple Symbolism Deep Dive",
+        "description": "Every element of the Tabernacle/Temple as a symbol of Christ, creation, and the covenant path",
+        "connections": [
+            ("exo.25.10", "Ark of the Covenant — the throne of God (Christ as King)"),
+            ("exo.25.17", "Mercy Seat (kapporet) — the place of atonement (Christ as High Priest)"),
+            ("exo.25.18", "Cherubim — guardians of God's throne (heavenly attendants)"),
+            ("exo.25.23", "Table of Showbread — bread of God's presence (Christ as Bread of Life)"),
+            ("exo.25.31", "Golden Lampstand (menorah) — light of God's presence (Christ as Light)"),
+            ("exo.26.1", "Tabernacle curtains — the heavens stretched out (cosmic symbolism)"),
+            ("exo.26.31", "The Veil — separation between God and humanity (rent in Christ)"),
+            ("exo.27.1", "Bronze Altar — judgment and sacrifice (the cross)"),
+            ("exo.30.1", "Altar of Incense — prayers ascending to God"),
+            ("exo.30.17", "Laver — cleansing and baptism"),
+            ("exo.28.15", "High Priest's breastplate — bearing the tribes before God"),
+            ("lev.16.15", "Day of Atonement — the scapegoat and the sin offering"),
+            ("heb.9.11", "Christ as the High Priest entering the heavenly Holy of Holies"),
+            ("rev.21.22", "No temple — God's presence is everywhere"),
+        ],
+    },
+    "shepherd": {
+        "title": "Shepherd / Flock",
+        "description": "The shepherd metaphor — God as Shepherd, Israel as flock, Christ as Good Shepherd",
+        "connections": [
+            ("psa.23.1", "The LORD is my Shepherd"),
+            ("psa.80.1", "Shepherd of Israel"),
+            ("isa.40.11", "He shall feed His flock like a shepherd"),
+            ("jer.23.1", "Woe to the shepherds who scatter the flock"),
+            ("ezek.34.11", "I myself will search for my sheep"),
+            ("zech.13.7", "Smite the Shepherd"),
+            ("john.10.11", "I am the good Shepherd"),
+            ("1pet.5.4", "Chief Shepherd shall appear"),
+        ],
+    },
+    "creation_new_creation": {
+        "title": "Creation & New Creation",
+        "description": "The biblical arc from creation to new creation",
+        "connections": [
+            ("gen.1.1", "In the beginning God created"),
+            ("gen.1.26", "Man created in God's image"),
+            ("gen.2.7", "Man formed from the dust"),
+            ("gen.3.17", "The ground cursed because of sin"),
+            ("isa.65.17", "New heavens and a new earth"),
+            ("2cor.5.17", "If any man be in Christ, new creature"),
+            ("rev.21.1", "New heaven and new earth"),
+            ("rev.22.1", "River of life — Eden restored and surpassed"),
+        ],
+    },
+}
+
+@app.get("/api/v1/studies/thematic/{guide_id:path}")
+def get_thematic_study(guide_id: str):
+    """Get a thematic study guide — ordered progression of verses on a theme."""
+    gid = guide_id.strip("/").lower()
+    guide = THEMATIC_GUIDES.get(gid)
+    if not guide:
+        return {"ok": False, "error": f"Guide not found. Available: {list(THEMATIC_GUIDES.keys())}"}
+
+    conn = get_db()
+    enriched = []
+    for verse_ref, explanation in guide["connections"]:
+        row = conn.execute("""
+            SELECT text_english, text_hebrew, text_greek
+            FROM verses WHERE id = ?
+        """, (verse_ref,)).fetchone()
+        entry = {"reference": verse_ref, "explanation": explanation}
+        if row:
+            entry["text"] = row["text_english"]
+            entry["has_hebrew"] = bool(row["text_hebrew"])
+        enriched.append(entry)
+    conn.close()
+
+    return {"ok": True, "data": {
+        "id": gid,
+        "title": guide["title"],
+        "description": guide["description"],
+        "connections": enriched,
+        "total": len(enriched),
+    }}
+
+@app.get("/api/v1/studies/thematic")
+def list_thematic_studies():
+    """List all available thematic study guides."""
+    return {"ok": True, "data": {
+        "studies": [
+            {"id": k, "title": v["title"], "description": v["description"], "count": len(v["connections"])}
+            for k, v in THEMATIC_GUIDES.items()
+        ],
+        "total": len(THEMATIC_GUIDES),
+    }}
+
+
+# ─── Read-Along (audio + word timestamps) ───
+
+# Audio sources available
+AUDIO_SOURCES = ["schmueloff", "tts"]
+
+@app.get("/api/v1/read-along/{verse_id:path}")
+def get_read_along_data(verse_id: str):
+    """Get read-along data for a verse: audio URL + word timestamps.
+
+    Returns the verse text, word-by-word timestamps, and an audio URL for playback.
+    The frontend highlights each word as the audio plays.
+
+    Example:
+      GET /api/v1/read-along/gen.1.1
+      → {
+          "verse": "gen.1.1",
+          "text_hebrew": "בְּרֵאשִׁית ...",
+          "text_english": "In the beginning ...",
+          "audio_url": "/api/v1/audio/play/gen.1.1",
+          "word_timestamps": [
+            {"word": "בְּרֵאשִׁית", "start": 0.0, "end": 1.2},
+            ...
+          ],
+          "source": "schmueloff"
+        }
+    """
+    import re
+    vid = verse_id.strip("/").replace(":", ".").replace(" ", ".").lower()
+    m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', vid)
+    if m:
+        vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
+    
+    conn = get_db()
+    
+    # Get verse text
+    verse = conn.execute("""
+        SELECT text_hebrew, text_english, text_greek, book_id, chapter, verse
+        FROM verses WHERE id = ?
+    """, (vid,)).fetchone()
+    
+    if not verse:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Verse not found: {vid}")
+    
+    # Get word timestamps from DB
+    ts_row = conn.execute("""
+        SELECT start_sec, end_sec, word_timestamps, source_file
+        FROM audio_timestamps WHERE verse_id = ?
+    """, (vid,)).fetchone()
+    
+    # Determine audio source and URL
+    audio_source = "schmueloff" if ts_row else "tts"
+    audio_url = f"/api/v1/audio/play/{vid}"
+    
+    word_ts = []
+    if ts_row:
+        try:
+            word_ts = json.loads(ts_row["word_timestamps"])
+        except (json.JSONDecodeError, TypeError):
+            word_ts = []
+    
+    # Also get the full audio file URL for the raw book recording
+    raw_audio_url = None
+    if ts_row and ts_row["source_file"]:
+        raw_audio_url = f"/api/v1/audio/play-raw/{ts_row['source_file']}?start={ts_row['start_sec']}&end={ts_row['end_sec']}"
+    
+    result = {
+        "verse": vid,
+        "text_hebrew": verse["text_hebrew"],
+        "text_english": verse["text_english"],
+        "text_greek": verse["text_greek"],
+        "audio_url": audio_url,
+        "word_timestamps": word_ts,
+        "audio_source": audio_source,
+    }
+    
+    if ts_row:
+        result["segment_start"] = ts_row["start_sec"]
+        result["segment_end"] = ts_row["end_sec"]
+        result["raw_audio_url"] = raw_audio_url
+    
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+import subprocess, os as audio_os
+
+RAW_AUDIO_DIR = Path(__file__).parent.parent / "data" / "audio" / "raw"
+
+@app.get("/api/v1/audio/play-raw/{filename:path}")
+def play_raw_audio_segment(filename: str, start: float = 0.0, end: float = 30.0):
+    """Stream a segment from a raw audio file (e.g. book-level recording).
+
+    Use for the read-along: streams a portion of the full Genesis recording
+    corresponding to a specific verse.
+    """
+    safe_name = audio_os.path.basename(filename)
+    audio_file = RAW_AUDIO_DIR / safe_name
+    
+    if not audio_file.exists():
+        raise HTTPException(status_code=404, detail=f"Raw audio not found: {safe_name}")
+    
+    # Use ffmpeg to extract the segment and pipe it as WAV
+    from fastapi.responses import StreamingResponse
+    import io
+    
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", str(start),
+        "-to", str(end),
+        "-i", str(audio_file),
+        "-f", "wav",
+        "-acodec", "pcm_s16le",
+        "-ar", "24000",
+        "-ac", "1",
+        "pipe:1"
+    ]
+    
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=60)
+        return StreamingResponse(
+            io.BytesIO(proc.stdout),
+            media_type="audio/wav",
+            headers={"Content-Disposition": f"inline; filename=\"{safe_name}_{start:.0f}_{end:.0f}.wav\""}
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=500, detail="Audio extraction timed out")
+
+@app.get("/api/v1/audio/{word}")
+def get_audio_pronunciation(word: str, lemma: str = ""):
+    """Get pronunciation data for a Hebrew word.
+
+    Returns the word with its transliteration, gematria, definition,
+    and a link to the cached audio file if available.
+    No Strong's number prefix — just the word, clean.
+    """
+    import re, json as j
+    conn = get_db()
+
+    clean_word = word.strip()
+
+    row = conn.execute("""
+        SELECT word_hebrew, word_english, transliteration, lemma, verse_id
+        FROM gematria g
+        LEFT JOIN lexicon l ON l.lemma LIKE '%' || g.lemma || '%'
+        WHERE g.word_hebrew LIKE ? OR g.word_english LIKE ?
+        LIMIT 1
+    """, (f"%{clean_word}%", f"%{clean_word}%")).fetchone()
+
+    result = {"word": word}
+
+    if row:
+        heb = row["word_hebrew"]
+        eng = row["word_english"]
+        trans = row["transliteration"]
+
+        if row["transliteration"]:
+            result["transliteration"] = row["transliteration"]
+        else:
+            plain = re.sub(r'[\u05B0-\u05C7]', '', heb)
+            result["transliteration"] = plain
+
+        result["hebrew"] = heb
+        result["english_gloss"] = eng
+        result["lemma"] = row["lemma"]
+
+        gem = conn.execute("""
+            SELECT value_standard, value_ordinal, value_reduced
+            FROM gematria WHERE word_hebrew = ? LIMIT 1
+        """, (heb,)).fetchone()
+        if gem:
+            result["gematria"] = {
+                "standard": gem["value_standard"],
+                "ordinal": gem["value_ordinal"],
+                "reduced": gem["value_reduced"],
+            }
+
+        if row["lemma"]:
+            lex = conn.execute("""
+                SELECT definition, part_of_speech, root_letters
+                FROM lexicon WHERE lemma LIKE ? LIMIT 1
+            """, (f"%{row['lemma']}%",)).fetchone()
+            if lex and lex["definition"]:
+                result["definition"] = lex["definition"]
+                result["part_of_speech"] = lex["part_of_speech"]
+                result["root"] = lex["root_letters"]
+
+        # Check for cached audio
+        import os
+        verse_id = row["verse_id"]
+        if verse_id:
+            audio_path = f"data/audio/verses/{verse_id}.wav"
+            if os.path.exists(audio_path):
+                result["audio_url"] = f"/api/v1/audio/play/{verse_id}"
+                result["audio_available"] = True
+
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+AUDIO_DIR = Path(__file__).parent.parent / "data" / "audio" / "verses"
+
+@app.get("/api/v1/audio/play/{verse_id:path}")
+def play_verse_audio(verse_id: str):
+    """Stream cached Hebrew audio for a verse or word."""
+    from fastapi.responses import FileResponse
+    
+    vid = verse_id.strip("/")
+    
+    # Try verse audio
+    audio_file = AUDIO_DIR / f"{vid}.wav"
+    if not audio_file.exists():
+        # Try without .wav
+        audio_file = AUDIO_DIR / vid
+        if not audio_file.exists() or not str(audio_file).endswith('.wav'):
+            raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
+    
+    if not audio_file.exists():
+        raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
+    
+    return FileResponse(str(audio_file), media_type="audio/wav", filename=f"{vid}.wav")
+
+
+# ─── Forum System ───
+
+@app.get("/api/v1/forum/topics")
+def list_forum_topics(category: str = ""):
+    """List forum topics, optionally filtered by category."""
+    conn = get_db()
+    query = "SELECT * FROM forum_topics"
+    params = []
+    if category:
+        query += " WHERE category = ?"
+        params.append(category)
+    query += " ORDER BY post_count DESC, created_at DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return {"ok": True, "data": {
+        "topics": [dict(r) for r in rows],
+        "total": len(rows),
+    }}
+
+
+@app.get("/api/v1/forum/topics/{topic_id:path}")
+def get_forum_topic(topic_id: str):
+    """Get a forum topic with its posts."""
+    conn = get_db()
+    topic = conn.execute("SELECT * FROM forum_topics WHERE id = ? OR slug = ?",
+                        (topic_id, topic_id)).fetchone()
+    if not topic:
+        conn.close()
+        return {"ok": False, "error": "Topic not found"}
+
+    posts = conn.execute("""
+        SELECT * FROM forum_posts WHERE topic_id = ? ORDER BY created_at ASC
+    """, (topic["id"],)).fetchall()
+
+    conn.close()
+    return {"ok": True, "data": {"topic": dict(topic), "posts": [dict(p) for p in posts]}}
+
+
+class ForumPostCreate(BaseModel):
+    topic_id: int
+    content: str
+    author: str = "anonymous"
+    parent_id: Optional[int] = None
+
+@app.post("/api/v1/forum/posts")
+def create_forum_post(post: ForumPostCreate):
+    """Create a new post in a forum topic."""
+    if not post.content.strip():
+        return {"ok": False, "error": "Content is required"}
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO forum_posts (topic_id, author, content, parent_id)
+        VALUES (?, ?, ?, ?)
+    """, (post.topic_id, post.author, post.content.strip(), post.parent_id))
+    conn.execute("UPDATE forum_topics SET post_count = post_count + 1 WHERE id = ?", (post.topic_id,))
+    conn.commit()
+    post_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return {"ok": True, "data": {"post_id": post_id, "message": "Post created"}}
+
+
+# ─── Verse Annotations (per-verse comments) ───
+
+@app.get("/api/v1/verses/{ref:path}/annotations")
+def get_verse_annotations(ref: str):
+    """Get comments/annotations on a specific verse."""
+    ref = ref.replace(":", ".").replace(" ", ".").lower()
+    import re
+    m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
+    if m:
+        vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
+    else:
+        vid = ref
+
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT * FROM verse_annotations
+        WHERE verse_id = ? AND parent_id IS NULL
+        ORDER BY created_at DESC
+    """, (vid,)).fetchall()
+
+    # Get replies
+    result = []
+    for r in rows:
+        entry = dict(r)
+        replies = conn.execute("""
+            SELECT * FROM verse_annotations WHERE parent_id = ? ORDER BY created_at ASC
+        """, (r["id"],)).fetchall()
+        entry["replies"] = [dict(re) for re in replies]
+        result.append(entry)
+
+    conn.close()
+    return {"ok": True, "data": {"verse": vid, "annotations": result, "total": len(result)}}
+
+
+class AnnotationCreate(BaseModel):
+    verse_id: str
+    content: str
+    user_id: str = "anonymous"
+    parent_id: Optional[int] = None
+
+@app.post("/api/v1/verses/annotations")
+def create_annotation(ann: AnnotationCreate):
+    """Add a comment/annotation to a verse."""
+    if not ann.content.strip():
+        return {"ok": False, "error": "Content is required"}
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO verse_annotations (verse_id, user_id, content, parent_id)
+        VALUES (?, ?, ?, ?)
+    """, (ann.verse_id, ann.user_id, ann.content.strip(), ann.parent_id))
+    conn.commit()
+    ann_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return {"ok": True, "data": {"annotation_id": ann_id, "message": "Annotation created"}}
+
+
 # ─── Health Check ───
 
 @app.get("/api/v1/health")
 def health():
-    return {"ok": True, "data": {"status": "running", "connections": 218292, "guides": 41126}}
+    return {
+        "ok": True,
+        "data": {
+            "status": "running",
+            "connections": 478323,
+            "guides": 41126,
+            "tools": len(TOOL_REGISTRY),
+            "lexicon": len(LEXICON_CACHE),
+            "wiki": len(WIKI_CACHE),
+            "ratings_available": True,
+            "rating_tiers": ["verified(5★)", "strong(4★)", "probable(3★)", "suggested(2★)", "pattern(1★)"],
+            "star_scale": "1-5",
+            "rating_system": "Multi-signal: discovery_method + connection_type + reasoning + confidence + confirmations",
+            "api_filtering": "Filter by: layer, min_quality, discovered_by, min_confidence, show_signals",
+            "user_feedback": "POST /api/v1/connections/feedback — confirm, reject, or unclear",
+        }
+    }
+
+
+# ─── Debug Logging (file-backed — survives server restarts) ───
+
+import os as _os
+
+DEBUG_LOG_PATH = _os.environ.get("SCRIPTURE_DEBUG_LOG", "/tmp/scripture-debug.jsonl")
+DEBUG_MAX_ENTRIES = 500
+
+
+def _read_debug_log():
+    """Read all entries from the debug log file."""
+    if not _os.path.exists(DEBUG_LOG_PATH):
+        return []
+    try:
+        with open(DEBUG_LOG_PATH) as f:
+            return [json.loads(line) for line in f if line.strip()]
+    except Exception:
+        return []
+
+
+def _append_debug_log(entries):
+    """Append entries to the debug log file, trimming to max."""
+    existing = _read_debug_log()
+    all_entries = existing + entries
+    if len(all_entries) > DEBUG_MAX_ENTRIES:
+        all_entries = all_entries[-DEBUG_MAX_ENTRIES:]
+    try:
+        with open(DEBUG_LOG_PATH, "w") as f:
+            for entry in all_entries:
+                f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
+
+def _clear_debug_log():
+    """Clear the debug log file."""
+    try:
+        if _os.path.exists(DEBUG_LOG_PATH):
+            _os.remove(DEBUG_LOG_PATH)
+    except Exception:
+        pass
+
+
+@app.post("/api/v1/debug/log")
+async def debug_log(request: Request):
+    """Receive client-side error logs from the frontend (single or batch)."""
+    body = await request.json()
+    entries_raw = body if isinstance(body, list) else [body]
+    entries = []
+    for e in entries_raw:
+        entries.append({
+            "level": str(e.get("level", "log"))[:20],
+            "message": str(e.get("message", ""))[:500],
+            "stack": str(e.get("stack", ""))[:2000],
+            "url": str(e.get("url", ""))[:500],
+            "timestamp": str(e.get("timestamp", ""))[:30],
+        })
+    _append_debug_log(entries)
+    return {"ok": True, "recorded": len(entries)}
+
+
+@app.get("/api/v1/debug")
+def debug_info():
+    """Server diagnostics — I can curl this to check health + logs."""
+    db_ok = False
+    verse_count = 0
+    try:
+        conn = get_db()
+        verse_count = conn.execute("SELECT COUNT(*) as c FROM verses").fetchone()["c"]
+        conn.close()
+        db_ok = True
+    except Exception:
+        pass
+
+    logs = _read_debug_log()
+    return {
+        "ok": True,
+        "data": {
+            "server": "running",
+            "db_connected": db_ok,
+            "verses_in_db": verse_count,
+            "cache": {
+                "verses": len(VERSE_CACHE),
+                "guides": len(GUIDE_CACHE),
+                "lexicon": len(LEXICON_CACHE),
+                "entities": len(ENTITY_CACHE),
+                "wiki": len(WIKI_CACHE),
+            },
+            "log_count": len(logs),
+            "log_file": DEBUG_LOG_PATH,
+        },
+    }
+
+
+@app.get("/api/v1/debug/log")
+def debug_log_list(clear: bool = False):
+    """Read client-side error logs (survives server restarts)."""
+    logs = _read_debug_log()
+    if clear:
+        _clear_debug_log()
+    return {"ok": True, "data": {"count": len(logs), "logs": logs}}
+
+
+# ─── Book Navigation ───
+
+
+@app.get("/api/v1/books")
+def list_books():
+    """Get all books grouped by work, for navigation."""
+    conn = get_db()
+    works = conn.execute("SELECT id, title FROM works ORDER BY id").fetchall()
+    works_list = []
+    for w in works:
+        books = conn.execute("""
+            SELECT id, title, position FROM books
+            WHERE work_id = ? ORDER BY position
+        """, (w["id"],)).fetchall()
+        works_list.append({
+            "id": w["id"],
+            "title": w["title"],
+            "books": [{"id": b["id"], "title": b["title"], "position": b["position"]} for b in books],
+        })
+    conn.close()
+    return {"ok": True, "data": {"works": works_list}}
+
+
+# ─── Agent Control (LLM-driven frontend testing) ───
+
+import threading as _threading
+_agent_lock = _threading.Lock()
+_agent_actions = []    # list of {id, action, ...}
+_agent_next_id = 0
+_agent_state = {}       # last reported frontend state
+_agent_file = _os.environ.get("SCRIPTURE_AGENT_STATE", "/tmp/scripture-agent.json")
+_MAX_QUEUE = 100
+
+
+def _save_state():
+    """Persist agent state to disk so I can read it."""
+    try:
+        with open(_agent_file, "w") as f:
+            json.dump({"actions": _agent_actions[-20:], "state": _agent_state}, f)
+    except Exception:
+        pass
+
+
+@app.post("/api/v1/agent/action")
+async def agent_enqueue(request: Request):
+    """Queue an action for the frontend to execute."""
+    global _agent_next_id
+    body = await request.json()
+    with _agent_lock:
+        entry = {"id": _agent_next_id, "ts": time.time(), **body}
+        _agent_actions.append(entry)
+        _agent_next_id += 1
+        if len(_agent_actions) > _MAX_QUEUE:
+            _agent_actions[:50] = []
+    return {"ok": True, "action_id": entry["id"]}
+
+
+@app.get("/api/v1/agent/actions")
+def agent_poll(after: int = -1):
+    """Frontend polls this for pending actions since the last seen id."""
+    with _agent_lock:
+        new = [a for a in _agent_actions if a["id"] > after]
+    return {"ok": True, "data": {
+        "actions": new,
+        "cursor": _agent_next_id - 1,
+        "pending": len(new),
+    }}
+
+
+@app.post("/api/v1/agent/state")
+async def agent_report_state(request: Request):
+    """Frontend reports its current state after executing actions."""
+    global _agent_state
+    body = await request.json()
+    _agent_state = body
+    _save_state()
+    return {"ok": True}
+
+
+@app.get("/api/v1/agent/state")
+def agent_read_state():
+    """I read this to see what the frontend looks like."""
+    return {"ok": True, "data": _agent_state}
+
+
+@app.post("/api/v1/agent/clear")
+def agent_clear():
+    """Clear the action queue and state."""
+    with _agent_lock:
+        _agent_actions.clear()
+        _agent_state.clear()
+    try:
+        if _os.path.exists(_agent_file):
+            _os.remove(_agent_file)
+    except Exception:
+        pass
+    return {"ok": True}

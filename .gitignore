@@ -17,6 +17,15 @@ data/processed/*.db
 data/processed/*.db-wal
 data/processed/*.db-shm
 
+# Any root-level db files (placeholder)
+data/*.db
+
+# Large data files (never git-track)
+data/giliadi_books/
+data/audio/
+data/agent_connections/
+data/llm_connections/
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -24,3 +33,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
