@@ -850,7 +850,7 @@ function AppInner() {
               ) : (
                 <span>{bookTitle}</span>
               )}
-              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / ch. {chapter}</span>}
+              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
             </h1>
 
             {/* Left arrow — previous at current level */}

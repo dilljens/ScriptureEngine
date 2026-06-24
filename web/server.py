@@ -3785,8 +3785,8 @@ async def llm_chat(body: ChatRequest):
                 "result": tool_result_data,
             })
 
-            # Add tool result as a message
-            msgs.append({
+            # Add tool result as a message (preserve reasoning_content if present)
+            assistant_msg = {
                 "role": "assistant",
                 "content": None,
                 "tool_calls": [{
@@ -3794,7 +3794,10 @@ async def llm_chat(body: ChatRequest):
                     "type": "function",
                     "function": {"name": fn_name, "arguments": tc["function"]["arguments"]},
                 }],
-            })
+            }
+            if msg.get("reasoning_content"):
+                assistant_msg["reasoning_content"] = msg["reasoning_content"]
+            msgs.append(assistant_msg)
             msgs.append({
                 "role": "tool",
                 "content": result_str,
@@ -3822,12 +3825,14 @@ async def llm_chat(body: ChatRequest):
         return {"ok": False, "error": "No response from LLM"}
 
     final_content = choice["message"]["content"] or ""
+    final_reasoning = choice["message"].get("reasoning_content")
     cost = _compute_cost(usage)
 
     return {
         "ok": True,
         "data": {
             "content": final_content,
+            "reasoning_content": final_reasoning,
             "model": data.get("model", body.model),
             "usage": {
                 "prompt_tokens": usage.get("prompt_tokens", 0),

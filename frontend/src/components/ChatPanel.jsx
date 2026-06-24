@@ -173,10 +173,10 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     try {
       const res = await chat(allMessages, { max_tokens: 30000 })
       if (res.ok && res.data) {
-        const { content, usage, cost, model, tool_results: toolResults } = res.data
-        const assistantMsg = { role: 'assistant', content, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
+        const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
+        const assistantMsg = { role: 'assistant', content, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, assistantMsg])
-        saveMessage('assistant', content, { usage, cost, model, toolResults })
+        saveMessage('assistant', content, { reasoning_content: reasoningContent, usage, cost, model, toolResults })
       } else {
         const errorMsg = res?.error || 'Unknown error'
         setMessages(prev => [...prev, {
@@ -206,7 +206,11 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     saveMessage('user', text)
 
     const allMessages = [
-      ...messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
+      ...messages.filter(m => m.role !== 'system').map(m => {
+        const base = { role: m.role, content: m.content }
+        if (m.reasoning_content) base.reasoning_content = m.reasoning_content
+        return base
+      }),
       { role: 'user', content: text },
     ]
     await performChat(allMessages)
@@ -219,7 +223,11 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     const userMsg = { role: 'user', content: newText, timestamp }
 
     // Build message list from before the edited message
-    const priorMessages = messages.slice(0, idx).filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }))
+    const priorMessages = messages.slice(0, idx).filter(m => m.role !== 'system').map(m => {
+      const base = { role: m.role, content: m.content }
+      if (m.reasoning_content) base.reasoning_content = m.reasoning_content
+      return base
+    })
     const allMessages = [...priorMessages, { role: 'user', content: newText }]
 
     // Update state: truncate to before the edited message, then add new user message
