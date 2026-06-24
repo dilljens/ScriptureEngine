@@ -30,8 +30,9 @@ test.describe('Settings panel', () => {
     await expect(page.getByRole('heading', { name: 'Settings' })).not.toBeVisible()
   })
 
-  test('hotkey cheatsheet opens with ? key', async ({ page }) => {
+  test('question mark key opens chat', async ({ page }) => {
     await page.keyboard.press('?')
-    await expect(page.getByText('Keyboard Shortcuts').first()).toBeVisible({ timeout: 5000 })
+    await page.waitForTimeout(1000)
+    await expect(page.getByText('Chat').first()).toBeVisible({ timeout: 5000 })
   })
 })

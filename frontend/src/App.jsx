@@ -9,16 +9,23 @@ import ConversationHistory from './components/ConversationHistory'
 import VerseBlock from './components/VerseBlock'
 import StudyViewer from './components/StudyViewer'
 import SearchBar from './components/SearchBar'
-import { ToggleProvider, ToggleBar, PoetryToggle, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
+import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
+import {
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  ChatIcon, GridIcon, SunIcon, MoonIcon,
+  GearIcon, CommandIcon, LayersIcon, ClockIcon,
+  TextSmallIcon, TextLargeIcon, GraphIcon,
+} from './icons'
 import ChiasmPanel from './components/ChiasmPanel'
 import StructureModal from './components/StructureModal'
 import BookView from './components/BookView'
 import WorkView from './components/WorkView'
-import LibraryView from './components/LibraryView'
+import LibraryView, { WORK_LABEL } from './components/LibraryView'
 import SettingsPanel from './components/SettingsPanel'
 import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
+import ConnectionGraph from './components/ConnectionGraph'
 import useAgentControl from './useAgentControl'
 
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections, searchVerses } from './api'
@@ -266,9 +273,16 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
                     </span>
                   )}
 
-                  {/* Label with match highlighting */}
+                  {/* Label — show "Go to" for navigate results */}
                   <span className="flex-1 truncate text-neutral-800 dark:text-neutral-200">
-                    <HighlightedLabel label={r.label} matchIdxs={r.matchIdxs} />
+                    {r.type === 'navigate' && r.book ? (
+                      <span>
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">Go to </span>
+                        <HighlightedLabel label={r.label} matchIdxs={r.matchIdxs} />
+                      </span>
+                    ) : (
+                      <HighlightedLabel label={r.label} matchIdxs={r.matchIdxs} />
+                    )}
                   </span>
 
                   {/* Score bar (right) */}
@@ -280,8 +294,11 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
                     </span>
                   )}
 
-                  {/* New tab indicator */}
-                  {r.newTab && <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">+tab</span>}
+                  {/* Navigate hint & new tab indicator */}
+                  {r.type === 'navigate' && r.book && !r.newTab && (
+                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-mono shrink-0">↵ jump</span>
+                  )}
+                  {r.newTab && <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono shrink-0">+tab</span>}
 
                   {/* Help text */}
                   {r.text && <span className="text-xs text-neutral-400 dark:text-neutral-500 whitespace-pre-line">{r.text}</span>}
@@ -382,7 +399,9 @@ function AppInner() {
   const history = useHistory()
 
   const [bookData, setBookData] = useState(null); const [serverInfo, setServerInfo] = useState(null)
-  const [poetryMode, setPoetryMode] = useState(true)
+  const [poetryMode, setPoetryMode] = useState(false) // default Narrative
+  const [showLayers, setShowLayers] = useState(false)
+  const layersBtnRef = useRef(null)
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
   const [showHistory, setShowHistory] = useState(false)
@@ -496,38 +515,44 @@ function AppInner() {
   const goNextBookStay = useCallback(() => {
     if (!nav || nav.idx < 0 || !currentTab?.id) return; const next = nav.flat[nav.idx + 1]; if (next) goToBook(currentTab.id, next.bookId, next.bookTitle)
   }, [nav, currentTab?.id])
+  const isDc = book?.startsWith?.('dc') || false
+
   const goUpLevel = useCallback(() => {
     if (!currentTab?.id) return
     if (viewLevel === 'chapter') {
-      // Keep chapter in memory, go to book view
-      updateTab(currentTab.id, { view: 'book', viewRef: book, label: nav?.flat[nav.idx]?.bookTitle || book })
+      if (isDc) {
+        // D&C: skip book level, go directly to work view
+        updateTab(currentTab.id, { view: 'work', viewRef: 'dc', label: 'Doctrine & Covenants' })
+      } else {
+        updateTab(currentTab.id, { view: 'book', viewRef: book, label: nav?.flat[nav.idx]?.bookTitle || book })
+      }
     } else if (viewLevel === 'book') {
-      // Keep book in memory, go to work view
       const wId = nav?.flat[nav.idx]?.workId || 'ot'
       const wT = bookData?.works?.find(w => w.id === wId)?.title || wId
       updateTab(currentTab.id, { view: 'work', viewRef: wId, label: wT })
     } else if (viewLevel === 'work') {
-      // Keep work in memory, go to library view
       updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
     }
-  }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab])
+  }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab, isDc])
 
   const goDownLevel = useCallback(() => {
     if (!currentTab?.id) return
     if (viewLevel === 'library') {
-      // Use viewRef if set (from arrow navigation), else find work containing current book
       const targetWorkId = viewRef || bookData?.works?.find(w => w.books?.some(b => b.id === book))?.id || bookData?.works?.[0]?.id || 'ot'
       const wT = bookData?.works?.find(w => w.id === targetWorkId)?.title || targetWorkId
       updateTab(currentTab.id, { view: 'work', viewRef: targetWorkId, label: wT })
     } else if (viewLevel === 'work') {
-      // Return to the book we were in (book field still holds the last book)
-      const bTitle = nav?.flat.find(n => n.bookId === book)?.bookTitle || book
-      updateTab(currentTab.id, { view: 'book', viewRef: book, label: bTitle })
+      if (viewRef === 'dc') {
+        // D&C: skip book level, go directly to chapter view
+        goToChapter(currentTab.id, book, chapter, `${bookTitle} ${chapter}`)
+      } else {
+        const bTitle = nav?.flat.find(n => n.bookId === book)?.bookTitle || book
+        updateTab(currentTab.id, { view: 'book', viewRef: book, label: bTitle })
+      }
     } else if (viewLevel === 'book') {
-      // Return to the chapter we were in (chapter field still holds the last chapter)
       goToChapter(currentTab.id, book, chapter, `${bookTitle} ${chapter}`)
     }
-  }, [currentTab?.id, viewLevel, viewRef, bookData, book, chapter, nav, updateTab, goToChapter])
+  }, [currentTab?.id, viewLevel, viewRef, bookData, book, chapter, nav, updateTab, goToChapter, bookTitle, isDc])
 
   // Navigate between works (left/right in work or library view)
   const goPrevWork = useCallback(() => {
@@ -604,9 +629,13 @@ function AppInner() {
       if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); doHistoryBack(); return }
       if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); doHistoryForward(); return }
 
-      // ? opens hotkey cheat sheet (Shift+/)
+      // ? opens chat
       if (e.key === '?' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        e.preventDefault(); setShowCheatsheet(p => !p); return
+        e.preventDefault()
+        if (viewLevel === 'chat') return // already on chat tab
+        setChatInitialMsg('')
+        openChatTab()
+        return
       }
       // / always opens command
       if (e.key === '/') { e.preventDefault(); setShowCommand(true); return }
@@ -626,10 +655,17 @@ function AppInner() {
 
   const currentWorkTitle = nav?.flat[nav.idx]?.workTitle || ''; const currentBookTitle = nav?.flat[nav.idx]?.bookTitle || book
 
-  const handleChatNavigate = (b, ch) => {
+  const handleChatNavigate = (b, ch, highlights) => {
     const bt = resolveBookTitle(b)
-    if (currentTab?.id) goToChapter(currentTab.id, b, ch, `${bt} ${ch}`)
-    else openTab(b, ch, { label: `${bt} ${ch}` })
+    if (currentTab?.id) {
+      goToChapter(currentTab.id, b, ch, `${bt} ${ch}`)
+      // Set highlights after navigation
+      if (highlights) {
+        setTimeout(() => updateTab(currentTab.id, { highlights }), 50)
+      }
+    } else {
+      openTab(b, ch, { label: `${bt} ${ch}`, highlights: highlights || [] })
+    }
   }
   const handleChatOpenTab = (b, ch, opts = {}) => { openTab(b, ch, { ...opts, label: `${resolveBookTitle(b)} ${ch}` }) }
   const handleCommandNav = useCallback((bookId, chapter, isNewTab) => {
@@ -645,11 +681,85 @@ function AppInner() {
     openChatTab()
   }, [openChatTab])
 
+  // Handle commands from the SearchBar (/chat, /dark, etc.)
+  const handleSearchCommand = useCallback((cmd) => {
+    if (!cmd) return
+    switch (cmd.type) {
+      case 'chat':
+        if (cmd.message) { setChatInitialMsg(cmd.message); setShowChat(true) }
+        else handleOpenChat()
+        break
+      case 'dark':
+        toggleDarkMode()
+        break
+      case 'font':
+        if (cmd.direction === 'up') changeFontSize(1)
+        else if (cmd.direction === 'down') changeFontSize(-1)
+        else if (cmd.size) changeFontSize(parseInt(cmd.size))
+        break
+      case 'toggle':
+        if (cmd.toggle) toggleDispatch(cmd.toggle)
+        break
+      case 'history':
+        setShowHistory(true)
+        break
+      case 'structure':
+        setShowStructure(true)
+        break
+      case 'help':
+        setShowCheatsheet(true)
+        break
+      case 'search':
+        if (cmd.query) setShowCommand(true) // fallback to command palette
+        break
+    }
+  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch])
+
+  // Open a graph tab centered on the current chapter
+  const openGraphTab = useCallback(() => {
+    const ref = `${book}.${chapter}`
+    const label = `Graph: ${bookTitle} ${chapter}`
+    openTab(book, chapter, { label, view: 'graph', viewRef: ref })
+  }, [book, chapter, bookTitle, openTab])
+
   const handleCommandChat = useCallback((message) => {
     setChatInitialMsg(message || '')
     setShowChat(true)
     setShowCommand(false)
   }, [])
+
+  // ── Touch / pinch handlers for mobile zoom ──
+  const touchRef = useRef(null)
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      touchRef.current = {
+        dist: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY),
+      }
+    }
+  }, [])
+  const handleTouchEnd = useCallback((e) => {
+    if (!touchRef.current) return
+    // Single tap on main content (no drag)
+    if (e.changedTouches?.length === 1 && !touchRef.current.moved) {
+      // Could interpret as toggle — for now, no-op
+    }
+    touchRef.current = null
+  }, [])
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2 && touchRef.current) {
+      touchRef.current.moved = true
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+      const threshold = 40 // minimum pinch distance
+      if (Math.abs(dist - touchRef.current.dist) > threshold) {
+        if (dist > touchRef.current.dist) {
+          goDownLevel() // pinch out → zoom in
+        } else {
+          goUpLevel() // pinch in → zoom out
+        }
+        touchRef.current.dist = dist
+      }
+    }
+  }, [goDownLevel, goUpLevel])
 
   // highlightVerse: from search results or tab highlights
   const highlightVerse = currentTab?.highlights?.[0] || null
@@ -671,6 +781,10 @@ function AppInner() {
           onClose={() => {}}
         />
       )
+    }
+    // Graph view — render ConnectionGraph
+    if (viewLevel === 'graph') {
+      return <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
     }
     // Study view — render StudyViewer
     if (viewLevel === 'study' && viewRef) {
@@ -697,130 +811,181 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 px-4 py-2">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-              {currentWorkTitle && <span className="text-neutral-400 dark:text-neutral-500 font-normal text-sm mr-2">{currentWorkTitle}</span>}
-              {currentBookTitle}
+      {/* Toolbar */}
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
+        <div className="max-w-6xl mx-auto flex items-center justify-between h-10 px-2">
+          {/* Left: nav arrows + clickable breadcrumb */}
+          <div className="flex items-center gap-1 text-sm min-w-0">
+            {/* Up arrow — zoom out */}
+            <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+              title={`Zoom out (${getHotkey('goUp') || '↑'})`}>
+              <ChevronUp />
+            </button>
+            {/* Down arrow — zoom in */}
+            <button onClick={goDownLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+              title={`Zoom in (${getHotkey('goDown') || '↓'})`}>
+              <ChevronDown />
+            </button>
+
+            {/* Clickable breadcrumb */}
+            <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none">
+              {workTitle ? (
+                <button onClick={() => {
+                  if (viewLevel !== 'work') {
+                    const wId = nav?.flat[nav.idx]?.workId
+                    if (wId) goToWork(currentTab?.id, wId, workTitle)
+                  }
+                }} className="text-neutral-400 dark:text-neutral-500 font-normal text-xs mr-1 whitespace-nowrap hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
+                  {workTitle}
+                </button>
+              ) : isLibraryView ? (
+                <span className="text-neutral-400 dark:text-neutral-500 font-normal text-xs mr-1">Library</span>
+              ) : null}
+              {isChapterView ? (
+                <button onClick={() => {
+                  if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
+                }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                  {bookTitle}
+                </button>
+              ) : (
+                <span>{bookTitle}</span>
+              )}
+              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / ch. {chapter}</span>}
             </h1>
+
+            {/* Left arrow — previous at current level */}
+            <button onClick={isChapterView ? goPrevChapter : viewLevel === 'book' ? goPrevBookStay : goPrevWork}
+              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+              title={`Previous ${viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : 'chapter'} (←)`}>
+              <ChevronLeft />
+            </button>
+            {/* Right arrow — next at current level */}
+            <button onClick={isChapterView ? goNextChapter : viewLevel === 'book' ? goNextBookStay : goNextWork}
+              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+              title={`Next ${viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : 'chapter'} (→)`}>
+              <ChevronRight />
+            </button>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
-            {/* Search bar — always visible */}
-            <SearchBar onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} bookData={bookData} />
 
-            {/* Command palette */}
-            <button onClick={() => setShowCommand(true)} className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Go to (${getHotkey('command')})`}>:</button>
+          {/* Right: Search + command icons */}
+          <div className="flex items-center gap-1 text-neutral-400 dark:text-neutral-500">
+            <SearchBar onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} bookData={bookData} onCommand={handleSearchCommand} />
 
-            {/* History (browser-style) */}
-            <span className="flex items-center gap-0.5 px-1 py-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50">
-              <button onClick={doHistoryBack} disabled={!history.canGoBack}
-                className="px-1.5 py-0.5 rounded hover:bg-white dark:hover:bg-neutral-700 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed shrink-0 text-xs transition-colors"
-                title={`Back (${getHotkey('historyBack')} or Alt+←)`}>←</button>
-              <span className="w-px h-3 bg-neutral-200 dark:bg-neutral-600" />
-              <button onClick={doHistoryForward} disabled={!history.canGoForward}
-                className="px-1.5 py-0.5 rounded hover:bg-white dark:hover:bg-neutral-700 cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed shrink-0 text-xs transition-colors"
-                title={`Forward (${getHotkey('historyForward')} or Alt+→)`}>→</button>
-            </span>
+            {/* Divider */}
+            <span className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 mx-1 shrink-0" />
 
-            {/* Font size */}
-            <button onClick={() => changeFontSize(-1)} className="px-1.5 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Smaller (${getHotkey('fontDown')})`}>A−</button>
-            <span className="text-[9px] w-5 text-center shrink-0">{fontSize}%</span>
-            <button onClick={() => changeFontSize(1)} className="px-1.5 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Larger (${getHotkey('fontUp')})`}>A+</button>
+            {/* Chat */}
+            <button onClick={handleOpenChat} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Chat (${getHotkey('chat')})`}>
+              <ChatIcon />
+            </button>
 
-            {/* Dark mode */}
-            <button onClick={toggleDarkMode} className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Dark mode (${getHotkey('darkMode')})`}>{darkMode ? '☀' : '☾'}</button>
+            {/* Structure (Isaiah) */}
+            <button onClick={() => setShowStructure(true)}
+              className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
+              title={`Isaiah Structure (${getHotkey('structureModal')})`}>
+              <GridIcon />
+            </button>
 
             {/* History */}
-            <button onClick={() => setShowHistory(p => !p)} className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title="Conversation History">🕐</button>
+            <button onClick={() => setShowHistory(p => !p)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Conversation History">
+              <ClockIcon />
+            </button>
 
-            {/* Chat (opens a chat tab) */}
-            <button onClick={handleOpenChat} className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Chat (${getHotkey('chat')})`}>💬</button>
+            {/* Font size */}
+            <div className="flex items-center gap-0.5">
+              <button onClick={() => changeFontSize(-1)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Smaller (${getHotkey('fontDown')})`}>
+                <TextSmallIcon />
+              </button>
+              <span className="text-[9px] w-5 text-center shrink-0 font-mono">{fontSize}%</span>
+              <button onClick={() => changeFontSize(1)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Larger (${getHotkey('fontUp')})`}>
+                <TextLargeIcon />
+              </button>
+            </div>
 
-            {/* Isaiah structure */}
-            <button onClick={() => setShowStructure(true)}
-              className="px-2 py-1 rounded-full border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all cursor-pointer font-medium shrink-0"
-              title={`Isaiah Structure (${getHotkey('structureModal')})`}>⟷</button>
+            {/* Dark mode */}
+            <button onClick={toggleDarkMode} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Dark mode (${getHotkey('darkMode')})`}>
+              {darkMode ? <MoonIcon /> : <SunIcon />}
+            </button>
 
             {/* Settings */}
-            <button onClick={() => setShowSettings(true)}
-              className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0"
-              title={`Settings (${getHotkey('settingsPanel')})`}>⚙</button>
+            <button onClick={() => setShowSettings(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}>
+              <GearIcon />
+            </button>
+
+            {/* Command */}
+            <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}>
+              <CommandIcon />
+            </button>
+
+            {/* Graph */}
+            <button onClick={openGraphTab} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Connection Graph">
+              <GraphIcon />
+            </button>
+
+            {/* Layers — with ref for popover positioning */}
+            <div className="relative">
+              <button ref={layersBtnRef} onClick={() => setShowLayers(p => !p)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  showLayers
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400'
+                }`}
+                title="Layers (toggle visibility)">
+                <LayersIcon />
+              </button>
+              <LayersPopover open={showLayers} onClose={() => setShowLayers(false)}
+                poetryMode={poetryMode} setPoetryMode={setPoetryMode} buttonRef={layersBtnRef} />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Workspace tabs */}
-      <div className="bg-neutral-100 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-2 pt-1 flex items-center gap-0.5 overflow-x-auto tab-scroll">
-        {workspaces.map(ws => (
-          <div key={ws.id} className={`flex items-center gap-1 px-3 py-1.5 rounded-t cursor-pointer text-xs font-medium border-t border-l border-r transition-colors ${ws.id === activeWorkspace ? 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200' : 'bg-neutral-50 dark:bg-neutral-900 border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'}`}>
-            {renamingWs === ws.id ? (
-              <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                onBlur={() => { renameWorkspace(ws.id, renameValue); setRenamingWs(null) }}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { renameWorkspace(ws.id, renameValue); setRenamingWs(null) } }}
-                className="w-20 text-xs bg-transparent border-b border-blue-400 outline-none" autoFocus />
-            ) : (
-              <span onClick={() => selectWorkspace(ws.id)} onDoubleClick={() => { setRenamingWs(ws.id); setRenameValue(ws.name) }} className="cursor-pointer">{ws.name}</span>
-            )}
-            <button onClick={e => { e.stopPropagation(); deleteWorkspace(ws.id) }} className="text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 ml-1 cursor-pointer">&times;</button>
+      {/* Tab strip (merged workspace + chapter tabs) */}
+      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 flex items-center min-h-[30px]">
+        {/* Workspace selector */}
+        <div className="flex items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
+          <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">WS</span>
+          <select value={activeWorkspace || ''} onChange={e => selectWorkspace(e.target.value)}
+            className="text-xs bg-transparent border-none outline-none cursor-pointer text-neutral-600 dark:text-neutral-400 font-medium pr-4 appearance-none"
+            style={{ backgroundImage: 'none' }}>
+            {workspaces.map(ws => (
+              <option key={ws.id} value={ws.id}>{ws.name}</option>
+            ))}
+          </select>
+          <button onClick={() => newWorkspace()} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm leading-none px-0.5" title="New workspace">+</button>
+        </div>
+
+        {/* Chapter tabs */}
+        {currentWorkspace && (
+          <div className="flex items-center gap-0.5 overflow-x-auto tab-scroll flex-1 px-1">
+            {currentWorkspace.tabs.map(tab => (
+              <div key={tab.id} onClick={() => selectTab(tab.id)}
+                className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer text-xs border-b-2 transition-colors shrink-0 ${
+                  tab.id === activeTab
+                    ? 'text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-400 font-medium'
+                    : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
+                }`}
+                onMouseDown={e => { if (e.button === 1) { e.preventDefault(); closeTab(tab.id) } }}
+                title={`${tab.label} (click, middle-click to close)`}>
+                <span>{tab.label}</span>
+                {tab.view !== 'chapter' && <span className="text-[9px] text-neutral-400 font-mono">[{tab.view}]</span>}
+                <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
+                  className="text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 ml-0.5 cursor-pointer leading-none"
+                  title="Close tab">&times;</button>
+              </div>
+            ))}
+            <button onClick={() => openTab(book, chapter, { label: `${bookTitle} ${chapter}` })}
+              className="px-1.5 py-0.5 rounded text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm shrink-0 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
+              title="New tab (Ctrl+T)">+</button>
           </div>
-        ))}
-        <button onClick={() => newWorkspace()} className="px-2 py-1.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm font-medium">+</button>
+        )}
       </div>
-
-      {/* Chapter tabs */}
-      {currentWorkspace && (
-        <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-2 flex items-center gap-0.5 overflow-x-auto tab-scroll min-h-[32px]">
-          {currentWorkspace.tabs.map(tab => (
-            <div key={tab.id} onClick={() => selectTab(tab.id)}
-              className={`flex items-center gap-1 px-2.5 py-1 cursor-pointer text-xs border-b-2 transition-colors shrink-0 ${tab.id === activeTab ? 'text-blue-700 dark:text-blue-400 border-blue-500 dark:border-blue-400 font-medium' : 'text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'}`}
-              onMouseDown={e => { if (e.button === 1) { e.preventDefault(); closeTab(tab.id) } }}
-              title={`${tab.label} (click to activate, middle-click to close)`}>
-              <span>{tab.label}</span>
-              {tab.view !== 'chapter' && <span className="text-[9px] text-neutral-400 font-mono">[{tab.view}]</span>}
-              <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }} className="text-neutral-300 dark:text-neutral-600 hover:text-neutral-500 dark:hover:text-neutral-400 ml-0.5 cursor-pointer"
-                title="Close tab">&times;</button>
-            </div>
-          ))}
-          <button onClick={() => openTab(book, chapter, { label: `${bookTitle} ${chapter}` })}
-            className="px-2 py-1 rounded-md text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm shrink-0 border border-dashed border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
-            title="New tab (Ctrl+T)">+</button>
-        </div>
-      )}
-
-      {/* Chapter controls */}
-      {isChapterView && (
-        <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
-          <div className="max-w-6xl mx-auto flex items-center gap-2 px-4 py-1.5">
-            <button onClick={goPrevBookStay} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-7 7 7 7" opacity="0.5" /></svg></button>
-            {nav && (
-              <select value={book} onChange={e => goToChapter(currentTab?.id, e.target.value, 1)}
-                className="px-2 py-0.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs bg-white dark:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[180px]">
-                {nav.flat.map(n => (<option key={n.bookId} value={n.bookId}>{n.workTitle !== nav.flat[nav.idx]?.workTitle ? `${n.workTitle} — ` : ''}{n.bookTitle}</option>))}
-              </select>
-            )}
-            <span className="text-neutral-300 dark:text-neutral-600 text-xs">ch.</span>
-            <select value={chapter} onChange={e => updateTab(currentTab?.id, { chapter: Number(e.target.value) })}
-              className="px-2 py-0.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs bg-white dark:bg-neutral-800 w-16 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-              {Array.from({ length: 150 }, (_, i) => (<option key={i+1} value={i+1}>{i+1}</option>))}
-            </select>
-            <button onClick={goNextBookStay} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19l7-7-7-7" opacity="0.5" /></svg></button>
-          </div>
-          <ToggleBar />
-          <PoetryToggle poetryMode={poetryMode} setPoetryMode={setPoetryMode} />
-        </div>
-      )}
 
       {/* Main */}
       <ErrorBoundary>
-        <main>{renderMainContent()}</main>
+        <main onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}>
+          {renderMainContent()}
+        </main>
       </ErrorBoundary>
 
       {/* Overlays */}
@@ -854,25 +1019,7 @@ function AppInner() {
         />
       )}
 
-      {/* Navigation hints */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-        <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur border border-neutral-200 dark:border-neutral-700 rounded-full px-4 py-1.5 text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center gap-2 flex-wrap">
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('historyBack')}</kbd>/<kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('historyForward')}</kbd> history</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">←</kbd>/<kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">→</kbd> chapter</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('goUp')}</kbd> out</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('goDown')}</kbd> in</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('command')}</kbd> go</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('darkMode')}</kbd> theme</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">{getHotkey('settingsPanel')}</kbd> prefs</span>
-          <span className="text-neutral-300 dark:text-neutral-600">|</span>
-          <span><kbd className="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 rounded">?</kbd> help</span>
-        </div>
-      </div>
+
     </div>
   )
 }

@@ -1,5 +1,5 @@
 {
-  "name": "scripture-explorer-frontend",
+  "name": "scriptureengine-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,10 +12,14 @@
     "test:ui": "PLAYWRIGHT_CHROMIUM_HEADLESS_MODE=1 playwright test --ui"
   },
   "dependencies": {
+    "cytoscape": "^3.34.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
     "@playwright/test": "^1.61.0",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",

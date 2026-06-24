@@ -293,7 +293,21 @@ export function parseAndFuzzy(input, allBooks) {
   // Try exact match first
   const exact = parseStandardRef(clean)
   if (exact) {
-    return { type: 'navigate', results: [{ ...exact, matchIdxs: [], label: `${exact.book} ${exact.chapter}${exact.verse ? `:${exact.verse}` : ''}`, newTab: isNewTab }] }
+    // Look up the full book title from allBooks for a nicer label
+    const bookInfo = allBooks.find(b => b.bookId === exact.book)
+    const title = bookInfo?.bookTitle || exact.book.toUpperCase()
+    // Build label with verse info
+    let label = `${title} ${exact.chapter}`
+    if (exact.verses?.length === 1) {
+      label += `:${exact.verses[0]}`
+    } else if (exact.verses?.length > 1) {
+      // Show a compact range: first-last, or first,second,...
+      const compact = exact.verses.length <= 3
+        ? exact.verses.join(',')
+        : `${exact.verses[0]}-${exact.verses[exact.verses.length-1]}`
+      label += `:${compact}`
+    }
+    return { type: 'navigate', results: [{ ...exact, matchIdxs: [], label, newTab: isNewTab }] }
   }
 
   // ── Fuzzy search across all books (scored, sorted, top 20) ──
@@ -334,27 +348,70 @@ export function parseAndFuzzy(input, allBooks) {
   return { type: 'error', results: [{ type: 'error', label: `No match for "${input}"` }] }
 }
 
+// Parse a verse spec into an array of verse numbers.
+// "6" → [6], "6-12" → [6,7,8,9,10,11,12], "6,8,10" → [6,8,10], "6-8,10" → [6,7,8,10]
+function parseVerses(spec) {
+  if (!spec) return []
+  const verses = new Set()
+  const parts = spec.split(',')
+  for (const part of parts) {
+    const range = part.match(/^(\d+)-(\d+)$/)
+    if (range) {
+      const start = parseInt(range[1]), end = parseInt(range[2])
+      for (let v = start; v <= end; v++) verses.add(v)
+    } else {
+      const n = parseInt(part)
+      if (!isNaN(n)) verses.add(n)
+    }
+  }
+  return [...verses].sort((a, b) => a - b)
+}
+
 function parseStandardRef(text) {
-  // "book chapter:verse"
+  // "book chapter:verse-range" or "book chapter:verse1,verse2" or "book chapter:verse-verse"
+  const mRange = text.match(/^([a-z0-9_]+)\s+(\d+):([\d,\-]+)$/i)
+  if (mRange) {
+    const book = resolveBook(mRange[1])
+    if (book) {
+      const verses = parseVerses(mRange[3])
+      return { book, chapter: parseInt(mRange[2]), verse: verses[0] || null, verses: verses.length > 0 ? verses : null }
+    }
+  }
+  // "book chapter:verse" (single verse)
   const m1 = text.match(/^([a-z0-9_]+)\s+(\d+):(\d+)$/i)
   if (m1) {
     const book = resolveBook(m1[1])
-    if (book) return { book, chapter: parseInt(m1[2]), verse: parseInt(m1[3]) }
+    if (book) return { book, chapter: parseInt(m1[2]), verse: parseInt(m1[3]), verses: [parseInt(m1[3])] }
   }
   // "book chapter"
   const m2 = text.match(/^([a-z0-9_]+)\s+(\d+)$/i)
   if (m2) {
     const book = resolveBook(m2[1])
-    if (book) return { book, chapter: parseInt(m2[2]), verse: null }
+    if (book) return { book, chapter: parseInt(m2[2]), verse: null, verses: null }
   }
   // "book:chapter" (colon between book and chapter)
   const m3 = text.match(/^([a-z0-9_]+):(\d+)$/i)
   if (m3) {
     const book = resolveBook(m3[1])
-    if (book) return { book, chapter: parseInt(m3[2]), verse: null }
+    if (book) return { book, chapter: parseInt(m3[2]), verse: null, verses: null }
+  }
+  // "bookN" no-space ref: "isa3", "isaiah3", "gen1" etc.
+  const m4 = text.match(/^([a-zA-Z]+)(\d+)$/)
+  if (m4) {
+    const combined = (m4[1] + m4[2]).toLowerCase()
+    // Check for D&C sections like "dc76"
+    if (/^dc\d+$/.test(combined)) {
+      return { book: combined, chapter: 1, verse: null, verses: null }
+    }
+    // Check for book:chapter like "isa3" (resolve "isa" + "3")
+    const book = resolveBook(m4[1])
+    if (book) return { book, chapter: parseInt(m4[2]), verse: null, verses: null }
+    // Try the full string as a book alias: "gen1" might resolve
+    const book2 = resolveBook(combined)
+    if (book2) return { book: book2, chapter: 1, verse: null, verses: null }
   }
   const book = resolveBook(text)
-  if (book) return { book, chapter: 1, verse: null }
+  if (book) return { book, chapter: 1, verse: null, verses: null }
   return null
 }
 

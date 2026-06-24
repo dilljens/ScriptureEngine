@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { searchVerses, semanticSearch } from '../api'
+import { parseAndFuzzy } from '../refParser'
 
 // Map book IDs to their parent work ID
 function bookToWork(bookId, bookData) {
@@ -67,10 +68,12 @@ function applyHighlights(text, highlights) {
   return result
 }
 
-export default function SearchBar({ onNavigate, onOpenTab, bookData }) {
+export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [semanticResults, setSemanticResults] = useState([])
+  const [refResult, setRefResult] = useState(null) // { book, chapter, verse, label }
+  const [cmdResult, setCmdResult] = useState(null) // { type, label, action } for /commands
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [showSemantic, setShowSemantic] = useState(false)
@@ -112,11 +115,34 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData }) {
     setQuery(v)
     setOffset(0)
     setSel(0)
+    const trimmed = v.trim()
+    if (trimmed) {
+      const books = bookData?.works?.flatMap?.(w => w.books?.map?.(b => ({ bookId: b.id, bookTitle: b.title, workId: w.id, workLabel: w.title, searchText: `${b.title} ${b.id} ${w.title}` }))) || []
+      const parsed = parseAndFuzzy(trimmed, books)
+      // Check for navigate (ref) results
+      if (parsed.type === 'navigate' && parsed.results?.[0]?.book) {
+        const r = parsed.results[0]
+        setRefResult({ book: r.book, chapter: r.chapter, label: r.label || `${r.book} ${r.chapter}`, newTab: r.newTab || false, verses: r.verses || null })
+      } else {
+        setRefResult(null)
+      }
+      // Check for command results (/chat, /dark, etc.)
+      if (parsed.type === 'chat' || parsed.type === 'dark' || parsed.type === 'font' ||
+          parsed.type === 'toggle' || parsed.type === 'history' || parsed.type === 'structure' ||
+          parsed.type === 'help' || parsed.type === 'search') {
+        setCmdResult(parsed)
+      } else {
+        setCmdResult(null)
+      }
+    } else {
+      setRefResult(null)
+      setCmdResult(null)
+    }
   }
 
   useEffect(() => {
     clearTimeout(debounceRef.current)
-    if (!query.trim()) { setResults([]); setSemanticResults([]); setShowDropdown(false); return }
+    if (!query.trim()) { setResults([]); setSemanticResults([]); setRefResult(null); setShowDropdown(false); return }
     debounceRef.current = setTimeout(() => doSearch(query, false), 300)
     setShowDropdown(true)
     return () => clearTimeout(debounceRef.current)
@@ -159,7 +185,11 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData }) {
   }
 
   const works = bookData?.works || []
+  const refItem = refResult ? [{ _type: 'ref', ref: refResult.label, book: refResult.book, chapter: refResult.chapter, verses: refResult.verses }] : []
+  const cmdItem = cmdResult ? cmdResult.results?.map((r, i) => ({ ...r, _type: 'cmd', _cmdIdx: i })) || [] : []
   const allResults = [
+    ...refItem,
+    ...cmdItem,
     ...results.map(r => ({ ...r, _type: 'fts' })),
     ...(showSemantic && semanticResults.length > 0 ? [{ _type: 'semantic_header' }, ...semanticResults.map(r => ({ ...r, _type: 'semantic' }))] : []),
   ]
@@ -179,11 +209,23 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData }) {
             if (e.key === 'Escape') { setShowDropdown(false); inputRef.current?.blur() }
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel(i => Math.min(i + 1, allResults.length - 1)) }
             if (e.key === 'ArrowUp') { e.preventDefault(); setSel(i => Math.max(i - 1, 0)) }
-            if (e.key === 'Enter' && allResults[sel] && allResults[sel]._type !== 'semantic_header') {
-              navigate(allResults[sel].verse || allResults[sel].verse_id, e)
+            if (e.key === 'Enter' && allResults[sel]) {
+              const item = allResults[sel]
+              if (item._type === 'semantic_header') return
+              if (item._type === 'ref') {
+                onNavigate?.(item.book, item.chapter, item.verses)
+                setShowDropdown(false)
+                setQuery('')
+              } else if (item._type === 'cmd') {
+                onCommand?.(item)
+                setShowDropdown(false)
+                setQuery('')
+              } else {
+                navigate(item.verse || item.verse_id, e)
+              }
             }
           }}
-          placeholder="Search all scriptures..."
+          placeholder="Search, navigate, /commands..."
           className="flex-1 text-xs outline-none bg-transparent text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500" />
         {loading && <svg className="w-3 h-3 text-neutral-400 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>}
         {/* Semantic toggle */}
@@ -215,9 +257,44 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData }) {
               {workFilter && <span className="text-blue-500 dark:text-blue-400">· filtered: {workFilter.toUpperCase()}</span>}
             </div>
           )}
+          {/* Divider after ref result */}
+          {refResult && results.length > 0 && (
+            <div className="border-t border-neutral-100 dark:border-neutral-700 mx-2" />
+          )}
           {allResults.map((r, i) => {
             if (r._type === 'semantic_header') {
               return <div key="semantic-h" className="px-4 py-2 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono border-t border-neutral-100 dark:border-neutral-700">✦ Semantic matches</div>
+            }
+            if (r._type === 'ref') {
+              return (
+                <button key="ref-result"
+                  onClick={() => { onNavigate?.(r.book, r.chapter, r.verses); setShowDropdown(false); setQuery('') }}
+                  onMouseEnter={() => setSel(i)}
+                  className={`w-full text-left px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${
+                    i === sel ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50 border-l-2 border-transparent'
+                  }`}>
+                  <span className="text-xs shrink-0">📖</span>
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Go to {r.ref}</span>
+                  {r.verses?.length > 0 && <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">✦{r.verses.length}</span>}
+                  <span className="ml-auto text-[9px] text-neutral-400 dark:text-neutral-500">↵ jump</span>
+                </button>
+              )
+            }
+            if (r._type === 'cmd') {
+              const icons = { chat: '💬', search: '🔍', dark: '🌙', font: '🔤', toggle: '🔘', history: '🕐', structure: '⟷', help: 'ℹ️' }
+              return (
+                <button key={`cmd-${r._cmdIdx}`}
+                  onClick={() => { onCommand?.(r); setShowDropdown(false); setQuery('') }}
+                  onMouseEnter={() => setSel(i)}
+                  className={`w-full text-left px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${
+                    i === sel ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50 border-l-2 border-transparent'
+                  }`}>
+                  <span className="text-xs shrink-0">{icons[r.type] || '⚡'}</span>
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">{r.label}</span>
+                  {r.text && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 truncate">{r.text}</span>}
+                  <span className="ml-auto text-[9px] text-neutral-400 dark:text-neutral-500">↵ run</span>
+                </button>
+              )
             }
             const verseId = r.verse || r.verse_id
             const ref = r.reference || verseId

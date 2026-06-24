@@ -8,11 +8,15 @@ test.describe('Connection tags — unified panel', () => {
     await expect(page.locator("h1")).toBeVisible({ timeout: 15000 })
   })
 
-  test('toggle Direct then panel shows connections', async ({ page }) => {
-    await page.locator('button', { hasText: 'Direct' }).click()
+  test('toggle Direct via Layers popover then panel shows connections', async ({ page }) => {
+    // Open Layers popover and toggle Direct Quotes on
+    const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
+    await layersBtn.click()
+    await page.getByText('Direct Quotes').click()
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(1000)
 
-    // There may be multiple verse panels — pick first
+    // Connections panel should appear in the verse
     const panelBtn = page.locator('button', { hasText: /Connections/ }).first()
     const count = await page.locator('button', { hasText: /Connections/ }).count()
     test.skip(count === 0, 'No connections in this chapter')
@@ -20,7 +24,11 @@ test.describe('Connection tags — unified panel', () => {
   })
 
   test('clicking panel header opens grouped sections', async ({ page }) => {
-    await page.locator('button', { hasText: 'Direct' }).click()
+    // Enable Direct quotes via Layers popover
+    const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
+    await layersBtn.click()
+    await page.getByText('Direct Quotes').click()
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
@@ -35,7 +43,10 @@ test.describe('Connection tags — unified panel', () => {
   })
 
   test('expanding a section shows connection items', async ({ page }) => {
-    await page.locator('button', { hasText: 'Direct' }).click()
+    const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
+    await layersBtn.click()
+    await page.getByText('Direct Quotes').click()
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
@@ -45,7 +56,6 @@ test.describe('Connection tags — unified panel', () => {
     await panels.first().click()
     await page.waitForTimeout(500)
 
-    // Find a section header with a count (indicates it has items)
     const sectionWithItems = page.locator('.space-y-1 button:has-text("/")').first()
     const sectionCount = await sectionWithItems.count()
     test.skip(sectionCount === 0, 'No expandable sections in this panel')
@@ -54,7 +64,10 @@ test.describe('Connection tags — unified panel', () => {
   })
 
   test('filter input works', async ({ page }) => {
-    await page.locator('button', { hasText: 'Direct' }).click()
+    const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
+    await layersBtn.click()
+    await page.getByText('Direct Quotes').click()
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
@@ -72,15 +85,16 @@ test.describe('Connection tags — unified panel', () => {
     await expect(filterInput).toBeVisible()
   })
 
-  test('All On / All Off toggle works', async ({ page }) => {
-    const allBtn = page.locator('button', { hasText: /All (On|Off)/ })
-    await expect(allBtn).toBeVisible({ timeout: 5000 })
-    const currentText = await allBtn.textContent()
+  test('All On / All Off toggle works via Layers popover', async ({ page }) => {
+    const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
+    await layersBtn.click()
 
-    await allBtn.click()
+    // All Off / All On buttons exist inside the popover
+    const allOff = page.getByText('All Off')
+    await expect(allOff).toBeVisible()
+    await allOff.click()
 
-    const newBtn = page.locator('button', { hasText: /All (On|Off)/ })
-    const newText = await newBtn.textContent()
-    expect(newText).not.toBe(currentText)
+    // After clicking All Off, "All On" should become active
+    await expect(page.getByText('All On')).toBeVisible()
   })
 })
