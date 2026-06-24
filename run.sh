@@ -44,6 +44,11 @@ case "${1:-help}" in
     shift
     python3 "$DIR/tools/compare.py" "$@"
     ;;
+  graph)
+    # Usage: ./run.sh graph '{"tool": "scripture_graph_path", "start": "gen.1.1", "end": "john.1.1"}'
+    shift
+    python3 "$DIR/tools/connections.py" "$@"
+    ;;
   word_counts)
     shift
     python3 "$DIR/tools/word_counts.py" "$@"
@@ -101,7 +106,7 @@ case "${1:-help}" in
     ;;
   web)
     # Usage: ./run.sh web [--workers N] [--port N]
-    WORKERS=1
+    WORKERS=2
     PORT=8000
     while [ "$#" -gt 0 ]; do
       case "$1" in
@@ -132,6 +137,9 @@ case "${1:-help}" in
     shift
     python3 "$DIR/tools/search_xlingual.py" "$@"
     ;;
+  link-entities)
+    python3 "$DIR/scripts/link_entities.py"
+    ;;
   info)
     python3 -c "
 import sqlite3
@@ -146,8 +154,13 @@ kc = conn.execute('SELECT COUNT(*) as c FROM known_chiasms').fetchone()['c']
 sf = conn.execute('SELECT COUNT(*) as c FROM structural_formulas').fetchone()['c']
 print(f'Verses: {v:,}  Hebrew: {h:,}  Gematria words: {g:,}  Connections: {cn:,}  Divine names: {dn}')
 print(f'Known chiasms: {kc}  Structural formulas: {sf}')
+try:
+    ve = conn.execute('SELECT COUNT(*) as c FROM verse_entities').fetchone()['c']
+    print(f'Verse-entity links: {ve:,}')
+except:
+    pass
 qc = conn.execute('SELECT quality_level, COUNT(*) as c FROM connections GROUP BY quality_level ORDER BY quality_level').fetchall()
-print('Quality:', {r[\"quality_level\"]: r[\"c\"] for r in qc})
+print('Quality:', {r['quality_level']: r['c'] for r in qc})
 conn.close()
 "
     ;;
@@ -190,6 +203,7 @@ conn.close()
     echo ""
     echo "Core tools:"
     echo "  ingest             — Import/refresh all data"
+    echo "  link-entities      — Link verses to entity_links (populate verse_entities table)"
     echo "  seed               — Seed known patterns from scholars"
     echo "  verse <json>       — Look up a verse"
     echo "  search <json>      — Search by keyword"
@@ -199,6 +213,7 @@ conn.close()
     echo "  intertext <json>   — Trace intertextual links"
     echo "  frequency <json>   — Word frequency analysis"
     echo "  compare <json>     — Compare two verses"
+    echo "  graph <json>       — Graph traversal (path, reachable, hubs, entities)"
     echo ""
     echo "Chiasm detection tools:"
     echo "  word_counts <json>      — Hebrew word counts per chapter/section"

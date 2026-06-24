@@ -94,6 +94,69 @@ def run(conn, book_ids=None):
                     except Exception:
                         pass
 
+    # Strategy 3: Verse gematria total matches
+    # Connect verses whose total gematria (sum of value_standard) is the same,
+    # for totals that are not extremely common (between 2-50 verses share the total)
+    verse_totals_all = conn.execute("""
+        SELECT g.verse_id, SUM(g.value_standard) as total
+        FROM gematria g
+        WHERE g.value_standard > 0
+        GROUP BY g.verse_id
+        HAVING total > 0
+    """).fetchall()
+
+    total_groups = defaultdict(set)
+    for r in verse_totals_all:
+        total_groups[r["total"]].add(r["verse_id"])
+
+    for total, verses in total_groups.items():
+        size = len(verses)
+        if size < 2 or size > 50:
+            continue
+
+        verse_list = sorted(verses)
+        strength = min(0.7, 0.35 + 0.01 * (50 - size))
+
+        # Hub-and-spoke for larger groups
+        if len(verse_list) <= 10:
+            for i in range(len(verse_list)):
+                for j in range(i + 1, len(verse_list)):
+                    try:
+                        add_connection(conn, verse_list[i], verse_list[j],
+                                      layer="numerical",
+                                      type_name="verse_gematria_total",
+                                      subtype=f"total_{total}",
+                                      strength=strength,
+                                      confidence=0.5,
+                                      discovered_by="algorithm",
+                                      metadata={
+                                          "verse_total": total,
+                                          "verse_count": size,
+                                          "note": f"Both verses have total gematria {total}",
+                                      })
+                        count += 1
+                    except Exception:
+                        pass
+        else:
+            hub = verse_list[0]
+            for v in verse_list[1:]:
+                try:
+                    add_connection(conn, hub, v,
+                                  layer="numerical",
+                                  type_name="verse_gematria_total",
+                                  subtype=f"total_{total}",
+                                  strength=strength,
+                                  confidence=0.5,
+                                  discovered_by="algorithm",
+                                  metadata={
+                                      "verse_total": total,
+                                      "verse_count": size,
+                                      "note": f"Both verses have total gematria {total}",
+                                  })
+                    count += 1
+                except Exception:
+                    pass
+
     conn.commit()
     print(f"  Numerical (full): {count} additional connections")
     return count

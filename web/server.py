@@ -16,6 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 
@@ -25,6 +27,19 @@ from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
 from lib.sod import atbash as atb, acrostic, gematria_advanced, hidden_names
 from lib.controls.calibration import QUALITY_LEVELS, get_quality_stars, rate_connection_row, enrich_connection
 from lib.api import TOOL_REGISTRY, call_tool
+from lib.api.conversations import (
+    create_session, get_session, list_sessions, update_session, delete_session,
+    add_message, list_connections, add_connection, promote_connection,
+)
+from lib.api.study import (
+    create_guide, get_guide, list_guides, update_guide as study_update,
+    add_step as study_add_step, remove_step as study_remove_step,
+    reorder_steps as study_reorder, bulk_update_steps as study_bulk_update,
+    export_json as study_export_json,
+    export_html as study_export_html, import_json as study_import_json,
+    publish_study as study_publish, get_published as study_get_published,
+    list_published as study_list_published, fork_published as study_fork,
+)
 from lib.lexicon import search_lexicon, get_lexicon_entry, get_root_family, get_concordance, get_domain_members
 from lib.patterns.intra_verse import detect_intra_verse
 
@@ -311,65 +326,154 @@ def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Op
 # ─── Search ───
 
 @app.get("/api/v1/search")
-def search(q: str = Query(..., description="Search term"), lang: str = "all", limit: int = 20):
+def search(
+    q: str = Query(..., description="Search term"),
+    lang: str = "all",
+    limit: int = 20,
+    offset: int = 0,
+    book: str = "",
+):
     """Search across English, Hebrew, and Greek simultaneously.
 
+    Supports query syntax:
+      "exact phrase"  — exact phrase match
+      -word           — exclude verses containing word
+      book:gen        — scope to a specific book ID
+      work:ot         — scope to an entire work
+
     English uses FTS5 full-text search (50-100x faster than LIKE).
-    Hebrew searches against niqqud-stripped words (hebrew_plain) so vowel
-    marks don't prevent matching.
+    Hebrew searches against niqqud-stripped words (hebrew_plain).
     """
     conn = get_db()
     results = []
 
+    # Parse query syntax: extract book/work filter, exclude terms, phrase terms
+    filter_book = book  # explicit ?book= param
+    exclude_terms = []
+    phrase_terms = []
+    fuzzy_terms = []
+    for token in q.strip().split():
+        if token.startswith("book:") or token.startswith("b:"):
+            filter_book = token.split(":", 1)[1].lower()
+        elif token.startswith("work:") or token.startswith("w:"):
+            filter_book = token.split(":", 1)[1].lower()
+        elif token.startswith("-"):
+            exclude_terms.append(token[1:].lower())
+        elif token.startswith('"') and token.endswith('"'):
+            phrase_terms.append(token[1:-1])
+        else:
+            fuzzy_terms.append(token.lower())
+
+    search_query = " ".join(fuzzy_terms) if fuzzy_terms else q.strip()
+    limit_plus_one = limit + 1  # fetch one extra to detect has_more
+
+    if not search_query and not phrase_terms:
+        conn.close()
+        return {"ok": True, "data": {"query": q, "total": 0, "results": [], "has_more": False}}
+
     if lang in ("all", "english"):
-        # FTS5 query - tokenize and use MATCH for speed
-        if q.strip():
-            # Clean the query for FTS5 syntax
-            fts_query = q.strip().replace('"', '""')
-            # Build prefix search: append * to each word for prefix matching
+        if search_query:
+            fts_query = search_query.replace('"', '""')
             terms = [t.strip() for t in fts_query.split() if t.strip()]
-            fts_match = " AND ".join(f'"{t}"*' for t in terms)
-            try:
-                rows = conn.execute("""
-                    SELECT v.id, v.text_english, b.title
+            if terms:
+                # Build FTS5 match expression
+                match_parts = []
+                for t in terms:
+                    if t.startswith("-"):
+                        match_parts.append(f'NOT ("{t[1:]}"*)')
+                    else:
+                        match_parts.append(f'"{t}"*')
+                for pt in phrase_terms:
+                    match_parts.append(f'"{pt}"')
+                fts_match = " AND ".join(match_parts)
+
+                # Base query
+                base_sql = """
                     FROM verses_fts f
                     JOIN verses v ON v.id = f.verse_id
                     JOIN books b ON b.id = v.book_id
                     WHERE verses_fts MATCH ?
-                    LIMIT ?
-                """, (fts_match, limit)).fetchall()
-            except Exception:
-                # Fallback to LIKE if FTS5 fails (e.g. on special characters)
-                rows = conn.execute("SELECT id, text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ? LIMIT ?", (f"%{q}%", limit)).fetchall()
-            results.extend({"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"} for r in rows)
+                """
+                params = [fts_match]
 
-    if lang in ("all", "hebrew"):
-        # Search hebrew_plain (niqqud-stripped) for better matching
-        rows = conn.execute("""
+                # Apply book filter
+                if filter_book:
+                    # Support both work-level (ot, nt) and book-level (gen, isa) filters
+                    base_sql += " AND (b.id = ? OR b.id LIKE ?)"
+                    params.extend([filter_book, f"{filter_book}%"])
+
+                try:
+                    # Get total count
+                    total_row = conn.execute(f"SELECT COUNT(*) as cnt {base_sql}", params).fetchone()
+                    total_matches = total_row["cnt"] if total_row else 0
+
+                    # Get paginated results with highlighted offsets
+                    rows = conn.execute(f"""
+                        SELECT v.id, v.text_english, b.title,
+                               offsets(verses_fts) as match_offsets
+                        {base_sql}
+                        ORDER BY rank
+                        LIMIT ? OFFSET ?
+                    """, params + [limit_plus_one, offset]).fetchall()
+                except Exception:
+                    # Fallback to LIKE
+                    like_q = f"%{search_query}%"
+                    like_sql = "SELECT v.id, v.text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ?"
+                    like_params = [like_q]
+                    if filter_book:
+                        like_sql += " AND (b.id = ? OR b.id LIKE ?)"
+                        like_params.extend([filter_book, f"{filter_book}%"])
+                    total_row = conn.execute(f"SELECT COUNT(*) as cnt {like_sql.replace('SELECT v.id, v.text_english, b.title', '')}", like_params).fetchone()
+                    total_matches = total_row["cnt"] if total_row else 0
+                    rows = conn.execute(f"{like_sql} LIMIT ? OFFSET ?", like_params + [limit_plus_one, offset]).fetchall()
+
+                for r in rows:
+                    item = {"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"}
+                    if r.get("match_offsets"):
+                        offsets = []
+                        parts = r["match_offsets"].split()
+                        for i in range(0, len(parts), 4):
+                            if i + 3 < len(parts):
+                                try:
+                                    offsets.append({"pos": int(parts[i + 2]), "len": int(parts[i + 3])})
+                                except (ValueError, IndexError):
+                                    pass
+                        if offsets:
+                            item["highlights"] = offsets
+                    results.append(item)
+
+    if lang in ("all", "hebrew") and search_query:
+        hebrew_sql = """
             SELECT DISTINCT v.id, v.text_hebrew, v.text_english, b.title
             FROM gematria g
             JOIN verses v ON v.id=g.verse_id
             JOIN books b ON b.id=v.book_id
-            WHERE g.hebrew_plain LIKE ?
-               OR g.word_hebrew LIKE ?
-            LIMIT ?
-        """, (f"%{q}%", f"%{q}%", limit)).fetchall()
+            WHERE (g.hebrew_plain LIKE ? OR g.word_hebrew LIKE ?)
+        """
+        hebrew_params = [f"%{search_query}%", f"%{search_query}%"]
+        if filter_book:
+            hebrew_sql += " AND (b.id = ? OR b.id LIKE ?)"
+            hebrew_params.extend([filter_book, f"{filter_book}%"])
+        rows = conn.execute(f"{hebrew_sql} LIMIT ? OFFSET ?", hebrew_params + [limit_plus_one, offset]).fetchall()
         seen = set()
         for r in rows:
             if r["id"] not in seen:
                 seen.add(r["id"])
                 results.append({"verse": r["id"], "text": (r["text_hebrew"] or "")[:120], "english": (r["text_english"] or "")[:60], "book": r["title"], "language": "hebrew"})
 
-    if lang in ("all", "greek"):
-        rows = conn.execute("""
+    if lang in ("all", "greek") and search_query:
+        greek_sql = """
             SELECT DISTINCT v.id, v.text_greek, v.text_english, b.title
             FROM gematria_greek g
             JOIN verses v ON v.id=g.verse_id
             JOIN books b ON b.id=v.book_id
-            WHERE g.word_greek LIKE ?
-               OR g.lemma LIKE ?
-            LIMIT ?
-        """, (f"%{q}%", f"%{q}%", limit)).fetchall()
+            WHERE g.word_greek LIKE ? OR g.lemma LIKE ?
+        """
+        greek_params = [f"%{search_query}%", f"%{search_query}%"]
+        if filter_book:
+            greek_sql += " AND (b.id = ? OR b.id LIKE ?)"
+            greek_params.extend([filter_book, f"{filter_book}%"])
+        rows = conn.execute(f"{greek_sql} LIMIT ? OFFSET ?", greek_params + [limit_plus_one, offset]).fetchall()
         seen = set()
         for r in rows:
             if r["id"] not in seen:
@@ -377,7 +481,17 @@ def search(q: str = Query(..., description="Search term"), lang: str = "all", li
                 results.append({"verse": r["id"], "text": (r["text_greek"] or "")[:120], "english": (r["text_english"] or "")[:60], "book": r["title"], "language": "greek"})
 
     conn.close()
-    return {"ok": True, "data": {"query": q, "total": len(results), "results": results}}
+    has_more = len(results) > limit
+    return {
+        "ok": True,
+        "data": {
+            "query": q,
+            "total": len(results[:limit]),
+            "results": results[:limit],
+            "has_more": has_more,
+            "total_estimate": len(results),
+        },
+    }
 
 
 # ─── Gematria ───
@@ -2003,6 +2117,233 @@ def list_thematic_studies():
     }}
 
 
+# ─── User Study Guides (JSON-first, with graph paths) ───
+
+
+class CreateStudyRequest(BaseModel):
+    title: str
+    description: str = ""
+    theme: str = ""
+    seed_verse: str = ""
+    created_by: str = "anonymous"
+    steps: list = []
+
+class ImportStudyRequest(BaseModel):
+    json_str: str
+    created_by: str = "user"
+
+class PublishStudyRequest(BaseModel):
+    author_name: str = "anonymous"
+    author_id: str = ""
+    forked_from: str = ""
+
+
+@app.get("/api/v1/studies")
+def list_study_guides(theme: str = "", limit: int = 20):
+    """List all study guides."""
+    conn = get_db()
+    result = list_guides(conn, theme=theme or None, limit=limit)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@app.post("/api/v1/studies")
+def create_study_guide(req: CreateStudyRequest):
+    """Create a new study guide with optional initial steps."""
+    conn = get_db()
+    steps_data = [dict(s) for s in req.steps] if req.steps else None
+    result = create_guide(conn, req.title, req.description, req.theme,
+                          req.seed_verse, req.created_by, steps=steps_data)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+# ─── Published Studies (public, immutable, shareable) — defined BEFORE {guide_id} routes ───
+
+
+@app.get("/api/v1/studies/published")
+def list_published_studies(limit: int = 20, offset: int = 0):
+    """List all published studies, most recent first."""
+    conn = get_db()
+    result = study_list_published(conn, limit=limit, offset=offset)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@app.post("/api/v1/studies/import")
+def import_study(req: ImportStudyRequest):
+    """Import a study from a JSON string."""
+    conn = get_db()
+    try:
+        result = study_import_json(conn, req.json_str, created_by=req.created_by)
+        conn.close()
+        return {"ok": True, "data": result}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+
+@app.post("/api/v1/studies/published/{slug}/fork")
+def fork_published_study(slug: str, created_by: str = "user"):
+    """Fork a published study into a new mutable study guide."""
+    conn = get_db()
+    result = study_fork(conn, slug, created_by=created_by)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+# These use path() suffix to avoid conflicting with "published" path component
+@app.api_route("/api/v1/studies/published/{slug}.json", methods=["GET"])
+def download_published_study_json(slug: str):
+    """Download a published study as JSON. Slug must not have .json extension."""
+    conn = get_db()
+    result = study_get_published(conn, slug)
+    conn.close()
+    if not result:
+        return {"ok": False, "error": f"Published study '{slug}' not found"}
+    from fastapi.responses import Response
+    import json
+    return Response(content=json.dumps(result, indent=2, ensure_ascii=False),
+                    media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{slug}.json"'})
+
+
+@app.api_route("/api/v1/studies/published/{slug}.html", methods=["GET"])
+def download_published_study_html(slug: str):
+    """Download a published study as self-contained HTML. Slug must not have .html extension."""
+    conn = get_db()
+    result = study_get_published(conn, slug)
+    conn.close()
+    if not result:
+        return {"ok": False, "error": f"Published study '{slug}' not found"}
+    from lib.api.study import _render_html
+    html = _render_html(result)
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+@app.get("/api/v1/studies/published/{slug}")
+def get_published_study(slug: str):
+    """Get a published study by its slug."""
+    conn = get_db()
+    result = study_get_published(conn, slug)
+    conn.close()
+    if not result:
+        return {"ok": False, "error": f"Published study '{slug}' not found"}
+    return {"ok": True, "data": result}
+
+
+# ─── Parameterized study guide routes (keep after static routes) ───
+
+
+@app.get("/api/v1/studies/{guide_id}")
+def get_study_guide(guide_id: int):
+    """Get a study guide with enriched steps and graph paths."""
+    conn = get_db()
+    result = get_guide(conn, guide_id)
+    conn.close()
+    if not result:
+        return {"ok": False, "error": f"Study guide {guide_id} not found"}
+    return {"ok": True, "data": result}
+
+
+@app.get("/api/v1/studies/{guide_id}/export.json")
+def export_study_json(guide_id: int):
+    """Export a study guide as JSON with full graph paths."""
+    conn = get_db()
+    js = study_export_json(conn, guide_id)
+    conn.close()
+    if not js:
+        return {"ok": False, "error": f"Study guide {guide_id} not found"}
+    from fastapi.responses import Response
+    return Response(content=js, media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="study-{guide_id}.json"'})
+
+
+@app.get("/api/v1/studies/{guide_id}/export.html")
+def export_study_html(guide_id: int):
+    """Export a study guide as a self-contained HTML page."""
+    conn = get_db()
+    html = study_export_html(conn, guide_id)
+    conn.close()
+    if not html:
+        return {"ok": False, "error": f"Study guide {guide_id} not found"}
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/v1/studies/{guide_id}/publish")
+def publish_study_guide(guide_id: int, req: PublishStudyRequest = None):
+    """Publish a study as an immutable snapshot with a shareable URL."""
+    conn = get_db()
+    kw = {"author_name": req.author_name, "author_id": req.author_id} if req else {}
+    if req and req.forked_from:
+        kw["forked_from"] = req.forked_from
+    result = study_publish(conn, guide_id, **kw)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+class UpdateStudyRequest(BaseModel):
+    title: str = ""
+    description: str = ""
+    theme: str = ""
+    seed_verse: str = ""
+
+class AddStepRequest(BaseModel):
+    step_number: int
+    verse_id: str
+    title: str = ""
+    explanation: str = ""
+    connection_from: str = ""
+    connection_type: str = ""
+    connection_layer: str = ""
+
+class BulkStepsRequest(BaseModel):
+    steps: list
+
+
+@app.patch("/api/v1/studies/{guide_id}")
+def update_study_metadata(guide_id: int, req: UpdateStudyRequest):
+    """Update study guide metadata."""
+    conn = get_db()
+    kw = {k: v for k, v in req.dict().items() if v}
+    result = study_update(conn, guide_id, **kw)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@app.post("/api/v1/studies/{guide_id}/steps")
+def add_study_step(guide_id: int, req: AddStepRequest):
+    """Add a step to a study guide."""
+    conn = get_db()
+    result = study_add_step(conn, guide_id, req.step_number, req.verse_id,
+                            title=req.title, explanation=req.explanation,
+                            connection_from=req.connection_from,
+                            connection_type=req.connection_type,
+                            connection_layer=req.connection_layer)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@app.delete("/api/v1/studies/{guide_id}/steps/{step_number}")
+def delete_study_step(guide_id: int, step_number: int):
+    """Remove a step from a study guide and re-number remaining steps."""
+    conn = get_db()
+    result = study_remove_step(conn, guide_id, step_number)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@app.put("/api/v1/studies/{guide_id}/steps")
+def bulk_update_study_steps(guide_id: int, req: BulkStepsRequest):
+    """Replace all steps of a study guide (deletes existing, inserts new)."""
+    conn = get_db()
+    result = study_bulk_update(conn, guide_id, req.steps)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
 # ─── Read-Along (audio + word timestamps) ───
 
 # Audio sources available
@@ -2343,6 +2684,157 @@ def create_annotation(ann: AnnotationCreate):
     return {"ok": True, "data": {"annotation_id": ann_id, "message": "Annotation created"}}
 
 
+# ─── Conversation / Chat Sessions ───
+
+class ConversationCreate(BaseModel):
+    title: str = ""
+    theme: str = ""
+    created_by: str = "anonymous"
+
+class MessageCreate(BaseModel):
+    role: str  # 'user', 'assistant', 'system'
+    content: str
+    metadata: Optional[dict] = {}
+
+class SessionUpdate(BaseModel):
+    title: Optional[str] = None
+    is_starred: Optional[bool] = None
+
+class ConnectionPromote(BaseModel):
+    layer: str = "intertextual"
+    type_name: str = "parallel"
+    subtype: str = ""
+    strength: float = 0.5
+    confidence: float = 0.5
+    discovered_by: str = "conversation"
+
+class ManualConnection(BaseModel):
+    source_verse: str
+    target_verse: str
+    relationship: str = ""
+    connection_type: str = "discovered"
+    confidence: float = 0.5
+    description: str = ""
+
+@app.get("/api/v1/conversations")
+def list_conversations(page: int = 1, per_page: int = 20, starred: Optional[bool] = None, search: str = ""):
+    """List conversation sessions, paginated."""
+    conn = get_db()
+    result = list_sessions(conn, page=page, per_page=per_page, starred=starred, search=search)
+    conn.close()
+    return {"ok": True, "data": result}
+
+@app.post("/api/v1/conversations")
+def create_conversation(body: ConversationCreate):
+    """Create a new conversation session."""
+    conn = get_db()
+    session = create_session(conn, title=body.title, theme=body.theme, created_by=body.created_by)
+    conn.close()
+    return {"ok": True, "data": session}
+
+@app.get("/api/v1/conversations/{session_id}")
+def get_conversation(session_id: str):
+    """Get a conversation session with all messages, refs, and connections."""
+    conn = get_db()
+    session = get_session(conn, session_id)
+    conn.close()
+    if not session:
+        return {"ok": False, "error": "Session not found"}
+    return {"ok": True, "data": session}
+
+@app.patch("/api/v1/conversations/{session_id}")
+def update_conversation(session_id: str, body: SessionUpdate):
+    """Update session title or starred status."""
+    conn = get_db()
+    session = update_session(conn, session_id, title=body.title, is_starred=body.is_starred)
+    conn.close()
+    return {"ok": True, "data": session}
+
+@app.delete("/api/v1/conversations/{session_id}")
+def delete_conversation(session_id: str):
+    """Delete a conversation session."""
+    conn = get_db()
+    result = delete_session(conn, session_id)
+    conn.close()
+    return {"ok": True, "data": result}
+
+@app.post("/api/v1/conversations/{session_id}/messages")
+def add_conversation_message(session_id: str, body: MessageCreate):
+    """Add a message to a conversation. Auto-extracts verse refs and detects connections."""
+    if not body.content.strip():
+        return {"ok": False, "error": "Content is required"}
+    conn = get_db()
+    # Verify session exists
+    session = conn.execute(
+        "SELECT id FROM conversation_sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    if not session:
+        conn.close()
+        return {"ok": False, "error": "Session not found"}
+    result = add_message(conn, session_id, body.role, body.content, metadata=body.metadata)
+    conn.close()
+    return {"ok": True, "data": result}
+
+@app.post("/api/v1/conversations/{session_id}/messages/batch")
+def add_conversation_messages_batch(session_id: str, body: list[MessageCreate]):
+    """Add multiple messages at once (for page reload recovery)."""
+    conn = get_db()
+    session = conn.execute(
+        "SELECT id FROM conversation_sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    if not session:
+        conn.close()
+        return {"ok": False, "error": "Session not found"}
+    results = []
+    for msg in body:
+        r = add_message(conn, session_id, msg.role, msg.content, metadata=msg.metadata)
+        results.append(r)
+    conn.close()
+    return {"ok": True, "data": {"messages": results, "count": len(results)}}
+
+@app.get("/api/v1/conversations/{session_id}/connections")
+def get_conversation_connections(session_id: str, connection_type: Optional[str] = None):
+    """List connections discovered/retrieved in a conversation."""
+    conn = get_db()
+    result = list_connections(conn, session_id, connection_type=connection_type)
+    conn.close()
+    return {"ok": True, "data": {"connections": result, "total": len(result)}}
+
+@app.post("/api/v1/conversations/{session_id}/connections")
+def add_conversation_connection(session_id: str, body: ManualConnection):
+    """Manually add a connection to a session."""
+    conn = get_db()
+    add_connection(
+        conn, session_id,
+        source_verse=body.source_verse,
+        target_verse=body.target_verse,
+        relationship=body.relationship,
+        connection_type=body.connection_type,
+        confidence=body.confidence,
+        description=body.description,
+    )
+    conn.close()
+    return {"ok": True, "data": {"message": "Connection added"}}
+
+@app.post("/api/v1/conversations/{session_id}/connections/{connection_id}/promote")
+def promote_conversation_connection(session_id: str, connection_id: int, body: ConnectionPromote):
+    """Promote a conversation connection to the main connection graph."""
+    conn = get_db()
+    result = promote_connection(
+        conn, connection_id,
+        layer=body.layer,
+        type_name=body.type_name,
+        subtype=body.subtype,
+        strength=body.strength,
+        confidence=body.confidence,
+        discovered_by=body.discovered_by,
+    )
+    conn.close()
+    if result.get("ok"):
+        return {"ok": True, "data": result}
+    return {"ok": False, "error": result.get("error", "Promotion failed")}
+
+
 # ─── Health Check ───
 
 @app.get("/api/v1/health")
@@ -2565,3 +3057,832 @@ def agent_clear():
     except Exception:
         pass
     return {"ok": True}
+
+
+# ─── LLM Chat Proxy with Function Calling (DeepSeek) ───
+
+DEEPSEEK_API_KEY: str = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+
+# Pricing per 1M tokens (deepseek-v4-flash)
+PRICING = {
+    "input": 0.14,
+    "output": 0.28,
+    "cache_hit": 0.07,
+}
+
+# Load system prompt from CHAT_AGENTS.md
+_CHAT_AGENTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "CHAT_AGENTS.md")
+CHAT_SYSTEM_PROMPT = ""
+if os.path.exists(_CHAT_AGENTS_PATH):
+    with open(_CHAT_AGENTS_PATH) as f:
+        CHAT_SYSTEM_PROMPT = f.read()
+
+# --- Tool definitions ---
+
+# Maps tool names to their function-calling schema for DeepSeek/OpenAI
+# Subset of the 42 engine tools that are most useful for scripture study
+TOOL_DEFINITIONS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_verse",
+            "description": "Look up a verse with text, gematria, connections, and quality info",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {"type": "string", "description": "Book ID (gen, exo, isa, matt, 1ne, etc.)"},
+                    "chapter": {"type": "integer"},
+                    "verse": {"type": "integer"},
+                    "version": {"type": "string", "description": "Bible version (WEB, KJV, etc.)"},
+                },
+                "required": ["book", "chapter", "verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_search",
+            "description": "Search for verses by keyword in English text",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term"},
+                    "book": {"type": "string", "description": "Optional book filter"},
+                    "limit": {"type": "integer", "default": 10},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_passage_guide",
+            "description": "Get pre-computed passage guide — all connections, gematria, and quality distribution",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_gematria",
+            "description": "Compute gematria for a Hebrew word or look up verses by gematria value",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "word": {"type": "string", "description": "Hebrew word (e.g., יהוה)"},
+                    "value": {"type": "integer", "description": "Look up verses with this gematria value"},
+                    "system": {"type": "string", "enum": ["standard", "ordinal", "reduced"], "default": "standard"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_connections",
+            "description": "Get all connections for a verse, with layer and quality filtering",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                    "layer": {"type": "string", "description": "Filter by connection layer"},
+                    "min_quality": {"type": "string", "description": "Minimum quality level (pattern, suggested, verified, scholarly)"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_intertext",
+            "description": "Get intertextual connections — quotations, allusions, echoes",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_pardes",
+            "description": "Show connections grouped by PaRDeS level (Pshat, Remez, Drash, Sod)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID"},
+                    "level": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "description": "Filter to one PaRDeS level"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_sod",
+            "description": "Explore hidden (Sod-level) patterns — atbash, acrostics, advanced gematria, hidden names",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse to analyze"},
+                    "atbash_word": {"type": "string", "description": "Hebrew word to decode via Atbash"},
+                    "acrostic_book": {"type": "string", "description": "Book ID to scan for acrostics"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_path",
+            "description": "Find the shortest connection path between two verses through the typed graph",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+                    "end": {"type": "string", "description": "Target verse ID"},
+                    "max_depth": {"type": "integer", "default": 3, "description": "Maximum path length in hops"},
+                },
+                "required": ["start", "end"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_reachable",
+            "description": "Find all verses reachable within N hops from a verse through the connection graph",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Starting verse ID"},
+                    "max_depth": {"type": "integer", "default": 3},
+                    "limit": {"type": "integer", "default": 50},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_entities",
+            "description": "Get entities (people, places, concepts) linked to a specific verse",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_shared_entities",
+            "description": "Find other verses that share entities (people, places) with this verse",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID"},
+                    "limit": {"type": "integer", "default": 20},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_hubs",
+            "description": "Find hub verses — those connecting to the most diverse other verses",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "min_connections": {"type": "integer", "default": 3},
+                    "layer": {"type": "string", "description": "Optional layer scope"},
+                    "limit": {"type": "integer", "default": 20},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_sources_by_scholar",
+            "description": "Get all connections from a specific scholar by tag",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scholar_tag": {"type": "string", "description": "Scholar tag (e.g., barker_temple, beale_temple, heiser_council)"},
+                    "scholar_name": {"type": "string", "description": "Scholar name (e.g., Margaret Barker)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_strongs",
+            "description": "Look up Strong's definition for a Hebrew or Greek word",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lemma": {"type": "string", "description": "Strong's number (e.g., H430, G26)"},
+                    "word": {"type": "string", "description": "Hebrew or Greek word text"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_interlinear",
+            "description": "Get word-by-word interlinear analysis with transliteration, Strong's, morphology",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {"type": "string", "description": "Book ID"},
+                    "chapter": {"type": "integer"},
+                    "verse": {"type": "integer"},
+                },
+                "required": ["book", "chapter", "verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_suggest",
+            "description": "Suggest an exploration path from a seed verse through the connection graph",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "seed_verse": {"type": "string"},
+                    "theme": {"type": "string", "description": "Optional theme (e.g., angel_of_yhwh, temple, covenant)"},
+                },
+                "required": ["seed_verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_info",
+            "description": "Get database statistics — total verses, connections per layer, quality distribution",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+
+    # ── Additional search & source tools ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_search_xlingual",
+            "description": "Search across Hebrew, Greek, AND English simultaneously using entity alignment",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "language": {"type": "string", "enum": ["all", "english", "hebrew", "greek"], "default": "all"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_entity_network",
+            "description": "Get all verses connected to a specific entity (person, place, or concept)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {"type": "string", "description": "Entity ID (e.g., 'person.abraham')"},
+                    "limit": {"type": "integer", "default": 50},
+                },
+                "required": ["entity"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_centrality",
+            "description": "Find the most central (best-connected) verses in the graph by degree centrality",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {"type": "string", "description": "Optional book ID to scope analysis"},
+                    "layer": {"type": "string", "description": "Optional layer scope"},
+                    "limit": {"type": "integer", "default": 10},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_consensus",
+            "description": "Get ecumenical consensus data — which traditions engage with this verse",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_disagreements",
+            "description": "Get interpretive disagreements — contradictory readings across traditions",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_sources",
+            "description": "Get source provenance breakdown for a verse's connections",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_sources_list",
+            "description": "List all scholars with connections in the graph",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_verse_text",
+            "description": "Get verse text in a specific Bible version",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                    "version": {"type": "string", "description": "Bible version (WEB, KJV, etc.)", "default": "WEB"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+
+    # ── Study guide tools ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_create",
+            "description": "Create a study guide",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "description": {"type": "string", "default": ""},
+                    "theme": {"type": "string", "default": ""},
+                    "seed_verse": {"type": "string", "default": ""},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_add_step",
+            "description": "Add a step to a study guide",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                    "step_number": {"type": "integer"},
+                    "verse_id": {"type": "string"},
+                    "title": {"type": "string", "default": ""},
+                    "explanation": {"type": "string", "default": ""},
+                },
+                "required": ["guide_id", "step_number", "verse_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_get",
+            "description": "Get a study guide with all its steps",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                },
+                "required": ["guide_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_list",
+            "description": "List study guides, optionally filtered by theme",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "theme": {"type": "string", "default": ""},
+                    "limit": {"type": "integer", "default": 10},
+                },
+            },
+        },
+    },
+
+    # ── Staging — propose new data (web UI / LLM → staging table → dev review) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_stage_connection",
+            "description": "Propose a new connection between two verses. Goes to staging for dev review before entering the graph.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "source_verse": {"type": "string", "description": "Source verse ID (gen.1.1)"},
+                    "target_verse": {"type": "string", "description": "Target verse ID"},
+                    "layer": {"type": "string", "description": "Connection layer"},
+                    "type_name": {"type": "string", "description": "Connection type (direct_quotation, allusion, etc.)"},
+                    "subtype": {"type": "string", "default": ""},
+                    "strength": {"type": "number", "default": 0.5},
+                    "confidence": {"type": "number", "default": 0.5},
+                    "reasoning": {"type": "string", "default": ""},
+                },
+                "required": ["source_verse", "target_verse", "layer", "type_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_stage_study",
+            "description": "Propose a study guide (goes to staging for dev review before publishing).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "description": {"type": "string", "default": ""},
+                    "theme": {"type": "string", "default": ""},
+                    "seed_verse": {"type": "string", "default": ""},
+                    "steps_json": {"type": "string", "description": "JSON array of steps: [{\"step_number\":1, \"verse\":\"gen.1.1\", \"title\":\"...\", \"explanation\":\"...\"}]"},
+                },
+                "required": ["title"],
+            },
+        },
+    },
+]
+
+# ── Staging tool names (recognized by the chat handler) ──
+STAGING_TOOLS = {"scripture_stage_connection", "scripture_stage_study"}
+
+
+def _compute_cost(usage: dict) -> dict:
+    """Estimate cost from DeepSeek usage response."""
+    p_in = usage.get("prompt_tokens", 0)
+    p_out = usage.get("completion_tokens", 0)
+    cache_hit = usage.get("prompt_cache_hit_tokens", 0)
+    cost_input = p_in * PRICING["input"] / 1_000_000
+    cost_output = p_out * PRICING["output"] / 1_000_000
+    cost_cache = cache_hit * PRICING["cache_hit"] / 1_000_000
+    return {
+        "total": round(cost_input + cost_output - cost_cache, 6),
+        "input": round(cost_input, 6),
+        "output": round(cost_output, 6),
+        "cache_saved": round(cost_cache, 6),
+    }
+
+
+class ChatRequest(BaseModel):
+    messages: list[dict]
+    model: str = DEEPSEEK_MODEL
+    max_tokens: int = 4096
+    temperature: float = 0.7
+    tools_enabled: bool = True
+
+
+@app.get("/api/v1/chat/instructions")
+def chat_instructions():
+    """Return the AGENTS-style system prompt and tool definitions for the chat LLM."""
+    return {
+        "ok": True,
+        "data": {
+            "system_prompt": CHAT_SYSTEM_PROMPT,
+            "tools": TOOL_DEFINITIONS,
+            "model": DEEPSEEK_MODEL,
+            "pricing": PRICING,
+        },
+    }
+
+
+@app.post("/api/v1/chat")
+async def llm_chat(body: ChatRequest):
+    """Proxy chat requests to DeepSeek API with function calling support.
+
+    If the LLM requests a tool call, the server executes it against the
+    scripture engine and feeds the result back to the LLM for a final response.
+    """
+    if not DEEPSEEK_API_KEY:
+        return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
+
+    import httpx
+    from lib.api import call_tool, list_tools
+    from lib.api.staging import stage_connection, stage_study
+    from lib.db import get_db
+
+    # Build messages with system prompt
+    msgs = list(body.messages)
+    if CHAT_SYSTEM_PROMPT:
+        # Prepend system instruction if not already present
+        if not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": CHAT_SYSTEM_PROMPT})
+
+    # Context budget management
+    # Total budget: 300K tokens. max_tokens capped at 30K, compaction trigger at 200K.
+    MAX_PROMPT_TOKENS = 200_000
+    KEEP_EXCHANGES = 15  # user+assistant pairs to keep before compaction
+    body.max_tokens = min(body.max_tokens, 30_000)
+
+    def estimate_tokens(text):
+        return len(text) // 4  # rough estimate: ~4 chars per token
+
+    def apply_context_budget(message_list):
+        """Trim message list to stay within budget. Strips tool traces first,
+        then keeps only the last KEEP_EXCHANGES user+assistant exchanges."""
+        total_est = sum(estimate_tokens(m.get("content", "") or "") for m in message_list)
+        if total_est <= MAX_PROMPT_TOKENS:
+            return message_list
+
+        # 1. Strip tool traces from messages older than the last KEEP_EXCHANGES exchanges
+        system = [m for m in message_list if m["role"] == "system"]
+        exchanges = [m for m in message_list if m["role"] != "system"]
+
+        # Count exchanges (user+assistant pairs)
+        exchange_count = 0
+        keep_from = len(exchanges)
+        for i in range(len(exchanges) - 1, -1, -1):
+            if exchanges[i]["role"] == "user":
+                exchange_count += 1
+                if exchange_count > KEEP_EXCHANGES:
+                    keep_from = i
+                    break
+
+        before = exchanges[:keep_from]
+        after = exchanges[keep_from:]
+
+        # Strip tool-related messages from the 'before' portion
+        cleaned_before = [m for m in before if m["role"] in ("user", "assistant") and m.get("content")]
+        cleaned_all = cleaned_before + after
+        total_est = sum(estimate_tokens(m.get("content", "") or "") for m in cleaned_all)
+
+        if total_est <= MAX_PROMPT_TOKENS:
+            return system + cleaned_all
+
+        # 2. Still over budget: keep only the most recent KEEP_EXCHANGES exchanges
+        if exchange_count > KEEP_EXCHANGES:
+            # Take the last KEEP_EXCHANGES exchanges from the 'after' portion
+            final_after = after
+            if len(exchanges) > KEEP_EXCHANGES * 2:
+                final_after = exchanges[-(KEEP_EXCHANGES * 2):]
+            else:
+                final_after = exchanges[-(KEEP_EXCHANGES * 2):]
+            system.append({
+                "role": "system",
+                "content": "[Earlier conversation context omitted to stay within token budget.]"
+            })
+            return system + final_after
+
+        return system + after
+
+    msgs = apply_context_budget(msgs)
+
+    # Prepare request payload
+    payload = {
+        "model": body.model,
+        "messages": msgs,
+        "max_tokens": body.max_tokens,
+        "temperature": body.temperature,
+    }
+    if body.tools_enabled:
+        payload["tools"] = TOOL_DEFINITIONS
+        payload["tool_choice"] = "auto"
+
+    tool_results = []
+    max_tool_rounds = 5  # prevent infinite loops
+
+    async def call_deepseek(req_payload):
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{DEEPSEEK_BASE}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=req_payload,
+            )
+            return resp.json()
+
+    data = await call_deepseek(payload)
+
+    if "error" in data:
+        return {"ok": False, "error": data["error"].get("message", str(data["error"]))}
+
+    rounds = 0
+    while data.get("choices") and rounds < max_tool_rounds:
+        choice = data["choices"][0]
+        msg = choice.get("message", {})
+
+        # Check for tool calls
+        tool_calls = msg.get("tool_calls")
+        if not tool_calls:
+            break  # No more tool calls, we have final response
+
+        # Execute each tool call
+        conn = get_db()
+        for tc in tool_calls:
+            fn_name = tc["function"]["name"]
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+
+            # Execute the tool
+            if not fn_name.startswith("scripture_"):
+                result = {"error": f"Unknown tool: {fn_name}"}
+            elif fn_name in STAGING_TOOLS:
+                # Staging tools go to staging table (LLM proposes, dev approves)
+                try:
+                    if fn_name == "scripture_stage_connection":
+                        result = stage_connection(conn, submitted_by="llm", **fn_args)
+                    elif fn_name == "scripture_stage_study":
+                        steps = json.loads(fn_args.pop("steps_json", "[]"))
+                        result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                    else:
+                        result = {"error": f"Unknown staging tool: {fn_name}"}
+                except Exception as e:
+                    result = {"error": str(e)}
+            else:
+                try:
+                    result = call_tool(fn_name, conn, **fn_args)
+                except Exception as e:
+                    result = {"error": str(e)}
+
+            # Truncate large results to avoid overflowing context
+            result_str = json.dumps(result, default=str, ensure_ascii=False)
+            if len(result_str) > 3000:
+                result_str = result_str[:3000] + '..." [truncated]'
+
+            # Also truncate the tool_result sent to frontend (saves context bandwidth + metadata bloat)
+            tool_result_data = result
+            if len(json.dumps(tool_result_data, default=str, ensure_ascii=False)) > 3000:
+                import copy
+                trunced = copy.copy(result) if isinstance(result, dict) else result
+                if isinstance(trunced, dict):
+                    # Return truncated instead of the full result
+                    tool_result_data = {"_truncated": True, "data_preview": result_str[:500]}
+                else:
+                    tool_result_data = {"_truncated": True, "data_preview": result_str[:500]}
+            tool_results.append({
+                "id": tc["id"],
+                "name": fn_name,
+                "args": fn_args,
+                "result": tool_result_data,
+            })
+
+            # Add tool result as a message
+            msgs.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [{
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": fn_name, "arguments": tc["function"]["arguments"]},
+                }],
+            })
+            msgs.append({
+                "role": "tool",
+                "content": result_str,
+                "tool_call_id": tc["id"],
+            })
+
+        conn.close()
+
+        # Apply budget check again — tool results grow the context each round
+        msgs = apply_context_budget(msgs)
+
+        # Call DeepSeek again with tool results
+        payload["messages"] = msgs
+        data = await call_deepseek(payload)
+
+        if "error" in data:
+            return {"ok": False, "error": data["error"].get("message", str(data["error"]))}
+
+        rounds += 1
+
+    # Final response
+    usage = data.get("usage", {})
+    choice = data["choices"][0] if data.get("choices") else None
+    if not choice:
+        return {"ok": False, "error": "No response from LLM"}
+
+    final_content = choice["message"]["content"] or ""
+    cost = _compute_cost(usage)
+
+    return {
+        "ok": True,
+        "data": {
+            "content": final_content,
+            "model": data.get("model", body.model),
+            "usage": {
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0),
+                "total_tokens": usage.get("total_tokens", 0),
+                "cache_hit_tokens": usage.get("prompt_cache_hit_tokens", 0),
+            },
+            "cost": cost,
+            "tool_results": tool_results,
+        },
+    }
+
+
+# ─── Staging API (read-only list endpoints for web UI) ───
+
+@app.get("/api/v1/staging/connections")
+def staging_list_connections(status: str = "pending", layer: str = "", limit: int = 50):
+    """List staging connections (proposed by LLM/UI)."""
+    try:
+        from lib.api.staging import list_staging_connections
+        conn = get_db()
+        kwargs = {"status": status, "limit": limit}
+        if layer:
+            kwargs["layer"] = layer
+        items = list_staging_connections(conn, **kwargs)
+        conn.close()
+        return {"ok": True, "data": items, "count": len(items)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/v1/staging/studies")
+def staging_list_studies(status: str = "submitted", limit: int = 20):
+    """List staging studies (proposed by LLM/UI)."""
+    try:
+        from lib.api.staging import list_staging_studies
+        conn = get_db()
+        items = list_staging_studies(conn, status, limit)
+        conn.close()
+        return {"ok": True, "data": items, "count": len(items)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ─── Static frontend serving (SPA with fallback) — MUST be last ───
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="frontend_assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        """Serve frontend SPA — try exact file, then index.html fallback."""
+        target = FRONTEND_DIR / full_path
+        if target.is_file():
+            return FileResponse(str(target))
+        return FileResponse(str(FRONTEND_DIR / "index.html"))

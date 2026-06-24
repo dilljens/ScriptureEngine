@@ -1,5 +1,5 @@
 """
-Connection type definitions — the 9 layers of the scripture connection graph.
+Connection type definitions — the 11 layers of the scripture connection graph.
 
 Each connection between two verses has:
   - layer:       top-level category
@@ -25,6 +25,7 @@ LAYERS = {
             "semantic_domain",   # Words in the same conceptual category
             "nomen_est_omen",    # Name meaning is significant to context
             "hendiadys",         # Two words expressing one idea
+            "keyword_linking",   # Hebrew catchwords linking adjacent passages (Isaiah keyword experiments)
         ]
     },
     "numerical": {
@@ -75,6 +76,7 @@ LAYERS = {
             "prophetic_fulfillment",   # Specific prediction → specific event
             "midrashic_connection",    # Interpretive re-use of earlier text
             "summarized",              # Earlier text summarized in later text
+            "semantic_domain",         # Cross-canon semantic domain connections
         ]
     },
     "textual": {
@@ -82,13 +84,14 @@ LAYERS = {
         "description": "Textual variants, manuscript traditions, translation differences",
         "types": [
             "textual_variant",         # Different manuscript reading
-            "jst_change",              # Joseph Smith Translation change
+            "jst_change",              # Joseph Smith Translation modified wording
+            "jst_addition",            # Joseph Smith Translation expanded text
             "septuagint_difference",   # Where LXX differs from MT
             "dead_sea_scrolls_variant",# DSS reading that differs
             "quotation_variant",       # NT quotes OT from LXX vs MT
             "peshitta_variant",        # Syriac Peshitta reading
             "vulgate_variant",         # Latin Vulgate reading
-            "inspired_revision",       # Modern prophetic revision
+            "inspired_revision",       # Modern prophetic revision (Moses, Abraham)
         ]
     },
     "geographic": {
@@ -131,6 +134,7 @@ LAYERS = {
             "prophetic_quote",         # Modern prophet cited this passage
             "critical_scholarship",    # Source/form/redaction critical view
             "lectio_divina",           # Monastic/spiritual reading tradition
+            "midrashic_connection",    # Interpretive re-use across traditions
         ]
     },
     "frequency": {
@@ -139,9 +143,10 @@ LAYERS = {
         "types": [
             "divine_name_distribution",
             "formula_count",
-            "seven_fold_pattern",
-            "forty_day_pattern",
-            "twelve_fold_pattern",
+            "7_fold_pattern",
+            "10_fold_pattern",
+            "12_fold_pattern",
+            "40_fold_pattern",
             "hapax_legomenon",
             "dislegomenon",
             "concentration_index",
@@ -164,6 +169,43 @@ LAYERS = {
             "object_type",              # Object as a type (Bronze Serpent→Cross, Manna→Bread of Life)
             "name_symbolic",            # Place/person names as symbols (Babylon=opposition, Zion=covenant)
             "temple_symbol",            # Temple/tabernacle furnishings and rituals as symbols
+        ]
+    },
+    "sod": {
+        "name": "Sod (Hidden / Temple)",
+        "description": "Deep temple-theology, mystical, ascent, and hidden connections — the inner meaning of the text",
+        "types": [
+            "temple_ascent",            # Mountain-of-the-Lord / ascent motif
+            "temple_microcosm",         # Temple as miniature creation/universe
+            "temple_veil",              # Veil as boundary between realms
+            "temple_creation",          # Temple building as creation act
+            "temple_eschaton",          # Temple as new creation goal
+            "temple_throne",            # Temple as divine throne room
+            "eden_temple",              # Garden of Eden as prototype temple
+            "angel_of_yhwh",            # Malach YHWH theophany / divine mediator
+            "divine_council",           # Heavenly council / sons of God
+            "divine_ascent",            # Ascent to heaven / visionary ascent
+            "holy_of_holies",           # Access to the Holy of Holies
+            "mercy_seat",               # Kapporet / mercy seat typology
+            "living_water",             # Temple as source of living water
+            "cosmic_mountain",          # Temple mount as cosmic mountain
+            "sacred_center",            # Temple as navel of the world / axis mundi
+            "primordial_creation",      # Creation temple themes from ancient near east
+            "kingdom_priesthood",       # Royal priesthood / Melchizedek
+            "divine_marriage",          # Temple as divine marriage / hieros gamos
+            "theosis",                  # Deification / becoming divine through covenant
+            "watchers_enedochic",       # Enochic / Watcher tradition connections
+            "dss_sectarian",            # Dead Sea Scrolls sectarian parallels
+            # Orphan types — already populated in DB by generators/seed data
+            "angelomorphic",            # Human-like divine figures / angelomorphic christology
+            "angelophany",              # Angelic theophany appearances
+            "divine_mediator",          # Figures who mediate between God and humanity
+            "heavenly_ascent",          # Ascent to heaven / visionary journeys
+            "heavenly_council",         # Heavenly council assembly scenes
+            "hekhalot",                 # Heavenly temple / palace traditions (hekhalot mysticism)
+            "merkabah",                 # Throne-chariot visions / merkabah mysticism
+            "theophany",                # Direct divine manifestation / theophany
+            "two_powers",               # Two powers in heaven tradition
         ]
     },
 }

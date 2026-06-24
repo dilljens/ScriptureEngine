@@ -67,6 +67,49 @@ GENERATOR_DEFS = [
         "requires": "gematria table (present)",
         "description": "Expands gematria connections beyond divine names to all sacred numbers and value matches",
     },
+
+    # ── Sod Layer Generators (Scholar Frameworks) ──
+
+    {
+        "name": "Divine Council — Heiser Framework",
+        "module_path": ".heiser_divine_council",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects divine council passages (sons of God, heavenly court, territorial spirits) following Michael Heiser's framework",
+    },
+    {
+        "name": "Temple-Creation — Beale Framework",
+        "module_path": ".beale_temple_creation",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects temple/tabernacle passages to creation typology following G.K. Beale's framework",
+    },
+    {
+        "name": "Angel of YHWH — Barker Framework",
+        "module_path": ".barker_angel_yhwh",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects Angel of YHWH, Day of Atonement, and temple microcosm passages following Margaret Barker's Temple Theology",
+    },
+    {
+        "name": "Merkabah — Orlov/Schäfer Framework",
+        "module_path": ".orlov_merkabah",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects throne visions, heavenly ascent, and two-powers passages following Orlov and Schäfer's merkabah tradition",
+    },
+    {
+        "name": "Temple Themes — Living Water, Throne, Veil, Creation, Center",
+        "module_path": ".temple_themes",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects passages for 5 empty sod types: living water, temple throne, temple veil, primordial creation, sacred center",
+    },
 ]
 
 # Import all generator modules

@@ -44,16 +44,16 @@ def contains_any(text, markers):
     return any(m.lower() in text.lower() for m in markers)
 
 
-def detect_inclusio(first_verses, last_verses, min_overlap=0.4):
+def detect_inclusio(first_verses, last_verses, min_overlap=0.2):
     """Detect inclusio — same/similar phrase bookending a passage."""
-    texts_first = [v.get("text_english", "") for v in first_verses[:3]]
-    texts_last = [v.get("text_english", "") for v in last_verses[-3:]]
+    texts_first = [v.get("text_english", "") for v in first_verses[:5]]
+    texts_last = [v.get("text_english", "") for v in last_verses[-5:]]
     first_words = set()
     for t in texts_first:
-        first_words.update(w for w in t.lower().split() if len(w) > 3)
+        first_words.update(w for w in t.lower().split() if len(w) > 2)
     last_words = set()
     for t in texts_last:
-        last_words.update(w for w in t.lower().split() if len(w) > 3)
+        last_words.update(w for w in t.lower().split() if len(w) > 2)
     if not first_words or not last_words:
         return None
     overlap = len(first_words & last_words) / max(len(first_words | last_words), 1)

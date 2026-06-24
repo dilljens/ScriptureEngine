@@ -1,328 +1,621 @@
 /**
  * LLM Chat Panel — triggered by Ctrl+P.
  *
- * Placeholder LLM: uses regex patterns to respond to queries.
- * Eventually swappable for a real API call.
- *
- * Can call "functions":
- *   - search(q) → find verses by keyword
- *   - lookup(ref) → show a verse
- *   - gematria(word) → get Hebrew word value
- *   - navigate(book, chapter) → open a chapter tab
- *   - open_verses(book, chapter, verses) → open tab with highlights
+ * Auto-saves every message to the server for persistence and review.
+ * Uses react-markdown for content rendering with clickable VerseChips.
  */
 
-import React, { useState, useEffect, useRef } from 'react'
-import VersePreviewCard from './VersePreviewCard'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import VerseChip from './VerseChip'
+import VersePopup from './VersePopup'
+import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
 
-// ── Placeholder "LLM" — regex-based responses ──
+// ── Verse ref detection ──
 
-const SCRIPTURE_DB = [
-  // Faith
-  { ref: 'heb.11.1', text: 'Now faith is the substance of things hoped for, the evidence of things not seen.', book: 'heb', chapter: 11, verse: 1, keywords: ['faith', 'substance', 'hope'] },
-  { ref: 'heb.11.6', text: 'But without faith it is impossible to please him: for he that cometh to God must believe that he is, and that he is a rewarder of them that diligently seek him.', book: 'heb', chapter: 11, verse: 6, keywords: ['faith', 'god', 'believe'] },
-  { ref: 'alma.32.21', text: 'And now as I said concerning faith—faith is not to have a perfect knowledge of things; therefore if ye have faith ye hope for things which are not seen, which are true.', book: 'alma', chapter: 32, verse: 21, keywords: ['faith', 'hope', 'knowledge'] },
-  { ref: 'moroni.7.26', text: 'And after that he came men also were saved by faith in his name; and by faith, they become the sons of God.', book: 'moro', chapter: 7, verse: 26, keywords: ['faith', 'saved', 'god'] },
-  { ref: 'acts.16.31', text: 'And they said, Believe on the Lord Jesus Christ, and thou shalt be saved, and thy house.', book: 'acts', chapter: 16, verse: 31, keywords: ['believe', 'faith', 'saved'] },
-  { ref: 'rom.10.17', text: 'So then faith cometh by hearing, and hearing by the word of God.', book: 'rom', chapter: 10, verse: 17, keywords: ['faith', 'hearing', 'word'] },
-  { ref: '2cor.5.7', text: 'For we walk by faith, not by sight:', book: '2cor', chapter: 5, verse: 7, keywords: ['faith', 'walk', 'sight'] },
-  { ref: 'alma.32.27', text: 'But behold, if ye will awake and arouse your faculties, even to an experiment upon my words, and exercise a particle of faith, yea, even if ye can no more than desire to believe, let this desire work in you.', book: 'alma', chapter: 32, verse: 27, keywords: ['faith', 'desire', 'believe', 'experiment'] },
+const VERSE_REF_RE = /([a-z0-9_]+)\.(\d+)\.(\d+)/gi
 
-  // Grace
-  { ref: 'eph.2.8', text: 'For by grace are ye saved through faith; and that not of yourselves: it is the gift of God:', book: 'eph', chapter: 2, verse: 8, keywords: ['grace', 'faith', 'saved', 'gift'] },
-  { ref: '2cor.12.9', text: 'And he said unto me, My grace is sufficient for thee: for my strength is made perfect in weakness.', book: '2cor', chapter: 12, verse: 9, keywords: ['grace', 'strength', 'weakness'] },
-  { ref: 'moroni.10.32', text: 'Yea, come unto Christ, and be perfected in him, and deny yourselves of all ungodliness; and if ye shall deny yourselves of all ungodliness and love God with all your might, mind and strength, then is his grace sufficient for you.', book: 'moro', chapter: 10, verse: 32, keywords: ['grace', 'christ', 'perfect'] },
-  { ref: 'jacob.4.7', text: 'Nevertheless, the Lord God showeth us our weakness that we may know that it is by his grace, and his great condescensions unto the children of men, that we have power to do these things.', book: 'jacob', chapter: 4, verse: 7, keywords: ['grace', 'weakness', 'god'] },
+/** Pre-process markdown to wrap verse refs in a custom placeholder */
+function preprocessVerses(markdown) {
+  if (!markdown) return ''
+  // Wrap verse refs like gen.1.1 in a custom marker that we can detect
+  return markdown.replace(
+    VERSE_REF_RE,
+    (match, book, ch, vs) => `%%%VERSE:${book.toLowerCase()}.${ch}.${vs}%%%`
+  )
+}
 
-  // Covenant
-  { ref: 'gen.17.7', text: 'And I will establish my covenant between me and thee and thy seed after thee in their generations for an everlasting covenant, to be a God unto thee, and to thy seed after thee.', book: 'gen', chapter: 17, verse: 7, keywords: ['covenant', 'everlasting', 'seed'] },
-  { ref: 'exo.19.5', text: 'Now therefore, if ye will obey my voice indeed, and keep my covenant, then ye shall be a peculiar treasure unto me above all people: for all the earth is mine:', book: 'exo', chapter: 19, verse: 5, keywords: ['covenant', 'obey', 'treasure'] },
-  { ref: 'jer.31.33', text: 'But this shall be the covenant that I will make with the house of Israel; After those days, saith the Lord, I will put my law in their inward parts, and write it in their hearts; and will be their God, and they shall be my people.', book: 'jer', chapter: 31, verse: 33, keywords: ['covenant', 'heart', 'law'] },
-  { ref: 'dc.84.57', text: 'And they shall remain under this condemnation until they repent and remember the new covenant, even the Book of Mormon and the former commandments which I have given them.', book: 'dc', section: 84, verse: 57, keywords: ['covenant', 'book of mormon'] },
-]
-
-function llmRespond(query) {
-  const q = query.toLowerCase()
-
-  // Help / commands
-  if (/^(help|\?|commands)/.test(q)) {
-    return {
-      type: 'text',
-      content: `I can search scriptures and open tabs with results.
-
-**Available commands:**
-• Search: \`find scriptures about [topic]\` / \`search for [keyword]\`
-• Lookup: \`show me [book] [chapter]:[verse]\`
-• Navigate: \`go to [book] [chapter]\`
-• Open: \`open [book] [chapter] as tab\`
-• Analyze: \`what is the gematria of [word]\`
-
-**Try:** "find scriptures about faith" or "show me isaiah 55:6"`
-    }
-  }
-
-  // Search by topic/keyword
-  const searchMatch = q.match(/(?:find|search|show|lookup|verses about|scriptures about)\s+(.+)/i)
-  if (searchMatch) {
-    const topic = searchMatch[1].toLowerCase()
-    const results = SCRIPTURE_DB.filter(s =>
-      s.keywords.some(k => topic.includes(k) || k.includes(topic))
-      || s.text.toLowerCase().includes(topic)
-    )
-
-    if (results.length === 0) {
-      return {
-        type: 'text',
-        content: `I don't have specific results for "${topic}" in my local database yet. Try: faith, grace, covenant, hope, love, or a specific verse reference.`
-      }
-    }
-
-    return {
-      type: 'search_results',
-      topic,
-      results: results.map(r => ({
-        ref: r.ref,
-        text: r.text.slice(0, 120) + '...',
-        book: r.book,
-        chapter: r.chapter,
-        verse: r.verse,
-      })),
-      content: `Found **${results.length}** scripture${results.length > 1 ? 's' : ''} about "${topic}":\n\n` +
-        results.map(r => `• **${r.ref}** — ${r.text.slice(0, 100)}...`).join('\n'),
-    }
-  }
-
-  // Lookup verse
-  const lookupMatch = q.match(/(?:show|open|lookup|read|go to)\s+(\w[\w.]*)\s*(\d+)?:*(\d+)?/i)
-  if (lookupMatch) {
-    let book = lookupMatch[1].toLowerCase()
-    let chapter = parseInt(lookupMatch[2]) || 1
-    const verse = parseInt(lookupMatch[3])
-
-    // Handle "isaiah 55:6" format
-    const altMatch = q.match(/(\w+)\s+(\d+):(\d+)/i)
-    if (altMatch) {
-      book = altMatch[1].toLowerCase()
-      chapter = parseInt(altMatch[2])
-    }
-
-    return {
-      type: 'navigate',
-      book: book === 'isaiah' ? 'isa' : book,
-      chapter,
-      verse,
-      content: `Opening **${book === 'isaiah' ? 'isa' : book} ${chapter}${verse ? ':' + verse : ''}** as a new tab.`,
-    }
-  }
-
-  // Gematria
-  const gematriaMatch = q.match(/(?:gematria|value|number)\s+(?:of\s+)?(.+)/i)
-  if (gematriaMatch) {
-    return {
-      type: 'gematria',
-      word: gematriaMatch[1].trim(),
-      content: `The gematria lookup for "${gematriaMatch[1].trim()}" would show its numeric value. (Full integration coming with real API.)`,
-    }
-  }
-
-  // Fallback
-  return {
-    type: 'text',
-    content: `I can search scriptures by topic or look up verses. Try:\n\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\`\n• \`help\` for all commands`,
-  }
+/** Check if a line looks like a standalone verse reference (not inside a code block or heading) */
+function isStandaloneVerse(line) {
+  return VERSE_REF_RE.test(line)
 }
 
 
 // ── Chat Panel Component ──
 
-export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage }) {
+export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
+  const [sessionId, setSessionId] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [showRecent, setShowRecent] = useState(false)
+  const [recentSessions, setRecentSessions] = useState([])
+  const [loadingRecent, setLoadingRecent] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [popupRef, setPopupRef] = useState(null)
+  const [editingIdx, setEditingIdx] = useState(null)   // index of user message being edited, or null
+  const [editText, setEditText] = useState('')          // text while editing
+  const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const sessionRef = useRef(null)
+  const titleSet = useRef(false)
 
+  useEffect(() => { sessionRef.current = sessionId }, [sessionId])
+
+  // ── Initialize session on mount ──
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100)
-      if (messages.length === 0) {
-        setMessages([{
-          role: 'assistant',
-          content: 'Hi! I can search scriptures and open tabs. Try: **find scriptures about faith** or **show me isaiah 55:6**',
-          timestamp: new Date().toISOString(),
-        }])
-        // Auto-send initial message if provided (from /chat command)
-        if (initialMessage) {
-          setTimeout(() => sendMessage(initialMessage), 300)
-        }
+    if (!open) return
+
+    const init = async () => {
+      setRestoring(true)
+      const storedId = loadSessionId()
+      if (storedId) {
+        try {
+          const res = await conversationGet(storedId)
+          if (res.ok && res.data) {
+            const s = res.data
+            setSessionId(storedId)
+            const restored = [
+              { role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() },
+              ...s.messages.map(m => ({
+                role: m.role, content: m.content, timestamp: m.timestamp,
+              })),
+            ]
+            setMessages(restored)
+            titleSet.current = s.messages.length > 0
+            setRestoring(false)
+            if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
+            return
+          }
+        } catch {}
+        clearSessionId()
       }
+
+      try {
+        const res = await conversationCreate({ title: 'Chat Session' })
+        if (res.ok && res.data) {
+          setSessionId(res.data.id)
+          saveSessionId(res.data.id)
+        }
+      } catch {}
+
+      setMessages([{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }])
+      titleSet.current = false
+      setRestoring(false)
+      if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
     }
+    init()
   }, [open])
 
+  function welcomeMessage() {
+    return `Hi! I'm connected to **deepseek-v4-flash** with **32 tools** to explore the canon.
+
+Try asking:
+- *"Look up gen.1.1 and explain its gematria"*
+- *"What connections does isa.6.1 have to the NT?"*
+- *"Trace the Son of Man from Daniel to Jesus"*
+- *"Find the path between gen.1.1 and john.1.1"*
+
+Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to see the verse.`
+  }
+
+  // ── Scroll on new messages ──
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = (text) => {
-    if (!text.trim()) return
-    const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
-    setWaiting(true)
+  // ── Auto-title ──
+  const autoTitle = useCallback(async (text) => {
+    if (titleSet.current || !sessionRef.current) return
+    titleSet.current = true
+    const title = text.length > 60 ? text.slice(0, 57) + '...' : text
+    try {
+      await fetch(`/api/v1/conversations/${sessionRef.current}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      })
+    } catch {}
+  }, [])
 
-    // Simulate LLM delay
-    setTimeout(() => {
-      const response = llmRespond(text)
-      const assistantMsg = {
-        role: 'assistant',
-        content: response.content,
-        data: response,
-        timestamp: new Date().toISOString(),
-      }
-      setMessages(prev => [...prev, assistantMsg])
-      setWaiting(false)
+  // ── Save message ──
+  const saveMessage = useCallback(async (role, content, metadata) => {
+    const sid = sessionRef.current
+    if (!sid) return
+    setSaving(true)
+    try { await conversationAddMessage(sid, role, content, metadata) } catch {}
+    setSaving(false)
+  }, [])
 
-      // Auto-open tab for navigate/search_results type
-      if (response.type === 'navigate') {
-        onNavigate(response.book, response.chapter)
-      } else if (response.type === 'search_results' && response.results) {
-        // Group results by (book, chapter) and open tabs
-        const groups = {}
-        response.results.forEach(r => {
-          const key = `${r.book}.${r.chapter}`
-          if (!groups[key]) groups[key] = { book: r.book, chapter: r.chapter, verses: [] }
-          groups[key].verses.push(r.verse)
-        })
-        Object.values(groups).forEach(g => {
-          onOpenTab(g.book, g.chapter, {
-            label: `${g.book}.${g.chapter} — ${g.verses.join(', ')}`,
-            highlights: g.verses,
-          })
-        })
-      }
-    }, 500)
+  // ── Clipboard helpers ──
+  const copyToClipboard = async (text, idx) => {
+    try { await navigator.clipboard.writeText(text) } catch {}
+    setCopiedIdx(idx)
+    setTimeout(() => setCopiedIdx(null), 1500)
   }
 
-  if (!open) return null
+  const formatConversation = () => {
+    return messages
+      .filter(m => m.role !== 'system')
+      .map(m => `**${m.role === 'user' ? 'You' : 'Assistant'}:** ${m.content}`)
+      .join('\n\n---\n\n')
+  }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pb-4 pointer-events-none">
-      <div className="w-full max-w-2xl mx-4 bg-white rounded-xl shadow-2xl border border-neutral-200 pointer-events-auto flex flex-col max-h-[60vh]"
-        onClick={e => e.stopPropagation()}>
+  const copyAllMessages = () => copyToClipboard(formatConversation(), -1)
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-          <h2 className="text-sm font-semibold text-neutral-800">Scripture Chat</h2>
-          <button onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-sm px-2 py-0.5 rounded hover:bg-neutral-100">
-            ESC close
-          </button>
-        </div>
+  // ── Edit helpers ──
+  const startEditing = (idx, content) => {
+    setEditingIdx(idx)
+    setEditText(content)
+  }
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[200px] max-h-[40vh]">
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed
-                ${msg.role === 'user'
-                  ? 'bg-indigo-100 text-indigo-900'
-                  : 'bg-neutral-100 text-neutral-800'
-                }`}>
-                {/* Render markdown-style text */}
-                <div className="prose prose-sm max-w-none [&_strong]:font-semibold [&_em]:italic">
-                  {msg.content.split('\n').map((line, j) => (
-                    <p key={j} className="my-0.5">{renderInline(line)}</p>
-                  ))}
+  const cancelEditing = () => {
+    setEditingIdx(null)
+    setEditText('')
+  }
+
+  // Shared core: send message list to LLM, append assistant response
+  const performChat = async (allMessages) => {
+    setWaiting(true)
+    try {
+      const res = await chat(allMessages, { max_tokens: 30000 })
+      if (res.ok && res.data) {
+        const { content, usage, cost, model, tool_results: toolResults } = res.data
+        const assistantMsg = { role: 'assistant', content, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
+        setMessages(prev => [...prev, assistantMsg])
+        saveMessage('assistant', content, { usage, cost, model, toolResults })
+      } else {
+        const errorMsg = res?.error || 'Unknown error'
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `⚠️ **LLM unavailable**: ${errorMsg}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
+          timestamp: new Date().toISOString(),
+        }])
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `⚠️ **Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
+        timestamp: new Date().toISOString(),
+      }])
+    }
+    setWaiting(false)
+  }
+
+  // ── Send message (append to end) ──
+  const sendMessage = async (text) => {
+    if (!text.trim()) return
+    const timestamp = new Date().toISOString()
+    const userMsg = { role: 'user', content: text, timestamp }
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    autoTitle(text)
+    saveMessage('user', text)
+
+    const allMessages = [
+      ...messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: text },
+    ]
+    await performChat(allMessages)
+  }
+
+  // ── Edit + resend (replace from a given index) ──
+  const handleResendEdit = async (idx, newText) => {
+    if (!newText.trim()) return
+    const timestamp = new Date().toISOString()
+    const userMsg = { role: 'user', content: newText, timestamp }
+
+    // Build message list from before the edited message
+    const priorMessages = messages.slice(0, idx).filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content }))
+    const allMessages = [...priorMessages, { role: 'user', content: newText }]
+
+    // Update state: truncate to before the edited message, then add new user message
+    setMessages(prev => [...prev.slice(0, idx), userMsg])
+    setEditingIdx(null)
+    setInput('')
+
+    await performChat(allMessages)
+  }
+
+  // ── Load recent sessions ──
+  const loadRecent = async () => {
+    setLoadingRecent(true)
+    try {
+      const res = await conversationList(1, 20)
+      if (res.ok && res.data) setRecentSessions(res.data.sessions || [])
+    } catch {}
+    setLoadingRecent(false)
+    setShowRecent(true)
+  }
+
+  // ── Restore session ──
+  const restoreSession = async (sid) => {
+    try {
+      const res = await conversationGet(sid)
+      if (res.ok && res.data) {
+        const s = res.data
+        setSessionId(sid)
+        saveSessionId(sid)
+        titleSet.current = s.messages.length > 0
+        setMessages([
+          { role: 'assistant', content: `_Restored: **${s.title || 'Untitled'}**_`, timestamp: new Date().toISOString() },
+          ...s.messages.map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
+        ])
+      }
+    } catch {}
+    setShowRecent(false)
+  }
+
+  const handleClose = () => { clearSessionId(); onClose() }
+
+  if (variant === 'overlay' && !open) return null
+
+  // ── Markdown components with verse chip integration ──
+  const markdownComponents = {
+    p: ({ children }) => (
+      <p className="my-0.5 text-sm leading-relaxed">{children}</p>
+    ),
+    strong: ({ children }) => (
+      <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{children}</strong>
+    ),
+    em: ({ children }) => (
+      <em className="italic text-neutral-700 dark:text-neutral-300">{children}</em>
+    ),
+    code: ({ className, children, ...props }) => {
+      const isInline = !className
+      return isInline ? (
+        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-[10px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700" {...props}>
+          {children}
+        </code>
+      ) : (
+        <pre className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-3 my-1.5 overflow-x-auto text-[11px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+          <code className={className} {...props}>{children}</code>
+        </pre>
+      )
+    },
+    blockquote: ({ children }) => (
+      <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic">
+        {children}
+      </blockquote>
+    ),
+    h3: ({ children }) => (
+      <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 mt-3 mb-1 first:mt-0 text-sm">{children}</h3>
+    ),
+    ul: ({ children }) => (
+      <ul className="list-disc list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ul>
+    ),
+    ol: ({ children }) => (
+      <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ol>
+    ),
+    hr: () => <hr className="my-2 border-neutral-200 dark:border-neutral-700" />,
+  }
+
+  // ── Render message content with markdown + verse chips ──
+  function renderContent(content) {
+    if (!content) return null
+
+    // Pre-process: replace verse refs with custom markers
+    const processed = preprocessVerses(content)
+
+    // If no verse refs, just render markdown
+    if (processed === content) {
+      return (
+        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {content}
+        </Markdown>
+      )
+    }
+
+    // Split on verse markers and render with chips
+    const parts = processed.split(/(%%%VERSE:[^%]+%%%)/g)
+    const elements = parts.map((part, i) => {
+      const verseMatch = part.match(/%%%VERSE:([^%]+)%%%/)
+      if (verseMatch) {
+        const ref = verseMatch[1]
+        return (
+          <span key={i} className="inline-block mx-0.5 align-middle">
+            <VerseChip ref={ref} onOpenCard={setPopupRef} />
+          </span>
+        )
+      }
+      // Render markdown for text parts
+      return (
+        <span key={i} className="inline">
+          <Markdown remarkPlugins={[remarkGfm]} components={{
+            ...markdownComponents,
+            // Prevent wrapping in <p> for inline fragments
+            p: ({ children }) => <>{children}</>,
+          }}>
+            {part}
+          </Markdown>
+        </span>
+      )
+    })
+
+    return <div className="space-y-1">{elements}</div>
+  }
+
+  // ── Shared chat body (messages + input) ──
+  const chatBody = (
+    <>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[300px]">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            {/* Edit mode: textarea for user messages */}
+            {msg.role === 'user' && editingIdx === i ? (
+              <div className="w-full max-w-[85%] flex flex-col gap-1.5">
+                <textarea
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); return }
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleResendEdit(i, editText); return }
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border border-blue-400 dark:border-blue-500 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex items-center gap-2 text-[10px]">
+                  <button onClick={() => handleResendEdit(i, editText)}
+                    className="px-2.5 py-1 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 cursor-pointer transition-colors">
+                    Resend
+                  </button>
+                  <button onClick={cancelEditing}
+                    className="px-2.5 py-1 rounded text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer transition-colors">
+                    Cancel
+                  </button>
+                  <span className="text-neutral-400 dark:text-neutral-500 italic">Ctrl+Enter to resend · Esc to cancel</span>
                 </div>
+              </div>
+            ) : (
+              <div className={`group relative max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm
+                ${msg.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
+                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
+                }`}>
+                {/* Copy button (top-right, on hover) — for assistant messages */}
+                {msg.role === 'assistant' && (
+                  <button onClick={() => copyToClipboard(msg.content, i)}
+                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    title="Copy message">
+                    {copiedIdx === i ? (
+                      <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
+                    ) : (
+                      <span className="text-neutral-400 dark:text-neutral-400">📋</span>
+                    )}
+                  </button>
+                )}
+                {renderContent(msg.content)}
 
-                {/* Verse preview cards for search results */}
-                {msg.data?.type === 'search_results' && msg.data.results && (
-                  <div className="mt-2 space-y-2">
-                    {/* Group results by (book, chapter) */}
-                    {(() => {
-                      const groups = {}
-                      msg.data.results.forEach(r => {
-                        const key = `${r.book}.${r.chapter}`
-                        if (!groups[key]) groups[key] = { book: r.book, chapter: r.chapter, verses: [] }
-                        groups[key].verses.push(r.verse || 1)
-                      })
-                      const refs = Object.values(groups).map(g =>
-                        g.verses.map(v => `${g.book}.${g.chapter}.${v}`)
-                      ).flat()
-
-                      return (
-                        <>
-                          <VersePreviewCard refs={refs} onNavigate={onNavigate} maxHeight="10rem" />
-                          <button onClick={() => {
-                              Object.values(groups).forEach(g => {
-                                onOpenTab(g.book, g.chapter, {
-                                  label: `${g.book}.${g.chapter}`,
-                                  highlights: g.verses,
-                                })
-                              })
-                            }}
-                            className="w-full text-[10px] text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer underline text-center">
-                            Open all as tabs →
-                          </button>
-                        </>
-                      )
-                    })()}
+                {/* Tool results */}
+                {msg.toolResults && msg.toolResults.length > 0 && (
+                  <div className="mt-2 space-y-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-700">
+                    {msg.toolResults.map((tr, ti) => (
+                      <details key={ti} className="group">
+                        <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1.5 select-none">
+                          <span className="text-blue-500">🔧</span>
+                          <span className="font-medium">{tr.name}</span>
+                          <span className="text-[8px] text-neutral-300 dark:text-neutral-600 truncate max-w-[120px]">
+                            {JSON.stringify(tr.args).slice(0, 80)}
+                          </span>
+                          <span className="ml-auto text-[9px] text-neutral-300 dark:text-neutral-600 group-open:rotate-90 transition-transform">▶</span>
+                        </summary>
+                        <div className="mt-1 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-[10px] font-mono text-neutral-600 dark:text-neutral-400 max-h-32 overflow-y-auto whitespace-pre-wrap break-all">
+                          {JSON.stringify(tr.result, null, 2).slice(0, 1000)}
+                          {JSON.stringify(tr.result, null, 2).length > 1000 && '\n... (truncated)'}
+                        </div>
+                      </details>
+                    ))}
                   </div>
                 )}
 
-                {/* Action buttons for navigate */}
-                {msg.data?.type === 'navigate' && (
-                  <div className="mt-1 text-xs text-indigo-600">
-                    ✓ Opened in new tab
-                  </div>
+                {/* Token display */}
+                {msg.usage && (() => {
+                  const total = msg.usage.total_tokens || 1
+                  const promptPct = Math.round(msg.usage.prompt_tokens / total * 100)
+                  const compPct = Math.round(msg.usage.completion_tokens / total * 100)
+                  return (
+                    <div className="flex items-center gap-2 mt-1.5 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">
+                      <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden max-w-[60px]">
+                        <div className="h-full flex">
+                          <div className="bg-blue-400 dark:bg-blue-500 h-full" style={{ width: `${promptPct}%` }} />
+                          <div className="bg-green-400 dark:bg-green-500 h-full" style={{ width: `${compPct}%` }} />
+                        </div>
+                      </div>
+                      <span>{msg.usage.prompt_tokens} in</span>
+                      <span>{msg.usage.completion_tokens} out</span>
+                      {msg.cost?.total !== undefined && (
+                        <span className="text-amber-600 dark:text-amber-400">${Number(msg.cost.total).toFixed(5)}</span>
+                      )}
+                      {msg.model && (
+                        <span className="text-[8px] text-neutral-300 dark:text-neutral-600 truncate max-w-[80px]">{msg.model.replace('deepseek-', '')}</span>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Edit button (bottom-right, on hover) — for user messages (not while waiting) */}
+                {msg.role === 'user' && !waiting && (
+                  <button onClick={() => startEditing(i, msg.content)}
+                    className="absolute -bottom-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    title="Edit message">
+                    ✏️
+                  </button>
                 )}
               </div>
+            )}
+          </div>
+        ))}
+
+        {/* Thinking indicator */}
+        {waiting && (
+          <div className="flex justify-start">
+            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 italic flex items-center gap-2 shadow-sm">
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </span>
+              <span>Thinking</span>
             </div>
-          ))}
-          {waiting && (
-            <div className="flex justify-start">
-              <div className="bg-neutral-100 rounded-lg px-3.5 py-2.5 text-sm text-neutral-500 italic">
-                Thinking...
-              </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex gap-2 shrink-0">
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Escape' && variant === 'overlay') { handleClose(); return }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
+          }}
+          placeholder="Ask about scriptures..."
+          className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
+          disabled={waiting || restoring}
+        />
+        <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium
+            hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors">
+          Send
+        </button>
+      </div>
+    </>
+  )
+
+  // ── Shared overlays (Verse popup + Recent sessions) ──
+  const overlays = (
+    <>
+      {popupRef && (
+        <VersePopup
+          verseRef={popupRef}
+          onClose={() => setPopupRef(null)}
+          onNavigate={(book, chapter) => {
+            setPopupRef(null)
+            onNavigate(book, chapter)
+          }}
+        />
+      )}
+      {showRecent && (
+        <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[10vh]"
+          onClick={() => setShowRecent(false)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-md mx-4 max-h-[50vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
+              <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Recent Conversations</h3>
+              <button onClick={() => setShowRecent(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm px-2 py-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">Close</button>
             </div>
-          )}
-          <div ref={messagesEndRef} />
+            {loadingRecent && <div className="px-4 py-8 text-center text-sm text-neutral-400 italic">Loading...</div>}
+            {!loadingRecent && recentSessions.length === 0 && <div className="px-4 py-8 text-center text-sm text-neutral-400">No conversations yet</div>}
+            {!loadingRecent && recentSessions.map(s => (
+              <button key={s.id} onClick={() => restoreSession(s.id)}
+                className="w-full text-left px-4 py-3 border-b border-neutral-100 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+                <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">{s.title || 'Untitled'}</div>
+                <div className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+                  {s.message_count || 0} messages · {s.created_at?.slice(0, 10) || ''}
+                  {s.is_starred ? ' · ⭐' : ''}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
+      )}
+    </>
+  )
 
-        {/* Input */}
-        <div className="px-4 py-3 border-t border-neutral-200 flex gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Escape') { onClose(); return }
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
-            }}
-            placeholder="Ask about scriptures..."
-            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-            disabled={waiting}
-          />
-          <button onClick={() => sendMessage(input)} disabled={waiting || !input.trim()}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium
-              hover:bg-indigo-700 disabled:bg-neutral-300 disabled:cursor-not-allowed cursor-pointer transition-colors">
-            Send
-          </button>
+  // ── Tab variant: inline in main content ──
+  if (variant === 'tab') {
+    return (
+      <div className="flex flex-col h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Chat</h2>
+            {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
+            {restoring && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">restoring...</span>}
+          </div>
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button onClick={copyAllMessages}
+                className="text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer px-2 py-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                title="Copy all messages">
+                {copiedIdx === -1 ? '✓ Copied' : 'Copy all'}
+              </button>
+            )}
+            <button onClick={loadRecent}
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+              Recent
+            </button>
+          </div>
+        </div>
+        {chatBody}
+        {overlays}
+      </div>
+    )
+  }
+
+  // ── Overlay variant: fixed position popup ──
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-end justify-center pb-4 pointer-events-none">
+        <div className="w-full max-w-3xl mx-4 bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 pointer-events-auto flex flex-col max-h-[80vh]"
+          onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Scripture Chat</h2>
+              {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
+              {restoring && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">restoring...</span>}
+            </div>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button onClick={copyAllMessages}
+                  className="text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer px-2 py-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  title="Copy all messages">
+                  {copiedIdx === -1 ? '✓ Copied' : 'Copy all'}
+                </button>
+              )}
+              <button onClick={loadRecent}
+                className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                Recent
+              </button>
+              <button onClick={handleClose}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm px-2 py-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                ESC close
+              </button>
+            </div>
+          </div>
+
+          {chatBody}
         </div>
       </div>
-    </div>
+      {overlays}
+    </>
   )
 }
 
-// Simple inline renderer for bold/italic
-function renderInline(text) {
-  // Bold: **text**
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>
-    }
-    return part
-  })
-}
+// ── Persistence helpers ──
+
+const STORAGE_KEY = 'current_chat_session'
+function loadSessionId() { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
+function saveSessionId(id) { try { localStorage.setItem(STORAGE_KEY, id) } catch {} }
+function clearSessionId() { try { localStorage.removeItem(STORAGE_KEY) } catch {} }
