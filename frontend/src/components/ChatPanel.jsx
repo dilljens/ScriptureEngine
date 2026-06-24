@@ -57,20 +57,24 @@ function preprocessVerses(markdown) {
   if (!markdown) return ''
   let result = markdown
 
-  // 1. Replace **📖 Book Name ch:vs** or 📖 Book Name ch:vs with a clean verse marker
-  // Strips surrounding ** and the 📖 emoji so only the clickable text remains
+  // Match criteria: must be a known book name from BOOK_NAME_MAP
+  function tryReplaceBookRef(match, bookName, chapter, verseStr) {
+    const bookId = resolveBookName(bookName)
+    if (!bookId) return match // not a known book, leave as-is
+    const firstVerse = verseStr ? verseStr.split(/[-,]/)[0] : '1'
+    return `%%%VERSE:${bookId}.${chapter}.${firstVerse}%%%`
+  }
+
+  // 1. Match "Book Name ch:vs" or "Book Name ch.vs" with optional leading ** or 📖
+  // Handles: Genesis 1:1, Isaiah 2:3-4, **📖 Genesis 1:1**, 📖Genesis 1.1, etc.
   result = result.replace(
-    /\*\*?📖\s+([A-Za-z0-9\s—–-]+?)\s*(\d+)(?::(\d+))?\*\*?/g,
-    (match, bookName, chapter, verseStr) => {
-      const bookId = resolveBookName(bookName)
-      if (!bookId) return match
-      return `%%%VERSE:${bookId}.${chapter}.${verseStr || '1'}%%%`
-    }
+    /\*{0,2}📖?\s*([A-Za-z][A-Za-z\s—–-]+?)\s*(\d+)(?:([:.])(\d+(?:[-,]\d+)*))?\*{0,2}/g,
+    (match, bookName, chapter, _sep, verseStr) => tryReplaceBookRef(match, bookName, chapter, verseStr)
   )
 
-  // 2. Replace gen.1.1 format (fallback)
+  // 2. Replace gen.1.1 or gen:1:1 format (fallback)
   result = result.replace(
-    VERSE_REF_RE,
+    /([a-z0-9_]+)[.:](\d+)[.:](\d+)/gi,
     (match, book, ch, vs) => `%%%VERSE:${book.toLowerCase()}.${ch}.${vs}%%%`
   )
 
@@ -225,9 +229,13 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
       const res = await chat(allMessages, { max_tokens: 30000 })
       if (res.ok && res.data) {
         const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
-        const assistantMsg = { role: 'assistant', content, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
+        // If the LLM returned only tool calls with no content, build a summary
+        const effectiveContent = content || (toolResults?.length > 0
+          ? `Looked up ${toolResults.length} source${toolResults.length > 1 ? 's' : ''} (${toolResults.map(t => t.name).join(', ')})`
+          : '')
+        const assistantMsg = { role: 'assistant', content: effectiveContent, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, assistantMsg])
-        saveMessage('assistant', content, { reasoning_content: reasoningContent, usage, cost, model, toolResults })
+        saveMessage('assistant', effectiveContent, { reasoning_content: reasoningContent, usage, cost, model, toolResults })
       } else {
         const errorMsg = res?.error || 'Unknown error'
         setMessages(prev => [...prev, {

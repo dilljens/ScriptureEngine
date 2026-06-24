@@ -20,12 +20,12 @@ export default function VerseChip({ ref: verseRef, onOpenCard, compact }) {
         e.preventDefault()
         if (onOpenCard) onOpenCard(verseRef)
       }}
-      className={`inline-flex items-center font-medium
-        rounded transition-all cursor-pointer leading-none
+      className={`inline font-medium
+        transition-all cursor-pointer
         text-blue-600 dark:text-blue-400
         hover:text-blue-800 dark:hover:text-blue-300
         hover:underline
-        ${compact ? 'px-0.5 text-[10px]' : 'px-0.5 text-xs'}
+        ${compact ? 'text-[10px]' : 'text-sm'}
       `}
       title={`Click to view ${info.label}`}
     >
