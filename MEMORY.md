@@ -1,60 +1,102 @@
 # Scripture Knowledge Engine — Project Memory
 
-> Auto-generated snapshot. Last updated: 2026-06-21
+> Auto-generated snapshot. Last updated: 2026-06-23
 
 ## Facts
 
 - **Verses**: 42,054 total (23,213 Hebrew, 7,925 Greek)
-- **Connections**: 1,028,083 typed connections across 88 types in 10 layers
-- **Database**: SQLite at `data/processed/scripture.db` (WAL mode)
-- **Lexicon**: 11,515 lemmas, 7,853 unique roots, 50,216 collocation pairs
-- **Textual Variants**: 31,077 Vulgate Latin verses ingested
-- **Passage Guides**: 41,624 cached (materialized view)
+- **Connections**: 1,065,628 typed connections across 125 types in 11 layers
+- **Database**: SQLite at `data/processed/scripture.db` (WAL mode, ~1GB)
+- **Database tables**: 71 (works, books, verses, gematria, connections, passage_guides, etc.)
+- **Textual Variants**: 31,077 Vulgate Latin verses + 4,603 DSS variants + 3,117 StepBible textual_variant + 1,833 quotation_variant + 8,601 septuagint_difference
+- **New imports**: LXX (Septuagint) from Swete 1930, STEPBible TAHOT+TAGNT
+- **Empty types**: 1 of 125 — `peshitta_variant` (no Syriac source)
+- **Passage Guides**: 41,645 cached in RAM
 - **Entity Links**: 87 (people/places/concepts)
-- **RAM Cache**: ~500 MB at startup (sub-ms lookups)
-- **Frontend**: React 19 + Vite 6.4.3 + Tailwind 3, Playwright E2E tests
-- **API context param**: `GET /api/v1/verses/{ref}?context=N` returns N surrounding verses
+- **RAM Cache**: ~1GB at startup (sub-ms lookups), per-worker
+- **LLM Model**: DeepSeek v4-flash (`deepseek-v4-flash` is confirmed correct model name)
+- **Context budget**: 300K tokens total, max_tokens=30K, compaction at 200K
 
 ## Tools
 
-- **MCP/HTTP tools**: 23 registered in `lib/api/__init__.py` TOOL_REGISTRY
+- **MCP/HTTP tools**: 52 registered in `lib/api/__init__.py` TOOL_REGISTRY
+  - 15 study-specific tools (create, edit, export, publish, fork, import)
 - **MCP server**: `mcp_server.py` (stdio JSON-RPC, supports v2024-11-05 + v2025-03-26)
 - **HTTP API**: `web/server.py` (FastAPI + uvicorn, port 8000)
+- **Study API endpoints**: 15+ HTTP routes for studies (CRUD, step CRUD, publish, export JSON/HTML, fork, import)
 
-## Generators
+## Generators & Importers
 
-- **35 generators** registered in `generators/__init__.py` (33 auto, 2 manual)
+- **44 generators** in `generators/` directory (same-root, semuchin, gematria, chiasm, parallelism, etc.)
+- **Seed scripts** in `scripts/`: barker_sod, beale_temple, heiser_council, orlov_merkabah, morales_ascent, etc.
 - **13 agent-judged connection types** supplement algorithmic generators
-- **2 new rabbinic generators** (2026-06-17): Kal v'Chomer, Mukdam u'Meuchar
+- **New importers**: `ingest_stepbible.py` (TAGNT/TAHOT), `ingest_lxx_swete.py` (LXX from CSV)
+- **Missing**: `peshitta_variant` — no Syriac Peshitta data source found
 
 ## Frontend
 
-- **React app** at `frontend/`, Vite dev server on port 5173, proxy `/api` → port 8000
-- **Connection Panel**: unified collapsible panel per verse — grouped by type, filterable, confidence dots (green/yellow/gray)
-- **Footnote Tooltip**: rich HTML popover on hover — shows category, context word, referenced verse texts
-- **VersePreviewCard**: scrollable full-chapter preview with highlighted verses — used in LLM chat results
-- **Multi-word footnotes**: sliding-window matching for phrase context words (e.g. "away with", "Holy Ghost")
-- **Playwright E2E tests**: 23 tests in `frontend/e2e/` (app load, navigation, connections, footnotes, TSK, command palette, search)
-- **Test command**: `cd frontend && npm test` (headless, no window popup)
+- **React 19 + Vite 6.4.3 + Tailwind 3** at `frontend/`
+- **App.jsx**: 896 lines (down from 1,562 after extracting 9 components into `src/components/`)
+- **19 component files** in `src/components/` (ChatPanel, SearchBar, BookView, WorkView, LibraryView, ChapterView, etc.)
+- **Tab-based chat**: Ctrl+P opens chat as a tab, edit/resend messages, copy per-message or all
+- **Universal command palette** (`/` key): `/chat`, `/search`, `/dark`, `/font`, `/toggle`, `/history`, `/structure`, plus fuzzy book search with match highlighting, colon format `isa:34`, path format `isa/34`
+- **fzf-style fuzzy matching**: character-level match highlighting, relevance scoring, Tab chapter preview
+- **Library view**: all 7 works as color-coded cards, left/right navigation
+- **Verse jump**: type any number in chapter view → scroll to verse
+- **Navigation memory**: zoom up/down preserves position
+- **SearchBar**: keyword highlighting, work badges, pagination, work filter, semantic toggle
+- **StudyViewer/StudyEditor**: interactive study guides with LLM-powered editing
+- **45 Playwright E2E tests** in `frontend/e2e/` (7 spec files)
+- **Test command**: `cd frontend && npm test`
+
+## Chat System
+
+- **DeepSeek v4-flash** with 32 scripture tools
+- **Session persistence**: server-side save/restore via `conversations` API
+- **Context budget**: 300K total, compaction at 200K (strips tool traces from old messages, keeps last 15 exchanges)
+- **max_tokens**: 30,000 (8192 in earlier version)
+- **Tool result limiting**: results truncated to 3,000 chars, stored truncated in metadata
+- **Copy/edit**: copy per-message, copy all, edit user messages and resend
+
+## Study Feature (v1.1 — 2026-06-22)
+
+- **Study JSON format**: `scripture-study-v1` — steps with full graph paths (layer, type, strength, confidence, source/target texts), author chain, fork attribution
+- **Publish flow**: Create study → publish → immutable snapshot with slug URL → `/study/torah-in-all-scripture`
+- **Fork flow**: Fork any published study → get editable copy with `forked_from` chain → publish your own version
+- **Export formats**: JSON (canonical), self-contained HTML, Markdown
+- **Interactive StudyViewer tab**: Expand/collapse steps, clickable verse refs → VersePreviewCard popups, graph path display color-coded by layer, layer filter toggles, branching choices
+- **LLM-powered StudyEditor**: LLM proposes changes via `<study-action>` JSON blocks. Supported actions: add_step, remove_step, update_step, reorder, set_title, set_description. User reviews and applies each change.
+- **Settings toggle**: `showQuickAsk` — inline LLM bar in study tabs (default: off)
+- **URL sharing**: `?study=slug` query param opens study tab on page load
 
 ## Layers
 
-| Layer | Connections | Types |
-|-------|-----------|-------|
-| numerical | 275,415 | 8 |
-| linguistic | 268,816 | 8 |
-| intertextual | 242,789 | 8 |
-| structural | 71,763 | 16 |
-| frequency | 65,902 | 11 |
-| textual | 33,211 | 7 |
-| chronological | 24,321 | 8 |
-| symbolic | 23,409 | 11 |
-| geographic | 14,265 | 8 |
-| interpretive | 8,192 | 8 |
+| Layer | Connections | Types | Notes |
+|-------|-----------|-------|-------|
+| linguistic | 290,898 | 9 | Same-root + lemma produce 250K+ |
+| numerical | 275,415 | 8 | Gematria generators |
+| intertextual | 240,472 | 9 | Quotation + allusion generators |
+| structural | 77,536 | 16 | Parallelism types + chiasms |
+| frequency | 65,902 | 11 | Frequency + hapax/dislegomenon |
+| textual | **60,161** | **9** | **+27K from LXX + StepBible imports** |
+| sod | 26,465 | 24 | Temple theology + Merkabah + Barker |
+| chronological | 24,321 | 8 | Genealogical + feast connections |
+| symbolic | 23,424 | 11 | Shared symbols + apocalyptic + temple symbols |
+| geographic | 14,265 | 8 | Same-location + journey paths |
+| interpretive | 8,236 | 9 | Giliadi patterns + patristic readings |
+
+## Deployment
+
+- **Production**: Hetzner CX23 (46.224.171.239), 4GB RAM, 2 vCPUs
+- **Domains**: `scriptureengine.org` (FastAPI + React), `inklomancer.com` (WebSocket game), `api.daglock.com`
+- **API**: 2 uvicorn workers with RAM cache, served via nginx with Let's Encrypt SSL
+- **Chat**: DeepSeek v4-flash via API, DEEPSEEK_API_KEY in `/var/www/scripture/.env`
+- **Deploy script**: `scripts/deploy.sh` — builds frontend, rsyncs code + configs, restarts services
+- **SSL**: Let's Encrypt via certbot for both `.org` and `.com` domains
 
 ## Conventions
 
-- Python 3.13+ with type hints, `snake_case`, `PascalCase` classes
+- Python 3.14+ with type hints, `snake_case`, `PascalCase` classes
 - All schema changes through `lib/db.py` SCHEMA_SQL constant
 - Tool functions: `def my_tool(conn, **kwargs) -> dict`
 - Generators: `def run(conn, book_ids=None) -> int`
@@ -65,8 +107,10 @@
 ## Links
 
 - Wiki: `docs/wiki/_index.md`
+- Production: https://scriptureengine.org
 - Web API: http://localhost:8000/docs
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5176 (dev) / https://scriptureengine.org (prod)
 - DB: `data/processed/scripture.db`
 - Run: `./run.sh web`, `./run.sh info`, `./run.sh test`
+- Deploy: `./scripts/deploy.sh`
 - Test: `cd frontend && npm test`

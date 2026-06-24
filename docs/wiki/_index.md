@@ -1,25 +1,35 @@
 # Scripture Knowledge Engine — Codebase Wiki
 
-A deeply connected scripture study tool with **1.03M+ typed connections** across **88 types** in 10 layers — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, and symbolic. Hebrew gematria, Greek isopsephy, English text, Vulgate Latin variants, lemma lexicon, semantic domains, and rabbinic patterns — all linked and quality-calibrated.
+A deeply connected scripture study tool with **1.07M+ typed connections** across **125 types** in 11 layers — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod (hidden/temple). Hebrew gematria, Greek isopsephy, English text, Septuagint variants, Vulgate Latin variants, DSS variants, STEPBible textual variations, lemma lexicon, semantic domains, temple theology, and Merkabah mysticism — all linked and quality-calibrated.
+
+Live at **https://scriptureengine.org** — Hetzner CX23, 2 workers, Let's Encrypt SSL.
 
 ## Quick Reference
 
 ```bash
 # Start API
-./run.sh web            # uvicorn on port 8000
+./run.sh web              # uvicorn on port 8000 (2 workers by default)
 
 # Database
-./run.sh info           # Stats: verses, connections per layer
-./run.sh test           # Smoke tests
+./run.sh info             # Stats: verses, connections per layer
+./run.sh test             # Smoke tests
 python3 scripts/precompute_guides.py   # Rebuild passage guide cache
 
 # MCP Server (auto-started by opencode)
-python3 mcp_server.py   # Stdio JSON-RPC, 23 tools
+python3 mcp_server.py     # Stdio JSON-RPC
 
 # Tools
 python3 tools/verse.py '{"book":"gen","chapter":1,"verse":1}'
 python3 tools/search.py '{"query":"covenant"}'
+python3 tools/gematria.py '{"word":"יהוה"}'
 python3 tools/connections.py '{"verse":"gen.1.1"}'
+python3 tools/patterns.py '{"book":"isa","chapter":6}'
+
+# Deploy
+./scripts/deploy.sh       # Build + rsync to Hetzner
+
+# Tests
+cd frontend && npm test   # 45 Playwright E2E tests
 ```
 
 ## Architecture
@@ -28,35 +38,38 @@ python3 tools/connections.py '{"verse":"gen.1.1"}'
 mcp_server.py            ← Stdio JSON-RPC → opencode (MCP client)
      │
      ▼
-lib/api/__init__.py      ← Tool registry (23 tools)
+lib/api/__init__.py      ← Tool registry (52 tools)
      │
-     ├── lib/api/verse.py
-     ├── lib/api/search.py
-     ├── lib/api/gematria.py
-     ├── lib/api/connections.py
-     ├── lib/api/graph.py
-     ├── lib/api/sod.py
-     ├── lib/api/study.py
-     ├── lib/api/info.py
+     ├── lib/api/verse.py        ├── lib/api/search.py
+     ├── lib/api/gematria.py     ├── lib/api/connections.py
+     ├── lib/api/graph.py        ├── lib/api/sod.py
+     ├── lib/api/study.py        ├── lib/api/info.py
+     ├── lib/api/conversations.py ← Chat session persistence
+     ├── lib/api/sources.py      ├── lib/api/strongs.py
+     ├── lib/api/interlinear.py  ├── lib/api/consensus.py
+     ├── lib/api/disagreements.py ├── lib/api/assessment.py
+     ├── lib/api/staging.py      ├── lib/api/versions.py
      │
      ▼
 lib/db.py                ← SQLite (data/processed/scripture.db)
      │
-     ├── generators/      ← Connection discovery (algorithms)
-     ├── lib/connections/ ← Connection type definitions
+     ├── generators/      ← 44 connection discovery algorithms
+     ├── lib/connections/ ← 125 types in 11 layers
      ├── lib/controls/    ← Anti-hallucination + quality
      ├── lib/gematria.py  ← Hebrew gematria computation
-     ├── lib/sod/         ← Hidden patterns (Atbash, acrostics)
+     ├── lib/poetry/      ← Hebrew poetry line splitting
+     ├── lib/sod/         ← Hidden patterns (Atbash, acrostics, temurah)
      ├── lib/symbols/     ← Symbol reference + typology
+     ├── lib/lexicon/     ← Lemma/lexicon search
      └── lib/api/         ← Shared tool registry
 
-web/server.py            ← FastAPI HTTP (port 8000)
+web/server.py            ← FastAPI HTTP (port 8000, 2 workers)
      │
-     ├── /api/v1/verses/{ref}          [?context=N for surrounding verses]
+     ├── /api/v1/verses/{ref}          [?context=N]
      ├── /api/v1/verses/{ref}/guide
      ├── /api/v1/verses/{ref}/connections
      ├── /api/v1/verses/{ref}/grammar
-     ├── /api/v1/chapter/{ref}         [full chapter with parallelism]
+     ├── /api/v1/chapter/{ref}
      ├── /api/v1/connections/chapter/{ref}
      ├── /api/v1/parallelism/isaiah/{chapter}
      ├── /api/v1/search
@@ -105,16 +118,18 @@ RAM cache on startup          → web/server.py         → dict in memory (~500
 | Total verses | 42,054 |
 | Hebrew verses (gematria) | 23,213 |
 | Greek verses (isopsephy) | 7,925 |
-| Total connections | **1,025,759** |
-| Connection layers | 10 |
-| Connection types | **88** |
+| Total connections | **1,065,628** |
+| Connection layers | 11 |
+| Connection types | **128** (124 populated, 96.9% coverage) |
 | Lexicon entries | 11,515 |
 | Collocation pairs | 50,216 |
 | Unique roots | 7,853 |
 | Semantic domains seeded | 15 (372 members) |
 | Entity links | 87 |
-| Generators registered | 35 (33 auto, 2 manual) |
+| Generators registered | 36 (34 auto, 2 manual) |
 | Connection judgment files | 14 (agent-generated) |
+| JST changes (jst_change + jst_addition) | **8,796** |
+| JS teachings corpus | 9 sources, **5,067** scripture cross-refs (incl. STPJS) |
 | Textual variants (Vulgate) | 31,077 |
 | Passage guides cached | 41,625 |
 | MCP/HTTP tools | 23 |
@@ -126,16 +141,17 @@ RAM cache on startup          → web/server.py         → dict in memory (~500
 
 | Layer | Connections | Types |
 |-------|-----------|-------|
-| numerical | 275,415 | 8 |
-| linguistic | 268,816 | 8 |
-| intertextual | 242,789 | 8 |
-| structural | 71,763 | 16 |
-| frequency | 65,902 | 11 |
-| textual | 33,211 | 7 |
-| chronological | 24,321 | 8 |
-| symbolic | 23,409 | 11 |
-| geographic | 14,265 | 8 |
-| interpretive | 8,192 | 8 |
+| numerical | 275,415 | 8/8 |
+| linguistic | 268,816 | 9/9 |
+| intertextual | 240,450 | 9/9 |
+| structural | 71,764 | 16/16 |
+| frequency | 65,902 | 11/11 |
+| textual | 37,814 | 3/8 |
+| chronological | 24,321 | 8/8 |
+| symbolic | 23,424 | 11/11 |
+| sod | 26,465 | 30/30 |
+| geographic | 14,265 | 8/8 |
+| interpretive | 8,196 | 9/9 |
 
 ## Change Impact Map
 
@@ -226,4 +242,7 @@ See [plans/](plans/) for architecture proposals:
 | Features/lib | 2026-06-17 | FRESH |
 | Features/generators | 2026-06-17 | UPDATED — 35 generators, Rabbinic Kal v'Chomer + Mukdam u'Meuchar added |
 | Features/frontend | 2026-06-21 | NEW — React app, connection panel, footnote tooltip, VersePreviewCard, Playwright tests |
-| Plans | 2026-06-17 | FRESH |
+| Plans | 2026-06-22 | FRESH — completed A+B: JST full text, JS teachings corpus |
+| Generators | 2026-06-22 | UPDATED — 36 generators, Temple Themes sod + JST full ingest |
+| Connection types | 2026-06-22 | UPDATED — 128 types, 96.9% populated, JST types added |
+| JS teachings | 2026-06-22 | NEW — js_sources table, js_scripture_refs, FTS search, tools/js_teachings.py |

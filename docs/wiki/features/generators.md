@@ -2,7 +2,11 @@
 
 All connection discovery algorithms live in `generators/`. Each generator creates typed connections between verses in the `connections` table.
 
-**35 generators** registered (33 algorithmic + 2 manual), generating across all 10 layers.
+**44 generators** registered (41 algorithmic + 3 manual), generating across all 11 layers.
+
+See also `scripts/ingest_lxx_swete.py` (LXX Septuagint variants, 8,601 connections),
+`scripts/ingest_stepbible.py` (STEPBible TAGNT/TAHOT textual variants, 4,950 connections),
+and `scripts/import_dss.py` (Dead Sea Scrolls variants, 4,603 connections).
 
 ## Architecture
 
@@ -84,7 +88,7 @@ Each contains judgments with source/target verses, confidence scores, and human-
 
 ## Generator Count
 
-As of 2026-06-17: **35 generators** registered (33 algorithmic `automatic=True`, 2 needing curation `automatic=False`). Plus 13 agent-judged connection types supplementing with reasoned connections.
+As of 2026-06-22: **36 generators** registered (34 algorithmic `automatic=True`, 2 needing curation `automatic=False`). Plus 2 standalone ingest scripts for JST full text and JS teachings corpus. Plus 13 agent-judged connection types supplementing with reasoned connections.
 
 ## Generator Contract
 
@@ -144,6 +148,14 @@ python3 scripts/cleanup_connections.py          # Agent review & quality cleanup
 python3 scripts/validate_connections.py         # Integrity checks
 ```
 
+## Standalone Scripts (non-registered)
+
+| Script | Purpose | Dependencies |
+|--------|---------|-------------|
+| `scripts/ingest_jst_full.py` | Full JST/IV OT+NT text comparison (8,796 connections) | awerkamp markdown repo (cloned to /tmp/jst-markdown) |
+| `scripts/ingest_js_teachings.py` | Joseph Smith teachings corpus from Wikisource | Internet access (public domain) |
+| `scripts/ingest_stpjs.py` | STPJS.pdf → 5,076 JS↔scripture cross-refs | `data/STPJS.pdf` (Richard C. Galbraith's annotations) |
+
 ## Current Generators
 
 | Generator | Layers | Automatic |
@@ -183,6 +195,7 @@ python3 scripts/validate_connections.py         # Integrity checks
 | Interpretive — Tradition Connections | interpretive | No |
 | Rabbinic — Kal v'Chomer (Light/Heavy) | interpretive | Yes |
 | Rabbinic — Mukdam u'Meuchar (Non-Chronological) | interpretive | Yes |
+| Temple Themes — Living Water, Throne, Veil, Creation, Center | sod | Yes |
 
 ## Adding a New Generator
 
