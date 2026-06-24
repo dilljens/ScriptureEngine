@@ -40,6 +40,13 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
     }
   }, [chapterData, info?.verse])
 
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   if (!info) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>

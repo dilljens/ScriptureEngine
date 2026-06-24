@@ -57,9 +57,10 @@ function preprocessVerses(markdown) {
   if (!markdown) return ''
   let result = markdown
 
-  // 1. Replace 📖 Book Name ch:vs format with our custom marker
+  // 1. Replace **📖 Book Name ch:vs** or 📖 Book Name ch:vs with a clean verse marker
+  // Strips surrounding ** and the 📖 emoji so only the clickable text remains
   result = result.replace(
-    /📖\s+([A-Za-z0-9\s—–-]+?)\s*(\d+)(?::(\d+))?/g,
+    /\*\*?📖\s+([A-Za-z0-9\s—–-]+?)\s*(\d+)(?::(\d+))?\*\*?/g,
     (match, bookName, chapter, verseStr) => {
       const bookId = resolveBookName(bookName)
       if (!bookId) return match

@@ -20,19 +20,15 @@ export default function VerseChip({ ref: verseRef, onOpenCard, compact }) {
         e.preventDefault()
         if (onOpenCard) onOpenCard(verseRef)
       }}
-      className={`inline-flex items-center gap-0.5 font-medium
-        rounded-md transition-all cursor-pointer leading-none
-        bg-blue-50 dark:bg-blue-900/30
-        text-blue-700 dark:text-blue-300
-        border border-blue-200 dark:border-blue-800
-        hover:bg-blue-100 dark:hover:bg-blue-900/50
-        hover:border-blue-300 dark:hover:border-blue-600
-        shadow-sm hover:shadow
-        ${compact ? 'px-1 py-0.5 text-[10px]' : 'px-1.5 py-0.5 text-xs'}
+      className={`inline-flex items-center font-medium
+        rounded transition-all cursor-pointer leading-none
+        text-blue-600 dark:text-blue-400
+        hover:text-blue-800 dark:hover:text-blue-300
+        hover:underline
+        ${compact ? 'px-0.5 text-[10px]' : 'px-0.5 text-xs'}
       `}
-      title={`Click to preview ${info.label}`}
+      title={`Click to view ${info.label}`}
     >
-      <span className="text-[10px] mr-0.5 leading-none" style={{ fontStyle: 'normal' }}>📖</span>
       {compact ? `${info.book} ${info.chapter}:${info.verse}` : info.label}
     </button>
   )
