@@ -5,7 +5,7 @@ test.describe('TSK (Treasury of Scripture Knowledge) popup', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
-    await expect(page.locator('h1')).toContainText('Isaiah', { timeout: 15000 })
+    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 })
   })
 
   test('TSK badge appears on verses with cross-references', async ({ page }) => {

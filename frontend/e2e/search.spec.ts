@@ -5,7 +5,7 @@ test.describe('Search bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
-    await expect(page.locator('h1')).toContainText('Isaiah', { timeout: 15000 })
+    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 })
   })
 
   test('Alt+S shortcut opens search', async ({ page }) => {

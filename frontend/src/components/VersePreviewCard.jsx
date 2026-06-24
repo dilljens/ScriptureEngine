@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react'
  *   onNavigate: (book, chapter) => void — called when user clicks to open full chapter
  *   maxHeight?: string — CSS max-height for the scrollable container (default "12rem")
  */
-export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem' }) {
+export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem', compact }) {
   const [chapterData, setChapterData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -52,6 +52,18 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
       .finally(() => setLoading(false))
   }, [primary?.book, primary?.chapter])
 
+  // Auto-scroll to first highlighted verse
+  useEffect(() => {
+    if (!scrollRef.current || !chapterData?.verses || highlightVerses.size === 0) return
+    const firstHighlight = chapterData.verses.find(v => highlightVerses.has(v.verse))
+    if (!firstHighlight) return
+    // Find the DOM element for the highlighted verse
+    const el = scrollRef.current.querySelector(`[data-verse="${firstHighlight.verse}"]`)
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [chapterData, highlightVerses])
+
   if (loading) {
     return (
       <div className="bg-neutral-50 dark:bg-neutral-900/50 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
@@ -84,11 +96,11 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
     : `${verseRefs[0]}…+${verseRefs.length - 1}`
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm">
+    <div className={`bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm ${compact ? 'inline-block' : ''}`}>
       {/* Header */}
       <button onClick={() => onNavigate && primary && onNavigate(primary.book, primary.chapter)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-50 dark:bg-neutral-800/50
-          hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-left border-b border-neutral-200 dark:border-neutral-700">
+        className={`w-full flex items-center gap-2 ${compact ? 'px-2 py-1' : 'px-3 py-2'} bg-neutral-50 dark:bg-neutral-800/50
+          hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-left border-b border-neutral-200 dark:border-neutral-700`}>
         <span className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">📖 {bookTitle}</span>
         <span className="text-[9px] font-mono text-neutral-400 dark:text-neutral-500 ml-auto">
           {refSummary}
@@ -102,7 +114,7 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
           {chapterData.verses.map(v => {
             const isHighlighted = highlightVerses.has(v.verse)
             return (
-              <div key={v.verse}
+              <div key={v.verse} data-verse={v.verse}
                 className={`flex items-start gap-2 px-2 py-1 rounded text-[11px] leading-relaxed transition-colors
                   ${isHighlighted
                     ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700'

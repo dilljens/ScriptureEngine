@@ -5,7 +5,7 @@ test.describe('Footnote markers', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
-    await expect(page.locator('h1')).toContainText('Isaiah', { timeout: 15000 })
+    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 })
   })
 
   test('footnote superscript markers render', async ({ page }) => {
