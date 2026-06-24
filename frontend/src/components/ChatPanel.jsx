@@ -16,14 +16,64 @@ import { conversationCreate, conversationAddMessage, conversationGet, conversati
 
 const VERSE_REF_RE = /([a-z0-9_]+)\.(\d+)\.(\d+)/gi
 
-/** Pre-process markdown to wrap verse refs in a custom placeholder */
+// Map full book names to their IDs — matches the LLM's 📖 output format
+const BOOK_NAME_MAP = {
+  genesis: 'gen', exodus: 'exo', leviticus: 'lev', numbers: 'num', deuteronomy: 'deu',
+  joshua: 'josh', judges: 'judg', ruth: 'ruth',
+  '1 samuel': '1sam', '2 samuel': '2sam', '1 kings': '1kgs', '2 kings': '2kgs',
+  '1 chronicles': '1chr', '2 chronicles': '2chr', ezra: 'ezra', nehemiah: 'neh',
+  esther: 'esth', job: 'job', psalm: 'psa', psalms: 'psa', proverbs: 'prov',
+  ecclesiastes: 'eccl', 'song of solomon': 'song', isaiah: 'isa', jeremiah: 'jer',
+  lamentations: 'lam', ezekiel: 'ezek', daniel: 'dan', hosea: 'hos', joel: 'joel',
+  amos: 'amos', obadiah: 'obad', jonah: 'jonah', micah: 'mic', nahum: 'nah',
+  habakkuk: 'hab', zephaniah: 'zeph', haggai: 'hag', zechariah: 'zech', malachi: 'mal',
+  matthew: 'matt', mark: 'mark', luke: 'luke', john: 'john', acts: 'acts',
+  romans: 'rom', '1 corinthians': '1cor', '2 corinthians': '2cor', galatians: 'gal',
+  ephesians: 'eph', philippians: 'phil', colossians: 'col',
+  '1 thessalonians': '1thes', '2 thessalonians': '2thes',
+  '1 timothy': '1tim', '2 timothy': '2tim', titus: 'titus', philemon: 'philem',
+  hebrews: 'heb', james: 'james', '1 peter': '1pet', '2 peter': '2pet',
+  '1 john': '1john', '2 john': '2john', '3 john': '3john', jude: 'jude',
+  revelation: 'rev',
+  '1 nephi': '1ne', '2 nephi': '2ne', jacob: 'jacob', enos: 'enos',
+  jarom: 'jarom', omni: 'omni', 'words of mormon': 'wom', mosiah: 'mosiah',
+  alma: 'alma', helaman: 'hel', '3 nephi': '3ne', '4 nephi': '4ne',
+  mormon: 'morm', ether: 'ether', moroni: 'moro',
+  moses: 'moses', abraham: 'abraham', 'joseph smith—matthew': 'jsm',
+  'joseph smith—history': 'jsh', 'articles of faith': 'aoff',
+  'doctrine and covenants': 'dc',
+}
+
+function resolveBookName(name) {
+  const key = name.trim().toLowerCase().replace(/[—–]/g, '—')
+  if (BOOK_NAME_MAP[key]) return BOOK_NAME_MAP[key]
+  const firstWord = key.split(/\s/)[0]
+  if (BOOK_NAME_MAP[firstWord]) return BOOK_NAME_MAP[firstWord]
+  return null
+}
+
+/** Pre-process markdown to detect verse references in 📖 format + gen.1.1 */
 function preprocessVerses(markdown) {
   if (!markdown) return ''
-  // Wrap verse refs like gen.1.1 in a custom marker that we can detect
-  return markdown.replace(
+  let result = markdown
+
+  // 1. Replace 📖 Book Name ch:vs format with our custom marker
+  result = result.replace(
+    /📖\s+([A-Za-z0-9\s—–-]+?)\s*(\d+)(?::(\d+))?/g,
+    (match, bookName, chapter, verseStr) => {
+      const bookId = resolveBookName(bookName)
+      if (!bookId) return match
+      return `%%%VERSE:${bookId}.${chapter}.${verseStr || '1'}%%%`
+    }
+  )
+
+  // 2. Replace gen.1.1 format (fallback)
+  result = result.replace(
     VERSE_REF_RE,
     (match, book, ch, vs) => `%%%VERSE:${book.toLowerCase()}.${ch}.${vs}%%%`
   )
+
+  return result
 }
 
 /** Check if a line looks like a standalone verse reference (not inside a code block or heading) */
@@ -309,6 +359,32 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
       <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ol>
     ),
     hr: () => <hr className="my-2 border-neutral-200 dark:border-neutral-700" />,
+    table: ({ children }) => (
+      <div className="overflow-x-auto my-2">
+        <table className="w-full text-xs border-collapse border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+          {children}
+        </table>
+      </div>
+    ),
+    thead: ({ children }) => (
+      <thead className="bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
+        {children}
+      </thead>
+    ),
+    tbody: ({ children }) => (
+      <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+        {children}
+      </tbody>
+    ),
+    tr: ({ children }) => (
+      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">{children}</tr>
+    ),
+    th: ({ children }) => (
+      <th className="px-3 py-1.5 text-left font-semibold text-neutral-700 dark:text-neutral-300 text-[10px] uppercase tracking-wider">{children}</th>
+    ),
+    td: ({ children }) => (
+      <td className="px-3 py-1.5 text-neutral-600 dark:text-neutral-400">{children}</td>
+    ),
   }
 
   // ── Render message content with markdown + verse chips ──
