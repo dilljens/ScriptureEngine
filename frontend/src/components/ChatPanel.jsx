@@ -91,7 +91,7 @@ function isStandaloneVerse(line) {
 // ── Chat Panel Component ──
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
-  const { searchWorks, searchLayers } = useToggles?.() || {}
+  const { searchWorks, searchLayers, searchLang } = useToggles?.() || {}
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
@@ -275,6 +275,9 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     if (searchLayers) {
       const disabled = Object.entries(searchLayers).filter(([, v]) => !v).map(([k]) => k)
       if (disabled.length > 0) scopeInstr += ` Exclude these connection layers: ${disabled.join(', ')}.`
+    }
+    if (searchLang && searchLang !== 'all') {
+      scopeInstr += ` Use ${searchLang} language for scripture searches.`
     }
 
     const allMessages = [

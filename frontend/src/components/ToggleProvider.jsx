@@ -45,15 +45,16 @@ export function ToggleProvider({ children }) {
 
   // Search scope — which works and layers the LLM should use
   const [searchWorks, setSearchWorks] = useState({
-    ot: true, nt: true, bom: true, dc: true, pgp: true,
+    ot: true, nt: true, bom: true, dc: true, pgp: true, dss: true,
   })
   const [searchLayers, setSearchLayers] = useState({
     linguistic: true, intertextual: true, structural: true, interpretive: true,
     sod: true, symbolic: true, chronological: true, numerical: true,
     geographic: true, textual: true, frequency: true,
   })
+  const [searchLang, setSearchLang] = useState('all') // 'all' | 'english' | 'hebrew' | 'greek'
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers }}>{children}</ToggleCtx.Provider>
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -83,7 +84,7 @@ function ToggleRow({ def, on, onToggle }) {
 
 /* ── Layers popover ── */
 export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, buttonRef }) {
-  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers } = useToggles()
+  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang } = useToggles()
   const popoverRef = useRef(null)
 
   // Click outside + Escape
@@ -174,6 +175,27 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
             <ScopeRow label="Book of Mormon" id="bom" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Doctrine &amp; Covenants" id="dc" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Pearl of Great Price" id="pgp" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Dead Sea Scrolls" id="dss" value={searchWorks} setter={setSearchWorks} />
+
+            {/* Language */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Language</div>
+            <div className="flex gap-1 mb-2">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'english', label: 'English' },
+                { id: 'hebrew', label: 'Hebrew' },
+                { id: 'greek', label: 'Greek' },
+              ].map(lang => (
+                <button key={lang.id} onClick={() => setSearchLang(lang.id)}
+                  className={`flex-1 px-1.5 py-1 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                    searchLang === lang.id
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}>
+                  {lang.label}
+                </button>
+              ))}
+            </div>
 
             {/* Layers */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Connection Layers</div>

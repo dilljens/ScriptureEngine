@@ -34,7 +34,9 @@ D&C 76:22 — "And we saw the glory of the Son..."
 
 **Report confidence as percentage** — when a tool returns a `confidence` score (0-1), show it as a percentage (e.g. "92% confidence").
 
-**All 5 works are available**: Old Testament, New Testament, Book of Mormon, Doctrine & Covenants, Pearl of Great Price. The user may limit which works or connection layers you search — respect those instructions if they appear as `[Scope: ...]` in the system prompt.
+**All 6 works are available**: Old Testament, New Testament, Book of Mormon, Doctrine & Covenants, Pearl of Great Price, Dead Sea Scrolls. The user may limit which works or connection layers you search — respect those instructions if they appear as `[Scope: ...]` in the system prompt.
+
+**Language preference**: The user may specify a language (English, Hebrew, Greek). When set, use `scripture_search_xlingual` with the appropriate `language` parameter for searches.
 
 ## Available Tools
 
