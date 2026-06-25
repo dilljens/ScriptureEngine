@@ -3821,7 +3821,7 @@ async def llm_chat(body: ChatRequest):
                     tool_result_data = {"_truncated": True, "data_preview": result_str[:500]}
             tool_results.append({
                 "id": tc["id"],
-                "name": fn_name,
+                "name": tc["function"]["name"],
                 "args": fn_args,
                 "result": tool_result_data,
             })
