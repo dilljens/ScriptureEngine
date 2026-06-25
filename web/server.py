@@ -3749,6 +3749,8 @@ async def llm_chat(body: ChatRequest):
             break  # No more tool calls, we have final response
 
         # Execute each tool call
+        # First, add the assistant's tool_calls message once (DeepSeek requires this order)
+        msgs.append(msg)
         conn = get_db()
         for tc in tool_calls:
             fn_name = tc["function"]["name"]
@@ -3800,9 +3802,7 @@ async def llm_chat(body: ChatRequest):
                 "result": tool_result_data,
             })
 
-            # Add tool result as a message — use the full message from DeepSeek
-            # (includes content + reasoning_content + tool_calls — official pattern)
-            msgs.append(msg)
+            # Add tool result message (one per tool call, with matching call_id)
             msgs.append({
                 "role": "tool",
                 "content": result_str,
