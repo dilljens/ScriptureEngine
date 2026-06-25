@@ -174,7 +174,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse 
               chiasms={data.chiasms} highlights={[]}
               footnotes={toggles.footnotes ? verseFns : []}
               tskRefs={toggles.tsk ? verseTsk : []}
-              wordData={toggles.gematria || toggles.lemma ? verseWords : null}
+              wordData={displayLang !== 'english' ? verseWords : (toggles.gematria || toggles.lemma ? verseWords : null)}
               extraConnections={verseExtra}
               reviewed={reviewed}
               onToggleReview={() => toggleReviewed(`${book}.${chapter}.${v.verse}`)}

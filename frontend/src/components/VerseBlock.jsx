@@ -266,10 +266,12 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   const hasLang = !!sourceText
   const translitFn = displayLang === 'hebrew' ? transliterateHebrew : displayLang === 'greek' ? transliterateGreek : null
 
-  // Language mode: show original language + transliteration + English
+  // Language mode: show original language + transliteration + English gloss
   if (displayLang !== 'english' && hasLang) {
-    // Split text into words for word-by-word display
+    // Get word-level data for this verse (from grammar endpoint)
+    const verseWordData = wordData || null
     const words = sourceText.trim().split(/\s+/).filter(Boolean)
+    const hasWordGloss = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.english?.trim())
     return (
       <div className={`mb-4 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-lg p-3 -m-2' : ''}`}>
         <div className="flex items-start gap-2">
@@ -281,25 +283,33 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
             {verse.verse}
           </span>
           <div className="flex-1 min-w-0">
-            {/* Line 1: Original language */}
-            <div className={`flex flex-wrap gap-x-4 gap-y-1 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
+            {/* Word-by-word layout */}
+            <div className={`flex flex-wrap gap-x-4 gap-y-2 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
               dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
               {words.map((word, i) => (
                 <div key={i} className="flex flex-col items-center">
+                  {/* Line 1: Original language */}
                   <span className={`text-lg leading-relaxed ${displayLang === 'hebrew' ? HEBREW_FONT : ''}`}
                     style={displayLang === 'hebrew' ? { fontSize: '1.1em' } : {}}>
                     {word}
                   </span>
+                  {/* Line 2: Transliteration (toggleable) */}
                   {showTranslit && translitFn && (
                     <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 leading-tight">
                       {translitFn(word)}
                     </span>
                   )}
+                  {/* Line 3: English gloss per word (toggleable) */}
+                  {showEnglish && hasWordGloss && verseWordData[i]?.english && (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 leading-tight text-center max-w-[120px]">
+                      {verseWordData[i].english}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
-            {/* Line 3: English (full verse text, block level) */}
-            {showEnglish && (
+            {/* Fallback English: full verse text if no word-level glosses */}
+            {showEnglish && !hasWordGloss && (
               <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
                 {verse.text_english}
               </p>

@@ -841,8 +841,10 @@ def get_chapter_grammar(ref: str):
     verse_prefix = f"{book_id}.{chapter_num}."
     rows = conn.execute("""
         SELECT g.verse_id, g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
-               g.value_standard, g.value_ordinal, g.value_reduced
+               g.value_standard, g.value_ordinal, g.value_reduced,
+               COALESCE(lg.english_gloss, g.word_english, '') as gloss
         FROM gematria g
+        LEFT JOIN lemma_gloss lg ON g.lemma = lg.lemma
         WHERE g.verse_id LIKE ?
         ORDER BY g.verse_id, g.word_index
     """, (f"{verse_prefix}%",)).fetchall()
@@ -864,7 +866,7 @@ def get_chapter_grammar(ref: str):
                 break
         verses[vid].append({
             "hebrew": w["word_hebrew"] or "",
-            "english": w["word_english"] or "",
+            "english": w["gloss"] or "",
             "morph": morph,
             "lemma": w["lemma"] or "",
             "word_index": w["word_index"],
