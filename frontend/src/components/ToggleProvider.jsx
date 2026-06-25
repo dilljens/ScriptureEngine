@@ -42,7 +42,18 @@ export function ToggleProvider({ children }) {
       st(Object.fromEntries(TOGGLE_DEFS.map(t => [t.key, !on])))
     } else st(p => ({ ...p, [k]: !p[k] }))
   }, [toggles])
-  return <ToggleCtx.Provider value={{ toggles, dispatch }}>{children}</ToggleCtx.Provider>
+
+  // Search scope — which works and layers the LLM should use
+  const [searchWorks, setSearchWorks] = useState({
+    ot: true, nt: true, bom: true, dc: true, pgp: true,
+  })
+  const [searchLayers, setSearchLayers] = useState({
+    linguistic: true, intertextual: true, structural: true, interpretive: true,
+    sod: true, symbolic: true, chronological: true, numerical: true,
+    geographic: true, textual: true, frequency: true,
+  })
+
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -72,7 +83,7 @@ function ToggleRow({ def, on, onToggle }) {
 
 /* ── Layers popover ── */
 export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, buttonRef }) {
-  const { toggles, dispatch } = useToggles()
+  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers } = useToggles()
   const popoverRef = useRef(null)
 
   // Click outside + Escape
@@ -146,8 +157,40 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="border-t border-neutral-200 dark:border-neutral-700 my-2" />
+
+        {/* Search Scope — collapsible */}
+        <details className="group px-1 pb-1">
+          <summary className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider py-1.5 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
+            <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
+            Search Scope
+          </summary>
+          <div className="pl-2">
+            {/* Works */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">Works</div>
+            <ScopeRow label="Old Testament" id="ot" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="New Testament" id="nt" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Book of Mormon" id="bom" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Doctrine &amp; Covenants" id="dc" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Pearl of Great Price" id="pgp" value={searchWorks} setter={setSearchWorks} />
+
+            {/* Layers */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Connection Layers</div>
+            <ScopeRow label="Linguistic" id="linguistic" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Intertextual" id="intertextual" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Structural" id="structural" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Interpretive" id="interpretive" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Sod (Hidden)" id="sod" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Symbolic" id="symbolic" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Chronological" id="chronological" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Numerical" id="numerical" value={searchLayers} setter={setSearchLayers} />
+            <ScopeRow label="Geographic" id="geographic" value={searchLayers} setter={setSearchLayers} />
+          </div>
+        </details>
+
         {/* All On / All Off */}
-        <div className="flex gap-2 pt-1 pb-1.5">
+        <div className="flex gap-2 pt-3 pb-1.5">
           <button onClick={() => { if (!allOn) dispatch('all') }}
             className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               allOn
@@ -161,6 +204,21 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
                 : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
             }`}>All Off</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Compact scope toggle row (for works/layers) ── */
+function ScopeRow({ label, id, value, setter }) {
+  const on = value[id] ?? true
+  return (
+    <div onClick={() => setter(p => ({ ...p, [id]: !on }))} role="button" tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setter(p => ({ ...p, [id]: !on })) } }}
+      className="flex items-center justify-between py-1 pl-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
+      <span className="text-[11px] text-neutral-600 dark:text-neutral-400">{label}</span>
+      <div className={`w-7 h-3.5 rounded-full p-0.5 transition-colors ${on ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
+        <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-3.5' : 'translate-x-0'}`} />
       </div>
     </div>
   )

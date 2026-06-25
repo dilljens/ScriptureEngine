@@ -74,10 +74,10 @@ test.describe('App — page load & default state', () => {
     await layersBtn.click()
 
     // Popover should appear with group headers
-    await expect(page.getByText('Annotations')).toBeVisible()
-    await expect(page.getByText('Parallelism')).toBeVisible()
-    await expect(page.getByText('Intertextual')).toBeVisible()
-    await expect(page.getByText('Reference')).toBeVisible()
+    await expect(page.getByText('Annotations').first()).toBeVisible()
+    await expect(page.getByText('Parallelism').first()).toBeVisible()
+    await expect(page.getByText('Intertextual').first()).toBeVisible()
+    await expect(page.getByText('Reference').first()).toBeVisible()
 
     // View Mode section should show with Narrative selected (default)
     await expect(page.getByText('View Mode')).toBeVisible()
@@ -86,23 +86,18 @@ test.describe('App — page load & default state', () => {
 
     // Close by clicking elsewhere
     await page.locator('h1').click()
-    await expect(page.getByText('Annotations')).not.toBeVisible()
+    await expect(page.getByText('Annotations').first()).not.toBeVisible()
   })
 
-  test('layers popover "All Off" toggles everything off', async ({ page }) => {
+  test('layers popover "All On" toggles everything on', async ({ page }) => {
     await expect(page.locator('h1')).toBeVisible({ timeout: 15000 })
     const layersBtn = page.locator('button[title="Layers (toggle visibility)"]')
     await layersBtn.click()
 
-    // Click All Off
-    await page.getByText('All Off').click()
+    // Click All On (footnotes is on, others off)
+    await page.getByText('All On').click()
 
-    // Close and reopen to verify
-    await page.locator('h1').click()
-    await layersBtn.click()
-
-    // LDS Notes should now be toggled off (was on by default)
-    // Just check the popover is still interactive
-    await expect(page.getByText('All On')).toBeVisible()
+    // "All Off" should now appear (everything is on)
+    await expect(page.getByText('All Off')).toBeVisible()
   })
 })

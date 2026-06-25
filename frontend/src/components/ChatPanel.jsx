@@ -10,6 +10,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import VerseChip from './VerseChip'
 import VersePopup from './VersePopup'
+import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
 
 // ── Verse ref detection ──
@@ -90,6 +91,7 @@ function isStandaloneVerse(line) {
 // ── Chat Panel Component ──
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
+  const { searchWorks, searchLayers } = useToggles?.() || {}
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
@@ -264,7 +266,19 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     autoTitle(text)
     saveMessage('user', text)
 
+    // Build scope instructions from search filters
+    let scopeInstr = ''
+    if (searchWorks) {
+      const disabled = Object.entries(searchWorks).filter(([, v]) => !v).map(([k]) => k.toUpperCase())
+      if (disabled.length > 0) scopeInstr += `Only search within these works: ALL EXCEPT ${disabled.join(', ')}.`
+    }
+    if (searchLayers) {
+      const disabled = Object.entries(searchLayers).filter(([, v]) => !v).map(([k]) => k)
+      if (disabled.length > 0) scopeInstr += ` Exclude these connection layers: ${disabled.join(', ')}.`
+    }
+
     const allMessages = [
+      ...(scopeInstr ? [{ role: 'system', content: `[Scope: ${scopeInstr}]` }] : []),
       ...messages.filter(m => m.role !== 'system').map(m => {
         const base = { role: m.role, content: m.content }
         if (m.reasoning_content) base.reasoning_content = m.reasoning_content
