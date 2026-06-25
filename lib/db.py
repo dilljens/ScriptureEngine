@@ -18,6 +18,9 @@ def get_db(db_path=None):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA mmap_size = 268435456")
     return conn
 
 
@@ -29,6 +32,9 @@ def get_db_vec(db_path=None):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA mmap_size = 268435456")
     conn.execute("PRAGMA trusted_schema=ON")  # Required for extension loading
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)
@@ -119,6 +125,7 @@ CREATE TABLE IF NOT EXISTS connections (
     confidence REAL DEFAULT 0.5,
     discovered_by TEXT DEFAULT 'algorithm',
     metadata TEXT DEFAULT '{}',
+    hermeneutic TEXT DEFAULT NULL,
     UNIQUE(source_verse, target_verse, layer, type, subtype)
 );
 
@@ -186,6 +193,16 @@ CREATE TABLE IF NOT EXISTS entity_links (
     notes TEXT DEFAULT ''
 );
 
+-- Verse-to-entity links (people, places, concepts linked to verses)
+CREATE TABLE IF NOT EXISTS verse_entities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verse_id TEXT NOT NULL REFERENCES verses(id),
+    entity_id TEXT NOT NULL REFERENCES entity_links(entity_id),
+    relationship_type TEXT NOT NULL DEFAULT 'mentions',
+    confidence REAL DEFAULT 0.5,
+    UNIQUE(verse_id, entity_id, relationship_type)
+);
+
 -- Topic collections (user-definable groupings of verses)
 CREATE TABLE IF NOT EXISTS topics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,8 +259,28 @@ CREATE TABLE IF NOT EXISTS study_guides (
     created_by TEXT DEFAULT 'ai',   -- 'ai', 'user', 'shared'
     is_public INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
+    updated_at TEXT DEFAULT (datetime('now')),
+    content_json TEXT DEFAULT '{}'  -- Canonical JSON blob: steps, graph paths, metadata
 );
+
+-- Published study snapshots (immutable, shareable via URL)
+CREATE TABLE IF NOT EXISTS published_studies (
+    id TEXT PRIMARY KEY,
+    study_guide_id INTEGER REFERENCES study_guides(id),
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    author_name TEXT DEFAULT 'anonymous',
+    author_id TEXT DEFAULT '',
+    forked_from TEXT REFERENCES published_studies(id),
+    content_json TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    version INTEGER DEFAULT 1,
+    view_count INTEGER DEFAULT 0,
+    fork_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_published_slug ON published_studies(slug);
+CREATE INDEX IF NOT EXISTS idx_published_guide ON published_studies(study_guide_id);
 
 -- Steps in a guided study (the exploration path through connections)
 CREATE TABLE IF NOT EXISTS study_guide_steps (
@@ -259,6 +296,161 @@ CREATE TABLE IF NOT EXISTS study_guide_steps (
     choices_json TEXT DEFAULT '[]',  -- [{verse, label, type}, ...] for branching
     notes TEXT DEFAULT '',
     UNIQUE(study_guide_id, step_number)
+);
+
+-- Knowledge assessment items (one per high-quality connection)
+CREATE TABLE IF NOT EXISTS knowledge_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verse_id TEXT NOT NULL,
+    connection_type TEXT NOT NULL,
+    target_verse TEXT NOT NULL,
+    quality_level TEXT NOT NULL,
+    star_rating INTEGER NOT NULL,
+    pa_r_de_s_level TEXT NOT NULL,
+    layer TEXT NOT NULL,
+    difficulty REAL DEFAULT 0.5,
+    bloom_level TEXT DEFAULT 'remember',
+    item_metadata TEXT DEFAULT '{}',
+    UNIQUE(verse_id, connection_type, target_verse)
+);
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_items_layer ON knowledge_items(layer);
+CREATE INDEX IF NOT EXISTS idx_knowledge_items_pardes ON knowledge_items(pa_r_de_s_level);
+CREATE INDEX IF NOT EXISTS idx_knowledge_items_verse ON knowledge_items(verse_id);
+
+-- Knowledge prerequisite edges (for adaptive assessment)
+CREATE TABLE IF NOT EXISTS knowledge_prerequisites (
+    item_id INTEGER NOT NULL,
+    prerequisite_item_id INTEGER NOT NULL,
+    confidence REAL DEFAULT 1.0,
+    source TEXT DEFAULT 'rule',       -- 'rule', 'query_algorithm', 'human'
+    PRIMARY KEY (item_id, prerequisite_item_id),
+    FOREIGN KEY (item_id) REFERENCES knowledge_items(id),
+    FOREIGN KEY (prerequisite_item_id) REFERENCES knowledge_items(id)
+);
+
+-- Auto-generated assessment items from knowledge domain
+CREATE TABLE IF NOT EXISTS assessment_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    knowledge_item_id INTEGER,
+    question_type TEXT NOT NULL,       -- 'multiple_choice', 'true_false', 'classification'
+    question_text TEXT NOT NULL,
+    options_json TEXT DEFAULT '[]',
+    correct_answer TEXT NOT NULL,
+    layer TEXT NOT NULL,
+    bloom_level TEXT DEFAULT 'remember',
+    difficulty REAL DEFAULT 0.5,
+    discrimination REAL DEFAULT 1.0,
+    guess_param REAL DEFAULT 0.15,
+    slip_param REAL DEFAULT 0.10,
+    source_knowledge_item_id INTEGER
+);
+
+-- Multi-version Bible text (alternative translations)
+CREATE TABLE IF NOT EXISTS text_resources (
+    verse_id TEXT NOT NULL,
+    version TEXT NOT NULL,              -- 'KJV', 'WEB', 'LEB', 'BSB', 'YLT'
+    text TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'eng',-- 'eng','grc','heb','lat'
+    is_default INTEGER DEFAULT 0,       -- 1 if this is the default version
+    metadata TEXT DEFAULT '{}',
+    PRIMARY KEY (verse_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_text_resources_version ON text_resources(version);
+
+-- Joseph Smith teachings corpus (sermons, letters, writings)
+CREATE TABLE IF NOT EXISTS js_sources (
+    ref_id TEXT PRIMARY KEY,             -- e.g., "js.1844.04.07" for King Follett
+    title TEXT NOT NULL,                 -- Discourse title
+    date TEXT DEFAULT '',                -- ISO date: "1844-04-07"
+    source_type TEXT NOT NULL DEFAULT 'sermon', -- 'sermon', 'letter', 'writing', 'interview', 'diary'
+    location TEXT DEFAULT '',            -- Where delivered/written
+    source TEXT DEFAULT '',              -- Source manuscript (e.g., "Wilford Woodruff Diary")
+    text TEXT NOT NULL,                  -- Full text of the teaching
+    metadata TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_js_sources_date ON js_sources(date);
+CREATE INDEX IF NOT EXISTS idx_js_sources_type ON js_sources(source_type);
+
+-- Full-text search for JS teachings
+CREATE VIRTUAL TABLE IF NOT EXISTS js_sources_fts USING fts5(
+    title, text, content=js_sources, content_rowid=rowid
+);
+
+-- Triggers to keep FTS in sync
+CREATE TRIGGER IF NOT EXISTS js_sources_ai AFTER INSERT ON js_sources BEGIN
+    INSERT INTO js_sources_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS js_sources_ad AFTER DELETE ON js_sources BEGIN
+    INSERT INTO js_sources_fts(js_sources_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS js_sources_au AFTER UPDATE ON js_sources BEGIN
+    INSERT INTO js_sources_fts(js_sources_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+    INSERT INTO js_sources_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+
+-- Staging — proposed connections (LLM/UI → dev review → approved)
+CREATE TABLE IF NOT EXISTS staging_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_verse TEXT NOT NULL,
+    target_verse TEXT NOT NULL,
+    layer TEXT NOT NULL,
+    type TEXT NOT NULL,
+    subtype TEXT DEFAULT '',
+    strength REAL DEFAULT 0.5,
+    confidence REAL DEFAULT 0.5,
+    metadata TEXT DEFAULT '{}',
+    reasoning TEXT DEFAULT '',           -- LLM's explanation
+    status TEXT DEFAULT 'pending',       -- pending | approved | rejected
+    submitted_by TEXT DEFAULT '',        -- 'llm', 'webui', 'cli'
+    submitted_at TEXT DEFAULT (datetime('now')),
+    reviewed_by TEXT DEFAULT '',
+    reviewed_at TEXT,
+    rejection_reason TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_staging_conn_status ON staging_connections(status);
+CREATE INDEX IF NOT EXISTS idx_staging_conn_layer ON staging_connections(layer);
+
+-- Staging — proposed study guides (LLM/UI drafts → dev review → published)
+CREATE TABLE IF NOT EXISTS staging_studies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    theme TEXT DEFAULT '',
+    seed_verse TEXT DEFAULT '',
+    steps_json TEXT DEFAULT '[]',        -- JSON array of {step_number, verse, title, explanation, choices}
+    metadata TEXT DEFAULT '{}',
+    status TEXT DEFAULT 'draft',         -- draft | submitted | approved | rejected
+    submitted_by TEXT DEFAULT '',
+    submitted_at TEXT DEFAULT (datetime('now')),
+    reviewed_by TEXT DEFAULT '',
+    reviewed_at TEXT,
+    rejection_reason TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_staging_studies_status ON staging_studies(status);
+
+-- Dead Sea Scrolls biblical text variants
+CREATE TABLE IF NOT EXISTS dss_texts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scroll_id TEXT NOT NULL,
+    scroll_name TEXT DEFAULT '',
+    document_type TEXT DEFAULT '',
+    bible_ref TEXT DEFAULT '',
+    dss_hebrew TEXT DEFAULT '',
+    mt_hebrew TEXT DEFAULT '',
+    variant_description TEXT DEFAULT '',
+    transcription_notes TEXT DEFAULT '',
+    has_variant INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS dss_sectarian (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scroll_id TEXT NOT NULL,
+    section TEXT NOT NULL,
+    content TEXT NOT NULL,
+    content_type TEXT DEFAULT '',
+    topic TEXT DEFAULT '',
+    bible_parallels TEXT DEFAULT ''
 );
 
 -- Symbol reference table (known scriptural symbols)
@@ -294,6 +486,49 @@ CREATE TABLE IF NOT EXISTS typology (
     UNIQUE(type_verse, antitype_verse)
 );
 
+-- Interpretive disagreements (contradictory connections across traditions)
+CREATE TABLE IF NOT EXISTS interpretive_disagreements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verse_id TEXT NOT NULL,
+    tradition_a TEXT NOT NULL,
+    tradition_b TEXT NOT NULL,
+    connection_a_id INTEGER,
+    connection_b_id INTEGER,
+    description TEXT NOT NULL,
+    resolved_by TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (connection_a_id) REFERENCES connections(id),
+    FOREIGN KEY (connection_b_id) REFERENCES connections(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_disagreements_verse ON interpretive_disagreements(verse_id);
+
+-- Official LDS footnotes (from churchofjesuschrist.org API)
+CREATE TABLE IF NOT EXISTS footnotes (
+    id TEXT PRIMARY KEY,
+    verse_id TEXT NOT NULL REFERENCES verses(id),
+    marker TEXT NOT NULL,
+    word_index INTEGER,
+    context_word TEXT,
+    category TEXT,
+    body_html TEXT,
+    reference_data TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_footnotes_verse ON footnotes(verse_id);
+CREATE INDEX IF NOT EXISTS idx_footnotes_cat ON footnotes(verse_id, category);
+
+-- Resolved cross-references from footnotes
+CREATE TABLE IF NOT EXISTS cross_references (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_verse TEXT NOT NULL REFERENCES verses(id),
+    target_verse TEXT NOT NULL REFERENCES verses(id),
+    footnote_id TEXT REFERENCES footnotes(id),
+    confidence REAL DEFAULT 1.0
+);
+CREATE INDEX IF NOT EXISTS idx_xref_source ON cross_references(source_verse);
+CREATE INDEX IF NOT EXISTS idx_xref_target ON cross_references(target_verse);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_xref_pair ON cross_references(source_verse, target_verse);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_verses_book_chapter ON verses(book_id, chapter, verse);
 CREATE INDEX IF NOT EXISTS idx_gematria_verse ON gematria(verse_id);
@@ -304,6 +539,7 @@ CREATE INDEX IF NOT EXISTS idx_verses_has_greek ON verses(has_greek);
 CREATE INDEX IF NOT EXISTS idx_connections_source ON connections(source_verse);
 CREATE INDEX IF NOT EXISTS idx_connections_target ON connections(target_verse);
 CREATE INDEX IF NOT EXISTS idx_connections_layer ON connections(layer, type);
+CREATE INDEX IF NOT EXISTS idx_connections_src_tgt_layer ON connections(source_verse, target_verse, layer);
 CREATE INDEX IF NOT EXISTS idx_patterns_book ON patterns(book_id);
 CREATE INDEX IF NOT EXISTS idx_patterns_type ON patterns(pattern_type);
 CREATE INDEX IF NOT EXISTS idx_word_freq_word ON word_frequency(word_english);
@@ -311,6 +547,59 @@ CREATE INDEX IF NOT EXISTS idx_known_chiasms_book ON known_chiasms(book_id);
 CREATE INDEX IF NOT EXISTS idx_known_chiasms_scholar ON known_chiasms(scholar);
 CREATE INDEX IF NOT EXISTS idx_struct_formulas_book ON structural_formulas(book_id);
 CREATE INDEX IF NOT EXISTS idx_struct_formulas_type ON structural_formulas(formula_type);
+CREATE INDEX IF NOT EXISTS idx_verse_entities_verse ON verse_entities(verse_id);
+CREATE INDEX IF NOT EXISTS idx_verse_entities_entity ON verse_entities(entity_id);
+
+-- Conversation tracking (LLM chat sessions)
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+    id TEXT PRIMARY KEY,
+    title TEXT DEFAULT '',
+    theme TEXT DEFAULT '',
+    created_by TEXT DEFAULT 'anonymous',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    message_count INTEGER DEFAULT 0,
+    is_starred INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK(role IN ('user','assistant','system')),
+    content TEXT NOT NULL,
+    metadata_json TEXT DEFAULT '{}',
+    timestamp TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_conv_msg_session ON conversation_messages(session_id);
+
+CREATE TABLE IF NOT EXISTS conversation_refs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+    message_id INTEGER NOT NULL REFERENCES conversation_messages(id) ON DELETE CASCADE,
+    verse_id TEXT NOT NULL REFERENCES verses(id),
+    context TEXT DEFAULT '',
+    confidence REAL DEFAULT 1.0,
+    UNIQUE(message_id, verse_id)
+);
+CREATE INDEX IF NOT EXISTS idx_conv_refs_session ON conversation_refs(session_id);
+
+CREATE TABLE IF NOT EXISTS conversation_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+    source_verse TEXT NOT NULL REFERENCES verses(id),
+    target_verse TEXT NOT NULL REFERENCES verses(id),
+    relationship TEXT DEFAULT '',
+    connection_type TEXT NOT NULL DEFAULT 'discovered'
+        CHECK(connection_type IN ('discovered','retrieved','suggested')),
+    existing_connection_id INTEGER,
+    confidence REAL DEFAULT 0.5,
+    description TEXT DEFAULT '',
+    context_message TEXT DEFAULT '',
+    promoted INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(session_id, source_verse, target_verse)
+);
+CREATE INDEX IF NOT EXISTS idx_conv_conn_session ON conversation_connections(session_id);
 """
 
 

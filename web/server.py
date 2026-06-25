@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -57,6 +58,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ─── RAM Cache (loaded at startup, zero disk reads after) ───
@@ -3832,8 +3835,10 @@ async def llm_chat(body: ChatRequest):
 
         conn.close()
 
-        # Apply budget check again — tool results grow the context each round
-        msgs = apply_context_budget(msgs)
+        # Apply budget check only when approaching the limit (saves scanning all messages)
+        est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
+        if est > MAX_PROMPT_TOKENS * 0.8:
+            msgs = apply_context_budget(msgs)
 
         # Call DeepSeek again with tool results
         payload["messages"] = msgs

@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
 import { getInfo, getBooks } from './api'
 import { TabProvider, useTabs } from './tabContext.jsx'
 import { SettingsProvider, useSettings, useHistory } from './settings.jsx'
 import { ProgressProvider, useProgress } from './progress.jsx'
 import { parseAndFuzzy, getChapters } from './refParser'
-import ChatPanel from './components/ChatPanel'
+const ChatPanel = React.lazy(() => import('./components/ChatPanel'))
 import ConversationHistory from './components/ConversationHistory'
 import VerseBlock from './components/VerseBlock'
-import StudyViewer from './components/StudyViewer'
+const StudyViewer = React.lazy(() => import('./components/StudyViewer'))
 import SearchBar from './components/SearchBar'
 import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
 import {
@@ -25,7 +25,7 @@ import SettingsPanel from './components/SettingsPanel'
 import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
-import ConnectionGraph from './components/ConnectionGraph'
+const ConnectionGraph = React.lazy(() => import('./components/ConnectionGraph'))
 import useAgentControl from './useAgentControl'
 
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections, searchVerses } from './api'
@@ -772,7 +772,8 @@ function AppInner() {
     // Chat view — render ChatPanel inline
     if (viewLevel === 'chat') {
       return (
-        <ChatPanel
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading chat...</div>}>
+          <ChatPanel
           variant="tab"
           open={true}
           initialMessage={chatInitialMsg}
@@ -780,11 +781,16 @@ function AppInner() {
           onOpenTab={handleChatOpenTab}
           onClose={() => {}}
         />
+      </Suspense>
       )
     }
     // Graph view — render ConnectionGraph
     if (viewLevel === 'graph') {
-      return <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading graph...</div>}>
+          <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
+        </Suspense>
+      )
     }
     // Study view — render StudyViewer
     if (viewLevel === 'study' && viewRef) {
@@ -796,14 +802,16 @@ function AppInner() {
         return data.data
       }
       return (
-        <StudyViewer
-          onFetch={fetchStudy}
-          onNavigate={handleChatNavigate}
-          onOpenTab={(b, ch, opts) => openTab(b, ch, opts)}
-          showQuickAsk={showQuickAsk}
-          onChatOpen={(msg) => { setChatInitialMsg(msg); setShowChat(true) }}
-          guideId={null}
-        />
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading study...</div>}>
+          <StudyViewer
+            onFetch={fetchStudy}
+            onNavigate={handleChatNavigate}
+            onOpenTab={(b, ch, opts) => openTab(b, ch, opts)}
+            showQuickAsk={showQuickAsk}
+            onChatOpen={(msg) => { setChatInitialMsg(msg); setShowChat(true) }}
+            guideId={null}
+          />
+        </Suspense>
       )
     }
     return <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse} />
@@ -991,9 +999,11 @@ function AppInner() {
       {/* Overlays */}
       <StructureModal open={showStructure} onClose={() => setShowStructure(false)}
         onNavigate={(ref) => { if (ref && currentTab?.id) { const p = ref.split('.'); if (p.length >= 2) goToChapter(currentTab.id, p[0], parseInt(p[1]) || 1) }; setShowStructure(false) }} />
-      <ChatPanel open={showChat} onClose={() => { setShowChat(false); setChatInitialMsg('') }}
-        initialMessage={chatInitialMsg}
-        onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
+      <Suspense fallback={null}>
+        <ChatPanel open={showChat} onClose={() => { setShowChat(false); setChatInitialMsg('') }}
+          initialMessage={chatInitialMsg}
+          onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
+      </Suspense>
       <CommandInput open={showCommand} onClose={() => setShowCommand(false)}
         allBooks={allBooks}
         onNavigate={handleCommandNav} onChat={handleCommandChat} />
