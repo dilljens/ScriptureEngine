@@ -3829,6 +3829,28 @@ async def llm_chat(body: ChatRequest):
 
     final_content = choice["message"]["content"] or ""
     final_reasoning = choice["message"].get("reasoning_content")
+
+    # If LLM only made tool calls without summarizing, force a summary
+    if not final_content and tool_results:
+        msgs.append({"role": "user", "content":
+            "Summarize the information above in natural language. "
+            "Cite the specific verses and data you found. "
+            "Use full book names like 'Genesis 1:1'. "
+            "Do not list the tools you used."})
+        retry = await call_deepseek({
+            "model": body.model, "messages": msgs,
+            "max_tokens": body.max_tokens, "temperature": body.temperature,
+        })
+        if retry.get("choices") and retry["choices"][0]["message"].get("content"):
+            rc = retry["choices"][0]
+            final_content = rc["message"]["content"] or ""
+            final_reasoning = rc["message"].get("reasoning_content") or final_reasoning
+            # Merge usage from the retry call
+            retry_usage = retry.get("usage", {})
+            for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
+                if retry_usage.get(k):
+                    usage[k] = usage.get(k, 0) + retry_usage[k]
+
     cost = _compute_cost(usage)
 
     return {

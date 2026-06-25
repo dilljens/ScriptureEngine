@@ -231,9 +231,9 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
       const res = await chat(allMessages, { max_tokens: 30000 })
       if (res.ok && res.data) {
         const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
-        // If the LLM returned only tool calls with no content, build a summary
+        // If the LLM returned only tool calls with no content, show a cleaner placeholder
         const effectiveContent = content || (toolResults?.length > 0
-          ? `Looked up ${toolResults.length} source${toolResults.length > 1 ? 's' : ''} (${toolResults.map(t => t.name).join(', ')})`
+          ? '_Let me look that up for you..._'
           : '')
         const assistantMsg = { role: 'assistant', content: effectiveContent, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, assistantMsg])
@@ -492,7 +492,7 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
                 </div>
               </div>
             ) : (
-              <div className={`group relative max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm
+              <div className={`group relative max-w-2xl w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm
                 ${msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
@@ -510,28 +510,6 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
                   </button>
                 )}
                 {renderContent(msg.content)}
-
-                {/* Tool results */}
-                {msg.toolResults && msg.toolResults.length > 0 && (
-                  <div className="mt-2 space-y-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-700">
-                    {msg.toolResults.map((tr, ti) => (
-                      <details key={ti} className="group">
-                        <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1.5 select-none">
-                          <span className="text-blue-500">🔧</span>
-                          <span className="font-medium">{tr.name}</span>
-                          <span className="text-[8px] text-neutral-300 dark:text-neutral-600 truncate max-w-[120px]">
-                            {JSON.stringify(tr.args).slice(0, 80)}
-                          </span>
-                          <span className="ml-auto text-[9px] text-neutral-300 dark:text-neutral-600 group-open:rotate-90 transition-transform">▶</span>
-                        </summary>
-                        <div className="mt-1 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-[10px] font-mono text-neutral-600 dark:text-neutral-400 max-h-32 overflow-y-auto whitespace-pre-wrap break-all">
-                          {JSON.stringify(tr.result, null, 2).slice(0, 1000)}
-                          {JSON.stringify(tr.result, null, 2).length > 1000 && '\n... (truncated)'}
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                )}
 
                 {/* Token display */}
                 {msg.usage && (() => {
@@ -655,7 +633,7 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
   // ── Tab variant: inline in main content ──
   if (variant === 'tab') {
     return (
-      <div className="flex flex-col h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700">
+      <div className="flex flex-col h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Chat</h2>
