@@ -948,7 +948,7 @@ function AppInner() {
         </div>
       </header>
 
-      {/* Tab strip (merged workspace + chapter tabs) */}
+      {/* Tab strip (always visible) */}
       <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 flex items-center min-h-[30px]">
         {/* Workspace selector */}
         <div className="flex items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
@@ -963,10 +963,9 @@ function AppInner() {
           <button onClick={() => newWorkspace()} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm leading-none px-0.5" title="New workspace">+</button>
         </div>
 
-        {/* Chapter tabs */}
-        {currentWorkspace && (
-          <div className="flex items-center gap-0.5 overflow-x-auto tab-scroll flex-1 px-1">
-            {currentWorkspace.tabs.map(tab => (
+        {/* Chapter tabs — always visible */}
+        <div className="flex items-center gap-0.5 overflow-x-auto tab-scroll flex-1 px-1">
+          {(currentWorkspace?.tabs || []).map(tab => (
               <div key={tab.id} onClick={() => selectTab(tab.id)}
                 className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer text-xs border-b-2 transition-colors shrink-0 ${
                   tab.id === activeTab
@@ -986,7 +985,6 @@ function AppInner() {
               className="px-1.5 py-0.5 rounded text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm shrink-0 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
               title="New tab (Ctrl+T)">+</button>
           </div>
-        )}
       </div>
 
       {/* Main */}
@@ -1029,6 +1027,14 @@ function AppInner() {
         />
       )}
 
+      {/* Mobile bottom footer — pinch hints, doesn't cover content */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+        <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur border-t border-neutral-200 dark:border-neutral-800 px-3 py-1 text-[9px] text-neutral-400 dark:text-neutral-500 text-center">
+          Pinch in to zoom out · Pinch out to zoom in · Tap book name to navigate
+        </div>
+      </div>
+      {/* Spacer to prevent content from being hidden behind footer */}
+      <div className="sm:hidden h-6" />
 
     </div>
   )

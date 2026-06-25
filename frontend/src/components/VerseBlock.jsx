@@ -377,16 +377,6 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
                 </p>
               </div>
             </div>
-            {verse.text_hebrew && (
-              <>
-                <div className="w-px bg-neutral-200 dark:bg-neutral-700 shrink-0" />
-                <div className="flex-1 min-w-0 px-3 py-2">
-                  <p className={`text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 ${HEBREW_FONT}`} style={{ fontSize: '1.05em' }} dir="rtl">
-                    {wordData ? renderHebrewWithAnnotations(verse.text_hebrew, wordData, toggles) : cleanHebrew(verse.text_hebrew)}
-                  </p>
-                </div>
-              </>
-            )}
           </div>
         )}
       </div>

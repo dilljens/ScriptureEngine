@@ -28,7 +28,7 @@ function useChapterData(book, chapter) {
 }
 
 export default function ChapterView({ book, chapter, poetryMode, highlightVerse }) {
-  const { toggles, displayLang, showTranslit, showEnglish } = useToggles()
+  const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish } = useToggles()
   const { data, loading, error } = useChapterData(book, chapter)
   const [footnotes, setFootnotes] = useState(null)
   const [tskRefs, setTskRefs] = useState(null)
@@ -167,13 +167,34 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse 
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-6">
-      <div className="mb-3 flex items-center gap-3 text-[10px] text-neutral-400 dark:text-neutral-500">
-        <div className="flex-1 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-          <div className="h-full rounded-full bg-blue-500 dark:bg-blue-400 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+      <div className="mb-3 flex items-center gap-2 text-[10px] text-neutral-400 dark:text-neutral-500">
+        {/* Language selector */}
+        <div className="flex items-center gap-1">
+          <span className="text-neutral-400 dark:text-neutral-500 font-medium">Language:</span>
+          <select value={displayLang} onChange={e => setDisplayLang(e.target.value)}
+            className="px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] font-mono bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer">
+            <option value="english">English</option>
+            <option value="hebrew">Hebrew</option>
+            <option value="greek">Greek</option>
+          </select>
         </div>
-        <span className="shrink-0">{reviewedCount}/{totalVerses} verses reviewed</span>
-        {footnotes && <span className="shrink-0">· {footnotes.length} fn</span>}
-        {tskRefs && <span className="shrink-0">· {tskRefs.length} tsk</span>}
+        {displayLang !== 'english' && (
+          <>
+            <label className="flex items-center gap-1 cursor-pointer select-none hover:text-neutral-600 dark:hover:text-neutral-300">
+              <input type="checkbox" checked={showTranslit} onChange={() => setShowTranslit(!showTranslit)}
+                className="w-2.5 h-2.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+              <span>Translit</span>
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer select-none hover:text-neutral-600 dark:hover:text-neutral-300">
+              <input type="checkbox" checked={showEnglish} onChange={() => setShowEnglish(!showEnglish)}
+                className="w-2.5 h-2.5 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+              <span>English</span>
+            </label>
+          </>
+        )}
+        {/* Stats */}
+        {footnotes?.length > 0 && <span className="shrink-0">· {footnotes.length} fn</span>}
+        {tskRefs?.length > 0 && <span className="shrink-0">· {tskRefs.length} tsk</span>}
         <div className="shrink-0 flex items-center gap-1 ml-auto">
           <span className="text-neutral-300 dark:text-neutral-600">⏎</span>
           <input ref={verseInputRef} type="text" value={verseJump}
