@@ -511,6 +511,19 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
                 )}
                 {renderContent(msg.content)}
 
+                {/* Reasoning — collapsible thought process */}
+                {msg.reasoning_content && (
+                  <details className="group mt-1">
+                    <summary className="text-[9px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
+                      <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
+                      <span className="italic">reasoning</span>
+                    </summary>
+                    <div className="mt-0.5 px-2 py-1 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
+                      {msg.reasoning_content}
+                    </div>
+                  </details>
+                )}
+
                 {/* Token display */}
                 {msg.usage && (() => {
                   const total = msg.usage.total_tokens || 1

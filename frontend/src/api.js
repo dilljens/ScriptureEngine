@@ -19,7 +19,7 @@ async function fetchJSON(url, options = {}) {
     return res.json()
   } catch (err) {
     if (err.name === 'AbortError') {
-      throw new Error(`API request to ${url} timed out after ${TIMEOUT_MS}ms`)
+      throw new Error(`API request to ${url} timed out`)
     }
     throw err
   } finally {
@@ -198,7 +198,7 @@ export function chat(messages, opts = {}) {
   const { model = 'deepseek-v4-flash', max_tokens = 30000, temperature = 0.7, signal } = opts
   // LLM calls need longer timeout — use provided signal or create one with 60s
   const controller = signal ? null : new AbortController()
-  const timer = controller ? setTimeout(() => controller.abort(), 60_000) : null
+  const timer = controller ? setTimeout(() => controller.abort(), 120_000) : null
   return fetchJSON('/chat', {
     method: 'POST',
     body: JSON.stringify({ messages, model, max_tokens, temperature }),
