@@ -3695,19 +3695,21 @@ async def llm_chat(body: ChatRequest):
 
     msgs = apply_context_budget(msgs)
 
-    # Prepare request payload
+    # Prepare request payload (DeepSeek thinking mode — matches OpenCode defaults)
     payload = {
         "model": body.model,
         "messages": msgs,
         "max_tokens": body.max_tokens,
         "temperature": body.temperature,
+        "thinking": {"type": "enabled"},
+        "reasoning_effort": "high",
     }
     if body.tools_enabled:
         payload["tools"] = TOOL_DEFINITIONS
         payload["tool_choice"] = "auto"
 
     tool_results = []
-    max_tool_rounds = 5  # prevent infinite loops
+    max_tool_rounds = 10  # prevent infinite loops; 5 was too low for complex queries
 
     async def call_deepseek(req_payload):
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -3724,7 +3726,17 @@ async def llm_chat(body: ChatRequest):
     data = await call_deepseek(payload)
 
     if "error" in data:
-        return {"ok": False, "error": data["error"].get("message", str(data["error"]))}
+        err = data["error"]
+        code = err.get("code", 0)
+        friendly_map = {
+            400: "Invalid request format.",
+            401: "API key issue — contact the repo maintainer.",
+            429: "Rate limited — please wait a moment.",
+            500: "DeepSeek server error. Try again.",
+        }
+        msg = err.get("message", str(err))
+        friendly = friendly_map.get(code, "")
+        return {"ok": False, "error": f"{friendly} [{msg}]" if friendly else msg}
 
     rounds = 0
     while data.get("choices") and rounds < max_tool_rounds:
@@ -3788,19 +3800,9 @@ async def llm_chat(body: ChatRequest):
                 "result": tool_result_data,
             })
 
-            # Add tool result as a message (preserve reasoning_content if present)
-            assistant_msg = {
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [{
-                    "id": tc["id"],
-                    "type": "function",
-                    "function": {"name": fn_name, "arguments": tc["function"]["arguments"]},
-                }],
-            }
-            if msg.get("reasoning_content"):
-                assistant_msg["reasoning_content"] = msg["reasoning_content"]
-            msgs.append(assistant_msg)
+            # Add tool result as a message — use the full message from DeepSeek
+            # (includes content + reasoning_content + tool_calls — official pattern)
+            msgs.append(msg)
             msgs.append({
                 "role": "tool",
                 "content": result_str,
@@ -3817,7 +3819,9 @@ async def llm_chat(body: ChatRequest):
         data = await call_deepseek(payload)
 
         if "error" in data:
-            return {"ok": False, "error": data["error"].get("message", str(data["error"]))}
+            err = data["error"]
+            msg = err.get("message", str(err))
+            return {"ok": False, "error": f"DeepSeek API error: {msg}"}
 
         rounds += 1
 
