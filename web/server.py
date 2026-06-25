@@ -10,7 +10,7 @@ Usage:
   # Open http://localhost:8000/docs for interactive API browser
 """
 
-import sys, os, json, sqlite3, time
+import sys, os, json, sqlite3, time, asyncio
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -3068,6 +3068,10 @@ DEEPSEEK_API_KEY: str = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-v4-flash"
 
+# Reusable HTTP client for DeepSeek API calls (avoids creating a new connection each time)
+import httpx
+_http_client = httpx.AsyncClient(timeout=60.0)
+
 # Pricing per 1M tokens (deepseek-v4-flash)
 PRICING = {
     "input": 0.14,
@@ -3712,16 +3716,16 @@ async def llm_chat(body: ChatRequest):
     max_tool_rounds = 10  # prevent infinite loops; 5 was too low for complex queries
 
     async def call_deepseek(req_payload):
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{DEEPSEEK_BASE}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json=req_payload,
-            )
-            return resp.json()
+        global _http_client
+        resp = await _http_client.post(
+            f"{DEEPSEEK_BASE}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=req_payload,
+        )
+        return resp.json()
 
     data = await call_deepseek(payload)
 
@@ -3752,33 +3756,50 @@ async def llm_chat(body: ChatRequest):
         # First, add the assistant's tool_calls message once (DeepSeek requires this order)
         msgs.append(msg)
         conn = get_db()
-        for tc in tool_calls:
+
+        # Separate staging (write) tools from read-only tools
+        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
+        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+
+        # Run read-only tools in parallel
+        async def run_ro(tc):
             fn_name = tc["function"]["name"]
             try:
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
+            try:
+                return tc, call_tool(fn_name, conn, **fn_args)
+            except Exception as e:
+                return tc, {"error": str(e)}
 
-            # Execute the tool
-            if not fn_name.startswith("scripture_"):
-                result = {"error": f"Unknown tool: {fn_name}"}
-            elif fn_name in STAGING_TOOLS:
-                # Staging tools go to staging table (LLM proposes, dev approves)
-                try:
-                    if fn_name == "scripture_stage_connection":
-                        result = stage_connection(conn, submitted_by="llm", **fn_args)
-                    elif fn_name == "scripture_stage_study":
-                        steps = json.loads(fn_args.pop("steps_json", "[]"))
-                        result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
-                    else:
-                        result = {"error": f"Unknown staging tool: {fn_name}"}
-                except Exception as e:
-                    result = {"error": str(e)}
-            else:
-                try:
-                    result = call_tool(fn_name, conn, **fn_args)
-                except Exception as e:
-                    result = {"error": str(e)}
+        ro_results = []
+        if ro_calls:
+            ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls])
+
+        # Run staging tools sequentially (they write to DB)
+        staging_results = []
+        for tc in staging_calls:
+            fn_name = tc["function"]["name"]
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            try:
+                if fn_name == "scripture_stage_connection":
+                    result = stage_connection(conn, submitted_by="llm", **fn_args)
+                elif fn_name == "scripture_stage_study":
+                    steps = json.loads(fn_args.pop("steps_json", "[]"))
+                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                else:
+                    result = {"error": f"Unknown staging tool: {fn_name}"}
+            except Exception as e:
+                result = {"error": str(e)}
+            staging_results.append((tc, result))
+
+        # Combine all results
+        all_results = ro_results + staging_results
+        for tc, result in all_results:
 
             # Truncate large results to avoid overflowing context
             result_str = json.dumps(result, default=str, ensure_ascii=False)

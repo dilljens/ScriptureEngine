@@ -59,21 +59,47 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse 
     verseInputRef.current?.blur()
   }
 
+  // Parallel fetch sub-requests — only for toggles that are enabled
   useEffect(() => {
-    getFootnotes(`${book}.${chapter}`).then(r => setFootnotes(r.data?.footnotes || [])).catch(() => setFootnotes([]))
-  }, [book, chapter])
+    const ref = `${book}.${chapter}`
+    const fetches = []
 
-  useEffect(() => {
-    getTskCrossrefs(`${book}.${chapter}`).then(r => setTskRefs(r.data?.cross_references || [])).catch(() => setTskRefs([]))
-  }, [book, chapter])
+    if (toggles.footnotes) fetches.push(
+      getFootnotes(ref).then(r => { setFootnotes(r.data?.footnotes || []) }).catch(() => setFootnotes([]))
+    )
+    if (toggles.tsk) fetches.push(
+      getTskCrossrefs(ref).then(r => setTskRefs(r.data?.cross_references || [])).catch(() => setTskRefs([]))
+    )
+    if (toggles.gematria || toggles.lemma || displayLang !== 'english') fetches.push(
+      getChapterGrammar(ref).then(r => setWordData(r.data?.verses || {})).catch(() => setWordData({}))
+    )
+    // Only fetch connections if any connection-related toggle is on
+    const hasConnToggles = toggles.direct || toggles.allusion || toggles.echo || toggles.places || toggles.times || toggles.isaiah
+    if (hasConnToggles) fetches.push(
+      getChapterConnections(ref).then(r => setChapterConnections(r.data?.verses || {})).catch(() => setChapterConnections({}))
+    )
 
-  useEffect(() => {
-    getChapterGrammar(`${book}.${chapter}`).then(r => setWordData(r.data?.verses || {})).catch(() => setWordData({}))
-  }, [book, chapter])
+    if (fetches.length > 0) Promise.all(fetches)
 
-  useEffect(() => {
-    getChapterConnections(`${book}.${chapter}`).then(r => setChapterConnections(r.data?.verses || {})).catch(() => setChapterConnections({}))
-  }, [book, chapter])
+    // Prefetch adjacent chapters after current loads
+    const prefetchNext = () => {
+      const nextCh = chapter + 1
+      const prevCh = chapter - 1
+      // Prefetch next chapter
+      const n = document.createElement('link')
+      n.rel = 'prefetch'; n.href = `/api/v1/chapter/${book}.${nextCh}`
+      document.head.appendChild(n)
+      // Prefetch previous chapter if not first
+      if (prevCh >= 1) {
+        const p = document.createElement('link')
+        p.rel = 'prefetch'; p.href = `/api/v1/chapter/${book}.${prevCh}`
+        document.head.appendChild(p)
+      }
+    }
+    // Delay prefetch slightly so current rendering gets priority
+    const prefetchTimer = setTimeout(prefetchNext, 2000)
+    return () => { clearTimeout(prefetchTimer) }
+  }, [book, chapter, toggles, displayLang])
 
   const verseRefs = useRef({})
   useEffect(() => {
