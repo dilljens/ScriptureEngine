@@ -54,7 +54,12 @@ export function ToggleProvider({ children }) {
   })
   const [searchLang, setSearchLang] = useState('all') // 'all' | 'english' | 'hebrew' | 'greek'
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang }}>{children}</ToggleCtx.Provider>
+  // Display language — which language to show verses in
+  const [displayLang, setDisplayLang] = useState('english') // 'english' | 'hebrew' | 'greek'
+  const [showTranslit, setShowTranslit] = useState(true)
+  const [showEnglish, setShowEnglish] = useState(true)
+
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -84,7 +89,7 @@ function ToggleRow({ def, on, onToggle }) {
 
 /* ── Layers popover ── */
 export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, buttonRef }) {
-  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang } = useToggles()
+  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish } = useToggles()
   const popoverRef = useRef(null)
 
   // Click outside + Escape
@@ -156,6 +161,45 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
                   : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
               }`}>Narrative</button>
           </div>
+        </div>
+
+        {/* Display Language */}
+        <div className="px-1 py-1.5">
+          <div className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-1.5">Display Language</div>
+          <div className="flex gap-1">
+            {[
+              { id: 'english', label: 'English' },
+              { id: 'hebrew', label: 'Hebrew' },
+              { id: 'greek', label: 'Greek' },
+            ].map(lang => (
+              <button key={lang.id} onClick={() => setDisplayLang(lang.id)}
+                className={`flex-1 px-2 py-1 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                  displayLang === lang.id
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}>
+                {lang.label}
+              </button>
+            ))}
+          </div>
+          {displayLang !== 'english' && (
+            <div className="flex flex-col gap-1 mt-1.5 px-0.5">
+              <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+                onClick={() => setShowTranslit(!showTranslit)}>
+                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors ${showTranslit ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${showTranslit ? 'translate-x-3' : 'translate-x-0'}`} />
+                </div>
+                Show transliteration
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+                onClick={() => setShowEnglish(!showEnglish)}>
+                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors ${showEnglish ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${showEnglish ? 'translate-x-3' : 'translate-x-0'}`} />
+                </div>
+                Show English
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Divider */}

@@ -1884,7 +1884,7 @@ def get_chapter(ref: str):
 
     # 1. Get verses
     verse_rows = conn.execute("""
-        SELECT id, book_id, chapter, verse, text_english, text_hebrew
+        SELECT id, book_id, chapter, verse, text_english, text_hebrew, text_greek
         FROM verses WHERE book_id = ? AND chapter = ?
         ORDER BY verse
     """, (book_id, chapter_num)).fetchall()
@@ -1946,6 +1946,7 @@ def get_chapter(ref: str):
             "verse": v["verse"],
             "text_english": v["text_english"],
             "text_hebrew": v["text_hebrew"],
+            "text_greek": v["text_greek"],
             "lines": intra["lines"],
             "intra_parallelisms": intra["parallelisms"],
             "parallelisms": parallels,

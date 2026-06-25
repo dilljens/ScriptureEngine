@@ -1,6 +1,52 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { cleanHebrew, lineHasChiasmRole } from '../utils'
 
+// ── Transliteration maps ──
+
+const HEBREW_TRANSLIT = {
+  'א': '\'', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h',
+  'ו': 'v', 'ז': 'z', 'ח': 'ḥ', 'ט': 'ṭ', 'י': 'y',
+  'כ': 'k', 'ך': 'k', 'ל': 'l', 'מ': 'm', 'ם': 'm',
+  'נ': 'n', 'ן': 'n', 'ס': 's', 'ע': 'ʻ', 'פ': 'p',
+  'ף': 'p', 'צ': 'ṣ', 'ץ': 'ṣ', 'ק': 'q', 'ר': 'r',
+  'שׁ': 'š', 'שׂ': 'ś', 'ת': 't',
+}
+const GREEK_TRANSLIT = {
+  'α': 'a', 'Α': 'A', 'β': 'b', 'Β': 'B', 'γ': 'g', 'Γ': 'G',
+  'δ': 'd', 'Δ': 'D', 'ε': 'e', 'Ε': 'E', 'ζ': 'z', 'Ζ': 'Z',
+  'η': 'ē', 'Η': 'Ē', 'θ': 'th', 'Θ': 'Th', 'ι': 'i', 'Ι': 'I',
+  'κ': 'k', 'Κ': 'K', 'λ': 'l', 'Λ': 'L', 'μ': 'm', 'Μ': 'M',
+  'ν': 'n', 'Ν': 'N', 'ξ': 'x', 'Ξ': 'X', 'ο': 'o', 'Ο': 'O',
+  'π': 'p', 'Π': 'P', 'ρ': 'r', 'Ρ': 'R', 'σ': 's', 'ς': 's', 'Σ': 'S',
+  'τ': 't', 'Τ': 'T', 'υ': 'y', 'Υ': 'Y', 'φ': 'ph', 'Φ': 'Ph',
+  'χ': 'ch', 'Χ': 'Ch', 'ψ': 'ps', 'Ψ': 'Ps', 'ω': 'ō', 'Ω': 'Ō',
+  'ὰ': 'a', 'ά': 'á', 'ὲ': 'e', 'έ': 'é', 'ὴ': 'ē', 'ή': 'ḗ',
+  'ὶ': 'i', 'ί': 'í', 'ὸ': 'o', 'ό': 'ó', 'ὺ': 'y', 'ύ': 'ý',
+  'ὼ': 'ō', 'ώ': 'ṓ', 'ᾶ': 'â', 'ῆ': 'ê', 'ῖ': 'î', 'ῦ': 'ŷ', 'ῶ': 'ô',
+  'ἀ': 'a', 'ἁ': 'ha', 'ἂ': 'a', 'ἃ': 'ha', 'ἄ': 'á', 'ἅ': 'há',
+  'ἐ': 'e', 'ἑ': 'he', 'ἒ': 'e', 'ἓ': 'he', 'ἔ': 'é', 'ἕ': 'hé',
+  'ἠ': 'ē', 'ἡ': 'hē', 'ἢ': 'ē', 'ἣ': 'hē', 'ἤ': 'ḗ', 'ἥ': 'hḗ',
+  'ἰ': 'i', 'ἱ': 'hi', 'ἲ': 'i', 'ἳ': 'hi', 'ἴ': 'í', 'ἵ': 'hí',
+  'ὀ': 'o', 'ὁ': 'ho', 'ὂ': 'o', 'ὃ': 'ho', 'ὄ': 'ó', 'ὅ': 'hó',
+  'ὐ': 'y', 'ὑ': 'hy', 'ὒ': 'y', 'ὓ': 'hy', 'ὔ': 'ý', 'ὕ': 'hý',
+  'ὠ': 'ō', 'ὡ': 'hō', 'ὢ': 'ō', 'ὣ': 'hō', 'ὤ': 'ṓ', 'ὥ': 'hṓ',
+}
+
+function transliterate(text, map) {
+  if (!text) return ''
+  return [...text].map(ch => map[ch] || ch).join('')
+}
+
+function transliterateHebrew(text) {
+  // Strip niqqud (vowel marks) and cantillation marks before transliterating
+  const cleaned = text.replace(/[\u0591-\u05C7]/g, '')
+  return transliterate(cleaned, HEBREW_TRANSLIT)
+}
+
+function transliterateGreek(text) {
+  return transliterate(text, GREEK_TRANSLIT)
+}
+
 const CHIASMUS_COLORS = {
   'A':  { border: 'border-red-400 dark:border-red-600',  bg: 'bg-red-50 dark:bg-red-900/20',   text: 'text-red-700 dark:text-red-300', bar: 'bg-red-300 dark:bg-red-600' },
   "A'": { border: 'border-red-400 dark:border-red-600',  bg: 'bg-red-50 dark:bg-red-900/20',   text: 'text-red-700 dark:text-red-300', bar: 'bg-red-300 dark:bg-red-600' },
@@ -188,7 +234,7 @@ function ConnectionPanel({ extraConnections, tskRefs, navigateToRef }) {
   )
 }
 
-export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections }) {
+export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections, displayLang, showTranslit, showEnglish }) {
   const [expanded, setExpanded] = useState(false)
   const [openFn, setOpenFn] = useState(null)
   const [openTsk, setOpenTsk] = useState(false)
@@ -214,6 +260,54 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
     } else {
       window.dispatchEvent(new CustomEvent('scripture-navigate', { detail: { book, chapter } }))
     }
+  }
+
+  const sourceText = displayLang === 'hebrew' ? verse.text_hebrew : displayLang === 'greek' ? verse.text_greek : null
+  const hasLang = !!sourceText
+  const translitFn = displayLang === 'hebrew' ? transliterateHebrew : displayLang === 'greek' ? transliterateGreek : null
+
+  // Language mode: show original language + transliteration + English
+  if (displayLang !== 'english' && hasLang) {
+    // Split text into words for word-by-word display
+    const words = sourceText.trim().split(/\s+/).filter(Boolean)
+    return (
+      <div className={`mb-4 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-lg p-3 -m-2' : ''}`}>
+        <div className="flex items-start gap-2">
+          <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center">
+            <span onClick={(e) => { e.stopPropagation(); onToggleReview?.() }}
+              className={`inline-block w-2.5 h-2.5 rounded-sm mr-1 cursor-pointer border transition-colors
+                ${reviewed ? 'bg-blue-500 dark:bg-blue-400 border-blue-500 dark:border-blue-400' : 'border-neutral-300 dark:border-neutral-600 hover:border-blue-400'}`}
+              title={reviewed ? 'Mark as unread' : 'Mark as read'} />
+            {verse.verse}
+          </span>
+          <div className="flex-1 min-w-0">
+            {/* Line 1: Original language */}
+            <div className={`flex flex-wrap gap-x-4 gap-y-1 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
+              dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
+              {words.map((word, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <span className={`text-lg leading-relaxed ${displayLang === 'hebrew' ? HEBREW_FONT : ''}`}
+                    style={displayLang === 'hebrew' ? { fontSize: '1.1em' } : {}}>
+                    {word}
+                  </span>
+                  {showTranslit && translitFn && (
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 leading-tight">
+                      {translitFn(word)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Line 3: English (full verse text, block level) */}
+            {showEnglish && (
+              <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
+                {verse.text_english}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
