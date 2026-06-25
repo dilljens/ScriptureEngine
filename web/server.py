@@ -3827,11 +3827,11 @@ async def llm_chat(body: ChatRequest):
     if not choice:
         return {"ok": False, "error": "No response from LLM"}
 
-    final_content = choice["message"]["content"] or ""
+    final_content = choice["message"]["content"] or choice["message"].get("reasoning_content") or ""
     final_reasoning = choice["message"].get("reasoning_content")
 
     # If LLM only made tool calls without summarizing, force a summary
-    if not final_content and tool_results:
+    if not final_content and tool_results and not final_reasoning:
         msgs.append({"role": "user", "content":
             "Summarize the information above in natural language. "
             "Cite the specific verses and data you found. "
@@ -3841,10 +3841,11 @@ async def llm_chat(body: ChatRequest):
             "model": body.model, "messages": msgs,
             "max_tokens": body.max_tokens, "temperature": body.temperature,
         })
-        if retry.get("choices") and retry["choices"][0]["message"].get("content"):
-            rc = retry["choices"][0]
-            final_content = rc["message"]["content"] or ""
-            final_reasoning = rc["message"].get("reasoning_content") or final_reasoning
+        if retry.get("choices"):
+            rc_msg = retry["choices"][0].get("message", {})
+            if rc_msg.get("content") or rc_msg.get("reasoning_content"):
+                final_content = rc_msg["content"] or rc_msg.get("reasoning_content") or ""
+                final_reasoning = rc_msg.get("reasoning_content") or final_reasoning
             # Merge usage from the retry call
             retry_usage = retry.get("usage", {})
             for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
