@@ -409,10 +409,6 @@ export default function ConnectionGraph({ centerVerse, onNavigate, onOpenTab }) 
         </div>
       </div>
 
-      {/* Footer hint */}
-      <div className="text-[9px] text-neutral-400 dark:text-neutral-500 text-center py-1 border-t border-neutral-100 dark:border-neutral-800 shrink-0">
-        Click center verse to navigate · Click connected verse to open in new tab · Scroll to zoom · Drag to pan
-      </div>
     </div>
   )
 }
