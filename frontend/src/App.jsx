@@ -26,6 +26,7 @@ import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
 const ConnectionGraph = React.lazy(() => import('./components/ConnectionGraph'))
+import TileDashboard from './components/TileDashboard'
 import useAgentControl from './useAgentControl'
 
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections, searchVerses } from './api'
@@ -367,6 +368,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
+    moveTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, persist } = useSettings()
@@ -532,12 +534,16 @@ function AppInner() {
       updateTab(currentTab.id, { view: 'work', viewRef: wId, label: wT })
     } else if (viewLevel === 'work') {
       updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
+    } else if (viewLevel === 'library') {
+      updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
     }
   }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab, isDc])
 
   const goDownLevel = useCallback(() => {
     if (!currentTab?.id) return
-    if (viewLevel === 'library') {
+    if (viewLevel === 'tiles') {
+      updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
+    } else if (viewLevel === 'library') {
       const targetWorkId = viewRef || bookData?.works?.find(w => w.books?.some(b => b.id === book))?.id || bookData?.works?.[0]?.id || 'ot'
       const wT = bookData?.works?.find(w => w.id === targetWorkId)?.title || targetWorkId
       updateTab(currentTab.id, { view: 'work', viewRef: targetWorkId, label: wT })
@@ -787,6 +793,25 @@ function AppInner() {
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading graph...</div>}>
           <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
         </Suspense>
+      )
+    }
+    // Tiles view — subject/chapter dashboard
+    if (viewLevel === 'tiles') {
+      return (
+        <TileDashboard
+          workspaces={workspaces}
+          activeWorkspace={activeWorkspace}
+          activeTab={activeTab}
+          onSelectWorkspace={selectWorkspace}
+          onNewWorkspace={newWorkspace}
+          onRenameWorkspace={renameWorkspace}
+          onDeleteWorkspace={deleteWorkspace}
+          onSelectTab={selectTab}
+          onCloseTab={closeTab}
+          onMoveTab={moveTab}
+          onOpenTab={openTab}
+          book={book} chapter={chapter} bookTitle={bookTitle}
+        />
       )
     }
     // Study view — render StudyViewer

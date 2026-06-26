@@ -146,10 +146,27 @@ function reducer(state, action) {
       if (!wsClose) return state
       wsClose.tabs = wsClose.tabs.filter(t => t.id !== action.id)
       if (s.activeTab === action.id) {
-        s.activeTab = wsClose.tabs[0]?.id || null
+        s.activeTab = wsClose.tabs[wsClose.tabs.length - 1]?.id || null
       }
       saveState(s)
       return s
+
+    case 'MOVE_TAB': {
+      s = { ...state }
+      const fromWs = s.workspaces.find(w => w.id === action.fromWorkspaceId)
+      const toWs = s.workspaces.find(w => w.id === action.toWorkspaceId)
+      if (!fromWs || !toWs) return state
+      const tab = fromWs.tabs.find(t => t.id === action.tabId)
+      if (!tab) return state
+      fromWs.tabs = fromWs.tabs.filter(t => t.id !== action.tabId)
+      toWs.tabs = [...toWs.tabs, tab]
+      // If moved from active workspace, update activeTab
+      if (s.activeWorkspace === action.fromWorkspaceId && s.activeTab === action.tabId) {
+        s.activeWorkspace = action.toWorkspaceId
+      }
+      saveState(s)
+      return s
+    }
 
     case 'SELECT_TAB':
       s = { ...state }
@@ -216,6 +233,8 @@ export function TabProvider({ children }) {
     }, []),
 
     closeTab: useCallback(id => dispatch({ type: 'CLOSE_TAB', id }), []),
+    moveTab: useCallback((tabId, fromWorkspaceId, toWorkspaceId) =>
+      dispatch({ type: 'MOVE_TAB', tabId, fromWorkspaceId, toWorkspaceId }), []),
     selectTab: useCallback(id => dispatch({ type: 'SELECT_TAB', id }), []),
 
     updateTab: useCallback((id, updates) => dispatch({ type: 'UPDATE_TAB', id, updates }), []),
@@ -290,8 +309,8 @@ export function TabProvider({ children }) {
 
   // Current view level
   const viewLevel = currentTab?.view || 'chapter'
-  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : null
-  const viewDown = viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'book' : viewLevel === 'book' ? 'chapter' : null
+  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : null
+  const viewDown = viewLevel === 'tiles' ? 'library' : viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'book' : viewLevel === 'book' ? 'chapter' : null
   const isLibraryView = viewLevel === 'library'
 
   // Is the current view a chapter (showing verses)?
