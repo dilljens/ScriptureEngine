@@ -182,16 +182,48 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
     init()
   }, [open])
 
+  const TIPS = [
+    "Gematria assigns numerical values to Hebrew letters. gen.1.1 totals 2701 (37x73), a famous palindromic prime pair — numbers that echo creation's mathematical design.",
+    "PaRDeS is a four-level Jewish hermeneutic: P'shat (literal), Remez (hinted), Drash (comparative), Sod (hidden/temple). Connections are tagged by level.",
+    "The 'sod' (hidden) layer contains temple theology — angelic mediation, the two Yahwehs tradition, cosmic mountain, and the throne vision.",
+    "Intertextual connections are quotations and allusions between verses. Linguistic connections share Hebrew or Greek roots across different passages.",
+    "A chiasm is an A-B-C-B'-A' literary structure. The center is the pivot point — often the theological key. Many temple texts use chiastic framing.",
+    "The connection graph tracks over 1 million typed connections across 11 layers. Click the graph icon in the toolbar to visualize paths between verses.",
+    "The Septuagint (LXX) is the Greek translation of the Hebrew Bible used by the NT writers. The Masoretic Text (MT) is the Hebrew tradition.",
+    "YHWH is the tetragrammaton — the four-letter divine name. The LSV uses YHWH directly. Its gematria value is 26, the same as the number of generations in Matthew's genealogy.",
+    "11 connection layers: linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod.",
+    "The engine spans 6 works: OT, NT, Book of Mormon, Doctrine and Covenants, Pearl of Great Price, and Dead Sea Scrolls variants.",
+    "Switch between English, Hebrew, and Greek display in the Layers popover. Hebrew mode shows word-by-word transliteration with English glosses.",
+    "Every connection has a confidence score from 0 to 1. Scores above 0.8 are high-confidence — reported as percentages in chat.",
+    "The temple thread runs through all scripture: Eden is the first temple, the Tabernacle is a mobile Eden, the Temple is a permanent one, and Christ is the final temple.",
+    "The two Yahwehs tradition appears at gen.19.24 (YHWH rains fire from YHWH) and psalm.110.1 (YHWH says to my Lord) — early Jewish binitarianism.",
+    "Enoch walks with God and is taken (gen.5.24) — the first human to ascend. The Enochic tradition deeply influenced NT Christology and temple mysticism.",
+    "The Melchizedek priesthood (gen.14.18, psalm.110.4, heb.7) connects bread and wine, kingship, and eternal priesthood — a central temple-Christ typology.",
+    "The Tabernacle of Moses is a microcosm of creation: 7-branch menorah (7 days), veil (firmament), laver (waters below). Building it mirrors creation week.",
+    "The Angel of YHWH appears throughout the OT as YHWH's visible form — seen by Hagar, Abraham, Moses, Joshua, Gideon, and Manoah. Identified with the pre-incarnate Christ by early Christians.",
+    "The Mercy Seat (kapporet) on the Ark is where YHWH dwells between the cherubim. Paul calls Christ our kapporet (hilasterion) in rom.3.25 — the place of atonement.",
+    "The divine council (psa.82, 1kgs.22, job.1-2) depicts YHWH ruling among the heavenly host — a template for understanding the Son of Man's enthronement.",
+    "The Book of Revelation is saturated with temple imagery: 7 lampstands (menorah), sea of glass (laver), altar, incense, ark of the covenant, and the Lamb as temple.",
+  ]
+
   function welcomeMessage() {
-    return `Hi! I'm connected to **deepseek-v4-flash** with **32 tools** to explore the canon.
+    const tip = TIPS[Math.floor(Math.random() * TIPS.length)]
+    return `I'm connected to the scripture engine to explore the canon.
 
 Try asking:
-- *"Look up gen.1.1 and explain its gematria"*
-- *"What connections does isa.6.1 have to the NT?"*
-- *"Trace the Son of Man from Daniel to Jesus"*
-- *"Find the path between gen.1.1 and john.1.1"*
+- "Trace the Angel of YHWH from Genesis to the NT"
+- "Show me the temple connections in the Tabernacle chapters"
+- "What is the two Yahwehs tradition and where does it appear?"
+- "Walk through the chiasm of Isaiah 6"
+- "Find the path from Melchizedek to Christ in the connection graph"
+- "Explain the gematria of YHWH and Adam"
+- "Compare the creation accounts in Genesis and the Temple"
 
-Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to see the verse.`
+──────────
+${tip}
+──────────
+
+Verse references like gen.1.1 are clickable — tap one to view the verse.`
   }
 
   // ── Scroll on new messages ──
