@@ -123,11 +123,8 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
             <div>
               {/* Verse context list */}
               <div className="space-y-1">
-                {chapterData.verses.map(v => {
+                  {chapterData.verses.map(v => {
                   const isTarget = v.verse === info.verse
-                  // Show ±3 verses around target
-                  const diff = Math.abs(v.verse - info.verse)
-                  if (diff > 3 && !isTarget) return null
 
                   return (
                     <div

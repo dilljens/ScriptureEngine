@@ -737,19 +737,16 @@ function AppInner() {
       }
     }
   }, [])
-  const handleTouchEnd = useCallback((e) => {
-    if (!touchRef.current) return
-    // Single tap on main content (no drag)
-    if (e.changedTouches?.length === 1 && !touchRef.current.moved) {
-      // Could interpret as toggle — for now, no-op
-    }
+  const handleTouchEnd = useCallback(() => {
     touchRef.current = null
   }, [])
   const handleTouchMove = useCallback((e) => {
+    // Two finger pinch: zoom control
     if (e.touches.length === 2 && touchRef.current) {
+      e.preventDefault() // Prevent browser zoom
       touchRef.current.moved = true
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
-      const threshold = 40 // minimum pinch distance
+      const threshold = 40
       if (Math.abs(dist - touchRef.current.dist) > threshold) {
         if (dist > touchRef.current.dist) {
           goDownLevel() // pinch out → zoom in
@@ -989,7 +986,8 @@ function AppInner() {
 
       {/* Main */}
       <ErrorBoundary>
-        <main onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}>
+        <main onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}
+          style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}>
           {renderMainContent()}
         </main>
       </ErrorBoundary>

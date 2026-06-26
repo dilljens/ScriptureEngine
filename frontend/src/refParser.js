@@ -411,6 +411,12 @@ function parseStandardRef(text) {
     const book = resolveBook(m3[1])
     if (book) return { book, chapter: parseInt(m3[2]), verse: null, verses: null }
   }
+  // "book.chapter" (dot between book and chapter — common in ref format)
+  const mDot = text.match(/^([a-z0-9_]+)\.(\d+)$/i)
+  if (mDot) {
+    const book = resolveBook(mDot[1])
+    if (book) return { book, chapter: parseInt(mDot[2]), verse: null, verses: null }
+  }
   // "bookN" no-space ref: "isa3", "isaiah3", "gen1" etc.
   const m4 = text.match(/^([a-zA-Z]+)(\d+)$/)
   if (m4) {
