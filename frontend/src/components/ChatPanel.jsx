@@ -19,6 +19,15 @@ const VERSE_REF_RE = /([a-z0-9_]+)\.(\d+)\.(\d+)/gi
 
 // Map full book names to their IDs — matches the LLM's 📖 output format
 const BOOK_NAME_MAP = {
+  // Apocrypha
+  tobit: 'tob', judith: 'jdt',
+  wisdom: 'wis', 'wisdom of solomon': 'wis', sirach: 'sir',
+  'ecclesiasticus': 'sir', baruch: 'bar', 'prayer of manasses': 'man',
+  '1 maccabees': '1ma', '2 maccabees': '2ma',
+  '1 esdras': '1esd', '2 esdras': '2esd',
+  'additions to esther': 'esga', 'song of three': 's3y',
+  susanna: 'sus', 'bel and the dragon': 'bel', 'psalm 151': 'psa151',
+
   genesis: 'gen', exodus: 'exo', leviticus: 'lev', numbers: 'num', deuteronomy: 'deu',
   joshua: 'josh', judges: 'judg', ruth: 'ruth',
   '1 samuel': '1sam', '2 samuel': '2sam', '1 kings': '1kgs', '2 kings': '2kgs',

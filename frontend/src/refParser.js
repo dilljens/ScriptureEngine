@@ -17,6 +17,22 @@ const COLLECTION_MAP = {
 }
 
 const BOOK_ALIASES = {
+  'tob': 'tob', 'tobit': 'tob',
+  'jdt': 'jdt', 'judith': 'jdt',
+  'wis': 'wis', 'wisdom': 'wis', 'wisdom of solomon': 'wis',
+  'sir': 'sir', 'sirach': 'sir', 'ecclesiasticus': 'sir',
+  'bar': 'bar', 'baruch': 'bar',
+  '1ma': '1ma', '1maccabees': '1ma',
+  '2ma': '2ma', '2maccabees': '2ma',
+  '1esd': '1esd', '1esdras': '1esd',
+  '2esd': '2esd', '2esdras': '2esd',
+  'man': 'man', 'manasses': 'man', 'prayer of manasses': 'man',
+  'sus': 'sus', 'susanna': 'sus',
+  'bel': 'bel', 'bel and the dragon': 'bel',
+  's3y': 's3y', 'song of three': 's3y',
+  'esga': 'esga', 'additions to esther': 'esga',
+  'psa151': 'psa151', 'psalm 151': 'psa151',
+
   'gen': 'gen', 'genesis': 'gen',
   'exo': 'exo', 'exodus': 'exo',
   'lev': 'lev', 'leviticus': 'lev',
@@ -417,6 +433,9 @@ function parseStandardRef(text) {
 
 // Chapter counts for every book — used by the chapter preview in the command bar
 const CHAPTER_MAP = {
+  tob:14, jdt:16, wis:19, sir:51, bar:6, man:1,
+  '1ma':16, '2ma':15, '1esd':9, '2esd':16, esga:16, s3y:1, sus:1, bel:1, psa151:1,
+
   gen:50, exo:40, lev:27, num:36, deu:34, josh:24, judg:21, ruth:4,
   '1sam':31, '2sam':24, '1kgs':22, '2kgs':25, '1chr':29, '2chr':36,
   ezra:10, neh:13, esth:10, job:42, psa:150, prov:31, eccl:12, song:8,
