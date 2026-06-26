@@ -55,7 +55,7 @@ export function ToggleProvider({ children }) {
   const [searchLang, setSearchLang] = useState('all') // 'all' | 'english' | 'hebrew' | 'greek'
 
   // Bible version for LLM references
-  const [bibleVersion, setBibleVersion] = useState('WEB') // 'WEB' | 'KJV'
+  const [bibleVersion, setBibleVersion] = useState('LSV') // 'LSV' | 'WEB' | 'KJV'
 
   // Tool categories the LLM is allowed to use
   const [enabledTools, setEnabledTools] = useState({
@@ -252,16 +252,12 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
 
             {/* Bible Version */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Bible Version</div>
-            <div className="flex gap-1 mb-2">
-              {['WEB', 'KJV'].map(v => (
-                <button key={v} onClick={() => setBibleVersion(v)}
-                  className={`flex-1 px-1.5 py-1 rounded text-[10px] font-medium transition-all cursor-pointer ${
-                    bibleVersion === v
-                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}>{v}</button>
-              ))}
-            </div>
+            <select value={bibleVersion} onChange={e => setBibleVersion(e.target.value)}
+              className="w-full px-1.5 py-1 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer mb-2">
+              <option value="LSV">LSV - Literal Standard Version</option>
+              <option value="WEB">WEB - World English Bible</option>
+              <option value="KJV">KJV - King James Version</option>
+            </select>
 
             {/* Tool Categories */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Tools</div>
