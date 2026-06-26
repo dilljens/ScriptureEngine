@@ -3822,7 +3822,7 @@ async def llm_chat(body: ChatRequest):
             tool_results.append({
                 "id": tc["id"],
                 "name": tc["function"]["name"],
-                "args": fn_args,
+                "args": json.loads(tc["function"]["arguments"]),
                 "result": tool_result_data,
             })
 
