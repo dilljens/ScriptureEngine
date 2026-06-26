@@ -3605,6 +3605,7 @@ class ChatRequest(BaseModel):
     max_tokens: int = 4096
     temperature: float = 0.7
     tools_enabled: bool = True
+    disabled_tools: list[str] = []
 
 
 @app.get("/api/v1/chat/instructions")
@@ -3712,7 +3713,12 @@ async def llm_chat(body: ChatRequest):
         "reasoning_effort": "high",
     }
     if body.tools_enabled:
-        payload["tools"] = TOOL_DEFINITIONS
+        # Filter out disabled tools
+        if body.disabled_tools:
+            payload["tools"] = [t for t in TOOL_DEFINITIONS
+                                if t["function"]["name"] not in body.disabled_tools]
+        else:
+            payload["tools"] = TOOL_DEFINITIONS
         payload["tool_choice"] = "auto"
 
     tool_results = []

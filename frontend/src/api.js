@@ -201,7 +201,7 @@ export function chat(messages, opts = {}) {
   const timer = controller ? setTimeout(() => controller.abort(), 120_000) : null
   return fetchJSON('/chat', {
     method: 'POST',
-    body: JSON.stringify({ messages, model, max_tokens, temperature }),
+    body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools: opts.disabled_tools || [] }),
     headers: { 'Content-Type': 'application/json' },
     signal: controller ? controller.signal : signal,
   }).finally(() => { if (timer) clearTimeout(timer) })

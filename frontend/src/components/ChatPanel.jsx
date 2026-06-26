@@ -43,6 +43,18 @@ const BOOK_NAME_MAP = {
   moses: 'moses', abraham: 'abraham', 'joseph smith—matthew': 'jsm',
   'joseph smith—history': 'jsh', 'articles of faith': 'aoff',
   'doctrine and covenants': 'dc',
+  // Common abbreviations the LLM might use (only unique ones not in full names)
+  ezr: 'ezra', est: 'esth', eccl: 'eccl',
+  jon: 'jonah',
+  mrk: 'mark', lk: 'luke', jn: 'john',
+  '1 cor': '1cor', '2 cor': '2cor',
+  '1 thes': '1thes', '2 thes': '2thes', '1 tim': '1tim', '2 tim': '2tim',
+  tit: 'titus', heb: 'heb', jam: 'james',
+  '1 pet': '1pet', '2 pet': '2pet', '1 jn': '1john', '2 jn': '2john', '3 jn': '3john',
+  rev: 'rev',
+  '1 ne': '1ne', '2 ne': '2ne', wom: 'wom',
+  hel: 'hel', '3 ne': '3ne', '4 ne': '4ne',
+  abr: 'abraham', 'd&c': 'dc',
 }
 
 function resolveBookName(name) {
@@ -57,6 +69,9 @@ function resolveBookName(name) {
 function preprocessVerses(markdown) {
   if (!markdown) return ''
   let result = markdown
+
+  // Strip Bible version annotations like (WEB), (KJV) so they don't interfere with ref matching
+  result = result.replace(/\(WEB\)|\(KJV\)|\(LEB\)|\(BSB\)|\(YLT\)/gi, '')
 
   // Match criteria: must be a known book name from BOOK_NAME_MAP
   function tryReplaceBookRef(match, bookName, chapter, verseStr) {
@@ -91,7 +106,7 @@ function isStandaloneVerse(line) {
 // ── Chat Panel Component ──
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
-  const { searchWorks, searchLayers, searchLang } = useToggles?.() || {}
+  const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools } = useToggles?.() || {}
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
@@ -105,6 +120,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [editingIdx, setEditingIdx] = useState(null)   // index of user message being edited, or null
   const [editText, setEditText] = useState('')          // text while editing
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
+  const [visitedRefs, setVisitedRefs] = useState(new Set())
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
@@ -224,11 +240,31 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     setEditText('')
   }
 
+  // Map tool categories to actual tool names
+  const TOOL_CATEGORY_MAP = {
+    lookup: ['scripture_verse', 'scripture_passage_guide', 'scripture_interlinear', 'scripture_verse_text'],
+    search: ['scripture_search', 'scripture_search_xlingual'],
+    connections: ['scripture_connections', 'scripture_intertext', 'scripture_sod', 'scripture_sources', 'scripture_sources_by_scholar', 'scripture_sources_list', 'scripture_consensus', 'scripture_disagreements'],
+    graph: ['scripture_graph_path', 'scripture_graph_reachable', 'scripture_graph_entities', 'scripture_graph_shared_entities', 'scripture_graph_entity_network', 'scripture_graph_hubs', 'scripture_graph_centrality'],
+    gematria: ['scripture_gematria', 'scripture_strongs'],
+    study: ['scripture_study_suggest', 'scripture_study_list', 'scripture_study_get'],
+    staging: ['scripture_stage_connection', 'scripture_stage_study'],
+  }
+
   // Shared core: send message list to LLM, append assistant response
   const performChat = async (allMessages) => {
     setWaiting(true)
     try {
-      const res = await chat(allMessages, { max_tokens: 30000 })
+      // Build disabled tools list from enabledTools state
+      let disabledTools = []
+      if (enabledTools) {
+        for (const [cat, enabled] of Object.entries(enabledTools)) {
+          if (!enabled && TOOL_CATEGORY_MAP[cat]) {
+            disabledTools = disabledTools.concat(TOOL_CATEGORY_MAP[cat])
+          }
+        }
+      }
+      const res = await chat(allMessages, { max_tokens: 30000, disabled_tools: disabledTools })
       if (res.ok && res.data) {
         const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
         // If the LLM returned only tool calls with no content, show a cleaner placeholder
@@ -278,6 +314,13 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
     }
     if (searchLang && searchLang !== 'all') {
       scopeInstr += ` Use ${searchLang} language for scripture searches.`
+    }
+    if (bibleVersion) {
+      scopeInstr += ` Use the ${bibleVersion} Bible version.`
+    }
+    if (enabledTools) {
+      const disabled = Object.entries(enabledTools).filter(([, v]) => !v).map(([k]) => k)
+      if (disabled.length > 0) scopeInstr += ` Do not use these tool categories: ${disabled.join(', ')}.`
     }
 
     const allMessages = [
@@ -437,7 +480,9 @@ Verse references like \`gen.1.1\` render as clickable **📖 chips** — tap to 
         const ref = verseMatch[1]
         return (
           <span key={i} className="inline-block mx-0.5 align-middle">
-            <VerseChip ref={ref} onOpenCard={setPopupRef} />
+            <VerseChip ref={ref} onOpenCard={setPopupRef}
+              visited={visitedRefs.has(ref)}
+              onVisit={(v) => setVisitedRefs(prev => new Set([...prev, v]))} />
           </span>
         )
       }

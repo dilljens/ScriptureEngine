@@ -54,12 +54,21 @@ export function ToggleProvider({ children }) {
   })
   const [searchLang, setSearchLang] = useState('all') // 'all' | 'english' | 'hebrew' | 'greek'
 
+  // Bible version for LLM references
+  const [bibleVersion, setBibleVersion] = useState('WEB') // 'WEB' | 'KJV'
+
+  // Tool categories the LLM is allowed to use
+  const [enabledTools, setEnabledTools] = useState({
+    lookup: true, search: true, connections: true, graph: true,
+    gematria: true, study: true, staging: false,
+  })
+
   // Display language — which language to show verses in
   const [displayLang, setDisplayLang] = useState('english') // 'english' | 'hebrew' | 'greek'
   const [showTranslit, setShowTranslit] = useState(true)
   const [showEnglish, setShowEnglish] = useState(true)
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish }}>{children}</ToggleCtx.Provider>
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -89,7 +98,7 @@ function ToggleRow({ def, on, onToggle }) {
 
 /* ── Layers popover ── */
 export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, buttonRef }) {
-  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish } = useToggles()
+  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, bibleVersion, setBibleVersion, enabledTools, setEnabledTools } = useToggles()
   const popoverRef = useRef(null)
 
   // Click outside + Escape
@@ -240,6 +249,41 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
                 </button>
               ))}
             </div>
+
+            {/* Bible Version */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Bible Version</div>
+            <div className="flex gap-1 mb-2">
+              {['WEB', 'KJV'].map(v => (
+                <button key={v} onClick={() => setBibleVersion(v)}
+                  className={`flex-1 px-1.5 py-1 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                    bibleVersion === v
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}>{v}</button>
+              ))}
+            </div>
+
+            {/* Tool Categories */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Tools</div>
+            {[
+              { id: 'lookup', label: 'Lookup' },
+              { id: 'search', label: 'Search' },
+              { id: 'connections', label: 'Connections' },
+              { id: 'graph', label: 'Graph' },
+              { id: 'gematria', label: 'Gematria' },
+              { id: 'study', label: 'Study Guides' },
+              { id: 'staging', label: 'Staging (propose data)' },
+            ].map(tool => (
+              <div key={tool.id} onClick={() => setEnabledTools(p => ({ ...p, [tool.id]: !p[tool.id] }))}
+                role="button" tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEnabledTools(p => ({ ...p, [tool.id]: !p[tool.id] })) } }}
+                className="flex items-center justify-between py-1 pl-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
+                <span className="text-[11px] text-neutral-600 dark:text-neutral-400">{tool.label}</span>
+                <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors ${enabledTools[tool.id] ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${enabledTools[tool.id] ? 'translate-x-3' : 'translate-x-0'}`} />
+                </div>
+              </div>
+            ))}
 
             {/* Layers */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Connection Layers</div>
