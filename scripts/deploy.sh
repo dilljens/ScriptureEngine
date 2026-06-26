@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-HOST="root@46.224.171.239"
+HOST="root@40.160.241.74"
 REMOTE_DIR="/var/www/scripture"
 
 echo "=== ScriptureEngine Deployment ==="

@@ -432,7 +432,7 @@ def search(
 
                 for r in rows:
                     item = {"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"}
-                    if r.get("match_offsets"):
+                    if "match_offsets" in r.keys():
                         offsets = []
                         parts = r["match_offsets"].split()
                         for i in range(0, len(parts), 4):

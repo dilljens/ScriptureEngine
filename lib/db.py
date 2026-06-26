@@ -20,7 +20,6 @@ def get_db(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA cache_size = -8000")
-    conn.execute("PRAGMA mmap_size = 268435456")
     return conn
 
 
@@ -34,7 +33,6 @@ def get_db_vec(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA cache_size = -8000")
-    conn.execute("PRAGMA mmap_size = 268435456")
     conn.execute("PRAGMA trusted_schema=ON")  # Required for extension loading
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)
