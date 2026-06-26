@@ -196,7 +196,9 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
     "Switch between English, Hebrew, and Greek display in the Layers popover. Hebrew mode shows word-by-word transliteration with English glosses.",
     "Every connection has a confidence score from 0 to 1. Scores above 0.8 are high-confidence — reported as percentages in chat.",
     "The temple thread runs through all scripture: Eden is the first temple, the Tabernacle is a mobile Eden, the Temple is a permanent one, and Christ is the final temple.",
-    "The two Yahwehs tradition appears at gen.19.24 (YHWH rains fire from YHWH) and psalm.110.1 (YHWH says to my Lord) — early Jewish binitarianism.",
+    "The atonement in the OT temple: the lamb is slain, the priest carries the blood into the Holy of Holies, and sprinkles it on the mercy seat — a direct type of Christ's sacrifice (heb.9.11-14).",
+    "Yom Kippur (Day of Atonement) is the only day the High Priest enters the Holy of Holies. Christ enters the heavenly sanctuary once for all — the anti-type of the entire ritual.",
+    "The scapegoat on Yom Kippur (lev.16) carries Israel's sins into the wilderness. Christ is both the sacrifice and the scapegoat — he bears our sins outside the camp (heb.13.11-13).",
     "Enoch walks with God and is taken (gen.5.24) — the first human to ascend. The Enochic tradition deeply influenced NT Christology and temple mysticism.",
     "The Melchizedek priesthood (gen.14.18, psalm.110.4, heb.7) connects bread and wine, kingship, and eternal priesthood — a central temple-Christ typology.",
     "The Tabernacle of Moses is a microcosm of creation: 7-branch menorah (7 days), veil (firmament), laver (waters below). Building it mirrors creation week.",
@@ -213,11 +215,11 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
 Try asking:
 - "Trace the Angel of YHWH from Genesis to the NT"
 - "Show me the temple connections in the Tabernacle chapters"
-- "What is the two Yahwehs tradition and where does it appear?"
 - "Walk through the chiasm of Isaiah 6"
+- "How does Yom Kippur point to Christ's atonement?"
 - "Find the path from Melchizedek to Christ in the connection graph"
 - "Explain the gematria of YHWH and Adam"
-- "Compare the creation accounts in Genesis and the Temple"
+- "Compare the creation accounts in Genesis and the Old Testament Temple"
 
 ──────────
 ${tip}
