@@ -51,8 +51,9 @@ test.describe('App — page load & default state', () => {
   test('tab strip shows workspace selector and chapter tabs', async ({ page }) => {
     await expect(page.locator('h1')).toBeVisible({ timeout: 15000 })
 
-    // Workspace selector label
-    await expect(page.getByText('WS')).toBeVisible()
+    // Workspace selector or subject tab bar
+    const wsEl = page.getByText('WS').or(page.getByText('My Study'))
+    await expect(wsEl.first()).toBeVisible()
 
     // Chapter tabs
     await expect(page.getByText('Isaiah 6')).toBeVisible()

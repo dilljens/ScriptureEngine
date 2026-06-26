@@ -27,6 +27,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
 const ConnectionGraph = React.lazy(() => import('./components/ConnectionGraph'))
 import TileDashboard from './components/TileDashboard'
+import SubjectTabBar from './components/SubjectTabBar'
 import useAgentControl from './useAgentControl'
 
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections, searchVerses } from './api'
@@ -764,6 +765,22 @@ function AppInner() {
     }
   }, [goDownLevel, goUpLevel])
 
+  // ── Mobile UI auto-hide on scroll ──
+  const [uiVisible, setUiVisible] = useState(true)
+  const lastScrollY = useRef(0)
+  const mainRef = useRef(null)
+  const handleMainScroll = useCallback(() => {
+    const el = mainRef.current
+    if (!el) return
+    const dy = el.scrollTop - lastScrollY.current
+    if (dy > 15) setUiVisible(false)
+    else if (dy < -10) setUiVisible(true)
+    lastScrollY.current = el.scrollTop
+  }, [])
+  const handleMainClick = useCallback(() => {
+    setUiVisible(v => !v)
+  }, [])
+
   // highlightVerse: from search results or tab highlights
   const highlightVerse = currentTab?.highlights?.[0] || null
 
@@ -842,7 +859,7 @@ function AppInner() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
       {/* Toolbar */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
+      <header className={`sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-10 px-2">
           {/* Left: nav arrows + clickable breadcrumb */}
           <div className="flex items-center gap-1 text-sm min-w-0">
@@ -970,10 +987,20 @@ function AppInner() {
         </div>
       </header>
 
-      {/* Tab strip (always visible) */}
-      <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 flex items-center min-h-[30px]">
-        {/* Workspace selector */}
-        <div className="flex items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
+      {/* Desktop subject tabs */}
+      <div className={`transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
+        <SubjectTabBar
+          workspaces={workspaces}
+          activeWorkspace={activeWorkspace}
+          onSelect={selectWorkspace}
+          onNew={newWorkspace}
+        />
+      </div>
+
+      {/* Tab strip */}
+      <div className={`bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 flex items-center min-h-[30px] transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
+        {/* Workspace selector (mobile only) */}
+        <div className="flex sm:hidden items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">WS</span>
           <select value={activeWorkspace || ''} onChange={e => selectWorkspace(e.target.value)}
             className="text-xs bg-transparent border-none outline-none cursor-pointer text-neutral-600 dark:text-neutral-400 font-medium pr-4 appearance-none"
@@ -1011,7 +1038,9 @@ function AppInner() {
 
       {/* Main */}
       <ErrorBoundary>
-        <main onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}
+        <main ref={mainRef}
+          onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}
+          onScroll={handleMainScroll} onClick={handleMainClick}
           style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}>
           {renderMainContent()}
         </main>
