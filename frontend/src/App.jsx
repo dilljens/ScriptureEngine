@@ -729,6 +729,10 @@ function AppInner() {
     openTab(book, chapter, { label, view: 'graph', viewRef: ref })
   }, [book, chapter, bookTitle, openTab])
 
+  const openTilesView = useCallback(() => {
+    updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+  }, [currentTab?.id, updateTab])
+
   const handleCommandChat = useCallback((message) => {
     setChatInitialMsg(message || '')
     setShowChat(true)
@@ -964,6 +968,12 @@ function AppInner() {
               <CommandIcon />
             </button>
 
+            {/* Subjects (mobile quick access to tile dashboard) */}
+            <button onClick={openTilesView}
+              className="sm:hidden inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+              title="Manage subjects">
+              ▦ Subjects
+            </button>
             {/* Graph */}
             <button onClick={openGraphTab} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Connection Graph">
               <GraphIcon />
