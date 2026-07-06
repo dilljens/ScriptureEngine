@@ -305,3 +305,86 @@ Algorithm:
 3. Extract top 3-5 words by significance
 4. Append "bible" qualifier
 ```
+
+## PWA + Push Notifications (2026-07-06)
+
+### How It Works
+
+```
+1. User adds ScriptureEngine to home screen
+   → manifest.json tells the OS: name, icon, standalone window
+   → Service worker registers in the background
+
+2. User enables "Review reminders" in Settings
+   → Frontend requests notification permission
+   → Generates VAPID key pair (backend)
+   → Subscribes via Push API → sends subscription to backend
+
+3. Go backend ticker runs every 15 minutes
+   → Queries for cards where due <= now
+   → If count > 0, sends push notification via Web Push Protocol
+   → Notification shows: "3 verses due for review"
+
+4. User taps notification
+   → Opens/focuses ScriptureEngine
+   → Lands on Memorize tab review queue
+```
+
+### What's Needed
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| App manifest | `public/manifest.json` | Installability, standalone mode, icons |
+| App icons | `public/icon-192.png`, `public/icon-512.png` | Home screen icon |
+| Service worker | `public/sw.js` | Push event handler, notifications, cache |
+| SW registration | `index.html` or `App.jsx` | Register on load |
+| VAPID keys | Backend env vars | Authentication for Web Push Protocol |
+| Subscription endpoint | `POST /api/memorize/push/subscribe` | Save subscription in DB |
+| Unsubscribe endpoint | `POST /api/memorize/push/unsubscribe` | Remove subscription |
+| Push scheduler | Go ticker (15min) | Check due cards, send push |
+| Settings toggle | `SettingsView.jsx` | Enable/disable reminders |
+
+### Push API Flow (No Firebase)
+
+```
+Frontend                         Backend
+   │                               │
+   │  Generate VAPID keys ─────────┤  (one-time, stored as env vars)
+   │                               │
+   │  GET /push/vapid-public-key   │
+   │◄────────── public key ───────│
+   │                               │
+   │  navigator.serviceWorker      │
+   │  .ready.then(reg =>           │
+   │    reg.pushManager.subscribe  │
+   │    ({userVisibleOnly: true,   │
+   │      applicationServerKey})   │
+   │  )                            │
+   │                               │
+   │  POST /push/subscribe         │
+   │  {endpoint, keys} ───────────►│  store in push_subscriptions
+   │                               │
+   │           ...time passes...   │
+   │                               │  ticker fires, checks due cards
+   │                               │  encrypts payload, sends via
+   │〈── Web Push Protocol ────────│  HTTP POST to endpoint
+   │                               │
+   │  sw.onpush → showNotification │
+   │  onClick → focus memorize tab │
+```
+
+### iOS vs Android
+
+| Platform | PWA Support | Notifications | Notes |
+|----------|------------|---------------|-------|
+| Android (Chrome) | ✅ Full | ✅ Yes | Mature, works reliably |
+| iOS (Safari 16.4+) | ✅ Good | ✅ Yes (since 16.4) | Requires "Add to Home Screen", user must accept prompt |
+| Desktop (Chrome/Edge) | ✅ Full | ✅ Yes | Also works as installed PWA |
+
+### Why Not Firebase Cloud Messaging?
+
+- Adds a dependency on Google services
+- Requires account setup and API keys
+- Web Push Protocol is standard and works everywhere
+- The Go ecosystem has mature Web Push libraries (`webpush-go`)
+- For a local-first app, direct push is simpler

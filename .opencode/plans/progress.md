@@ -15,6 +15,7 @@
 | P7 | Hint levels | ⏳ Pending | — | — | Blocked on P3 |
 | P8 | Audio | ⏳ Pending | — | — | Blocked on P3 |
 | P9 | Analytics + polish | ⏳ Pending | — | — | Blocked on all |
+| P10 | PWA + push notifications | 🔍 Planned | — | — | Independent, can run in parallel with later phases |
 
 ## Session History
 
@@ -49,6 +50,13 @@
 - FSRS decision made: Go re-implementation (not Rust crate)
 - Rationale: FSRS-5 is ~300 lines of documented algebra. Published test vectors eliminate re-implementation risk. Keeping stack simple (Go only) outweighs benefit of using fsrs-rs crate.
 - Added decision to findings.md, updated P1.3 with test vector verification
+
+### Session 6 (2026-07-06)
+- Added Phase P10: PWA + push notifications
+- manifest.json, service worker, Web Push Protocol, Go push scheduler
+- No Firebase needed — uses standard W3C Push API + webpush-go library
+- Works on Android, iOS 16.4+, and desktop Chrome/Edge
+- Added to task_plan.md, findings.md, progress.md
 - Added hybrid image pipeline to P4
 - Three tiers: ComfyUI (AI) → Openverse (free search) → Manual upload
 - No API key needed for Openverse
@@ -80,3 +88,6 @@ See findings.md "Memorization Techniques Coverage" section.
 ### Open Questions
 - [ ] Should the Go service run inside Docker or as a native process?
 - [ ] Which port for Go service? (8090 proposed)
+- [ ] What icon should the PWA use? (Cross, book, or ScriptureEngine logo?)
+- [ ] Push check interval? (15 min proposed)
+- [ ] Should notifications include the verse text or just a count?

@@ -294,6 +294,48 @@ func buildSearchQuery(text, ref string) string {
 | P9.3 | Polish PalaceWalk with auto-advance |
 | P9.4 | Final cleanup, error handling, loading states |
 
+## Phase P10 — PWA + Push Notifications
+
+**⏱ Timebox:** 120 minutes  
+**✅ Checkpoint:** Add to home screen prompts on mobile; push notification fires when review is due  
+**⚙ Fallback:** Skip push service for local-only setups — use `setInterval` in service worker for in-browser reminders.
+
+| Step | Description |
+|------|-------------|
+| P10.1 | Create `public/manifest.json` — app name, icons, theme colors, display: standalone, start URL |
+| P10.2 | Create app icons at 192×192 and 512×512 (SVG-based, or simple generated PNGs) |
+| P10.3 | Link manifest in `index.html` head |
+| P10.4 | Create service worker `public/sw.js` — install, activate, fetch (cache-first for static assets) |
+| P10.5 | Register service worker from `index.html` or main entry |
+| P10.6 | **Push subscription flow**: `POST /api/memorize/push/subscribe` — save endpoint + keys in DB. `POST /api/push/unsubscribe` — remove. |
+| P10.7 | Service worker `push` event handler — parse payload, show notification with due card count |
+| P10.8 | **Backend push scheduler**: Go service checks for due cards every N minutes. Sends push via Web Push Protocol (no Firebase needed). Uses `golang.org/x/time/rate` or a simple ticker. |
+| P10.9 | Add new DB table `push_subscriptions` — endpoint, p256dh key, auth key, created_at |
+| P10.10 | Notification click handler in service worker — opens/focuses the memorize tab |
+| P10.11 | Settings toggle: "Review reminders" on/off in settings tab |
+| P10.12 | Test: add to home screen on Android + iOS, verify notifications fire on schedule |
+
+### Push Notification Architecture
+
+```
+┌─────────────────┐         ┌──────────────────────┐
+│  Go Backend      │         │  Browser (SW)         │
+│                  │         │                        │
+│  Ticker (15min)  │───push──│  sw.onpush → notify() │
+│  checks due cards│  event  │  click → focus tab    │
+│  sends via Web   │         │                        │
+│  Push Protocol   │         │  POST /push/subscribe  │
+│                  │◄────────│  (VAPID keys)          │
+└─────────────────┘         └────────────────────────┘
+```
+
+### VAPID Keys
+Required for Web Push Protocol. Generated once via CLI:
+```bash
+go run tools/generate-vapid.go
+```
+Stored as env vars (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`). Public key served to the frontend so it can subscribe.
+
 ---
 
 ## API Specification (Go service, all under `/api/memorize/`)
@@ -318,6 +360,9 @@ POST   /audio                     — Upload recording
 GET    /audio/:id                 — Serve audio
 GET    /analytics/summary
 GET    /analytics/heatmap
+POST   /push/subscribe              — Save push subscription {endpoint, keys}
+POST   /push/unsubscribe            — Remove push subscription
+GET    /push/vapid-public-key       — VAPID public key for browser subscription
 ```
 
 ## FSRS Algorithm (Go)
@@ -343,6 +388,7 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 - `concept_images` — id, verse_id, file_path, prompt, model, source (ai|openverse|upload)
 - `composite_images` — id, verse_id, palace_id, locus_id, file_path
 - `audio_recordings` — id, verse_id, file_path, duration_secs
+- `push_subscriptions` — id, endpoint, p256dh_key, auth_key, created_at
 
 ## Integration Points
 
@@ -361,3 +407,9 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 | `vite.config.js` | Proxy `/api/memorize` → `:8090` |
 | ScriptureEngine `data/processed/scripture.db` | Go reads verses (read-only) |
 | `docker-compose.yml` | Add Go + ComfyUI (optional) services |
+| `public/manifest.json` (new) | PWA manifest — app name, icons, standalone, theme |
+| `public/sw.js` (new) | Service worker — push handler, cache strategy |
+| `public/icon-192.png`, `icon-512.png` (new) | App icons for home screen |
+| `index.html` | Link manifest, register service worker |
+| `golang.org/x/time/rate` | Go dependency — push rate limiting |
+| `github.com/sherclockholmes/webpush-go` | Go dependency — Web Push Protocol |
