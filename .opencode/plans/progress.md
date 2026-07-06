@@ -4,10 +4,11 @@
 
 | Phase | Track | Status | Started | Completed | Notes |
 |-------|-------|--------|---------|-----------|-------|
-| P0 | Mobile UX architecture | 🔍 Planning | — | — | Top bar + bottom nav + drawer design finalized |
-| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Ready to start after P0 |
+| P0 | Mobile UX architecture | 🔍 Planning | — | — | Top bar + drawer + settings tab |
+| P0b | Two-layer tab system | 🔍 Planning | — | — | Subjects bar on all sizes, [None] option, TileDashboard integration |
+| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Ready to start after P0+P0b |
 | P2 | Review queue API | ⏳ Pending | — | — | Blocked on P1 |
-| P3 | Memorize tab UI | ⏳ Pending | — | — | Placeholder created, needs real UI |
+| P3 | Memorize tab UI | ⏳ Pending | — | — | Placeholder exists, needs real UI |
 | P4 | ComfyUI + AI proxy | ⏳ Pending | — | — | Blocked on P1 |
 | P5 | Palace builder | ⏳ Pending | — | — | Blocked on P3 |
 | P6 | Compositing | ⏳ Pending | — | — | Blocked on P4+P5 |
@@ -21,18 +22,24 @@
 - Research memorization techniques + AI image gen for 6GB VRAM
 - Explored ScriptureEngine architecture
 - Planned integration architecture (Go microservice + React tab)
-- Created plan files (task_plan.md, findings.md, progress.md)
+- Created initial plan files (task_plan.md, findings.md, progress.md)
 - Added MemorizeIcon, openMemorizeTab, MemorizeView placeholder, memorizeApi.js
 - Built mobile bottom tab bar: Read · Chat · Memorize · Library · Subjects
 - Desktop: added Memorize icon to toolbar
 
-### Session 2 (2026-07-06) — Current
+### Session 2 (2026-07-06)
 - Refined mobile UX: top bar + bottom nav + slide-out drawer
 - Settings moves from modal overlay to full tab
-- Secondary actions (History, Font, Dark mode, Graph, Layers, etc.) → slide-out drawer
+- Secondary actions → slide-out drawer
 - Chat → bottom bar only (not header)
-- Top bar: always visible, independent from bottom bar
-- Desktop toolbar stays unchanged
+- Updated plan files
+
+### Session 3 (2026-07-06)
+- Added two-layer tab system to plan (P0b)
+- Subjects bar visible on mobile too (replaces dropdown)
+- [None] option to deselect workspace
+- TileDashboard cards set active workspace on click
+- Performed memorization techniques audit on the plan
 
 ## Notes
 
@@ -41,7 +48,12 @@
 - React frontend integration via new "memorize" tab
 - ComfyUI as Docker container for AI image generation
 - Direct read of ScriptureEngine's SQLite DB for verse data
-- Mobile: three-zone layout (top bar, bottom tab bar, slide-out drawer)
+- Two-layer tab system: Subjects (top) + Tabs (bottom) on all sizes
+- Mobile: three-zone layout (top bar, two-layer tabs, bottom tab bar, drawer)
+- Desktop: full toolbar, two-layer tabs, no bottom bar
+
+### Memorization Techniques Audit
+See findings.md "Memorization Techniques Coverage" section for full audit.
 
 ### Dependencies
 - Go 1.22+ installed

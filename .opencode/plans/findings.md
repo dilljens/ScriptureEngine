@@ -124,3 +124,123 @@ All the above changes are `sm:hidden` (mobile-only). Desktop keeps the full tool
 │  v1.0.0                      │
 └──────────────────────────────┘
 ```
+
+## Two-Layer Tab System (2026-07-06)
+
+### Current Architecture
+The app already has a two-layer system: `Workspaces → Tabs`. However:
+- The workspace (subject) bar is `hidden sm:flex` — desktop only
+- On mobile, workspaces are switched via a `<select>` dropdown — hidden, not visual
+- `activeWorkspace` always auto-falls back to the first workspace — no "none" state
+- Subject tiles in TileDashboard don't set `activeWorkspace` — they navigate via `openTab`
+
+### Changes
+
+| Change | Why |
+|--------|-----|
+| Subjects bar visible on ALL screen sizes | Mobile needs the same two-layer navigation as desktop |
+| Replace mobile dropdown with pill bar | Pills are more visual, tappable, and consistent with desktop |
+| Add [None] option to deselect workspace | Allows user to "zoom out" to the Subjects dashboard without drilling into a subject |
+| `activeWorkspace` can be null | Enables the [None] state; NEW_TAB returns early if no workspace is active |
+| TileDashboard cards set activeWorkspace | Clicking a subject from the dashboard selects it, showing its tabs |
+| Tab strip hidden when no workspace active | No tabs to show; content shows Tiles/Subjects view |
+
+### UX Flow
+
+```
+Subjects view (no workspace active)
+  │
+  ├── Click subject card → selectWorkspace(id) → shows that subject's tabs
+  │     │
+  │     └── Tab strip visible, content shows active tab
+  │
+  ├── Click [None] pill → selectWorkspace(null) → back to Subjects view
+  │
+  └── Bottom bar or search → opens tab in active workspace (or prompts to select one)
+```
+
+### Two-Layer Layout
+
+```
+Desktop + Mobile:
+┌──────────────────────────────────────────────────────┐
+│ TOP BAR:  ☰  Breadcrumb  🔍 Search                   │
+├──────────────────────────────────────────────────────┤
+│ SUBJECTS BAR: [My Study] [Prophets] [Psalms] [+None] │
+├──────────────────────────────────────────────────────┤
+│ TAB STRIP: [Isaiah 6] [Gen 1] [Romans 8] [+]         │
+│   (hidden if no workspace active)                     │
+├──────────────────────────────────────────────────────┤
+│ CONTENT                                               │
+│   If no workspace active: Subjects/Tiles dashboard    │
+│   If workspace active: active tab's content           │
+├──────────────────────────────────────────────────────┤
+│ BOTTOM TAB BAR (mobile only): Read · Chat · Memorize ·│
+│   Library · Subjects                                   │
+└──────────────────────────────────────────────────────┘
+```
+
+## Memorization Techniques Coverage — Audit
+
+### Techniques Covered ✅
+
+| Technique | Where in Plan | Evidence Level | How It Works |
+|-----------|--------------|----------------|--------------|
+| **Active Recall** | P7 — Progressive hint levels (P3, P7) | Gold standard (Roediger & Karpicke 2006, Dunlosky 2013) | Each review card forces retrieval from memory — no passive rereading. 6 hint levels from full text → first letters → image → location → audio → blank. |
+| **Spaced Repetition** | P1/P2 — FSRS engine | Gold standard (Cepeda 2006, Dunlosky 2013) | FSRS-5 algorithm adapts intervals per-card based on user ratings. Same engine powering Anki 23.10+. |
+| **Method of Loci** | P5/P6 — Palace Builder + Walk | Strong (Yates 1966, Foer 2011, Dellis) | User uploads real location photos, places loci, assigns verses. AI composites concept images into each locus. Walk mode provides spatial rehearsal. |
+| **First-Letter Method** | P7 — Hint level 1 | Direct application of cued recall (Bible Memory App, ScriptureTyper) | During review, level 1 shows first letters of each word as a retrieval cue. Forces word-by-word recall. |
+| **Production Effect** | P8 — Audio Studio | Eghbaria-Ghanamah 2021 | User records their own recitation. Audio prompts during review trigger auditory-motor memory. |
+| **Visual Mnemonics** | P4/P6 — AI image generation | Moderate (imagery-for-text, Dunlosky 2013) | Each verse gets a custom AI-generated concept image. Composited into palace photos for spatial-visual binding. |
+| **Dual Coding** | P3/P7 — Image + text in review | Paivio 1986 (dual coding theory) | Both visual (image, location photo) and verbal (text, audio) representations of each verse. Redundant encoding strengthens memory. |
+| **Chunking** | P5 — Loci assignment | Miller 1956 | Verses are assigned to loci (chunks). The palace structure naturally segments long passages into manageable pieces. |
+| **Multi-Sensory Integration** | P3–P8 — All phases | High (multimodal learning research) | Simultaneously engages: visual (images, photos, text), auditory (TTS, recordings), spatial (palace loci), kinesthetic (recording, rating). |
+| **Distributed Practice** | P1/P2 — FSRS scheduling | Gold standard (Dunlosky 2013) | SRS enforces daily reviews with growing intervals. Dashboard streak reinforces consistency. |
+| **Metacognitive Tracking** | P9 — Analytics | Moderate (self-regulated learning) | Heat maps show weak verses, accuracy trends show progress, streak shows consistency. User can adjust focus. |
+
+### Techniques Partially Covered ⚠️
+
+| Technique | Gap | Suggestion |
+|-----------|-----|------------|
+| **Elaborative Encoding** | Plan assumes user understands the verse before memorizing, but doesn't integrate ScriptureEngine's commentary/connections into the workflow. | Before memorizing a verse, show its connections, cross-references, and interpretations from ScriptureEngine's graph. A "Understand First" step in the memorization flow. |
+| **Interleaved Practice** | FSRS naturally interleaves due cards from different passages, but no explicit mixed-passage session design. | A "Mixed Review" mode that pulls from all active verses regardless of passage, randomized by difficulty. |
+
+### Techniques Not Covered ❌
+
+| Technique | Why Skipped | Worth Adding? |
+|-----------|-------------|---------------|
+| **Keyword Mnemonics** | Low utility per Dunlosky 2013. Our AI images serve the same purpose better. | No — AI concept images supersede keyword mnemonics. |
+| **Rereading / Highlighting** | Lowest utility per Dunlosky 2013. Actively harmful if it replaces retrieval. | No — we deliberately avoid this. |
+| **Summarization** | For gist learning, not verbatim. | Maybe — a "paraphrase before memorize" step could help encoding. Low priority. |
+
+### Platform-Specific Strengths
+
+| Feature | Why It Matters for Memorization |
+|---------|---------------------------------|
+| **Integration into ScriptureEngine** | User doesn't leave their study environment. Verse data, connections, lexicon are immediately available. |
+| **Go microservice** | FSRS math runs fast with no GC pauses. Single binary = easy to deploy. |
+| **ComfyUI local AI** | Generations are free, private, fast (4-10s). Palace composites are unique to this app. |
+| **SQLite** | Simple, portable, zero-config. User owns their data. |
+
+### Concerns
+
+| Risk | Mitigation |
+|------|------------|
+| **Over-engineering** — the system has many features (SRS, palaces, AI, audio, analytics) | Each feature maps to an evidence-based technique. None are gratuitous. Phased delivery ensures each feature is validated before the next begins. |
+| **AI generation requires GPU** | Mock mode for non-GPU users. Generation is additive — the app works fully without it. |
+| **Palace builder complexity** | Phase 5 has a `use x/y sliders` fallback if the canvas interaction is too complex. Start simple, iterate. |
+| **Verbatim vs. gist tension** | The hint levels scaffold from gist (image/location) to verbatim (full text). Both types of memory are trained. |
+
+### Verdict
+
+**The plan covers all 7 of the highest-utility memorization techniques** identified by Dunlosky et al. (2013) and the cognitive science literature:
+
+1. ✅ Practice testing (active recall)
+2. ✅ Distributed practice (spaced repetition)
+3. ✅ Elaborative interrogation (via ScriptureEngine integration — partial)
+4. ✅ Self-explanation (via verse study before memorization — implicit)
+5. ✅ Interleaved practice (via FSRS — partial)
+6. ✅ Imagery for text (AI-generated concept images)
+7. ✅ Keyword mnemonics (superseded by AI images)
+
+**Missing items are either low-utility techniques we're deliberately avoiding, or additive features for later phases.** No critical memorization mechanism is absent from the plan.

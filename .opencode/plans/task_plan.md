@@ -8,22 +8,42 @@ Integrate a complete verse memorization system (FSRS SRS + memory palaces + AI-g
 ```
 ┌─ TOP BAR (always visible, no hide-on-scroll) ────────────┐
 │  ☰  │  Breadcrumb (work / book / ch.3)  │  🔍 Search   │
+├─ SUBJECTS BAR ──────────────────────────────────────────┤
+│  [My Study] [Prophets] [Psalms] [+ Add] [None ◇]       │
+├─ TAB STRIP (within active subject) ────────────────────┤
+│  [Isaiah 6] [Gen 1] [Romans 8] [+]                      │
 ├─ CONTENT ───────────────────────────────────────────────┤
 │                                                          │
-├─ BOTTOM TAB BAR ────────────────────────────────────────┤
+├─ BOTTOM TAB BAR (mobile only) ─────────────────────────┤
 │  📖 Read  💬 Chat  🧠 Memorize  📚 Library  ▦ Subjects  │
 └─────────────────────────────────────────────────────────┘
-
-Slide-out Drawer (from ☰ or edge swipe):
-  Settings tab · History · Graph · Layers · Structure ·
-  Font controls · Dark mode · Command palette · Cheatsheet
 ```
+
+### Two-Layer Tab System (Desktop + Mobile)
+
+| Layer | What | Behavior |
+|-------|------|----------|
+| **Subjects bar** | All workspaces as pills + [None] option | Switch active workspace; "None" shows Subjects/Tiles dashboard |
+| **Tab strip** | Tabs within the active workspace | New tabs open into the active workspace |
+| **Tiles/Subjects view** | Grid of all workspaces + create/rename/delete | Click a subject card → selects it as active workspace |
+
+When **no workspace is selected** (the [None] state):
+- Tab strip is hidden or shows "Select a subject to begin"
+- Content area shows the Tiles/Subjects dashboard
+- From the dashboard, clicking a subject selects it and shows its tabs
+
+---
 
 ## Overview
 
 ```
 ScriptureEngine React SPA
-  └── Tabs: Read | Chat | Memorize | Library | Subjects | Settings
+  └── Two-layer tabs: Subjects (top) + Tabs (bottom)
+       │
+       ├── Subjects: My Study | Prophets | Psalms | +Add | None
+       │    │
+       │    └── Tabs within active subject:
+       │         Chapter tabs · Chat · Memorize · Settings
        │
        ├── Memorize tab
        │    ├── Dashboard        — streak, counts, quick review
@@ -48,6 +68,9 @@ Go Microservice (:8090)          ComfyUI (Docker, :8188)
 ### Track 0: Mobile UX Architecture
 Restructure the mobile layout into three zones: top bar (search + breadcrumb), bottom tab bar (5 nav destinations), slide-out drawer (secondary actions). Settings moves from modal to a full tab.
 
+### Track 0b: Two-Layer Tab System
+Make the subjects bar visible on both desktop AND mobile (replacing mobile dropdown). Add [None] option to deselect workspace. Subjects/Tiles view sets active workspace on click.
+
 ### Track A: Go SRS Microservice
 FSRS-based spaced repetition engine, memory palace CRUD, ComfyUI AI proxy, analytics API.
 
@@ -71,8 +94,23 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 | P0.3 | Create `SettingsView.jsx` — full-page settings tab (moved from modal overlay) |
 | P0.4 | Add `settings` viewLevel to tabContext.jsx reducer + App.jsx renderMainContent |
 | P0.5 | Restructure mobile top bar: ☰ hamburger + breadcrumb + search only — remove ALL icon buttons |
-| P0.6 | Bottom tab bar: Read · Chat · Memorize · Library · Subjects (already done, verify) |
+| P0.6 | Bottom tab bar: Read · Chat · Memorize · Library · Subjects |
 | P0.7 | Desktop header stays unchanged (all icon buttons remain) |
+
+## Phase P0b — Two-Layer Tab System (Desktop + Mobile)
+
+**⏱ Timebox:** 90 minutes  
+**✅ Checkpoint:** Subjects bar visible on both desktop AND mobile as scrollable pill row. [None] option deselects workspace. TileDashboard cards set active workspace on click.
+
+| Step | Description |
+|------|-------------|
+| P0b.1 | Allow `activeWorkspace = null` in tabContext reducer: NEW_TAB returns if null (tabs require active subject). Update SELECT_WORKSPACE to accept `null`. |
+| P0b.2 | Add "None" pill to SubjectTabBar that sets `activeWorkspace = null` |
+| P0b.3 | Replace mobile workspace `<select>` dropdown with the pill-based SubjectTabBar (remove `sm:hidden`, show on all widths) |
+| P0b.4 | When `activeWorkspace` is null in App.jsx: hide tab strip, show Tiles/Subjects view as content |
+| P0b.5 | TileDashboard: clicking a subject's name/card calls `selectWorkspace(ws.id)` |
+| P0b.6 | After selecting a workspace from Tiles view, route to its first tab or show empty state |
+| P0b.7 | Desktop: make two rows explicit (subjects bar + tab strip), always visible together |
 
 ## Phase P1 — Go Skeleton + DB Schema + FSRS Core
 
@@ -244,9 +282,13 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 
 | Where | What |
 |-------|------|
-| `tabContext.jsx` | Add `memorize` + `settings` viewLevels + reducer cases |
+| `tabContext.jsx` | Add `memorize` + `settings` viewLevels; allow `activeWorkspace = null` |
 | `App.jsx` | Add `<MemorizeView>` + `<SettingsView>` in `renderMainContent()` |
-| `App.jsx` | Restructure mobile: top bar, bottom tab bar, drawer |
+| `App.jsx` | Restructure mobile: top bar + two-layer tabs + bottom tab bar + drawer |
+| `App.jsx` | When `activeWorkspace` is null: hide tab strip, show Tiles view |
+| `SubjectTabBar.jsx` | Remove `sm:hidden`, add [None] pill, add click-to-select in Tiles view |
+| `SubjectTabBar.jsx` | Replace mobile dropdown with pill-based subject bar |
+| `TileDashboard.jsx` | Click subject card → calls `selectWorkspace(ws.id)` |
 | `SlideDrawer.jsx` (new) | Slide-out drawer with all secondary actions |
 | `SettingsView.jsx` (new) | Full-page settings tab |
 | `memorizeApi.js` (new) | API client for Go service |
