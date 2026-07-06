@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     port: 5176,
     proxy: {
+      '/api/memorize': {
+        target: 'http://localhost:8090',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:8002',
         changeOrigin: true,

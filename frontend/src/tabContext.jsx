@@ -281,6 +281,23 @@ export function TabProvider({ children }) {
       })
     }, []),
 
+    // Open (or focus) a memorize tab — creates view: 'memorize'
+    openMemorizeTab: useCallback((label) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'memorize')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || 'Memorize',
+          view: 'memorize',
+        })
+      }
+    }, [state]),
+
     // Open (or focus) a chat tab — creates view: 'chat'
     openChatTab: useCallback((label) => {
       // Check if a chat tab already exists in the active workspace

@@ -14,7 +14,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, LayersIcon, ClockIcon,
-  TextSmallIcon, TextLargeIcon, GraphIcon,
+  TextSmallIcon, TextLargeIcon, GraphIcon, MemorizeIcon,
 } from './icons'
 import ChiasmPanel from './components/ChiasmPanel'
 import StructureModal from './components/StructureModal'
@@ -26,6 +26,7 @@ import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
 const ConnectionGraph = React.lazy(() => import('./components/ConnectionGraph'))
+const MemorizeView = React.lazy(() => import('./components/MemorizeView'))
 import TileDashboard from './components/TileDashboard'
 import SubjectTabBar from './components/SubjectTabBar'
 import useAgentControl from './useAgentControl'
@@ -368,7 +369,7 @@ function AppInner() {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
-    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
+    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab, openMemorizeTab,
     moveTab,
   } = useTabs()
 
@@ -816,6 +817,14 @@ function AppInner() {
         </Suspense>
       )
     }
+    // Memorize view
+    if (viewLevel === 'memorize') {
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading memorize...</div>}>
+          <MemorizeView />
+        </Suspense>
+      )
+    }
     // Tiles view — subject/chapter dashboard
     if (viewLevel === 'tiles') {
       return (
@@ -935,6 +944,11 @@ function AppInner() {
               className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
               title={`Isaiah Structure (${getHotkey('structureModal')})`}>
               <GridIcon />
+            </button>
+
+            {/* Memorize */}
+            <button onClick={() => openMemorizeTab()} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
+              <MemorizeIcon />
             </button>
 
             {/* History */}
@@ -1089,14 +1103,21 @@ function AppInner() {
         />
       )}
 
-      {/* Mobile bottom footer — pinch hints, doesn't cover content */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
-        <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur border-t border-neutral-200 dark:border-neutral-800 px-3 py-1 text-[9px] text-neutral-400 dark:text-neutral-500 text-center">
-          Pinch in to zoom out · Pinch out to zoom in · Tap book name to navigate
+      {/* Mobile bottom footer — pinch hints + memorize button */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30">
+        <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur border-t border-neutral-200 dark:border-neutral-800 px-3 py-1 flex items-center justify-between">
+          <span className="text-[9px] text-neutral-400 dark:text-neutral-500">
+            Pinch in/out · Tap book name
+          </span>
+          <button onClick={() => openMemorizeTab()}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-medium active:scale-95 transition-transform pointer-events-auto">
+            <MemorizeIcon />
+            Memorize
+          </button>
         </div>
       </div>
       {/* Spacer to prevent content from being hidden behind footer */}
-      <div className="sm:hidden h-6" />
+      <div className="sm:hidden h-8" />
 
     </div>
   )
