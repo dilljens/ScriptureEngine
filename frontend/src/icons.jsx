@@ -110,3 +110,28 @@ export function MemorizeIcon(props) {
     <path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" />
   </svg>
 }
+
+export function BookIcon(props) {
+  return <svg {...PROPS} {...props}>
+    <path d="M2 2.5l6 2v10l-6-2v-10z" />
+    <path d="M14 2.5l-6 2v10l6-2v-10z" />
+    <path d="M8 4.5v10" />
+  </svg>
+}
+
+export function LibraryIcon(props) {
+  return <svg {...PROPS} {...props}>
+    <rect x={2} y={3} width={5} height={10} rx={0.5} />
+    <rect x={9} y={3} width={5} height={10} rx={0.5} />
+    <path d="M2 3l5 2M9 3l5 2" strokeWidth={1} />
+  </svg>
+}
+
+export function TilesIcon(props) {
+  return <svg {...PROPS} {...props}>
+    <rect x={2} y={2} width={5} height={5} rx={1} />
+    <rect x={9} y={2} width={5} height={5} rx={1} />
+    <rect x={2} y={9} width={5} height={5} rx={1} />
+    <rect x={9} y={9} width={5} height={5} rx={1} />
+  </svg>
+}

@@ -14,7 +14,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, LayersIcon, ClockIcon,
-  TextSmallIcon, TextLargeIcon, GraphIcon, MemorizeIcon,
+  TextSmallIcon, TextLargeIcon, GraphIcon, MemorizeIcon, BookIcon, LibraryIcon, TilesIcon,
 } from './icons'
 import ChiasmPanel from './components/ChiasmPanel'
 import StructureModal from './components/StructureModal'
@@ -1103,23 +1103,50 @@ function AppInner() {
         />
       )}
 
-      {/* Mobile bottom footer — pinch hints + memorize button */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30">
-        <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur border-t border-neutral-200 dark:border-neutral-800 px-3 py-1 flex items-center justify-between">
-          <span className="text-[9px] text-neutral-400 dark:text-neutral-500">
-            Pinch in/out · Tap book name
-          </span>
-          <button onClick={() => openMemorizeTab()}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-medium active:scale-95 transition-transform pointer-events-auto">
-            <MemorizeIcon />
-            Memorize
-          </button>
+      {/* Mobile bottom tab bar — 5 main navigation actions */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-center justify-around h-14 px-1">
+          <TabButton icon={<BookIcon />} label="Read" active={viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work'}
+            onClick={() => {
+              if (currentTab?.id && (viewLevel === 'tiles' || viewLevel === 'memorize' || viewLevel === 'library'))
+                goToChapter(currentTab.id, book, chapter)
+            }} />
+          <TabButton icon={<ChatIcon />} label="Chat" active={viewLevel === 'chat'}
+            onClick={() => {
+              if (viewLevel !== 'chat') handleOpenChat()
+            }} />
+          <TabButton icon={<MemorizeIcon />} label="Memorize" active={viewLevel === 'memorize'}
+            onClick={() => openMemorizeTab()} />
+          <TabButton icon={<LibraryIcon />} label="Library" active={viewLevel === 'library'}
+            onClick={() => {
+              if (currentTab?.id) updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
+            }} />
+          <TabButton icon={<TilesIcon />} label="Subjects" active={viewLevel === 'tiles'}
+            onClick={openTilesView} />
         </div>
-      </div>
-      {/* Spacer to prevent content from being hidden behind footer */}
-      <div className="sm:hidden h-8" />
+      </nav>
+      {/* Spacer to prevent content from being hidden behind tab bar */}
+      <div className="sm:hidden h-14" />
 
     </div>
+  )
+}
+
+// ── Mobile Bottom Tab Button ──
+
+function TabButton({ icon, label, active, onClick }) {
+  return (
+    <button onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+        active
+          ? 'text-indigo-600 dark:text-indigo-400'
+          : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400'
+      }`}
+      title={label}>
+      <span className={active ? '' : 'opacity-70'}>{icon}</span>
+      <span className="text-[9px] font-medium leading-tight">{label}</span>
+    </button>
   )
 }
 
