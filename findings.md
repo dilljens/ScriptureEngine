@@ -244,3 +244,47 @@ Desktop + Mobile:
 7. ✅ Keyword mnemonics (superseded by AI images)
 
 **Missing items are either low-utility techniques we're deliberately avoiding, or additive features for later phases.** No critical memorization mechanism is absent from the plan.
+
+## Hybrid Image Pipeline (2026-07-06)
+
+### Three-Tier Sourcing
+
+Instead of relying solely on AI generation (which requires a GPU), images come from three sources, auto-selected in priority order:
+
+| Tier | Source | Cost | Requires | Quality | Speed |
+|------|--------|------|----------|---------|-------|
+| 1 | **ComfyUI (SD 3.5 Medium)** | Free | NVIDIA GPU 6GB+ VRAM | Best — specific to verse | ~5s |
+| 2 | **Openverse API** | Free | Internet connection | Good — CC-licensed religious art | ~1s |
+| 3 | **Manual upload** | Free | User action | User's choice | Instant |
+
+### Openverse API
+
+- **Endpoint:** `https://api.openverse.engineering/v1/images/`
+- **Auth:** None required (rate-limited per IP)
+- **Licenses:** CC-BY, CC0, Public Domain
+- **Relevance:** Good for biblical illustrations, classical religious art
+- **Rate limit:** Generous for personal use
+
+### When Each Source Is Used
+
+| Action | Source |
+|--------|--------|
+| Generate concept image (verse → single image) | Auto: ComfyUI → Openverse → 404 |
+| Composite into palace photo | ComfyUI only (needs inpainting) |
+| User uploads their own image | Manual |
+| Regenerate existing concept | Same source as original (or user picks) |
+
+### Search Query Building
+
+The Go service constructs search queries from verse text:
+
+```
+Input: "I am the good shepherd: the good shepherd giveth his life for the sheep."
+Output: "good shepherd bible"
+
+Algorithm:
+1. Strip punctuation and digits
+2. Remove stop words (the, a, an, and, or, but, in, on, at, to, for, of, by, with, from, that, this, etc.)
+3. Extract top 3-5 words by significance
+4. Append "bible" qualifier
+```

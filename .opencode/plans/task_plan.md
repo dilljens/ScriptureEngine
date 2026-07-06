@@ -1,7 +1,7 @@
 # Memorization Module for ScriptureEngine — Task Plan
 
 ## Goal
-Integrate a complete verse memorization system (FSRS SRS + memory palaces + AI-generated imagery + audio) into ScriptureEngine as a new frontend tab and Go microservice backend.
+Integrate a complete verse memorization system (FSRS SRS + memory palaces + hybrid image pipeline + audio) into ScriptureEngine as a new frontend tab and Go microservice backend.
 
 ## Mobile UX Architecture
 
@@ -50,17 +50,22 @@ ScriptureEngine React SPA
        │    ├── ReviewSession    — FSRS card queue with progressive hints
        │    ├── PalaceBuilder    — upload photo, place loci, assign verses
        │    ├── PalaceWalk       — slideshow through loci with composites
-       │    ├── ImageStudio      — generate/browse AI concept images
+       │    ├── ImageStudio      — generate/browse concept images (AI + Openverse + upload)
        │    ├── AudioStudio      — record/playback recitations
        │    └── MemorizeAnalytics — heat maps, trends
        │
        └── Settings tab (replaces modal overlay)
 
-Go Microservice (:8090)          ComfyUI (Docker, :8188)
-  ├── FSRS SRS engine              ├── txt2img concept generation
-  ├── Palace CRUD                  └── img2img palace compositing
+Go Microservice (:8090)
+  ├── FSRS SRS engine
+  ├── Palace CRUD
   ├── Review queue + rating
+  ├── Hybrid image pipeline: AI (ComfyUI) → Openverse → Manual upload
   └── Reads ScriptureEngine DB (read-only)
+
+ComfyUI (Docker, :8188) — optional GPU path
+  ├── txt2img concept generation
+  └── img2img palace compositing
 ```
 
 ## Tracks
@@ -72,13 +77,13 @@ Restructure the mobile layout into three zones: top bar (search + breadcrumb), b
 Make the subjects bar visible on both desktop AND mobile (replacing mobile dropdown). Add [None] option to deselect workspace. Subjects/Tiles view sets active workspace on click.
 
 ### Track A: Go SRS Microservice
-FSRS-based spaced repetition engine, memory palace CRUD, ComfyUI AI proxy, analytics API.
+FSRS-based spaced repetition engine, memory palace CRUD, hybrid image pipeline (AI + Openverse + upload), analytics API.
 
 ### Track B: Frontend — Memorization Features
-Memorize tab UI with review, palaces, AI imagery, audio, analytics.
+Memorize tab UI with review, palaces, images, audio, analytics.
 
-### Track C: AI Image Generation (ComfyUI Docker)
-Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
+### Track C: Image Pipeline
+Three-tier image sourcing: ComfyUI (GPU, best quality) → Openverse (free API, no key) → Manual upload (always works).
 
 ---
 
@@ -121,7 +126,7 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 | Step | Description |
 |------|-------------|
 | P1.1 | Initialize Go module at `backend/go-srs/`, set up project structure |
-| P1.2 | SQLite schema: all tables with auto-migration |
+| P1.2 | SQLite schema: all tables with auto-migration (add `source` column to concept_images) |
 | P1.3 | FSRS core: `internal/fsrs/fsrs.go` with complete FSRS-5 algorithm |
 | P1.4 | HTTP server on `:8090`, CORS, graceful shutdown |
 | P1.5 | `POST /api/memorize/verses/batch` — mirror verses from ScriptureEngine DB |
@@ -152,19 +157,78 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 | P3.3 | Wire `memorizeApi.js` to Go service for live data |
 | P3.4 | FSRS review flow: queue → show card → rate → next card |
 
-## Phase P4 — ComfyUI Docker + AI Proxy
+## Phase P4 — Image Acquisition Pipeline
 
-**⏱ Timebox:** 120 minutes  
-**✅ Checkpoint:** `POST /api/memorize/generate/concept` returns a generated image  
-**⚙ Fallback:** Mock AI endpoints with placeholder images if Docker/GPU setup fails.
+**⏱ Timebox:** 150 minutes  
+**✅ Checkpoint:** `POST /api/memorize/generate/concept` returns an image from one of three sources (AI → Openverse → upload)  
+**⚙ Fallback:** Skip ComfyUI setup if no GPU — system works with Openverse + upload only.
 
 | Step | Description |
 |------|-------------|
-| P4.1 | Docker Compose with ComfyUI service (GPU passthrough) |
+| P4.1 | Docker Compose with ComfyUI service (GPU path, optional) |
 | P4.2 | Workflow JSONs: `concept-gen.json`, `composite.json` |
-| P4.3 | `internal/ai/comfyui.go` — REST client for ComfyUI |
-| P4.4 | `POST /generate/concept` endpoint |
-| P4.5 | `POST /generate/composite` endpoint |
+| P4.3 | ComfyUI REST client in Go (`internal/ai/comfyui.go`) |
+| P4.4 | **NEW: Openverse API client** (`internal/ai/openverse.go`) — calls `https://api.openverse.engineering/v1/images/` with search query, auto-selects top result. No API key needed. |
+| P4.5 | **NEW: Search query builder** (`internal/ai/query.go`) — extracts key nouns/verbs from verse text using stop-word removal, adds "bible illustration" qualifier |
+| P4.6 | `POST /generate/concept` — source auto-select (ComfyUI if GPU available → Openverse → 404) |
+| P4.7 | `POST /generate/composite` — AI-only, needs ComfyUI for inpainting into palace photo |
+| P4.8 | `POST /images/upload` — multipart file upload for manual images |
+| P4.9 | Add `source` column to `concept_images` table (`ai`, `openverse`, `upload`) |
+
+### Image Source Auto-Select Logic
+
+```go
+func (s *Server) getConceptImage(verseID string) (*ConceptImage, error) {
+    // 1. Check if image already exists for this verse
+    if existing := s.db.GetConceptImage(verseID); existing != nil {
+        return existing, nil
+    }
+    // 2. Try ComfyUI if available
+    if s.comfyUI.IsAvailable() {
+        if img, err := s.comfyUI.Generate(verseID); err == nil {
+            return s.db.SaveConceptImage(verseID, img, "ai"), nil
+        }
+    }
+    // 3. Fallback to Openverse search
+    verse := s.db.GetVerse(verseID)
+    query := buildSearchQuery(verse.Text, verse.Reference)
+    if img, err := s.openverse.Search(query); err == nil {
+        return s.db.SaveConceptImage(verseID, img, "openverse"), nil
+    }
+    // 4. No image available
+    return nil, ErrNoImage
+}
+```
+
+### Openverse API Integration
+
+```go
+// internal/ai/openverse.go
+func SearchConceptImage(verseText, reference string) (*OpenverseImage, error) {
+    query := buildSearchQuery(verseText, reference)
+    // GET https://api.openverse.engineering/v1/images/
+    //   ?q=good+shepherd+bible+illustration
+    //   &page_size=5&license=cc-by,cc0
+    resp, err := http.Get("https://api.openverse.engineering/v1/images/?q=" + 
+        url.QueryEscape(query) + "&page_size=5")
+    // Auto-select first valid result
+    // Download and store in data/images/concept/{verse_id}.jpg
+    // Save metadata to concept_images table
+}
+```
+
+### Search Query Builder
+
+```go
+func buildSearchQuery(text, ref string) string {
+    // 1. Strip punctuation and digits
+    // 2. Remove stop words (the, a, an, and, or, but, in, on, at, etc.)
+    // 3. Extract top 5 meaningful words
+    // 4. Add book context if helpful
+    // 5. Append "bible" qualifier
+    return "good shepherd bible"
+}
+```
 
 ## Phase P5 — Palace Builder
 
@@ -183,14 +247,14 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 
 **⏱ Timebox:** 90 minutes  
 **✅ Checkpoint:** Palace walk shows concept images composited into palace photos  
-**⚙ Fallback:** Synchronous generation instead of async queue.
+**⚙ Fallback:** Skip compositing — show concept image and palace photo side by side.
 
 | Step | Description |
 |------|-------------|
-| P6.1 | Auto-trigger composite generation on verse assignment |
+| P6.1 | Auto-trigger composite generation on verse assignment (requires ComfyUI) |
 | P6.2 | Frontend: `PalaceWalk.jsx` slideshow |
-| P6.3 | Frontend: `ImageStudio.jsx` browse/regenerate |
-| P6.4 | Batch generation button |
+| P6.3 | Frontend: `ImageStudio.jsx` browse/regenerate with source indicators |
+| P6.4 | Batch generation button (AI or search per verse) |
 
 ## Phase P7 — Progressive Hint Levels
 
@@ -236,20 +300,22 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 
 ```
 GET    /health
-POST   /verses/batch          — Mirror verses
-GET    /queue                 — Due cards (?limit=&card_type=)
-GET    /verses/:ref/cards     — All cards for a verse
-POST   /review/:card_id       — Rate card {rating: again|hard|good|easy}
+POST   /verses/batch              — Mirror verses
+GET    /queue                     — Due cards (?limit=&card_type=)
+GET    /verses/:ref/cards         — All cards for a verse
+POST   /review/:card_id           — Rate card {rating: again|hard|good|easy}
 
-GET    /palaces               — List palaces
-POST   /palaces               — Create
-GET    /palaces/:id           — Details + loci
-POST   /palaces/:id/loci      — Add locus
-POST   /loci/:id/assign       — Assign verse
-POST   /generate/concept      — txt2img
-POST   /generate/composite    — Composite into palace
-POST   /audio                 — Upload recording
-GET    /audio/:id             — Serve audio
+GET    /palaces                   — List palaces
+POST   /palaces                   — Create
+GET    /palaces/:id               — Details + loci
+POST   /palaces/:id/loci          — Add locus
+POST   /loci/:id/assign           — Assign verse
+POST   /generate/concept          — {verse_id} → auto-selects source (AI→Openverse→404)
+POST   /generate/composite        — AI-only: {verse_id, palace_id, locus_id}
+POST   /images/upload             — Multipart: {verse_id, file} → manual upload
+GET    /images/:id                — Serve image
+POST   /audio                     — Upload recording
+GET    /audio/:id                 — Serve audio
 GET    /analytics/summary
 GET    /analytics/heatmap
 ```
@@ -274,7 +340,7 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 - `loci` — id, palace_id, label, x_pct, y_pct, verse_id
 - `cards` — id, verse_id, card_type, FSRS fields, hint_level, due
 - `review_log` — id, card_id, rating, elapsed_seconds, review_date
-- `concept_images` — id, verse_id, file_path, prompt, model
+- `concept_images` — id, verse_id, file_path, prompt, model, source (ai|openverse|upload)
 - `composite_images` — id, verse_id, palace_id, locus_id, file_path
 - `audio_recordings` — id, verse_id, file_path, duration_secs
 
@@ -294,4 +360,4 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 | `memorizeApi.js` (new) | API client for Go service |
 | `vite.config.js` | Proxy `/api/memorize` → `:8090` |
 | ScriptureEngine `data/processed/scripture.db` | Go reads verses (read-only) |
-| `docker-compose.yml` | Add Go + ComfyUI services |
+| `docker-compose.yml` | Add Go + ComfyUI (optional) services |
