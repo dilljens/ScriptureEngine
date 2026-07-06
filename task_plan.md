@@ -3,18 +3,38 @@
 ## Goal
 Integrate a complete verse memorization system (FSRS SRS + memory palaces + AI-generated imagery + audio) into ScriptureEngine as a new frontend tab and Go microservice backend.
 
+## Mobile UX Architecture
+
+```
+┌─ TOP BAR (always visible, no hide-on-scroll) ────────────┐
+│  ☰  │  Breadcrumb (work / book / ch.3)  │  🔍 Search   │
+├─ CONTENT ───────────────────────────────────────────────┤
+│                                                          │
+├─ BOTTOM TAB BAR ────────────────────────────────────────┤
+│  📖 Read  💬 Chat  🧠 Memorize  📚 Library  ▦ Subjects  │
+└─────────────────────────────────────────────────────────┘
+
+Slide-out Drawer (from ☰ or edge swipe):
+  Settings tab · History · Graph · Layers · Structure ·
+  Font controls · Dark mode · Command palette · Cheatsheet
+```
+
 ## Overview
 
 ```
 ScriptureEngine React SPA
-  └── New "Memorize" tab
-       ├── Dashboard        — streak, counts, quick review
-       ├── ReviewSession    — FSRS card queue with progressive hints
-       ├── PalaceBuilder    — upload photo, place loci, assign verses
-       ├── PalaceWalk       — slideshow through loci with composites
-       ├── ImageStudio      — generate/browse AI concept images
-       ├── AudioStudio      — record/playback recitations
-       └── MemorizeAnalytics — heat maps, trends
+  └── Tabs: Read | Chat | Memorize | Library | Subjects | Settings
+       │
+       ├── Memorize tab
+       │    ├── Dashboard        — streak, counts, quick review
+       │    ├── ReviewSession    — FSRS card queue with progressive hints
+       │    ├── PalaceBuilder    — upload photo, place loci, assign verses
+       │    ├── PalaceWalk       — slideshow through loci with composites
+       │    ├── ImageStudio      — generate/browse AI concept images
+       │    ├── AudioStudio      — record/playback recitations
+       │    └── MemorizeAnalytics — heat maps, trends
+       │
+       └── Settings tab (replaces modal overlay)
 
 Go Microservice (:8090)          ComfyUI (Docker, :8188)
   ├── FSRS SRS engine              ├── txt2img concept generation
@@ -25,16 +45,34 @@ Go Microservice (:8090)          ComfyUI (Docker, :8188)
 
 ## Tracks
 
+### Track 0: Mobile UX Architecture
+Restructure the mobile layout into three zones: top bar (search + breadcrumb), bottom tab bar (5 nav destinations), slide-out drawer (secondary actions). Settings moves from modal to a full tab.
+
 ### Track A: Go SRS Microservice
 FSRS-based spaced repetition engine, memory palace CRUD, ComfyUI AI proxy, analytics API.
 
-### Track B: Frontend Integration
-New "Memorize" tab in the existing React SPA — all UI components.
+### Track B: Frontend — Memorization Features
+Memorize tab UI with review, palaces, AI imagery, audio, analytics.
 
 ### Track C: AI Image Generation (ComfyUI Docker)
 Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 
 ---
+
+## Phase P0 — Mobile UX Architecture
+
+**⏱ Timebox:** 150 minutes  
+**✅ Checkpoint:** Mobile view shows: top bar (☰ + breadcrumb + search), bottom tab bar (5 buttons), drawer slides out from left with all secondary actions  
+
+| Step | Description |
+|------|-------------|
+| P0.1 | Create `SlideDrawer.jsx` — left slide-out panel with backdrop, animation, edge-swipe gesture |
+| P0.2 | Populate drawer: Settings tab opener, History, Graph, Layers, Structure, Font+Dark controls, Command, Cheatsheet |
+| P0.3 | Create `SettingsView.jsx` — full-page settings tab (moved from modal overlay) |
+| P0.4 | Add `settings` viewLevel to tabContext.jsx reducer + App.jsx renderMainContent |
+| P0.5 | Restructure mobile top bar: ☰ hamburger + breadcrumb + search only — remove ALL icon buttons |
+| P0.6 | Bottom tab bar: Read · Chat · Memorize · Library · Subjects (already done, verify) |
+| P0.7 | Desktop header stays unchanged (all icon buttons remain) |
 
 ## Phase P1 — Go Skeleton + DB Schema + FSRS Core
 
@@ -71,12 +109,10 @@ Local Stable Diffusion pipeline — requires 6GB+ VRAM GPU.
 
 | Step | Description |
 |------|-------------|
-| P3.1 | Add `memorize` viewLevel to `tabContext.jsx` |
-| P3.2 | Create `MemorizeView.jsx` dashboard component |
-| P3.3 | Create `ReviewSession.jsx` card queue with hint levels |
-| P3.4 | Add Memorize button in App.jsx sidebar/toolbar |
-| P3.5 | Create `memorizeApi.js` API client for Go service |
-| P3.6 | Wire Vite proxy for `/api/memorize` → `:8090` |
+| P3.1 | Create `MemorizeView.jsx` dashboard component (placeholder exists, build real UI) |
+| P3.2 | Create `ReviewSession.jsx` card queue with hint levels |
+| P3.3 | Wire `memorizeApi.js` to Go service for live data |
+| P3.4 | FSRS review flow: queue → show card → rate → next card |
 
 ## Phase P4 — ComfyUI Docker + AI Proxy
 
@@ -208,9 +244,11 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 
 | Where | What |
 |-------|------|
-| `tabContext.jsx` | Add `memorize` viewLevel + reducer cases |
-| `App.jsx` | Add `<MemorizeView>` in `renderMainContent()` |
-| `App.jsx` | Add Memorize button in header/sidebar |
+| `tabContext.jsx` | Add `memorize` + `settings` viewLevels + reducer cases |
+| `App.jsx` | Add `<MemorizeView>` + `<SettingsView>` in `renderMainContent()` |
+| `App.jsx` | Restructure mobile: top bar, bottom tab bar, drawer |
+| `SlideDrawer.jsx` (new) | Slide-out drawer with all secondary actions |
+| `SettingsView.jsx` (new) | Full-page settings tab |
 | `memorizeApi.js` (new) | API client for Go service |
 | `vite.config.js` | Proxy `/api/memorize` → `:8090` |
 | ScriptureEngine `data/processed/scripture.db` | Go reads verses (read-only) |

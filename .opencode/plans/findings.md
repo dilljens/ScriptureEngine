@@ -69,3 +69,58 @@ ComfyUI has the best API for programmatic use (native REST + WebSocket), best VR
 ## Quality Baseline
 
 No sentrux scan performed — this is a new module being added to an existing project. The project's existing quality will be measured before the first code changes.
+
+## Mobile UX Decisions (2026-07-06)
+
+### Split: Top Bar + Bottom Nav + Slide-out Drawer
+
+The mobile UI is being restructured into three zones:
+
+| Zone | Contents | Behavior |
+|------|----------|----------|
+| **Top bar** | ☰ drawer hamburger · Breadcrumb · 🔍 Search | Always visible, independent from bottom bar (no hide-on-scroll) |
+| **Bottom tab bar** | 📖 Read · 💬 Chat · 🧠 Memorize · 📚 Library · ▦ Subjects | Primary navigation destinations |
+| **Slide-out drawer** | Settings tab · History · Font controls · Dark mode · Graph · Layers · Structure · Command palette · Cheatsheet | Opens from left via ☰ button or edge swipe |
+
+### What Changes on Mobile
+
+| Action | Current Location | New Location |
+|--------|-----------------|--------------|
+| Search | Header toolbar | Top bar (remains) |
+| Chat | Header + Bottom bar | Bottom bar only |
+| Memorize | Header + Bottom bar | Bottom bar only |
+| Structure (Isaiah) | Header | Slide-out drawer |
+| History | Header | Slide-out drawer |
+| Font size | Header | Slide-out drawer |
+| Dark mode | Header | Slide-out drawer |
+| Settings | Header overlay (modal) | **Settings tab** (full-page `viewLevel: 'settings'`) |
+| Command palette | Header | Slide-out drawer |
+| Subjects (tiles) | Header (mobile only) | Bottom bar only |
+| Graph | Header | Slide-out drawer |
+| Layers | Header | Slide-out drawer |
+
+### Settings Tab
+Settings moves from a modal overlay to a dedicated tab (like Chat and Memorize). This gives it room for all controls without crowding the UI. Accessible from the slide-out drawer.
+
+### Desktop Header Stays Unchanged
+All the above changes are `sm:hidden` (mobile-only). Desktop keeps the full toolbar with all icon buttons.
+
+### Drawer Contents
+```
+┌──────────────────────────────┐
+│ ☰  ScriptureEngine           │
+│                              │
+│  ⚙  Settings                 │  → opens settings tab
+│  🕐  History                 │  → opens history overlay
+│  📊  Connection Graph         │  → opens graph tab
+│  🧩  Layers / PaRDeS         │  → opens layers popover
+│  📐  Isaiah Structure        │  → opens structure modal
+│  🔤  Font Size               │  → inline controls
+│  🌙  Dark Mode               │  → toggle
+│  ⌨️  Command Palette         │  → opens command input
+│  ❓  Keyboard Shortcuts      │  → opens cheatsheet
+│                              │
+│  ─────────────────────────── │
+│  v1.0.0                      │
+└──────────────────────────────┘
+```

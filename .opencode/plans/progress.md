@@ -4,41 +4,35 @@
 
 | Phase | Track | Status | Started | Completed | Notes |
 |-------|-------|--------|---------|-----------|-------|
-| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Ready to start |
+| P0 | Mobile UX architecture | 🔍 Planning | — | — | Top bar + bottom nav + drawer design finalized |
+| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Ready to start after P0 |
 | P2 | Review queue API | ⏳ Pending | — | — | Blocked on P1 |
-| P3 | Frontend tab | ✅ Done | 2026-07-06 | 2026-07-06 | Tab + mobile button + placeholder view |
+| P3 | Memorize tab UI | ⏳ Pending | — | — | Placeholder created, needs real UI |
 | P4 | ComfyUI + AI proxy | ⏳ Pending | — | — | Blocked on P1 |
-| P5 | Palace builder | ⏳ Pending | — | — | Blocked on P3 skeleton |
+| P5 | Palace builder | ⏳ Pending | — | — | Blocked on P3 |
 | P6 | Compositing | ⏳ Pending | — | — | Blocked on P4+P5 |
-| P7 | Hint levels | ⏳ Pending | — | — | Blocked on P3 skeleton |
-| P8 | Audio | ⏳ Pending | — | — | Blocked on P3 skeleton |
+| P7 | Hint levels | ⏳ Pending | — | — | Blocked on P3 |
+| P8 | Audio | ⏳ Pending | — | — | Blocked on P3 |
 | P9 | Analytics + polish | ⏳ Pending | — | — | Blocked on all |
 
-## Current Session
+## Session History
 
-**Started:** 2026-07-06  
-**Current focus:** Phase 3 — Frontend tab integration done; next: Phase 1 Go skeleton  
+### Session 1 (2026-07-06)
+- Research memorization techniques + AI image gen for 6GB VRAM
+- Explored ScriptureEngine architecture
+- Planned integration architecture (Go microservice + React tab)
+- Created plan files (task_plan.md, findings.md, progress.md)
+- Added MemorizeIcon, openMemorizeTab, MemorizeView placeholder, memorizeApi.js
+- Built mobile bottom tab bar: Read · Chat · Memorize · Library · Subjects
+- Desktop: added Memorize icon to toolbar
 
-### Completed This Session
-- [x] Research memorization techniques
-- [x] Research AI image gen for 6GB VRAM
-- [x] Explore ScriptureEngine architecture
-- [x] Plan integration architecture
-- [x] Create plan files (task_plan.md, findings.md, progress.md)
-- [x] Add MemorizeIcon to icons.jsx
-- [x] Add openMemorizeTab action to tabContext.jsx
-- [x] Add memorize view handling in App.jsx renderMainContent
-- [x] Add memorize button to mobile footer (bottom bar)
-- [x] Add memorize button to desktop toolbar
-- [x] Create MemorizeView.jsx with dashboard/status placeholders
-- [x] Create memorizeApi.js client for Go service
-- [x] Wire Vite proxy for /api/memorize → :8090
-
-### Next Actions
-- [ ] Initialize Go module at `backend/go-srs/`
-- [ ] Implement SQLite schema + auto-migration
-- [ ] Implement FSRS core algorithm
-- [ ] Set up HTTP server with health check
+### Session 2 (2026-07-06) — Current
+- Refined mobile UX: top bar + bottom nav + slide-out drawer
+- Settings moves from modal overlay to full tab
+- Secondary actions (History, Font, Dark mode, Graph, Layers, etc.) → slide-out drawer
+- Chat → bottom bar only (not header)
+- Top bar: always visible, independent from bottom bar
+- Desktop toolbar stays unchanged
 
 ## Notes
 
@@ -47,6 +41,7 @@
 - React frontend integration via new "memorize" tab
 - ComfyUI as Docker container for AI image generation
 - Direct read of ScriptureEngine's SQLite DB for verse data
+- Mobile: three-zone layout (top bar, bottom tab bar, slide-out drawer)
 
 ### Dependencies
 - Go 1.22+ installed
