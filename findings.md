@@ -12,6 +12,23 @@ ScriptureEngine's backend is Python/FastAPI, but memorization is delegated to a 
 ### Why FSRS Instead of SM-2
 FSRS (Free Spaced Repetition Scheduler) is the modern standard used by Anki 23.10+. It adapts to each user's memory patterns with 4 learned parameters. SM-2 is simpler but less efficient (more reviews for same retention). The user explicitly requested FSRS.
 
+### FSRS Implementation Decision: Go Re-implementation (Not Rust Crate)
+The reference implementation of FSRS-5 is the `fsrs-rs` Rust crate, used by Anki itself. However, we chose to re-implement in Go rather than use the Rust crate directly or call it via FFI.
+
+**Why Go re-implementation is correct here:**
+
+| Factor | Re-implement in Go (~300 lines) | Use fsrs-rs Rust crate |
+|--------|--------------------------------|------------------------|
+| Stack complexity | Go only | Go + Rust + CGo FFI |
+| Correctness risk | Near-zero (published test vectors) | Zero (battle-tested) |
+| Dev effort | ~0.5 days + verification | ~1 day (FFI setup + build system) |
+| Maintenance | Full control, easy to update | Must keep Rust toolchain |
+| Rest of service | 83% of code (HTTP, DB, AI proxy) — all Go | Would need to write in Rust too |
+
+The FSRS-5 algorithm is ~300 lines of straightforward algebra — not a complex black box. The `fsrs-rs` repo publishes test vectors (known inputs → expected outputs). We write the Go implementation, run it against those vectors, and if every output matches exactly, the implementation is correct. This eliminates the re-implementation risk while keeping the stack simple.
+
+**Decision:** Go re-implementation verified against published test vectors. No Rust dependency.
+
 ### Why ComfyUI Instead of A1111
 ComfyUI has the best API for programmatic use (native REST + WebSocket), best VRAM management (`--lowvram`), and workflows can be version-controlled as JSON. A1111 development has stalled.
 

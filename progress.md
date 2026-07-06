@@ -45,6 +45,16 @@
 - Auto-select best result, no user picking
 - Updated all plan files
 
+### Session 5 (2026-07-06)
+- FSRS decision made: Go re-implementation (not Rust crate)
+- Rationale: FSRS-5 is ~300 lines of documented algebra. Published test vectors eliminate re-implementation risk. Keeping stack simple (Go only) outweighs benefit of using fsrs-rs crate.
+- Added decision to findings.md, updated P1.3 with test vector verification
+- Added hybrid image pipeline to P4
+- Three tiers: ComfyUI (AI) → Openverse (free search) → Manual upload
+- No API key needed for Openverse
+- Auto-select best result, no user picking
+- Updated all plan files
+
 ## Notes
 
 ### Architecture

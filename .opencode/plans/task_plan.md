@@ -127,7 +127,7 @@ Three-tier image sourcing: ComfyUI (GPU, best quality) → Openverse (free API, 
 |------|-------------|
 | P1.1 | Initialize Go module at `backend/go-srs/`, set up project structure |
 | P1.2 | SQLite schema: all tables with auto-migration (add `source` column to concept_images) |
-| P1.3 | FSRS core: `internal/fsrs/fsrs.go` with complete FSRS-5 algorithm |
+| P1.3 | FSRS core: `internal/fsrs/fsrs.go` with complete FSRS-5 algorithm, verified against published test vectors from `fsrs-rs` repo |
 | P1.4 | HTTP server on `:8090`, CORS, graceful shutdown |
 | P1.5 | `POST /api/memorize/verses/batch` — mirror verses from ScriptureEngine DB |
 
