@@ -2583,6 +2583,7 @@ def get_audio_pronunciation(word: str, lemma: str = ""):
 
 
 AUDIO_DIR = Path(__file__).parent.parent / "data" / "audio" / "verses"
+ALIGN_DIR = Path(__file__).parent.parent / "data" / "audio" / "alignments"
 
 @app.get("/api/v1/audio/play/{verse_id:path}")
 def play_verse_audio(verse_id: str):
@@ -2591,10 +2592,8 @@ def play_verse_audio(verse_id: str):
     
     vid = verse_id.strip("/")
     
-    # Try verse audio
     audio_file = AUDIO_DIR / f"{vid}.wav"
     if not audio_file.exists():
-        # Try without .wav
         audio_file = AUDIO_DIR / vid
         if not audio_file.exists() or not str(audio_file).endswith('.wav'):
             raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
@@ -2603,6 +2602,24 @@ def play_verse_audio(verse_id: str):
         raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
     
     return FileResponse(str(audio_file), media_type="audio/wav", filename=f"{vid}.wav")
+
+
+@app.get("/api/v1/audio/align/{verse_id:path}")
+def get_verse_alignment(verse_id: str):
+    """Get word-level alignment timestamps for a verse.
+    
+    Returns JSON with word timestamps for highlighting during playback.
+    """
+    vid = verse_id.strip("/")
+    align_file = ALIGN_DIR / f"{vid}.json"
+    
+    if not align_file.exists():
+        raise HTTPException(status_code=404, detail=f"Alignment not found: {vid}")
+    
+    with open(align_file) as f:
+        data = json.load(f)
+    
+    return {"ok": True, "data": data}
 
 
 # ─── Forum System ───
