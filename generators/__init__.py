@@ -110,6 +110,265 @@ GENERATOR_DEFS = [
         "requires": "verses table (present)",
         "description": "Connects passages for 5 empty sod types: living water, temple throne, temple veil, primordial creation, sacred center",
     },
+
+    # ── Orphan Generators (Structural + Frequency) ──
+
+    {
+        "name": "Chiasm Detection — Algorithmic",
+        "module_path": ".chiasm_detector",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Algorithmic chiastic structure detection on each book",
+    },
+    {
+        "name": "Formula Markers — Structural Seams",
+        "module_path": ".formula_markers",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects formula markers ('And it came to pass', 'Thus says the Lord') as structural seams",
+    },
+    {
+        "name": "Refrain Detection — Repeated Phrases",
+        "module_path": ".refrain",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Finds repeated phrases at structural intervals across books",
+    },
+    {
+        "name": "Parallelism — Poetic Structures",
+        "module_path": ".parallelism",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects synonymous, antithetic, synthetic, and step parallelism",
+    },
+    {
+        "name": "Acrostic Detection",
+        "module_path": ".acrostic",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects alphabetic/acrostic structures in Hebrew poetry",
+    },
+    {
+        "name": "Hapax & Dislegomenon",
+        "module_path": ".hapax_dislegomenon",
+        "layers": ["frequency"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects verses through rare words (hapax legomena and dislegomena)",
+    },
+
+    # ── Ordinal + Reduced Gematria ──
+
+    {
+        "name": "Ordinal & Reduced Gematria",
+        "module_path": ".ordinal_reduced_gematria",
+        "layers": ["numerical"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Adds ordinal and reduced gematria connections",
+    },
+    {
+        "name": "Gematria Factor — Sacred Number Factors",
+        "module_path": ".gematria_factor",
+        "layers": ["numerical"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects verses where gematria values factor into sacred numbers",
+    },
+    {
+        "name": "Gematria Sum — Word Relationships",
+        "module_path": ".gematria_sum",
+        "layers": ["numerical"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects words where A + B = C in gematria",
+    },
+
+    # ── Linguistic ──
+
+    {
+        "name": "Same Root — Triconsonantal Roots",
+        "module_path": ".same_root",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects verses sharing the same triconsonantal Hebrew root",
+    },
+    {
+        "name": "Staircase Chains — Word-Link Structures",
+        "module_path": ".staircase_chains",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects staircase parallelism (last word of one line = first word of next)",
+    },
+    {
+        "name": "Hendiadys — Two Words, One Idea",
+        "module_path": ".hendiadys",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects hendiadys: two words expressing one idea",
+    },
+    {
+        "name": "Morphology — Grammatical Forms",
+        "module_path": ".morphology",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects verses sharing the same grammatical form (verb stem, tense, etc.)",
+    },
+
+    # ── Chronological ──
+
+    {
+        "name": "Genealogical — Family Lines",
+        "module_path": ".genealogical",
+        "layers": ["chronological"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects genealogical passages and family lineage references",
+    },
+    {
+        "name": "Chronological Markers — Time References",
+        "module_path": ".chronological_marker",
+        "layers": ["chronological"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses sharing chronological markers (regn years, feast days, etc.)",
+    },
+    {
+        "name": "Cyclical Time — Jubilee/Sabbatical Cycles",
+        "module_path": ".cyclical_time",
+        "layers": ["chronological"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses through sabbatical and jubilee cycle references",
+    },
+    {
+        "name": "Feast Connections — Holy Days",
+        "module_path": ".feast_connection",
+        "layers": ["chronological"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses mentioning the same biblical feast or holy day",
+    },
+    {
+        "name": "Mukdam u'Meuchar — Non-Chronological Order",
+        "module_path": ".mukdam_umeuchar",
+        "layers": ["chronological"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Detects non-chronological order passages in narrative",
+    },
+
+    # ── Geographic ──
+
+    {
+        "name": "Geographic — Location Subtypes",
+        "module_path": ".geographic_subtypes",
+        "layers": ["geographic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Refines geographic connections with location subtypes (wilderness, mountain, temple)",
+    },
+
+    # ── Interpretive ──
+
+    {
+        "name": "Interpretive — Traditonal Readings",
+        "module_path": ".interpretive",
+        "layers": ["interpretive"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses through shared interpretive traditions",
+    },
+
+    # ── Hebrew Language Tools ──
+
+    {
+        "name": "Kal v'Chomer — Light/Heavy Argument",
+        "module_path": ".kal_vchomer",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Detects kal v'chomer (light to heavy) argument patterns",
+    },
+    {
+        "name": "Semuchin — Adjacent Verses",
+        "module_path": ".semuchin",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "gematria table (present)",
+        "description": "Connects adjacent verses that share lemma-based links",
+    },
+
+    # ── Cross-Canon (Extended Connections) ──
+
+    {
+        "name": "Cross-Canon Chaos Motifs",
+        "module_path": ".cross_canon_chaos",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Applies Isaiah's de-creation motifs (dust, chaff, stubble) to other books",
+    },
+    {
+        "name": "Cross-Canon Pseudonyms",
+        "module_path": ".cross_canon_pseudonyms",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Extends Giliadi's pseudonym keyword system beyond Isaiah",
+    },
+    {
+        "name": "Cross-Canon Experiment — Unknown Psalms",
+        "module_path": ".experiment_cross_canon",
+        "layers": ["intertextual"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Experimental: connects 5 Psalms of David to canon parallels",
+    },
+
+    # ── Isaiah-Specific (scoped to book=isa) ──
+
+    {
+        "name": "Isaiah — Advanced Giliadi Techniques",
+        "module_path": ".isaiah_advanced",
+        "layers": ["structural", "symbolic", "chronological"],
+        "automatic": True,
+        "requires": "verses table (present), book=isa",
+        "description": "Seeds 11 Giliadi techniques: Day of Jehovah, threats, curses↔blessings, cyclical types, DSS markers",
+    },
+    {
+        "name": "Isaiah — Hebrew Keyword Linking",
+        "module_path": ".isaiah_keywords",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "gematria table (present), book=isa",
+        "description": "Hebrew keyword discovery from Isaiah's 7-part parallel structure",
+    },
+    {
+        "name": "Isaiah — Pseudonym Twin-Pairs",
+        "module_path": ".isaiah_pseudonyms",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "verses table (present), book=isa",
+        "description": "Connects pseudonym occurrences (hand/rod/sword) to servant/tyrant hubs",
+    },
+    {
+        "name": "Spiritual Levels — Giliadi's 7-Level Framework",
+        "module_path": ".spiritual_levels",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "gematria table (present), book=isa",
+        "description": "Classifies Isaiah verses into 7 spiritual levels (Perdition→Jehovah)",
+    },
 ]
 
 # Import all generator modules
