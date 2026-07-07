@@ -42,7 +42,15 @@ rsync -avz --delete \
 echo "Syncing data files..."
 rsync -avz --delete \
 	--exclude audio \
+	--exclude '*.wav' \
+	--exclude '*.mp3' \
 	data/ "$HOST:$REMOTE_DIR/data/"
+
+# Sync audio alignments separately (small JSON files, not the raw audio)
+if [ -d data/audio/alignments ]; then
+	echo "Syncing audio alignments..."
+	rsync -avz --delete data/audio/alignments/ "$HOST:$REMOTE_DIR/data/audio/alignments/"
+fi
 
 echo "Syncing nginx + service configs..."
 rsync -avz scripts/nginx-scripture.conf "$HOST:/etc/nginx/sites-available/scriptureengine"
