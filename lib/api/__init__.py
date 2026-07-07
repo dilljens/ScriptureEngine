@@ -113,7 +113,7 @@ register(
         "type": "object",
         "properties": {
             "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
-            "version": {"type": "string", "default": "WEB", "description": "Bible version (WEB, KJV, etc.)"},
+            "version": {"type": "string", "default": "KJV", "description": "Bible version (KJV, LSV, WEB, etc.) — KJV covers the entire canon"},
         },
         "required": ["verse"],
     },

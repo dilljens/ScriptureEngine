@@ -195,10 +195,10 @@ export function getInfo() {
 }
 
 export function chat(messages, opts = {}) {
-  const { model = 'deepseek-v4-flash', max_tokens = 30000, temperature = 0.7, signal } = opts
-  // LLM calls need longer timeout — use provided signal or create one with 60s
+  const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, signal } = opts
+  // LLM calls need longer timeout — DeepSeek thinking mode can take 8+ min
   const controller = signal ? null : new AbortController()
-  const timer = controller ? setTimeout(() => controller.abort(), 120_000) : null
+  const timer = controller ? setTimeout(() => controller.abort(), 600_000) : null
   return fetchJSON('/chat', {
     method: 'POST',
     body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools: opts.disabled_tools || [] }),

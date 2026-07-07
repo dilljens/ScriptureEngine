@@ -18,6 +18,7 @@ from lib.db import get_db, get_gematria_for_verse, find_matching_gematria
 from lib.gematria import (compute_all, find_divine_name_matches,
                           is_sacred_number, DIVINE_NAMES,
                           get_divine_names_table, SACRED_NUMBERS)
+from lib.hebrew_util import rtl_mark, transliterate
 
 
 def word_lookup(word):
@@ -27,6 +28,10 @@ def word_lookup(word):
 
     result = {
         "word": word,
+        "hebrew_display": {
+            "text": rtl_mark(word),
+            "transliteration": transliterate(word, strip_accents=False),
+        },
         "gematria": values,
         "divine_name_matches": divine_matches,
         "is_sacred_number": {

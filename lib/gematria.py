@@ -212,17 +212,106 @@ SACRED_NUMBERS = {
     777: "Perfection of perfection (divine fullness)",
 }
 
-# Mispar Katan approaches
-def mispar_katan_method(value):
-    """Sum digits repeatedly until single digit."""
-    while value > 9:
-        value = sum(int(d) for d in str(value))
-    return value
+# ─── Kabbalistic Gematria Systems ───
+
+# Milui/Mispar Shemi — spell out each letter's full name and sum those values
+# These are the traditional letter name spellings
+LETTER_NAMES = {
+    "א": "אלף",    # Aleph = 111
+    "ב": "בית",    # Bet = 412
+    "ג": "גימל",   # Gimel = 53 (or 83 with yod)
+    "ד": "דלת",    # Dalet = 434
+    "ה": "הא",     # He = 6
+    "ו": "וו",     # Vav = 12
+    "ז": "זין",    # Zayin = 67
+    "ח": "חית",    # Chet = 418
+    "ט": "טית",    # Tet = 419
+    "י": "יוד",    # Yod = 20
+    "כ": "כף",     # Kaf = 100
+    "ך": "כף",     # Kaf final = 100
+    "ל": "למד",    # Lamed = 74
+    "מ": "מם",     # Mem = 80
+    "ם": "מם",     # Mem final = 80
+    "נ": "נון",    # Nun = 106
+    "ן": "נון",    # Nun final = 106
+    "ס": "סמך",    # Samekh = 120
+    "ע": "עין",    # Ayin = 130
+    "פ": "פא",     # Pe = 81
+    "ף": "פא",     # Pe final = 81
+    "צ": "צדי",    # Tzadi = 104
+    "ץ": "צדי",    # Tzadi final = 104
+    "ק": "קוף",    # Qof = 186
+    "ר": "ריש",    # Resh = 510
+    "ש": "שין",    # Shin = 360
+    "ת": "תו",     # Tav = 406
+}
 
 
-def mispar_katan_mispar(value):
-    """Mispar Katan — remove hundreds digits (just take the tens and ones)."""
-    if value >= 100:
-        # Remove hundreds digit(s), keep tens and ones
-        return value % 100 if value % 100 != 0 else (value % 1000) // 10
-    return value
+def compute_milui(word):
+    """Mispar Milui/Shemi — spell out each letter name and sum.
+    
+    For each letter, look up its full name spelling, compute the standard
+    gematria of that spelling, and sum them.
+    """
+    cons = extract_consonants(word)
+    total = 0
+    for ch in cons:
+        name = LETTER_NAMES.get(ch, "")
+        if name:
+            total += compute_standard(name)
+    return total
+
+
+def compute_kellali(word):
+    """Mispar HaKellali — standard value + number of letters.
+    
+    This gives weight to the count of letters as well as their values.
+    """
+    cons = extract_consonants(word)
+    std = compute_standard(cons)
+    return std + len(cons)
+
+
+def compute_kidmi(word):
+    """Mispar Kidmi — triangular numbers.
+    
+    For each letter with value n, add the sum of 1+2+...+n instead of n.
+    For example, if aleph=1, kidmi_aleph = 1. If bet=2, kidmi_bet = 1+2 = 3.
+    """
+    cons = extract_consonants(word)
+    total = 0
+    for ch in cons:
+        val = STANDARD_MAP.get(ch, 0)
+        # Triangular number: n(n+1)/2
+        total += (val * (val + 1)) // 2
+    return total
+
+
+def compute_boneh(word):
+    """Mispar Boneh — standard + ordinal.
+    
+    Building number — adds the two simplest systems together.
+    """
+    cons = extract_consonants(word)
+    return compute_standard(cons) + compute_ordinal(cons)
+
+
+def compute_all(word):
+    """Compute all gematria values for a word, including kabbalistic systems."""
+    cons = extract_consonants(word)
+    if not cons:
+        return {
+            "standard": 0, "ordinal": 0, "reduced": 0, "mispar_gadol": 0,
+            "milui": 0, "kellali": 0, "kidmi": 0, "boneh": 0,
+        }
+    std = compute_standard(cons)
+    return {
+        "standard": std,
+        "ordinal": compute_ordinal(cons),
+        "reduced": compute_reduced(cons),
+        "mispar_gadol": compute_gadol(cons),
+        "milui": compute_milui(cons),
+        "kellali": compute_kellali(cons),
+        "kidmi": compute_kidmi(cons),
+        "boneh": compute_boneh(cons),
+    }

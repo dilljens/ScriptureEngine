@@ -32,7 +32,7 @@ COMPUTED_SCHEMA = """
 def precompute_all(conn):
     """Build the passage_guides table with pre-joined connection data."""
     from lib.connections.pardes import get_pardes_level
-    from lib.controls.calibration import get_quality_emoji
+    from lib.controls.calibration import get_quality_stars
 
     # Create table
     conn.execute(f"DROP TABLE IF EXISTS {COMPUTED_TABLE}")
@@ -57,7 +57,8 @@ def precompute_all(conn):
         conns = conn.execute("""
             SELECT c.layer, c.type, c.subtype, c.strength, c.confidence,
                    c.quality_level, c.p_value,
-                   c.target_verse, v.text_english as target_text,
+                   c.target_verse, c.discovered_by,
+                   v.text_english as target_text,
                    b.title as target_book
             FROM connections c
             JOIN verses v ON v.id = c.target_verse
@@ -86,11 +87,9 @@ def precompute_all(conn):
                 "strength": r["strength"],
                 "confidence": r["confidence"],
                 "quality": r.get("quality_level", "suggested"),
-                "quality_emoji": get_quality_emoji(r.get("quality_level", "suggested")),
-                "p_value": r.get("p_value"),
                 "target": r["target_verse"],
-                "target_text": (r.get("target_text") or "")[:200],
                 "target_book": r.get("target_book", ""),
+                "discovered_by": r.get("discovered_by", "algorithm"),
             })
             layer_counts[layer] += 1
 
@@ -151,7 +150,7 @@ def precompute_all(conn):
         ))
 
         count += 1
-        if len(batch) >= 200:
+        if len(batch) >= 1000:
             _batch_insert(conn, batch)
             batch = []
             print(f"  {count}/{total} verses...", flush=True)

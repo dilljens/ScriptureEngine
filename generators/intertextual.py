@@ -52,6 +52,48 @@ TARGET_PAIRS = [
     ("psa", "2ne"), ("deu", "1ne"),
     # BoM quotes NT (or vice versa)
     ("matt", "3ne"), ("luke", "3ne"), ("john", "3ne"),
+    # APOCRYPHA — NT cross-references
+    ("wis", "matt"), ("wis", "luke"), ("wis", "john"),
+    ("wis", "rom"), ("wis", "1cor"), ("wis", "heb"),
+    ("sir", "matt"), ("sir", "luke"), ("sir", "john"),
+    ("sir", "rom"), ("sir", "james"),
+    ("2esd", "matt"), ("2esd", "rev"),
+    ("tob", "luke"), ("tob", "john"),
+    ("bar", "rom"), ("bar", "heb"),
+    ("1ma", "heb"), ("2ma", "heb"),
+    # APOCRYPHA — OT cross-references
+    ("wis", "isa"), ("wis", "psa"), ("wis", "gen"),
+    ("sir", "psa"), ("sir", "prov"), ("sir", "gen"),
+    ("tob", "gen"),
+    ("bar", "jer"), ("bar", "psa"),
+    # APOCRYPHA — BoM cross-references
+    ("wis", "2ne"), ("sir", "2ne"),
+    # PSEUDEPIGRAPHA — NT cross-references
+    ("1en", "matt"), ("1en", "luke"), ("1en", "john"),
+    ("1en", "acts"), ("1en", "rom"), ("1en", "2pet"), ("1en", "jude"),
+    ("1en", "rev"),
+    ("jub", "matt"), ("jub", "luke"), ("jub", "john"), ("jub", "rev"),
+    ("ascis", "matt"), ("ascis", "luke"), ("ascis", "john"),
+    ("odessol", "john"), ("odessol", "rev"),
+    ("psssol", "matt"), ("psssol", "luke"),
+    ("barn", "matt"), ("barn", "heb"), ("barn", "rom"),
+    ("apabr", "luke"), ("apabr", "rev"),
+    ("tabr", "luke"), ("tabr", "heb"),
+    # PSEUDEPIGRAPHA — OT cross-references
+    ("1en", "gen"), ("1en", "isa"), ("1en", "dan"), ("1en", "psa"),
+    ("jub", "gen"), ("jub", "exo"), ("jub", "psa"),
+    ("ascis", "isa"),
+    ("odessol", "psa"), ("odessol", "isa"),
+    ("psssol", "psa"),
+    ("asis", "isa"),
+    ("barn", "psa"), ("barn", "isa"),
+    ("tjob", "job"),
+    # PSEUDEPIGRAPHA — BoM cross-references
+    ("1en", "1ne"), ("1en", "2ne"),
+    ("jub", "1ne"), ("jub", "2ne"),
+    # PSEUDEPIGRAPHA — DSS cross-references  
+    ("1en", "1QHa"), ("1en", "1QS"),
+    ("jub", "CD"), ("jub", "11Q19"),
 ]
 
 

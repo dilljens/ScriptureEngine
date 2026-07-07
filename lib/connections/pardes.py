@@ -71,6 +71,11 @@ TYPE_PARDES = {
         "formula_marker": "p'shat",
         "acrostic": "sod",
         "chiasm_detected": "remez",
+        "emblematic_parallelism": "remez",
+        "numerical_parallelism": "remez",
+        "merismus": "remez",
+        "keyword_linking": "p'shat",
+        "rhetorical_pair": "remez",
     },
     "intertextual": {
         "direct_quotation": "remez",
@@ -127,9 +132,10 @@ TYPE_PARDES = {
     "frequency": {
         "divine_name_distribution": "sod",
         "formula_count": "p'shat",
-        "seven_fold_pattern": "sod",
-        "forty_day_pattern": "sod",
-        "twelve_fold_pattern": "sod",
+        "7_fold_pattern": "sod",
+        "10_fold_pattern": "drash",
+        "12_fold_pattern": "sod",
+        "40_fold_pattern": "sod",
         "hapax_legomenon": "p'shat",
         "dislegomenon": "p'shat",
         "concentration_index": "drash",
@@ -149,12 +155,51 @@ TYPE_PARDES = {
         "name_symbolic": "drash",
         "temple_symbol": "sod",
     },
+    "sod": {
+        "temple_ascent": "sod",
+        "temple_microcosm": "sod",
+        "temple_veil": "sod",
+        "temple_creation": "sod",
+        "temple_eschaton": "sod",
+        "temple_throne": "sod",
+        "eden_temple": "sod",
+        "angel_of_yhwh": "sod",
+        "divine_council": "sod",
+        "divine_ascent": "sod",
+        "holy_of_holies": "sod",
+        "mercy_seat": "sod",
+        "living_water": "sod",
+        "cosmic_mountain": "sod",
+        "sacred_center": "sod",
+        "primordial_creation": "sod",
+        "kingdom_priesthood": "sod",
+        "divine_marriage": "sod",
+        "theosis": "sod",
+        "watchers_enedochic": "sod",
+        "dss_sectarian": "sod",
+    },
 }
 
 
 def get_pardes_level(layer, type_name):
     """Get the PaRDeS level for a (layer, type) pair."""
     return TYPE_PARDES.get(layer, {}).get(type_name, "p'shat")
+
+
+# Flat reverse map: type_name -> PaRDeS level
+_TYPE_TO_PARDES = {}
+for _layer, _types in TYPE_PARDES.items():
+    for _t, _level in _types.items():
+        _TYPE_TO_PARDES[_t] = _level
+
+
+def get_pardes_level_for_type(type_name):
+    """Get the PaRDeS level for a connection type name alone.
+    
+    Since every connection type belongs to exactly one layer in TYPE_PARDES,
+    this is safe for all defined types. Unknown types default to 'p'shat'.
+    """
+    return _TYPE_TO_PARDES.get(type_name, "p'shat")
 
 
 def get_connections_by_level(conn_by_layer):

@@ -16,6 +16,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db, DEFAULT_DB_PATH, get_verse, get_gematria_for_verse, get_verse_gematria_total, get_connections_by_layer
+from lib.hebrew_util import rtl_mark, transliterate, clean_hebrew as ch
 
 
 def parse_reference(ref):
@@ -101,7 +102,7 @@ def lookup(book, chapter, verse):
     connections = get_connections_by_layer(conn, verse_id)
 
     # Detailed connection view per layer with quality
-    from lib.controls.calibration import get_quality_emoji, get_quality_color
+    from lib.controls.calibration import get_quality_stars, get_quality_color
     connection_detail = {}
     for layer, conns in connections.items():
         connection_detail[layer] = {
@@ -123,7 +124,7 @@ def lookup(book, chapter, verse):
                 "discovered_by": c.get("discovered_by", ""),
                 "quality": {
                     "level": quality,
-                    "emoji": get_quality_emoji(quality),
+                    "stars": get_quality_stars(quality),
                     "color": get_quality_color(quality),
                 },
                 "p_value": c.get("p_value"),
@@ -131,12 +132,24 @@ def lookup(book, chapter, verse):
 
     conn.close()
 
+    # Hebrew display enhancements (RTL-safe, transliterated, accent-stripped)
+    raw_heb = result.get("text_hebrew") or ""
+    heb_display = None
+    if raw_heb:
+        clean_text = ch(raw_heb)
+        heb_display = {
+            "text": rtl_mark(clean_text),
+            "clean": clean_text,
+            "transliteration": transliterate(raw_heb),
+        }
+
     return {
         "reference": f"{result.get('book_title', book)} {chapter}:{verse}",
         "verse_id": verse_id,
         "text_english": result.get("text_english", ""),
-        "text_hebrew": result.get("text_hebrew", "") or None,
-        "text_greek": result.get("text_greek", "") or None,
+        "text_hebrew": result.get("text_hebrew") or None,
+        "text_greek": result.get("text_greek") or None,
+        "hebrew_display": heb_display,
         "book": result.get("book_title", book),
         "book_id": book,
         "chapter": chapter,
@@ -176,6 +189,20 @@ def main():
         result = lookup(book, chapter, verse)
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+    # Also print a human-friendly summary to stderr
+    if "error" not in result:
+        ref = result["reference"]
+        eng = result.get("text_english", "")
+        heb = result.get("hebrew_display")
+        if heb:
+            print(f"\n{ref}", file=sys.stderr)
+            print(f"  Hebrew: {heb['text']}", file=sys.stderr)
+            print(f"  Translit: {heb['transliteration']}", file=sys.stderr)
+            print(f"  English: {eng}", file=sys.stderr)
+        elif eng:
+            print(f"\n{ref}", file=sys.stderr)
+            print(f"  {eng}", file=sys.stderr)
 
 
 if __name__ == "__main__":

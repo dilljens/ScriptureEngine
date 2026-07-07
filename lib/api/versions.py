@@ -20,11 +20,11 @@ def list_versions(conn):
             }
             for r in rows
         ],
-        "text_english_default": "WEB" if any(r["is_default"] for r in rows) else "KJV",
+        "text_english_default": "KJV",  # KJV covers the entire canon; WEB/LSV only cover OT+NT
     }
 
 
-def get_verse_text(conn, verse, version="WEB"):
+def get_verse_text(conn, verse, version="KJV"):
     """Get the text of a verse in a specific version."""
     row = conn.execute(
         "SELECT text, language FROM text_resources WHERE verse_id = ? AND version = ?",

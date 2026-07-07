@@ -188,7 +188,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700'
                 : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-700'
               }`}>
-            {editMode ? '← View' : '✏️ Edit'}
+            {editMode ? '← View' : 'Edit'}
           </button>
         </div>
       </div>
@@ -268,7 +268,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                   <div className="flex items-center gap-2">
                     <button onClick={() => onNavigate && onNavigate(parts[0], parseInt(parts[1]) || 1)}
                       className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-                      📖 {step.verse}
+                      {step.verse}
                     </button>
                     {step.book_title && <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{step.book_title}</span>}
                     <button onClick={() => onOpenTab && onOpenTab(parts[0], parseInt(parts[1]) || 1, { label: bookChapter })}
@@ -358,7 +358,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
       {showQuickAsk && (
         <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">💬 Quick Ask</span>
+            <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Quick Ask</span>
             <button onClick={openFullChat}
               className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline ml-auto cursor-pointer">
               Open full chat →

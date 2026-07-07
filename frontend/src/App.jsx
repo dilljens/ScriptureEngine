@@ -14,8 +14,11 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, LayersIcon, ClockIcon,
-  TextSmallIcon, TextLargeIcon, GraphIcon, MemorizeIcon, BookIcon, LibraryIcon, TilesIcon,
+  TextSmallIcon, TextLargeIcon, GraphIcon,
+  BookIcon, MenuIcon, PlusIcon,
 } from './icons'
+import MobileBottomNav from './components/MobileBottomNav'
+import MobileMenuDrawer from './components/MobileMenuDrawer'
 import ChiasmPanel from './components/ChiasmPanel'
 import StructureModal from './components/StructureModal'
 import BookView from './components/BookView'
@@ -266,7 +269,7 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
 
                   {/* Icon */}
                   <span className="text-xs shrink-0 w-4 text-center">
-                    {r.type === 'navigate' ? '📖' : r.type === 'chat' ? '💬' : r.type === 'help' ? 'ℹ️' : '⚠️'}
+                    {r.type === 'navigate' ? 'Go' : r.type === 'chat' ? 'Chat' : r.type === 'help' ? 'Help' : 'Info'}
                   </span>
 
                   {/* Work badge */}
@@ -368,8 +371,8 @@ function AppInner() {
   const {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
-    selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
-    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab, openMemorizeTab,
+    selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
+    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
     moveTab,
   } = useTabs()
 
@@ -412,6 +415,7 @@ function AppInner() {
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCheatsheet, setShowCheatsheet] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [renamingWs, setRenamingWs] = useState(null); const [renameValue, setRenameValue] = useState('')
 
   useEffect(() => { getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => {}) }, [])
@@ -435,6 +439,7 @@ function AppInner() {
   }, [openTab])
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
+  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work' || viewLevel === 'library' ? 'read' : viewLevel === 'chat' ? 'chat' : viewLevel === 'tiles' ? 'tiles' : 'read'
   window.__bookData = bookData
 
   const nav = useMemo(() => {
@@ -448,6 +453,8 @@ function AppInner() {
 
   // Resolve a book ID to its display title using nav flat data
   const resolveBookTitle = useCallback((bookId) => {
+    // D&C books are stored as "dc{section}" in nav data — try matching prefix for plain "dc"
+    if (bookId === 'dc') return nav?.flat.find(n => n.bookId?.startsWith('dc'))?.workTitle || 'Doctrine and Covenants'
     return nav?.flat.find(n => n.bookId === bookId)?.bookTitle || bookId
   }, [nav])
 
@@ -723,12 +730,12 @@ function AppInner() {
     }
   }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch])
 
-  // Open a graph tab centered on the current chapter
+  // Open a graph tab centered on the current view
   const openGraphTab = useCallback(() => {
-    const ref = `${book}.${chapter}`
+    const ref = viewRef || `${book}.${chapter}.1`
     const label = `Graph: ${bookTitle} ${chapter}`
     openTab(book, chapter, { label, view: 'graph', viewRef: ref })
-  }, [book, chapter, bookTitle, openTab])
+  }, [book, chapter, viewRef, bookTitle, openTab])
 
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
@@ -829,7 +836,7 @@ function AppInner() {
     if (viewLevel === 'graph') {
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading graph...</div>}>
-          <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
+          <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}.1`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
         </Suspense>
       )
     }
@@ -852,6 +859,8 @@ function AppInner() {
           onNewWorkspace={newWorkspace}
           onRenameWorkspace={renameWorkspace}
           onDeleteWorkspace={deleteWorkspace}
+          onDeleteWorkspaces={deleteWorkspaces}
+          onReorderWorkspaces={reorderWorkspaces}
           onSelectTab={selectTab}
           onCloseTab={closeTab}
           onMoveTab={moveTab}
@@ -913,9 +922,9 @@ function AppInner() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
-      {/* Toolbar */}
-      <header className={`sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
+    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
+      {/* Toolbar — desktop only */}
+      <header className={`hidden sm:flex sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-10 px-2">
           {/* Left: nav arrows + clickable breadcrumb */}
           <div className="flex items-center gap-1 text-sm min-w-0">
@@ -1028,8 +1037,8 @@ function AppInner() {
             {/* Subjects (mobile quick access to tile dashboard) */}
             <button onClick={openTilesView}
               className="sm:hidden inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
-              title="Manage subjects">
-              ▦ Subjects
+              title="Manage tiles">
+              ▦ Tiles
             </button>
             {/* Graph */}
             <button onClick={openGraphTab} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Connection Graph">
@@ -1053,6 +1062,45 @@ function AppInner() {
           </div>
         </div>
       </header>
+
+      {/* Mobile top bar — location breadcrumb + history arrows */}
+      <div className={`flex sm:hidden items-center justify-between h-10 px-2 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-40 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <div className="flex items-center gap-1 text-sm min-w-0 flex-1">
+          {/* History back */}
+          <button onClick={doHistoryBack} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer shrink-0" title="Back">
+            <ChevronLeft />
+          </button>
+          {/* History forward */}
+          <button onClick={doHistoryForward} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer shrink-0" title="Forward">
+            <ChevronRight />
+          </button>
+          {/* Tappable breadcrumb */}
+          <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-xs min-w-0">
+            {workTitle ? (
+              <button onClick={() => {
+                if (viewLevel !== 'work') {
+                  const wId = nav?.flat[nav.idx]?.workId
+                  if (wId) goToWork(currentTab?.id, wId, workTitle)
+                }
+              }} className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
+                {workTitle}{' '}
+              </button>
+            ) : isLibraryView ? (
+              <span className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5">Library </span>
+            ) : null}
+            {isChapterView ? (
+              <button onClick={() => {
+                if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
+              }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                {bookTitle}
+              </button>
+            ) : (
+              <span>{bookTitle}</span>
+            )}
+            {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
+          </h1>
+        </div>
+      </div>
 
       {/* Desktop subject tabs */}
       <div className={`transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
@@ -1173,31 +1221,67 @@ function AppInner() {
         />
       )}
 
-      {/* Mobile bottom tab bar — 5 main navigation actions */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-neutral-950/95 backdrop-blur-lg border-t border-neutral-200 dark:border-neutral-800"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex items-center justify-around h-14 px-1">
-          <TabButton icon={<BookIcon />} label="Read" active={viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work'}
-            onClick={() => {
-              if (currentTab?.id && (viewLevel === 'tiles' || viewLevel === 'memorize' || viewLevel === 'library'))
-                goToChapter(currentTab.id, book, chapter)
-            }} />
-          <TabButton icon={<ChatIcon />} label="Chat" active={viewLevel === 'chat'}
-            onClick={() => {
-              if (viewLevel !== 'chat') handleOpenChat()
-            }} />
-          <TabButton icon={<MemorizeIcon />} label="Memorize" active={viewLevel === 'memorize'}
-            onClick={() => openMemorizeTab()} />
-          <TabButton icon={<LibraryIcon />} label="Library" active={viewLevel === 'library'}
-            onClick={() => {
-              if (currentTab?.id) updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
-            }} />
-          <TabButton icon={<TilesIcon />} label="Subjects" active={viewLevel === 'tiles'}
-            onClick={openTilesView} />
-        </div>
-      </nav>
-      {/* Spacer to prevent content from being hidden behind tab bar */}
-      <div className="sm:hidden h-14" />
+      {/* Mobile: FAB — New Chat */}
+      <button onClick={() => { openChatTab(); setShowMobileMenu(false) }}
+        className="sm:hidden fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 active:bg-blue-800 transition-all active:scale-95 cursor-pointer"
+        title="New Chat">
+        <PlusIcon />
+      </button>
+
+      {/* Mobile: Bottom Navigation */}
+      <MobileBottomNav activeTab={mobileActiveTab} onTab={(tab) => {
+        switch (tab) {
+          case 'read': {
+            // Switch to last non-chat tab, or open chapter for current book
+            setShowCommand(false); setShowMobileMenu(false)
+            const readTab = currentWorkspace?.tabs?.slice().reverse().find(t => t.view !== 'chat')
+            if (readTab && readTab.id !== currentTab?.id) {
+              selectTab(readTab.id)
+            } else if (!readTab) {
+              openTab(book, chapter, { label: `${bookTitle} ${chapter}` })
+            }
+            break
+          }
+          case 'chat': {
+            // Switch to existing chat tab or create one
+            setShowMobileMenu(false)
+            const chatTab = currentWorkspace?.tabs?.find(t => t.view === 'chat')
+            if (chatTab) {
+              selectTab(chatTab.id)
+            } else {
+              openChatTab()
+            }
+            break
+          }
+          case 'tiles':
+            openTilesView(); setShowMobileMenu(false)
+            break
+          case 'command':
+            setShowCommand(true); setShowMobileMenu(false)
+            break
+          case 'menu':
+            setShowMobileMenu(p => !p)
+            break
+        }
+      }} />
+
+      {/* Mobile: Menu Drawer */}
+      <MobileMenuDrawer
+        open={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+        onGraph={() => { setShowMobileMenu(false); openGraphTab() }}
+        onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
+        onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
+        onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
+        darkMode={darkMode}
+        onToggleDarkMode={toggleDarkMode}
+        fontSize={fontSize}
+        onChangeFontSize={changeFontSize}
+        onSettings={() => { setShowMobileMenu(false); setShowSettings(true) }}
+      />
+
+      {/* Spacer to prevent content from being hidden behind bottom nav */}
+      <div className="sm:hidden h-24" />
 
     </div>
   )

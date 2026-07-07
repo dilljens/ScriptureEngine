@@ -1,11 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "scripture-engine": {
+    "scriptureengine": {
       "type": "local",
-      "command": ["python3", "/home/dillon/_code/scripture-explorer/mcp_server.py"],
+      "command": ["python3", "/home/dillon/_code/scriptureengine/mcp_server.py"],
       "enabled": true
     }
   },
-  "instructions": ["/home/dillon/_code/scripture-explorer/.opencode/AGENTS.md"]
+  "instructions": ["/home/dillon/_code/scriptureengine/.opencode/AGENTS.md"]
 }

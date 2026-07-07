@@ -155,19 +155,36 @@ CONNECTION_TYPE_MAP = {
 @app.get("/api/v1/verses/{ref:path}")
 def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description="Enrich connections with quality signal breakdown"), context: Optional[int] = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
     """Get verse text with connections — served from RAM cache or SQLite."""
-    ref = ref.replace(":", ".").replace(" ", ".").lower()
+    ref = ref.replace(":", ".").replace(" ", ".")
     import re
 
     # Try RAM cache first, fall back to SQLite for multi-worker mode
     r = VERSE_CACHE.get(ref) if VERSE_CACHE else None
     if not r:
         conn = get_db()
+        # Try exact match first (preserves case for 1QS, 1QHa, etc.)
         row = conn.execute("SELECT v.*, b.title as book_title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.id=?", (ref,)).fetchone()
+        # Try case-insensitive (some clients lowercase the path)
         if not row:
-            m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
+            row = conn.execute("SELECT v.*, b.title as book_title FROM verses v JOIN books b ON b.id=v.book_id WHERE LOWER(v.id)=?", (ref.lower(),)).fetchone()
+        # Try regex-parsed: book.chapter.verse
+        if not row:
+            m = re.match(r'([a-zA-Z0-9_]+)\.(\d+)\.(\d+)', ref)
             if m:
-                vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
-                row = conn.execute("SELECT v.*, b.title as book_title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.id=?", (vid,)).fetchone()
+                book_str = m.group(1)
+                ch = int(m.group(2))
+                vs = int(m.group(3))
+                # Try as-is
+                row = conn.execute("""SELECT v.*, b.title as book_title FROM verses v
+                    JOIN books b ON b.id=v.book_id WHERE v.id=?""", (f"{book_str}.{ch}.{vs}",)).fetchone()
+                # Try DSS prefixed
+                if not row:
+                    row = conn.execute("""SELECT v.*, b.title as book_title FROM verses v
+                        JOIN books b ON b.id=v.book_id WHERE v.id=?""", (f"dss.{book_str}.{ch}.{vs}",)).fetchone()
+                # Try DSS no-chapter
+                if not row:
+                    row = conn.execute("""SELECT v.*, b.title as book_title FROM verses v
+                        JOIN books b ON b.id=v.book_id WHERE v.id=?""", (f"dss.{book_str}.{vs}",)).fetchone()
         conn.close()
         if row:
             r = dict(row)  # Convert Row to dict for consistent access
@@ -842,15 +859,32 @@ def get_chapter_grammar(ref: str):
 
     conn = get_db()
     verse_prefix = f"{book_id}.{chapter_num}."
-    rows = conn.execute("""
-        SELECT g.verse_id, g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
-               g.value_standard, g.value_ordinal, g.value_reduced,
-               COALESCE(lg.english_gloss, g.word_english, '') as gloss
-        FROM gematria g
-        LEFT JOIN lemma_gloss lg ON g.lemma = lg.lemma
-        WHERE g.verse_id LIKE ?
-        ORDER BY g.verse_id, g.word_index
-    """, (f"{verse_prefix}%",)).fetchall()
+
+    # Check if Greek NT data is available
+    nt_books = ['matt','mark','luke','john','acts','rom','1cor','2cor','gal','eph','phil','col','1thes','2thes','1tim','2tim','titus','philem','heb','james','1pet','2pet','1john','2john','3john','jude','rev']
+    is_greek = book_id in nt_books
+
+    if is_greek:
+        rows = conn.execute("""
+            SELECT g.verse_id, g.word_greek as word_hebrew, '' as word_english,
+                   g.morph, g.lemma, g.word_index,
+                   g.value_standard, g.value_ordinal, g.value_reduced,
+                   COALESCE(l.definition, '') as gloss
+            FROM gematria_greek g
+            LEFT JOIN lexicon l ON l.hebrew = g.lemma
+            WHERE g.verse_id LIKE ?
+            ORDER BY g.verse_id, g.word_index
+        """, (f"{verse_prefix}%",)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT g.verse_id, g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
+                   g.value_standard, g.value_ordinal, g.value_reduced,
+                   COALESCE(lg.english_gloss, g.word_english, '') as gloss
+            FROM gematria g
+            LEFT JOIN lemma_gloss lg ON g.lemma = lg.lemma
+            WHERE g.verse_id LIKE ?
+            ORDER BY g.verse_id, g.word_index
+        """, (f"{verse_prefix}%",)).fetchall()
 
     # Group by verse
     verses = {}
@@ -860,12 +894,10 @@ def get_chapter_grammar(ref: str):
             verses[vid] = []
         morph = w["morph"] or ""
         prefix = morph[:2] if len(morph) >= 2 else ""
-        cat = "unknown"
         color = "#cccccc"
         for pfx, c in MORPH_COLORS.items():
             if morph.startswith(pfx):
                 color = c
-                cat = pfx
                 break
         verses[vid].append({
             "hebrew": w["word_hebrew"] or "",
@@ -3073,7 +3105,7 @@ DEEPSEEK_MODEL = "deepseek-v4-flash"
 
 # Reusable HTTP client for DeepSeek API calls (avoids creating a new connection each time)
 import httpx
-_http_client = httpx.AsyncClient(timeout=60.0)
+_http_client = httpx.AsyncClient(timeout=600.0)  # 10 min — DeepSeek thinking mode can take 8+ min
 
 # Pricing per 1M tokens (deepseek-v4-flash)
 PRICING = {
@@ -3098,11 +3130,11 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_verse",
-            "description": "Look up a verse with text, gematria, connections, and quality info",
+            "description": "Look up a verse with text, gematria, connections, and quality info. Works for all 8 works: OT (gen, exo, isa), NT (matt, john, rev), BoM (1ne, alma, 3ne), D&C (dc1-dc138), PGP (moses, abraham), DSS (1QS, 1QHa, 11Q19, CD, 1Qisaa), Apocrypha (wis, sir, tob, 1ma), Pseudepigrapha (1en, jub, ascis, barn, odessol)",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "book": {"type": "string", "description": "Book ID (gen, exo, isa, matt, 1ne, etc.)"},
+                    "book": {"type": "string", "description": "Book ID (gen, exo, isa, matt, 1ne, 1QS, 1en, wis, etc.)"},
                     "chapter": {"type": "integer"},
                     "verse": {"type": "integer"},
                     "version": {"type": "string", "description": "Bible version (WEB, KJV, etc.)"},
@@ -3115,12 +3147,12 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_search",
-            "description": "Search for verses by keyword in English text",
+            "description": "Search for verses by keyword in English text across all 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha)",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search term"},
-                    "book": {"type": "string", "description": "Optional book filter"},
+                    "book": {"type": "string", "description": "Optional book filter (e.g., '1en' for 1 Enoch, '1QS' for Community Rule, 'jub' for Jubilees)"},
                     "limit": {"type": "integer", "default": 10},
                 },
                 "required": ["query"],
@@ -3645,10 +3677,10 @@ async def llm_chat(body: ChatRequest):
             msgs.insert(0, {"role": "system", "content": CHAT_SYSTEM_PROMPT})
 
     # Context budget management
-    # Total budget: 300K tokens. max_tokens capped at 30K, compaction trigger at 200K.
+    # Total budget: 300K tokens. max_tokens capped at 128K. Compaction trigger at 200K prompt tokens.
     MAX_PROMPT_TOKENS = 200_000
     KEEP_EXCHANGES = 15  # user+assistant pairs to keep before compaction
-    body.max_tokens = min(body.max_tokens, 30_000)
+    body.max_tokens = min(body.max_tokens, 128_000)
 
     def estimate_tokens(text):
         return len(text) // 4  # rough estimate: ~4 chars per token
@@ -3703,14 +3735,14 @@ async def llm_chat(body: ChatRequest):
 
     msgs = apply_context_budget(msgs)
 
-    # Prepare request payload (DeepSeek thinking mode — matches OpenCode defaults)
+    # Prepare request payload (no explicit thinking flags — let DeepSeek use own defaults
+    # like OpenCode does. No thinking/reasoning_effort forcing means the model naturally
+    # balances its token budget between thinking and visible response.)
     payload = {
         "model": body.model,
         "messages": msgs,
         "max_tokens": body.max_tokens,
         "temperature": body.temperature,
-        "thinking": {"type": "enabled"},
-        "reasoning_effort": "high",
     }
     if body.tools_enabled:
         # Filter out disabled tools

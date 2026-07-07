@@ -255,6 +255,8 @@ def build_works_and_books(conn):
         ("bom", "Book of Mormon", "Another Testament of Jesus Christ"),
         ("dc", "Doctrine and Covenants", "Modern Revelation"),
         ("pgp", "Pearl of Great Price", "Modern Scripture"),
+        ("dss", "Dead Sea Scrolls", "Qumran Library"),
+        ("ch", "Church History", "Latter-day Saint History"),
     ]
     for wid, title, subtitle in works:
         conn.execute("INSERT OR IGNORE INTO works (id, title, subtitle) VALUES (?, ?, ?)",

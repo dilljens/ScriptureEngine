@@ -6,9 +6,13 @@ Ensures connections are statistically meaningful, not coincidental patterns.
 
 from .calibration import (
     QUALITY_LEVELS,
+    rate_connection,
+    rate_connection_row,
+    enrich_connection,
     calibrate_connection,
+    star_display,
     get_quality_color,
-    get_quality_emoji,
+    get_quality_stars,
 )
 from .stats import (
     monte_carlo_p_value,

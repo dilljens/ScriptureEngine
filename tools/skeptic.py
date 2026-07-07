@@ -15,7 +15,7 @@ import sys, json, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db
-from lib.controls.calibration import QUALITY_LEVELS, get_quality_color, get_quality_emoji
+from lib.controls.calibration import QUALITY_LEVELS, get_quality_color, get_quality_stars
 from lib.connections.pardes import LEVELS as PARDES_LEVELS
 
 

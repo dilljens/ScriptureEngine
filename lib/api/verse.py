@@ -37,7 +37,7 @@ def lookup_verse(conn, book, chapter, verse, version=None):
     if not result:
         return {"error": f"Verse {book}.{chapter}.{verse} not found"}
 
-    verse_id = f"{book}.{chapter}.{verse}"
+    verse_id = result["id"]
 
     # Gematria
     gematria_words = get_gematria_for_verse(conn, verse_id)

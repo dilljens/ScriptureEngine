@@ -616,6 +616,37 @@ def verse_id(book, chapter, verse):
     return f"{book}.{chapter}.{verse}"
 
 
+def resolve_verse_id(conn, book, chapter, verse):
+    """Try all known verse ID patterns for a (book, chapter, verse) triple.
+    
+    Returns (verse_id, row) or (None, None).
+    Works for standard works (gen.1.1), DSS dss-prefixed IDs, etc.
+    """
+    # Standard format
+    vid = f"{book}.{chapter}.{verse}"
+    row = conn.execute("SELECT * FROM verses WHERE id=?", (vid,)).fetchone()
+    if row:
+        return vid, dict(row)
+    
+    # DSS format: dss.{book}.{chapter}.{verse}
+    dss_vid = f"dss.{book}.{chapter}.{verse}"
+    # But DSS lines have chapter=1 always, so book.line = book.1.line
+    # The DSS verse ID is actually: dss.{book}.1.{line}, and line=verse param
+    # Let's check: dss.{book}.{chapter}.{verse}
+    if chapter == 1 or True:  # Try with the given params
+        row2 = conn.execute("SELECT * FROM verses WHERE id=?", (dss_vid,)).fetchone()
+        if row2:
+            return dss_vid, dict(row2)
+    
+    # Try just dss.{book}.{verse} (old import format where chapter was implicit)
+    # Some older DSS imports used dss.{book}.{line} format
+    old_dss_vid = f"dss.{book}.{verse}"
+    # But that would be dss.1QS.1 where 1 is the verse/line
+    # Already covered above
+    
+    return None, None
+
+
 def parse_verse_id(vid):
     """Parse a verse ID into (book_id, chapter, verse)."""
     parts = vid.split(".")
@@ -654,15 +685,31 @@ def insert_gematria(conn, verse_id, word_index, word_hebrew, word_english="",
 
 
 def get_verse(conn, book, chapter, verse):
-    """Look up a single verse by book, chapter, verse."""
-    vid = verse_id(book, chapter, verse)
-    row = conn.execute("""
-        SELECT v.*, b.title as book_title, b.work_id
-        FROM verses v
-        JOIN books b ON b.id = v.book_id
-        WHERE v.id = ?
-    """, (vid,)).fetchone()
-    return dict(row) if row else None
+    """Look up a single verse by book, chapter, verse.
+    
+    Supports all works — standard (gen.1.1), DSS (dss.1QS.1), etc.
+    Tries multiple ID patterns:
+      1. {book}.{chapter}.{verse}      — standard (gen.1.1)
+      2. dss.{book}.{chapter}.{verse}  — DSS with chapter (dss.1QS.1.1)
+      3. dss.{book}.{verse}            — DSS no chapter (dss.1QS.1)
+    """
+    patterns = [
+        f"{book}.{chapter}.{verse}",              # standard
+        f"dss.{book}.{chapter}.{verse}",           # dss with chapter
+        f"dss.{book}.{verse}",                     # dss without chapter
+    ]
+    
+    for vid in patterns:
+        row = conn.execute("""
+            SELECT v.*, b.title as book_title, b.work_id
+            FROM verses v
+            JOIN books b ON b.id = v.book_id
+            WHERE v.id = ?
+        """, (vid,)).fetchone()
+        if row:
+            return dict(row)
+    
+    return None
 
 
 def search_verses(conn, query, book_id=None, limit=20):
