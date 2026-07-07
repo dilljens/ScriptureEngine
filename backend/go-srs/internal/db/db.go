@@ -6,6 +6,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/dillon/scriptureengine/go-srs/internal/fire"
 	"github.com/dillon/scriptureengine/go-srs/internal/fsrs"
 )
 
@@ -101,6 +102,17 @@ CREATE TABLE IF NOT EXISTS audio_recordings (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS verse_connections (
+    verse_id TEXT NOT NULL,
+    connected_verse_id TEXT NOT NULL,
+    connection_type TEXT NOT NULL,
+    weight REAL NOT NULL DEFAULT 0.2,
+    PRIMARY KEY (verse_id, connected_verse_id, connection_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_conn_verse ON verse_connections(verse_id);
+CREATE INDEX IF NOT EXISTS idx_conn_target ON verse_connections(connected_verse_id);
+
 CREATE TABLE IF NOT EXISTS user_xp (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     xp INTEGER NOT NULL DEFAULT 0,
@@ -122,6 +134,14 @@ func Open(path string) (*DB, error) {
 
 	if _, err := conn.Exec(schema); err != nil {
 		return nil, fmt.Errorf("create schema: %w", err)
+	}
+
+	// Migrations for existing databases
+	migrations := []string{
+		"ALTER TABLE cards ADD COLUMN fi_re_credit REAL NOT NULL DEFAULT 0.0",
+	}
+	for _, m := range migrations {
+		conn.Exec(m) // Ignore errors (column may already exist)
 	}
 
 	// Ensure user_xp has a row
@@ -569,4 +589,134 @@ func (db *DB) GetStats() (struct {
 	).Scan(&s.ReviewsToday)
 
 	return s, nil
+}
+
+// ScanCardVerse retrieves the verse_id for a card (used for FIRe).
+func (db *DB) ScanCardVerse(cardID int64, verseID *string) error {
+	return db.conn.QueryRow("SELECT verse_id FROM cards WHERE id = ?", cardID).Scan(verseID)
+}
+
+// ── Connection Operations (for FIRe) ──
+
+// SyncConnections bulk-inserts or updates verse connections.
+type ConnectionRow struct {
+	SourceVerse string
+	TargetVerse string
+	ConnType    string
+}
+
+func (db *DB) SyncConnections(conns []ConnectionRow) error {
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO verse_connections (verse_id, connected_verse_id, connection_type, weight)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(verse_id, connected_verse_id, connection_type) DO UPDATE SET weight=excluded.weight
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, c := range conns {
+		w := fire.ConnectionWeight(c.ConnType)
+		if _, err := stmt.Exec(c.SourceVerse, c.TargetVerse, c.ConnType, w); err != nil {
+			return err
+		}
+		// Also store reverse direction
+		if _, err := stmt.Exec(c.TargetVerse, c.SourceVerse, c.ConnType, w); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetConnections returns all connections from a verse.
+func (db *DB) GetConnections(verseID string) ([]fire.Connection, error) {
+	rows, err := db.conn.Query(
+		"SELECT verse_id, connected_verse_id, connection_type FROM verse_connections WHERE verse_id = ?",
+		verseID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var conns []fire.Connection
+	for rows.Next() {
+		var c fire.Connection
+		if err := rows.Scan(&c.SourceVerse, &c.TargetVerse, &c.Type); err != nil {
+			return nil, err
+		}
+		conns = append(conns, c)
+	}
+	return conns, nil
+}
+
+// HasCard checks if a verse has any memorization cards and returns the first card ID.
+func (db *DB) HasCard(verseID string) (int64, bool) {
+	var id int64
+	err := db.conn.QueryRow("SELECT id FROM cards WHERE verse_id = ? LIMIT 1", verseID).Scan(&id)
+	return id, err == nil
+}
+
+// ApplyFIREBoosts applies FIRe credit to connected cards.
+// Returns the number of cards that were boosted.
+func (db *DB) ApplyFIREBoosts(boosts []fire.Boost) (int, error) {
+	if len(boosts) == 0 {
+		return 0, nil
+	}
+
+	applied := 0
+	for _, b := range boosts {
+		if b.Boost <= 0 {
+			continue
+		}
+
+		// Get current card state
+		var stability, scheduledDays float64
+		var lastReview string
+		err := db.conn.QueryRow(
+			"SELECT stability, scheduled_days, last_review FROM cards WHERE id = ?",
+			b.CardID,
+		).Scan(&stability, &scheduledDays, &lastReview)
+		if err != nil {
+			continue
+		}
+
+		// Only boost cards in review state (not new cards)
+		if stability <= 0 {
+			continue
+		}
+
+		// Apply boost: new_stability = stability * (1 + boost)
+		newStability := stability * (1.0 + b.Boost)
+
+		// Compute new due date
+		var newDue string
+		if lastReview != "" {
+			t, err := time.Parse("2006-01-02 15:04:05", lastReview)
+			if err == nil {
+				newDueTime := t.Add(time.Duration(newStability*24) * time.Hour)
+				newDue = newDueTime.Format("2006-01-02 15:04:05")
+			}
+		}
+		if newDue == "" {
+			newDue = time.Now().Add(time.Duration(newStability*24) * time.Hour).Format("2006-01-02 15:04:05")
+		}
+
+		_, err = db.conn.Exec(
+			"UPDATE cards SET stability = ?, scheduled_days = ?, due = ? WHERE id = ?",
+			newStability, newStability, newDue, b.CardID,
+		)
+		if err == nil {
+			applied++
+		}
+	}
+	return applied, nil
 }

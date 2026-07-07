@@ -14,6 +14,7 @@ import (
 
 	"github.com/dillon/scriptureengine/go-srs/internal/ai"
 	"github.com/dillon/scriptureengine/go-srs/internal/db"
+	"github.com/dillon/scriptureengine/go-srs/internal/fire"
 	"github.com/dillon/scriptureengine/go-srs/internal/fsrs"
 )
 
@@ -25,6 +26,7 @@ type Handler struct {
 	Params        fsrs.FSRSParams
 	Openverse     *ai.OpenverseClient
 	ComfyUI       *ai.ComfyUIClient
+	Fire          *fire.Engine
 }
 
 // New creates a new Handler.
@@ -34,6 +36,7 @@ func New(database *db.DB) *Handler {
 		Params:    fsrs.DefaultParams,
 		Openverse: ai.NewOpenverseClient(database),
 		ComfyUI:   ai.NewComfyUIClient(""),
+		Fire:      fire.New(),
 	}
 }
 
@@ -169,11 +172,33 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	// Award XP
 	streak, _ := h.DB.AwardXP(10) // base XP per review
 
+	// Compute FIRe boosts for connected verses
+	var fireBoosts []fire.Boost
+	var fireApplied int
+	verseID := ""
+	if len(parts) >= 4 {
+		// Get the verse ID for the card being reviewed
+		var vID string
+		h.DB.ScanCardVerse(cardID, &vID)
+		verseID = vID
+	}
+	if verseID != "" && input.Rating >= 3 {
+		fireBoosts, _ = h.Fire.ComputeBoosts(
+			verseID,
+			input.Rating,
+			h.DB.GetConnections,
+			h.DB.HasCard,
+		)
+		fireApplied, _ = h.DB.ApplyFIREBoosts(fireBoosts)
+	}
+
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"ok":           true,
 		"next_state":   nextCard,
 		"xp_awarded":   10,
 		"streak_days":  streak,
+		"fire_boosts":  fireApplied,
+		"fire_verses":  len(fireBoosts),
 	})
 }
 
@@ -240,6 +265,41 @@ func (h *Handler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"ok":      true,
 		"card_id": cardID,
+	})
+}
+
+// ── Connection Sync (for FIRe) ──
+
+func (h *Handler) SyncConnections(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Connections []struct {
+			Source string `json:"source"`
+			Target string `json:"target"`
+			Type   string `json:"type"`
+		} `json:"connections"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	rows := make([]db.ConnectionRow, len(input.Connections))
+	for i, c := range input.Connections {
+		rows[i] = db.ConnectionRow{
+			SourceVerse: c.Source,
+			TargetVerse: c.Target,
+			ConnType:    c.Type,
+		}
+	}
+
+	if err := h.DB.SyncConnections(rows); err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":    true,
+		"synced": len(rows),
 	})
 }
 
@@ -543,6 +603,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/verses/", h.GetCardsByVerse)
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)
+	mux.HandleFunc("/api/memorize/connections/batch", h.SyncConnections)
 	mux.HandleFunc("/api/memorize/palaces/upload", h.UploadPalacePhoto)
 	mux.HandleFunc("/api/memorize/palaces/", h.HandlePalaces)
 	mux.HandleFunc("/api/memorize/palaces", h.HandlePalaces)
