@@ -4,24 +4,28 @@
 // And Skycak's "The Math Academy Way" (Chapter 29).
 //
 // FIRe generalizes spaced repetition to connected knowledge:
-//   1. CREDIT flows downward — reviewing a verse gives implicit
-//      repetition credit to connected verses (already implemented).
-//   2. PENALTIES flow upward — failing a foundational verse
-//      penalizes the verses that depend on it.
+//   1. CREDIT flows downward — reviewing an advanced topic gives
+//      implicit repetition credit to simpler connected topics.
+//   2. PENALTIES flow upward — failing a foundational topic
+//      penalizes the topics that depend on it.
 //   3. EARLY DISCOUNT — implicit credit is discounted when the
-//      review was done early (retrievability still high).
+//      review was too early (retrievability still high).
+//
+// The Engine is graph-agnostic — it works with any KnowledgeGraph:
+//   - Verse connections (memorization mode)
+//   - Hebrew concept prerequisites (language learning mode)
+//   - Story/thematic relationships (knowledge mode)
 
 package fire
 
-// Engine computes FIRe boosts and penalties using DFS through
-// the verse connection graph.
+// Engine computes FIRe boosts and penalties using DFS.
 type Engine struct{}
 
-// Boost represents implicit repetition credit for a connected verse.
+// Boost represents implicit repetition credit for a connected node.
 type Boost struct {
-	VerseID string  `json:"verse_id"`
-	CardID  int64   `json:"card_id"`
-	Boost   float64 `json:"boost"`
+	NodeID string  `json:"node_id"`
+	CardID int64   `json:"card_id"`
+	Boost  float64 `json:"boost"`
 }
 
 // New creates a FIRe engine.
@@ -30,19 +34,17 @@ func New() *Engine {
 }
 
 // ConnectionWeight returns the encompassing weight for a connection type.
-// These represent what fraction of the target verse is practiced when
-// reviewing the source verse.
 func ConnectionWeight(connType string) float64 {
 	switch connType {
-	case "direct_quotation":
+	case "direct_quotation", "direct_prerequisite":
 		return 0.8
-	case "modified_quotation":
+	case "modified_quotation", "key_prerequisite":
 		return 0.7
-	case "type_antitype":
+	case "type_antitype", "encompassing":
 		return 0.6
 	case "chiastic":
 		return 0.6
-	case "parallel_synonymous":
+	case "parallel_synonymous", "parallel":
 		return 0.5
 	case "parallel_antithetic":
 		return 0.5
@@ -50,7 +52,7 @@ func ConnectionWeight(connType string) float64 {
 		return 0.5
 	case "parallel_step":
 		return 0.5
-	case "same_lemma":
+	case "same_lemma", "related_concept":
 		return 0.4
 	case "keyword_linking":
 		return 0.4
@@ -58,7 +60,7 @@ func ConnectionWeight(connType string) float64 {
 		return 0.4
 	case "emblematic_parallelism":
 		return 0.4
-	case "allusion":
+	case "allusion", "story_echo":
 		return 0.3
 	case "echo":
 		return 0.2
@@ -69,49 +71,31 @@ func ConnectionWeight(connType string) float64 {
 	}
 }
 
-// RatingMultiplier returns how much of the chain weight counts as credit.
-// Good = 0.5 (moderate boost), Easy = 1.0 (full boost).
+// RatingMultiplier — Good=0.5, Easy=1.0.
 func RatingMultiplier(rating int) float64 {
 	switch rating {
-	case 4: // Easy
+	case 4:
 		return 1.0
-	case 3: // Good
+	case 3:
 		return 0.5
 	default:
 		return 0.0
 	}
 }
 
-// PenaltyMultiplier returns how much of the chain weight counts as penalty.
-// Again = 1.0 (full penalty), Hard = 0.3 (weak penalty).
+// PenaltyMultiplier — Again=1.0, Hard=0.3.
 func PenaltyMultiplier(rating int) float64 {
 	switch rating {
-	case 1: // Again
+	case 1:
 		return 1.0
-	case 2: // Hard
+	case 2:
 		return 0.3
 	default:
 		return 0.0
 	}
 }
 
-// EarlyDiscount reduces FIRe credit when the review was too early.
-//
-// From Math Academy Way (Ch 29):
-//   "rawDelta is discounted if the repetition was completed early
-//    relative to the desired interval, i.e., if memory is sufficiently high."
-//
-// When retrievability is still high (the review was premature), the
-// implicit credit is discounted because the brain didn't have to work
-// as hard to recall the information. When retrievability is low (the
-// review was well-timed or late), full credit is given.
-//
-// Formula: effective = boost * (1 - R^2)
-//
-//	R=0.0 (forgotten):    1.0 × boost  (full credit)
-//	R=0.5 (moderate):     0.75 × boost
-//	R=0.8 (strong):       0.36 × boost
-//	R=0.95 (fresh):       0.10 × boost  (heavily discounted)
+// EarlyDiscount reduces FIRe credit when review was too early.
 func EarlyDiscount(boost, retrievability float64) float64 {
 	if retrievability <= 0 {
 		return boost
@@ -119,202 +103,136 @@ func EarlyDiscount(boost, retrievability float64) float64 {
 	if retrievability >= 1 {
 		return 0
 	}
-	discount := retrievability * retrievability // 0 to 1
-	return boost * (1.0 - discount)
+	return boost * (1.0 - retrievability*retrievability)
 }
 
-// ── Credit Flow (downward) ──
+// KnowledgeGraph is a graph-agnostic interface for FIRe.
+// Use with verse connections, language concepts, stories, etc.
+type KnowledgeGraph struct {
+	GetConnections func(nodeID string) ([]Edge, error)
+	HasCard        func(nodeID string) (cardID int64, exists bool)
+}
 
-// ComputeBoosts runs DFS through the connection graph starting from
-// sourceVerseID. It finds all reachable verses and computes FIRe credit
-// for each — the "lightning bolts" of credit flowing downward.
-//
-// Args:
-//   sourceVerseID: the verse being reviewed
-//   rating: review rating (1-4)
-//   getConnections: function that returns connections for a verse
-//   hasCard: function that checks if a verse has a memorization card
-//
-// Returns:
-//   boosts: list of (verseID, cardID, boost) for connected verses with cards
+// Edge represents a directed relationship in a knowledge graph.
+type Edge struct {
+	SourceNode string `json:"source_node"`
+	TargetNode string `json:"target_node"`
+	Type       string `json:"type"`
+}
+
+// ComputeCredits computes both credits and penalties for any KnowledgeGraph.
+func (e *Engine) ComputeCredits(
+	sourceNodeID string,
+	rating int,
+	graph KnowledgeGraph,
+) (credits, penalties []Boost, err error) {
+	credits, err = computeCredit(sourceNodeID, RatingMultiplier(rating), graph)
+	if err != nil {
+		return nil, nil, err
+	}
+	penalties, err = computeCredit(sourceNodeID, PenaltyMultiplier(rating), graph)
+	if err != nil {
+		return nil, nil, err
+	}
+	return
+}
+
+func computeCredit(
+	sourceNodeID string,
+	multiplier float64,
+	graph KnowledgeGraph,
+) ([]Boost, error) {
+	if multiplier <= 0 {
+		return nil, nil
+	}
+
+	best := make(map[string]float64)
+	bestCardID := make(map[string]int64)
+	visited := make(map[string]bool)
+
+	type node struct {
+		id          string
+		chainWeight float64
+	}
+	stack := []node{{id: sourceNodeID, chainWeight: 1.0}}
+
+	for len(stack) > 0 {
+		cur := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		if cur.chainWeight < 0.001 || visited[cur.id] {
+			continue
+		}
+		visited[cur.id] = true
+
+		edges, err := graph.GetConnections(cur.id)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, e := range edges {
+			w := ConnectionWeight(e.Type)
+			if w <= 0 {
+				continue
+			}
+			cw := cur.chainWeight * w
+			if cw < 0.001 || cw <= best[e.TargetNode] || e.TargetNode == sourceNodeID {
+				continue
+			}
+			if cardID, ok := graph.HasCard(e.TargetNode); ok {
+				best[e.TargetNode] = cw
+				bestCardID[e.TargetNode] = cardID
+			}
+			stack = append(stack, node{id: e.TargetNode, chainWeight: cw})
+		}
+	}
+
+	var res []Boost
+	for id, cw := range best {
+		res = append(res, Boost{NodeID: id, CardID: bestCardID[id], Boost: cw * multiplier})
+	}
+	return res, nil
+}
+
+// ── Legacy verse API (backward compat) ──
+
 func (e *Engine) ComputeBoosts(
-	sourceVerseID string,
-	rating int,
-	getConnections func(verseID string) ([]Connection, error),
-	hasCard func(verseID string) (cardID int64, exists bool),
+	sourceVerseID string, rating int,
+	getConnections func(string) ([]Connection, error),
+	hasCard func(string) (int64, bool),
 ) ([]Boost, error) {
-	multiplier := RatingMultiplier(rating)
-	if multiplier <= 0 {
-		return nil, nil
-	}
-
-	bestBoost := make(map[string]float64)
-	bestCardID := make(map[string]int64)
-	visited := make(map[string]bool)
-
-	type node struct {
-		verseID     string
-		chainWeight float64
-	}
-	stack := []node{{verseID: sourceVerseID, chainWeight: 1.0}}
-
-	for len(stack) > 0 {
-		current := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-
-		if current.chainWeight < 0.001 {
-			continue
-		}
-		if visited[current.verseID] {
-			continue
-		}
-		visited[current.verseID] = true
-
-		conns, err := getConnections(current.verseID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, conn := range conns {
-			weight := ConnectionWeight(conn.Type)
-			if weight <= 0 {
-				continue
-			}
-
-			chainWeight := current.chainWeight * weight
-			if chainWeight < 0.001 {
-				continue
-			}
-
-			if conn.TargetVerse == sourceVerseID {
-				continue
-			}
-
-			if chainWeight <= bestBoost[conn.TargetVerse] {
-				continue
-			}
-
-			if cardID, exists := hasCard(conn.TargetVerse); exists {
-				bestBoost[conn.TargetVerse] = chainWeight
-				bestCardID[conn.TargetVerse] = cardID
-			}
-
-			stack = append(stack, node{
-				verseID:     conn.TargetVerse,
-				chainWeight: chainWeight,
-			})
-		}
-	}
-
-	var boosts []Boost
-	for verseID, chainWeight := range bestBoost {
-		boosts = append(boosts, Boost{
-			VerseID: verseID,
-			CardID:  bestCardID[verseID],
-			Boost:   chainWeight * multiplier,
-		})
-	}
-
-	return boosts, nil
+	return computeCredit(sourceVerseID, RatingMultiplier(rating), toGraph(getConnections, hasCard))
 }
 
-// ── Penalty Flow (upward) ──
-
-// ComputePenalties runs DFS from sourceVerseID to find connected verses
-// that should be penalized when the source verse is failed.
-//
-// From Math Academy Way (Ch 29):
-//   "If you fail a repetition on a simpler topic, the failed repetition
-//    flows forward to penalize more advanced topics that depend on it."
-//
-// For scripture memorization: failing a foundational verse suggests that
-// verses building on it may also be shaky. Penalty flows along the same
-// connection paths but in the opposite direction of credit.
-//
-// Returns:
-//   penalties: list of (verseID, cardID, penalty) where penalty ∈ [0, 1]
 func (e *Engine) ComputePenalties(
-	sourceVerseID string,
-	rating int,
-	getConnections func(verseID string) ([]Connection, error),
-	hasCard func(verseID string) (cardID int64, exists bool),
+	sourceVerseID string, rating int,
+	getConnections func(string) ([]Connection, error),
+	hasCard func(string) (int64, bool),
 ) ([]Boost, error) {
-	multiplier := PenaltyMultiplier(rating)
-	if multiplier <= 0 {
-		return nil, nil
-	}
-
-	bestPenalty := make(map[string]float64)
-	bestCardID := make(map[string]int64)
-	visited := make(map[string]bool)
-
-	type node struct {
-		verseID     string
-		chainWeight float64
-	}
-	stack := []node{{verseID: sourceVerseID, chainWeight: 1.0}}
-
-	for len(stack) > 0 {
-		current := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-
-		if current.chainWeight < 0.001 {
-			continue
-		}
-		if visited[current.verseID] {
-			continue
-		}
-		visited[current.verseID] = true
-
-		conns, err := getConnections(current.verseID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, conn := range conns {
-			weight := ConnectionWeight(conn.Type)
-			if weight <= 0 {
-				continue
-			}
-
-			chainWeight := current.chainWeight * weight
-			if chainWeight < 0.001 {
-				continue
-			}
-
-			if conn.TargetVerse == sourceVerseID {
-				continue
-			}
-
-			if chainWeight <= bestPenalty[conn.TargetVerse] {
-				continue
-			}
-
-			if cardID, exists := hasCard(conn.TargetVerse); exists {
-				bestPenalty[conn.TargetVerse] = chainWeight
-				bestCardID[conn.TargetVerse] = cardID
-			}
-
-			stack = append(stack, node{
-				verseID:     conn.TargetVerse,
-				chainWeight: chainWeight,
-			})
-		}
-	}
-
-	var penalties []Boost
-	for verseID, chainWeight := range bestPenalty {
-		penalties = append(penalties, Boost{
-			VerseID: verseID,
-			CardID:  bestCardID[verseID],
-			Boost:   chainWeight * multiplier, // penalty value (positive)
-		})
-	}
-
-	return penalties, nil
+	return computeCredit(sourceVerseID, PenaltyMultiplier(rating), toGraph(getConnections, hasCard))
 }
 
-// Connection represents an edge in the scripture connection graph.
+func toGraph(
+	getConnections func(string) ([]Connection, error),
+	hasCard func(string) (int64, bool),
+) KnowledgeGraph {
+	return KnowledgeGraph{
+		GetConnections: func(id string) ([]Edge, error) {
+			cs, err := getConnections(id)
+			if err != nil {
+				return nil, err
+			}
+			es := make([]Edge, len(cs))
+			for i, c := range cs {
+				es[i] = Edge{SourceNode: c.SourceVerse, TargetNode: c.TargetVerse, Type: c.Type}
+			}
+			return es, nil
+		},
+		HasCard: hasCard,
+	}
+}
+
+// Connection is a legacy verse-to-verse edge.
 type Connection struct {
 	SourceVerse string `json:"source_verse"`
 	TargetVerse string `json:"target_verse"`

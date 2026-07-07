@@ -145,8 +145,8 @@ func TestPenaltyOnAgain(t *testing.T) {
 	if pens[0].Boost != want {
 		t.Errorf("Penalty = %f, want %f", pens[0].Boost, want)
 	}
-	if pens[0].VerseID != "john.1.1" {
-		t.Errorf("Target = %s, want john.1.1", pens[0].VerseID)
+	if pens[0].NodeID != "john.1.1" {
+		t.Errorf("Target = %s, want john.1.1", pens[0].NodeID)
 	}
 	if pens[0].CardID != 2 {
 		t.Errorf("CardID = %d, want 2", pens[0].CardID)
@@ -257,7 +257,7 @@ func TestMultiHopBoost(t *testing.T) {
 
 	boostMap := make(map[string]float64)
 	for _, b := range boosts {
-		boostMap[b.VerseID] = b.Boost
+		boostMap[b.NodeID] = b.Boost
 	}
 	if b, ok := boostMap["john.1.1"]; !ok || b < 0.39 || b > 0.41 {
 		t.Errorf("john.1.1 boost = %f, want ~0.4", b)
@@ -280,7 +280,7 @@ func TestMultiHopPenalty(t *testing.T) {
 
 	penMap := make(map[string]float64)
 	for _, p := range pens {
-		penMap[p.VerseID] = p.Boost
+		penMap[p.NodeID] = p.Boost
 	}
 	// Direct: gen.1.1 → john.1.1: 1.0 * 0.8 * 1.0 = 0.8
 	if b, ok := penMap["john.1.1"]; !ok || b < 0.79 || b > 0.81 {
@@ -307,7 +307,7 @@ func TestBestPathWins(t *testing.T) {
 	boosts, _ := eng.ComputeBoosts("gen.1.1", 3, getConns, hasCard)
 
 	for _, b := range boosts {
-		if b.VerseID == "gen.1.3" {
+		if b.NodeID == "gen.1.3" {
 			if b.Boost < 0.11 || b.Boost > 0.13 {
 				t.Errorf("gen.1.3 boost = %f, want ~0.12 (best path)", b.Boost)
 			}
