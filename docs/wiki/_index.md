@@ -252,8 +252,15 @@ All plans consolidated in [plans/](plans/):
 | [Progress](plans/memorization-progress.md) | Session history — P0c done, rest pending |
 | [Review Suggestions](plans/memorization-review-suggestions.md) | Peer review & risk analysis |
 | [Techniques Comparison](plans/memorization-techniques-comparison.md) | Evidence-based memorization techniques |
+| [Enhancements (Math Academy Way)](plans/memorization-enhancements.md) | FIRe, interleaving, gamification, remediation upgrades |
 
-### Knowledge Assessment (Next Up)
+### Hebrew Teaching System (New)
+
+| Plan | Description |
+|------|-------------|
+| [Hebrew Teaching Plan](plans/hebrew-teaching-plan.md) | Full curriculum using Math Academy Way principles |
+
+### Knowledge Assessment
 
 | Plan | Description |
 |------|-------------|
@@ -270,7 +277,7 @@ All plans consolidated in [plans/](plans/):
 | Features/lib | 2026-06-17 | FRESH |
 | Features/generators | 2026-06-17 | UPDATED — 35 generators, Rabbinic Kal v'Chomer + Mukdam u'Meuchar added |
 | Features/frontend | 2026-06-21 | NEW — React app, connection panel, footnote tooltip, VersePreviewCard, Playwright tests |
-| Plans | 2026-07-07 | UPDATED — consolidated all plans to docs/wiki/plans/ (13 files) |
+| Plans | 2026-07-07 | UPDATED — added Hebrew Teaching Plan + Memorization Enhancements (15 files) |
 | Generators | 2026-06-22 | UPDATED — 36 generators, Temple Themes sod + JST full ingest |
 | Connection types | 2026-06-22 | UPDATED — 128 types, 96.9% populated, JST types added |
 | JS teachings | 2026-06-22 | NEW — js_sources table, js_scripture_refs, FTS search, tools/js_teachings.py |
