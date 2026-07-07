@@ -277,7 +277,7 @@ All plans consolidated in [plans/](plans/):
 | Features/lib | 2026-06-17 | FRESH |
 | Features/generators | 2026-06-17 | UPDATED — 35 generators, Rabbinic Kal v'Chomer + Mukdam u'Meuchar added |
 | Features/frontend | 2026-06-21 | NEW — React app, connection panel, footnote tooltip, VersePreviewCard, Playwright tests |
-| Plans | 2026-07-07 | UPDATED — added Hebrew Teaching Plan + Memorization Enhancements (15 files) |
+| Plans | 2026-07-07 | UPDATED — P1-P5 + F1 built, MVP v0.1 shipped (15 files) |
 | Generators | 2026-06-22 | UPDATED — 36 generators, Temple Themes sod + JST full ingest |
 | Connection types | 2026-06-22 | UPDATED — 128 types, 96.9% populated, JST types added |
 | JS teachings | 2026-06-22 | NEW — js_sources table, js_scripture_refs, FTS search, tools/js_teachings.py |
