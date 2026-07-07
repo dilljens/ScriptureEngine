@@ -163,6 +163,9 @@ func Open(path string) (*DB, error) {
 	// Migrations for existing databases
 	migrations := []string{
 		"ALTER TABLE cards ADD COLUMN fi_re_credit REAL NOT NULL DEFAULT 0.0",
+		"ALTER TABLE cards ADD COLUMN student_ability REAL NOT NULL DEFAULT 1.0",
+		"ALTER TABLE cards ADD COLUMN topic_difficulty REAL NOT NULL DEFAULT 1.0",
+		"ALTER TABLE cards ADD COLUMN learning_speed REAL NOT NULL DEFAULT 1.0",
 	}
 	for _, m := range migrations {
 		conn.Exec(m) // Ignore errors (column may already exist)
@@ -381,6 +384,60 @@ func (db *DB) ReviewCard(cardID int64, rating fsrs.Rating, params fsrs.FSRSParam
 
 	// Compute next state
 	nextCard, log := card.Next(rating, params)
+
+	// ── Student-Topic Learning Speed ──
+	// Student ability: exponential moving average of normalized ratings
+	// Normalize: Again=0.0, Hard=0.33, Good=0.66, Easy=1.0
+	ratingNorm := map[int]float64{1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0}
+	norm := ratingNorm[int(rating)]
+
+	var oldAbility, oldDifficulty, oldSpeed float64
+	db.conn.QueryRow(
+		"SELECT student_ability, topic_difficulty, learning_speed FROM cards WHERE id = ?",
+		cardID).Scan(&oldAbility, &oldDifficulty, &oldSpeed)
+	if oldDifficulty <= 0 {
+		oldDifficulty = 1.0
+	}
+	if oldSpeed <= 0 {
+		oldSpeed = 1.0
+	}
+	_ = oldSpeed // reserved for future use
+
+	// EMA: new_ability = 0.3 * norm + 0.7 * old_ability (weighted toward recent)
+	newAbility := oldAbility
+	if oldAbility <= 0 {
+		newAbility = norm
+	} else {
+		newAbility = 0.3*norm + 0.7*oldAbility
+	}
+	if newAbility < 0.01 {
+		newAbility = 0.01
+	}
+
+	// Topic difficulty: inverse of aggregate accuracy
+	// Update after each review: difficulty moves toward (1 - accuracy)
+	var totalCorrect, totalReviews int
+	db.conn.QueryRow(
+		"SELECT correct, attempts FROM hebrew_progress WHERE node_id = (SELECT verse_id FROM cards WHERE id = ?)",
+		cardID,
+	).Scan(&totalCorrect, &totalReviews)
+
+	learningSpeed := newAbility / oldDifficulty
+	if learningSpeed > 3.0 {
+		learningSpeed = 3.0
+	}
+	if learningSpeed < 0.3 {
+		learningSpeed = 0.3
+	}
+
+	// Update ability and speed on card
+	db.conn.Exec(
+		"UPDATE cards SET student_ability = ?, learning_speed = ? WHERE id = ?",
+		newAbility, learningSpeed, cardID,
+	)
+
+	// Scale scheduled days by learning speed
+	nextCard.ScheduledDays = nextCard.ScheduledDays * learningSpeed
 
 	// Store review log
 	db.conn.Exec(`

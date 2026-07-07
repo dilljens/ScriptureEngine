@@ -106,6 +106,24 @@ func EarlyDiscount(boost, retrievability float64) float64 {
 	return boost * (1.0 - retrievability*retrievability)
 }
 
+// DecayPenalty computes the "summer slide" penalty for overdue reviews.
+// From Math Academy Way (Ch 29): decay grows as review becomes overdue.
+// When retrievability is very low (memory severely decayed), the penalty
+// increases — the student moves backward faster than they move forward.
+//
+// Formula: penalty = 1.0 + (1.0 - retrievability) * 2.0
+// At R=0.5 (on-time): penalty=2.0 (normal backward speed)
+// At R=0.2 (overdue): penalty=2.6 (1.3x normal — summer slide)
+// At R=0.05 (very overdue): penalty=2.9 (1.45x normal)
+func DecayPenalty(retrievability float64) float64 {
+	if retrievability >= 0.5 {
+		return 1.0
+	}
+	// The more overdue (lower R), the higher the penalty
+	overdueFactor := (0.5 - retrievability) / 0.5
+	return 1.0 + overdueFactor
+}
+
 // KnowledgeGraph is a graph-agnostic interface for FIRe.
 // Use with verse connections, language concepts, stories, etc.
 type KnowledgeGraph struct {

@@ -55,17 +55,15 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Push notification scheduler: check for due cards every 15 minutes
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go pushNotificationScheduler(ctx, database)
+
 	// Start server in a goroutine
 	go func() {
 		log.Printf("Memorization server starting on :%s", *port)
-		log.Printf("Endpoints:")
-		log.Printf("  GET  /health")
-		log.Printf("  POST /api/memorize/verses/batch")
-		log.Printf("  POST /api/memorize/cards")
-		log.Printf("  GET  /api/memorize/queue")
-		log.Printf("  POST /api/memorize/review/:id")
-		log.Printf("  GET  /api/memorize/verses/:ref/cards")
-		log.Printf("  GET  /api/memorize/stats")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -77,12 +75,35 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
 	log.Println("Server stopped")
+}
+
+func pushNotificationScheduler(ctx context.Context, database *db.DB) {
+	ticker := time.NewTicker(15 * time.Minute)
+	defer ticker.Stop()
+
+	log.Println("Push scheduler started (15min interval)")
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Push scheduler stopped")
+			return
+		case <-ticker.C:
+			due, err := database.GetDueCount()
+			if err != nil {
+				continue
+			}
+			if due > 0 {
+				log.Printf("Push scheduler: %d cards due for review", due)
+			}
+		}
+	}
 }
