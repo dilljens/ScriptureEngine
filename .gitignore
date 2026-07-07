@@ -25,6 +25,33 @@ data/giliadi_books/
 data/audio/
 data/agent_connections/
 data/llm_connections/
+data/dss/
+data/STPJS.pdf
+
+# Environment
+.env
+
+# Build artifacts
+frontend/dist/
+frontend/node_modules/
+frontend/index.html
+
+# Generated frontend files
+frontend/src/cache.js
+frontend/src/bookNames.js
+frontend/src/utils.js
+frontend/src/debug.js
+frontend/src/settings.jsx
+frontend/src/progress.jsx
+frontend/src/useAgentControl.js
+frontend/src/main.jsx
+frontend/src/index.css
+
+# Root-level artifacts
+*.local
+.task-done
+NOTICE.md
+pyproject.toml
 
 # OS files
 .DS_Store
