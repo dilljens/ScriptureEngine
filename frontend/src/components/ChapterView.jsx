@@ -27,7 +27,7 @@ function useChapterData(book, chapter) {
   return { data: d, loading: l, error: e }
 }
 
-export default function ChapterView({ book, chapter, poetryMode, highlightVerse }) {
+export default function ChapterView({ book, chapter, poetryMode, highlightVerse, onSplit, companionLabel, onCloseCompanion }) {
   const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish } = useToggles()
   const { data, loading, error } = useChapterData(book, chapter)
   const [footnotes, setFootnotes] = useState(null)
@@ -195,17 +195,32 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse 
         {/* Stats */}
         {footnotes?.length > 0 && <span className="shrink-0">· {footnotes.length} fn</span>}
         {tskRefs?.length > 0 && <span className="shrink-0">· {tskRefs.length} tsk</span>}
-        <div className="shrink-0 flex items-center gap-1 ml-auto">
-          <span className="text-neutral-300 dark:text-neutral-600">⏎</span>
-          <input ref={verseInputRef} type="text" value={verseJump}
-            onChange={e => setVerseJump(e.target.value.replace(/[^0-9]/g, ''))}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && verseJump) { jumpToVerse(parseInt(verseJump)) }
-              if (e.key === 'Escape') { setVerseJump(''); verseInputRef.current?.blur() }
-            }}
-            placeholder="v#"
-            className="w-12 px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] font-mono bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 placeholder-neutral-400 dark:placeholder-neutral-500" />
-        </div>
+        {/* Split-pane controls */}
+        {onCloseCompanion ? (
+          <div className="shrink-0 flex items-center gap-1 ml-auto">
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">{companionLabel || 'companion'}</span>
+            <button onClick={onCloseCompanion}
+              className="px-1.5 py-0.5 rounded text-[10px] text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors"
+              title="Close split view">✕</button>
+          </div>
+        ) : (
+          <div className="shrink-0 flex items-center gap-1 ml-auto">
+            {onSplit && (
+              <button onClick={onSplit}
+                className="px-1.5 py-0.5 rounded text-[10px] text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors"
+                title="Split view with another chapter">⊞ Split</button>
+            )}
+            <span className="text-neutral-300 dark:text-neutral-600">⏎</span>
+            <input ref={verseInputRef} type="text" value={verseJump}
+              onChange={e => setVerseJump(e.target.value.replace(/[^0-9]/g, ''))}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && verseJump) { jumpToVerse(parseInt(verseJump)) }
+                if (e.key === 'Escape') { setVerseJump(''); verseInputRef.current?.blur() }
+              }}
+              placeholder="v#"
+              className="w-12 px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] font-mono bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 placeholder-neutral-400 dark:placeholder-neutral-500" />
+          </div>
+        )}
       </div>
 
       {data.verses?.map(v => {

@@ -734,6 +734,22 @@ function AppInner() {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
   }, [currentTab?.id, updateTab])
 
+  // ── Split-pane reading ──
+  const [showSplitPicker, setShowSplitPicker] = useState(false)
+  const [splitTarget, setSplitTarget] = useState({ book: '', chapter: '' })
+  const handleOpenSplitPicker = useCallback(() => {
+    setSplitTarget({ book: book || 'isa', chapter: chapter ? chapter + 1 : 1 })
+    setShowSplitPicker(true)
+  }, [book, chapter])
+  const handleConfirmSplit = useCallback(() => {
+    if (splitTarget.book && splitTarget.chapter && currentTab?.id) {
+      updateTab(currentTab.id, {
+        companion: { book: splitTarget.book, chapter: parseInt(splitTarget.chapter) || 1 }
+      })
+      setShowSplitPicker(false)
+    }
+  }, [splitTarget, currentTab?.id, updateTab])
+
   const handleCommandChat = useCallback((message) => {
     setChatInitialMsg(message || '')
     setShowChat(true)
@@ -866,11 +882,38 @@ function AppInner() {
         </Suspense>
       )
     }
-    return <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse} />
+    // Split-pane reading: if companion is set, render two ChapterViews side by side
+    const companion = currentTab?.companion
+    if (companion?.book && companion?.chapter) {
+      return (
+        <div className="flex h-full">
+          <div className="flex-1 min-w-0 overflow-y-auto border-r border-neutral-200 dark:border-neutral-700">
+            <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse}
+              onSplit={null}
+              companionLabel={null}
+              onCloseCompanion={() => {
+                if (currentTab?.id) updateTab(currentTab.id, { companion: null })
+              }} />
+          </div>
+          <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50/50 dark:bg-neutral-900/50">
+            <ChapterView book={companion.book} chapter={companion.chapter} poetryMode={poetryMode} highlightVerse={null}
+              onSplit={null}
+              companionLabel={`${companion.book} ${companion.chapter}`}
+              onCloseCompanion={() => {
+                if (currentTab?.id) updateTab(currentTab.id, { companion: null })
+              }} />
+          </div>
+        </div>
+      )
+    }
+    return <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse}
+      onSplit={handleOpenSplitPicker}
+      companionLabel={null}
+      onCloseCompanion={null} />
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
+    <div className="min-h-screen flex flex-col bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
       {/* Toolbar */}
       <header className={`sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-10 px-2">
@@ -1062,7 +1105,7 @@ function AppInner() {
 
       {/* Main */}
       <ErrorBoundary>
-        <main ref={mainRef}
+        <main ref={mainRef} className="flex-1 min-h-0"
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}
           onScroll={handleMainScroll} onClick={handleMainClick}
           style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}>
@@ -1081,6 +1124,33 @@ function AppInner() {
       <CommandInput open={showCommand} onClose={() => setShowCommand(false)}
         allBooks={allBooks}
         onNavigate={handleCommandNav} onChat={handleCommandChat} />
+
+      {/* Split-pane chapter picker */}
+      {showSplitPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowSplitPicker(false)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-4 w-72" onClick={e => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3">Split with chapter</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <input value={splitTarget.book} onChange={e => setSplitTarget({ ...splitTarget, book: e.target.value })}
+                placeholder="Book (e.g. isa)"
+                className="flex-1 px-2 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 placeholder-neutral-400" />
+              <input value={splitTarget.chapter} onChange={e => setSplitTarget({ ...splitTarget, chapter: e.target.value.replace(/[^0-9]/g, '') })}
+                placeholder="Ch"
+                className="w-16 px-2 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 text-xs bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 placeholder-neutral-400 text-center" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowSplitPicker(false)}
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleConfirmSplit}
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 cursor-pointer transition-colors">
+                Split
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings panel */}
       {/* Hotkey Cheatsheet */}

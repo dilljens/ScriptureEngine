@@ -68,6 +68,22 @@ ComfyUI (Docker, :8188) — optional GPU path
   └── img2img palace compositing
 ```
 
+## Build Order
+
+```
+         ┌── P0 + P0b (FE structure) ──┐
+         │  (parallel with P1)          │
+P0+P0b ──┤                              ├── P2 + P3 ──► 🎯 MVP v0.1
+P1 ──────┘                              │    (basic FSRS review ships!)
+P0c ─── (indep., done anytime)          │
+                                        ├── P4 + P5 (images + palaces)
+                                        ├── P6 + P7 (compositing + hints)
+                                        ├── P8 + P9 (audio + analytics)
+                                        └── P10 (PWA/push — any time)
+```
+
+**🎯 MVP v0.1** (after P2 + P3): basic FSRS review with text cards. No palaces, no AI, no audio needed.
+
 ## Tracks
 
 ### Track 0: Mobile UX Architecture
@@ -75,6 +91,9 @@ Restructure the mobile layout into three zones: top bar (search + breadcrumb), b
 
 ### Track 0b: Two-Layer Tab System
 Make the subjects bar visible on both desktop AND mobile (replacing mobile dropdown). Add [None] option to deselect workspace. Subjects/Tiles view sets active workspace on click.
+
+### Track 0c: Split-Pane Reading
+Side-by-side chapter reading using the existing `companion` tab field. Split button in ChapterView, two-column layout in App.jsx.
 
 ### Track A: Go SRS Microservice
 FSRS-based spaced repetition engine, memory palace CRUD, hybrid image pipeline (AI + Openverse + upload), analytics API.
@@ -117,6 +136,20 @@ Three-tier image sourcing: ComfyUI (GPU, best quality) → Openverse (free API, 
 | P0b.6 | After selecting a workspace from Tiles view, route to its first tab or show empty state |
 | P0b.7 | Desktop: make two rows explicit (subjects bar + tab strip), always visible together |
 
+## Phase P0c — Split-Pane Reading
+
+**⏱ Timebox:** 60 minutes  
+**✅ Checkpoint:** ChapterView shows a "Split" button; tapping it opens a chapter picker; selecting renders two chapters side by side; "Close split" restores single view.
+
+| Step | Description |
+|------|-------------|
+| P0c.1 | App.jsx: update `renderMainContent()` to detect `currentTab.companion` — when set, render two ChapterViews in a flex row (left=primary, right=companion) with a border divider |
+| P0c.2 | App.jsx: add `handleSplitView` callback — prompts user for companion book+chapter, calls `updateTab(currentTab.id, { companion: { book, chapter } })` |
+| P0c.3 | App.jsx: add "Close split" button on companion pane header |
+| P0c.4 | ChapterView: accept `onSplit` prop, add "⊞ Split" button in the chapter header toolbar |
+| P0c.5 | Handle split across all view levels — only works at `viewLevel === 'chapter'` |
+| P0c.6 | Touch/mobile: companion pane scrolls independently; responsive collapse at very narrow widths |
+
 ## Phase P1 — Go Skeleton + DB Schema + FSRS Core
 
 **⏱ Timebox:** 120 minutes  
@@ -147,15 +180,21 @@ Three-tier image sourcing: ComfyUI (GPU, best quality) → Openverse (free API, 
 ## Phase P3 — Frontend: Memorize Tab + Review UI
 
 **⏱ Timebox:** 180 minutes  
-**✅ Checkpoint:** "Memorize" tab appears in ScriptureEngine, can review cards  
+**🎯 This phase completes MVP v0.1** — basic FSRS review ships here  
+**✅ Checkpoint:** "Memorize" tab appears in ScriptureEngine, can review cards, due count badge shows on tab icon  
 **⚙ Fallback:** Mount as full-page overlay if tab integration is too complex.
 
 | Step | Description |
 |------|-------------|
 | P3.1 | Create `MemorizeView.jsx` dashboard component (placeholder exists, build real UI) |
-| P3.2 | Create `ReviewSession.jsx` card queue with hint levels |
-| P3.3 | Wire `memorizeApi.js` to Go service for live data |
-| P3.4 | FSRS review flow: queue → show card → rate → next card |
+| P3.2 | **Quick-start path**: "Pick a verse → Get concept image → Start reviewing" in 3 taps, no palace setup required |
+| P3.3 | **Elaborative encoding step**: before first review of a verse, show its connections/cross-references from ScriptureEngine's graph. "Understand the meaning before memorizing." |
+| P3.4 | **Due count badge**: poll `GET /queue?limit=1` on Memorize tab icon in bottom tab bar, show red badge if count > 0 |
+| P3.5 | **"Memorize this verse" button**: add to `VerseBlock.jsx` — long-press or icon in verse header creates a card immediately |
+| P3.6 | Create `ReviewSession.jsx` card queue with hint levels |
+| P3.7 | Wire `memorizeApi.js` to Go service for live data |
+| P3.8 | FSRS review flow: queue → show card → rate → next card |
+| P3.9 | **Keyboard shortcuts** in review mode: 1=Again, 2=Hard, 3=Good, 4=Easy, Space=Show Answer |
 
 ## Phase P4 — Image Acquisition Pipeline
 
@@ -252,7 +291,7 @@ func buildSearchQuery(text, ref string) string {
 | Step | Description |
 |------|-------------|
 | P6.1 | Auto-trigger composite generation on verse assignment (requires ComfyUI) |
-| P6.2 | Frontend: `PalaceWalk.jsx` slideshow |
+| P6.2 | Frontend: `PalaceWalk.jsx` — **active recall walk**: at each locus, pause and prompt user to recall the verse (first-letter or blank) before revealing. Ratings feed FSRS. Not a passive slideshow. |
 | P6.3 | Frontend: `ImageStudio.jsx` browse/regenerate with source indicators |
 | P6.4 | Batch generation button (AI or search per verse) |
 
@@ -407,6 +446,8 @@ func NextState(current FSRSState, rating Rating, params FSRSParams) FSRSState
 | `vite.config.js` | Proxy `/api/memorize` → `:8090` |
 | ScriptureEngine `data/processed/scripture.db` | Go reads verses (read-only) |
 | `docker-compose.yml` | Add Go + ComfyUI (optional) services |
+| `VerseBlock.jsx` | Add "Memorize this verse" button (P3.5) |
+| `ChapterView.jsx` | Add "⊞ Split" button, accept `onSplit` prop (P0c) |
 | `public/manifest.json` (new) | PWA manifest — app name, icons, standalone, theme |
 | `public/sw.js` (new) | Service worker — push handler, cache strategy |
 | `public/icon-192.png`, `icon-512.png` (new) | App icons for home screen |

@@ -4,14 +4,17 @@
 
 | Phase | Track | Status | Started | Completed | Notes |
 |-------|-------|--------|---------|-----------|-------|
+| Phase | Track | Status | Started | Completed | Notes |
+|-------|-------|--------|---------|-----------|-------|
 | P0 | Mobile UX architecture | 🔍 Planned | — | — | Top bar + drawer + settings tab |
 | P0b | Two-layer tab system | 🔍 Planned | — | — | Subjects bar on all sizes, [None] option |
-| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Ready to start after P0+P0b |
+| P0c | Split-pane reading | ✅ Done | 2026-07-06 | 2026-07-06 | Companion in tab state, split layout in App.jsx, "⊞ Split" button in ChapterView |
+| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Runs parallel with P0+P0b |
 | P2 | Review queue API | ⏳ Pending | — | — | Blocked on P1 |
-| P3 | Memorize tab UI | ⏳ Pending | — | — | Placeholder exists, needs real UI |
+| P3 | Memorize tab UI | 🔍 Planned | — | — | **MVP v0.1** — quick-start, direct-to-review, due badge, memorize button in VerseBlock |
 | P4 | Image pipeline | 🔍 Planned | — | — | 3-tier: AI → Openverse → Upload |
 | P5 | Palace builder | ⏳ Pending | — | — | Blocked on P3 |
-| P6 | Compositing | ⏳ Pending | — | — | P6 depends on P5 |
+| P6 | Compositing | 🔍 Planned | — | — | Active-recall palace walk (not passive) |
 | P7 | Hint levels | ⏳ Pending | — | — | Blocked on P3 |
 | P8 | Audio | ⏳ Pending | — | — | Blocked on P3 |
 | P9 | Analytics + polish | ⏳ Pending | — | — | Blocked on all |
@@ -57,6 +60,21 @@
 - No Firebase needed — uses standard W3C Push API + webpush-go library
 - Works on Android, iOS 16.4+, and desktop Chrome/Edge
 - Added to task_plan.md, findings.md, progress.md
+
+### Session 7 (2026-07-06)
+- Incorporated review suggestions into plan:
+  - Direct-to-review flow, due badge, quick-start path (P3)
+  - "Memorize this verse" button in VerseBlock (P3)
+  - Active-recall palace walk replaces passive slideshow (P6)
+  - Elaborative encoding step before first review (P3)
+  - Keyboard shortcuts for review mode (P3)
+  - Parallel build: P0/P0b and P1 run concurrently
+  - 🎯 MVP v0.1 milestone defined after P2+P3
+- Added Phase P0c: Split-Pane Reading
+  - Two chapters side by side using existing `companion` tab field
+  - "⊞ Split" button in ChapterView
+  - Companion chapter picker
+  - Independent scroll per pane, "Close split" button
 - Added hybrid image pipeline to P4
 - Three tiers: ComfyUI (AI) → Openverse (free search) → Manual upload
 - No API key needed for Openverse
