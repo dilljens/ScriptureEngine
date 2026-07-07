@@ -341,3 +341,228 @@ def _fire_credit_for_item(conn, item_id):
             urllib.request.urlopen(req, timeout=2)
         except (urllib.error.URLError, urllib.error.HTTPError, OSError):
             pass  # FIRe is optional — service may not be running
+
+
+# ── Diagnostic Mode ──
+
+def start_diagnostic(conn, user_id="default", max_items=30):
+    """Start a pre-assessment diagnostic session.
+    
+    Unlike a regular assessment, the diagnostic:
+    1. Samples broadly across all layers and connection types
+    2. Uses conditional completion — stops asking about topics once confident
+    3. Reports what the user already knows vs. needs to learn
+    4. Gives FIRe credit for demonstrated knowledge
+    
+    Args:
+        user_id: User identifier
+        max_items: Maximum items to administer (default: 30)
+    
+    Returns:
+        Dict with first question and session info
+    """
+    session = _get_session(user_id)
+    session["engine"] = AssessmentEngine(conn)
+    session["state"] = KnowledgeState(user_id)
+    session["history"] = []
+    session["target_layer"] = None  # all layers
+    session["status"] = "diagnostic"
+    session["max_items"] = max_items
+
+    # Select first item (broad coverage, max information)
+    item_id = session["engine"].select_item(session["state"], n_candidates=200)
+    if item_id is None:
+        session["status"] = "error"
+        _save_session(user_id)
+        return {"error": "No items available for diagnostic"}
+
+    session["current_item"] = item_id
+    question = _get_question(conn, item_id)
+    if not question:
+        session["status"] = "error"
+        _save_session(user_id)
+        return {"error": f"Could not load question for item {item_id}"}
+
+    _save_session(user_id)
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "mode": "diagnostic",
+        "session_status": session["status"],
+        "item_number": len(session["history"]) + 1,
+        "total_items_planned": max_items,
+        "question": question,
+    }
+
+
+def submit_diagnostic_answer(conn, user_id="default", correct=False):
+    """Submit a diagnostic answer with conditional completion.
+    
+    Implements conditional completion from Math Academy Way (Ch 30):
+    When mastery probability for a connection type + layer combination
+    crosses 0.8, the system stops asking about that combination.
+    
+    Returns the diagnostic report when complete.
+    """
+    session = _get_session(user_id)
+    if session["status"] not in ("diagnostic", "active"):
+        return {"error": "No active diagnostic. Call start_diagnostic first."}
+
+    session["engine"] = AssessmentEngine(conn)
+
+    item_id = session["current_item"]
+    if item_id is None:
+        return {"error": "No current item"}
+
+    # Record response
+    session["engine"].assess_response(session["state"], item_id, correct)
+    session["history"].append({"item_id": item_id, "correct": correct})
+
+    # FIRe credit for correct answers
+    if correct:
+        _fire_credit_for_item(conn, item_id)
+
+    # Check termination: max items reached
+    total = len(session["history"])
+    if total >= session.get("max_items", 30):
+        return _finish_diagnostic(conn, session, user_id, reason="max_items")
+
+    # Conditional completion: need at least 8 items before checking entropy
+    probs = list(session["state"].mastery_prob.values())
+    if len(probs) >= 8 and total >= 8:
+        import math
+        entropies = []
+        for p in probs:
+            if 0 < p < 1:
+                e = -p * math.log2(p) - (1 - p) * math.log2(1 - p)
+                entropies.append(e)
+        if entropies:
+            avg_entropy = sum(entropies) / len(entropies)
+            if avg_entropy < 0.08:  # strict threshold for diagnostic
+                return _finish_diagnostic(conn, session, user_id, reason="converged")
+
+    # Select next item with broad sampling
+    next_item = session["engine"].select_item(
+        session["state"],
+        target_layer=None,  # all layers
+        n_candidates=200,
+    )
+    if next_item is None:
+        return _finish_diagnostic(conn, session, user_id, reason="no_more_items")
+
+    session["current_item"] = next_item
+    question = _get_question(conn, next_item)
+
+    _save_session(user_id)
+
+    if not question:
+        return _finish_diagnostic(conn, session, user_id, reason="question_error")
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "mode": "diagnostic",
+        "session_status": session["status"],
+        "item_number": total + 1,
+        "question": question,
+    }
+
+
+def _finish_diagnostic(conn, session, user_id, reason):
+    """Finalize diagnostic and generate report."""
+    session["status"] = "completed"
+
+    # Compute mastery by layer
+    mastery_by_layer = session["state"].mastery_by_layer(conn)
+    
+    # Compute outer fringe (ready to learn)
+    outer_fringe = session["engine"].get_outer_fringe(session["state"], limit=15)
+    
+    # Categorize known vs unknown by layer
+    known_items = []
+    unknown_items = []
+    for item_id_str, prob in session["state"].mastery_prob.items():
+        item_id = int(item_id_str) if isinstance(item_id_str, str) else item_id_str
+        ki = conn.execute(
+            "SELECT verse_id, connection_type, target_verse, pa_r_de_s_level FROM knowledge_items WHERE id = ?",
+            (item_id,)
+        ).fetchone()
+        if ki:
+            entry = {
+                "item_id": item_id,
+                "verse": ki["verse_id"],
+                "target": ki["target_verse"],
+                "type": ki["connection_type"],
+                "layer": ki["pa_r_de_s_level"],
+                "mastery": prob,
+            }
+            if prob >= 0.8:
+                known_items.append(entry)
+            elif prob <= 0.3:
+                unknown_items.append(entry)
+
+    report = {
+        "ok": True,
+        "session_status": "completed",
+        "mode": "diagnostic",
+        "reason": reason,
+        "total_answered": len(session["history"]),
+        "total_correct": sum(1 for h in session["history"] if h["correct"]),
+        "total_wrong": sum(1 for h in session["history"] if not h["correct"]),
+        "mastery": {
+            "overall": session["state"].overall_mastery(),
+            "by_layer": mastery_by_layer,
+        },
+        "known_count": len(known_items),
+        "unknown_count": len(unknown_items),
+        "outer_fringe": outer_fringe,
+    }
+
+    _save_session(user_id)
+    return report
+
+
+def get_diagnostic_report(conn, user_id="default"):
+    """Get a diagnostic report without running a new assessment."""
+    session = _get_session(user_id)
+    session["engine"] = AssessmentEngine(conn)
+    
+    if not session["state"].mastery_prob:
+        return {
+            "ok": True,
+            "has_diagnostic": False,
+            "message": "No diagnostic data. Run start_diagnostic first.",
+        }
+
+    mastery_by_layer = session["state"].mastery_by_layer(conn)
+    outer_fringe = session["engine"].get_outer_fringe(session["state"], limit=15)
+    overall = session["state"].overall_mastery()
+
+    # Count known/unknown items (top types)
+    type_counts = {}
+    for item_id_str, prob in session["state"].mastery_prob.items():
+        item_id = int(item_id_str) if isinstance(item_id_str, str) else item_id_str
+        ki = conn.execute(
+            "SELECT connection_type FROM knowledge_items WHERE id = ?",
+            (item_id,)
+        ).fetchone()
+        if ki:
+            ct = ki["connection_type"]
+            if ct not in type_counts:
+                type_counts[ct] = {"known": 0, "unknown": 0, "total": 0}
+            type_counts[ct]["total"] += 1
+            if prob >= 0.8:
+                type_counts[ct]["known"] += 1
+            elif prob <= 0.3:
+                type_counts[ct]["unknown"] += 1
+
+    return {
+        "ok": True,
+        "has_diagnostic": True,
+        "total_assessed": len(session["state"].mastery_prob),
+        "overall_mastery": overall,
+        "mastery_by_layer": mastery_by_layer,
+        "outer_fringe": outer_fringe,
+        "type_breakdown": type_counts,
+    }
