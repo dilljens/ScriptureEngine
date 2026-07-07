@@ -335,7 +335,42 @@ GENERATOR_DEFS = [
         "description": "Experimental: connects 5 Psalms of David to canon parallels",
     },
 
-    # ── Isaiah-Specific (scoped to book=isa) ──
+    # ── Phrase + Title + Typology + Inclusio (New) ──
+
+    {
+        "name": "Divine Titles — Epithets for God",
+        "module_path": ".divine_titles",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses sharing the same divine title/epithet (Holy One of Israel, Lord of Hosts, Rock of Israel, etc.)",
+    },
+    {
+        "name": "Typology — Type/Antitype Pairs",
+        "module_path": ".typology",
+        "layers": ["symbolic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects OT types to their NT antitypes (Adam→Christ, Passover→Crucifixion, Bronze Serpent→Cross)",
+    },
+    {
+        "name": "Phrase Match — Hebrew + English Key Phrases",
+        "module_path": ".phrase_match",
+        "layers": ["linguistic"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Connects verses sharing significant multi-word phrases (son of man, day of the Lord, living water)",
+    },
+    {
+        "name": "Inclusio Detection — Repeated Phrases Bookending",
+        "module_path": ".structural_inclusio",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Finds repeated phrases at beginning and end of literary units",
+    },
+
+# ── Isaiah-Specific (scoped to book=isa) ──
 
     {
         "name": "Isaiah — Advanced Giliadi Techniques",
