@@ -946,3 +946,89 @@ func (db *DB) GetHebrewConnections(nodeID string) ([]fire.Edge, error) {
 	}
 	return edges, nil
 }
+
+// ── Hebrew Lessons ──
+
+// GetHebrewLesson returns the lesson content for a Hebrew node.
+func (db *DB) GetHebrewLesson(nodeID string) (string, error) {
+	var content string
+	err := db.conn.QueryRow(
+		"SELECT content_json FROM hebrew_lessons WHERE node_id = ?", nodeID,
+	).Scan(&content)
+	return content, err
+}
+
+// HebrewPracticeItem represents a practice question.
+type HebrewPracticeItem struct {
+	ID           int64   `json:"id"`
+	QuestionType string  `json:"question_type"`
+	QuestionText string  `json:"question_text"`
+	OptionsJSON  string  `json:"options_json"`
+	CorrectAnswer string `json:"correct_answer"`
+	Difficulty   float64 `json:"difficulty"`
+	Explanation  string  `json:"explanation"`
+}
+
+// GetHebrewPracticeItems returns practice items for a node.
+func (db *DB) GetHebrewPracticeItems(nodeID string, limit int) ([]HebrewPracticeItem, error) {
+	rows, err := db.conn.Query(
+		`SELECT id, question_type, question_text, options_json, correct_answer, difficulty, explanation
+		 FROM hebrew_practice_items WHERE node_id = ? ORDER BY difficulty ASC LIMIT ?`,
+		nodeID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HebrewPracticeItem
+	for rows.Next() {
+		var item HebrewPracticeItem
+		if err := rows.Scan(&item.ID, &item.QuestionType, &item.QuestionText,
+			&item.OptionsJSON, &item.CorrectAnswer, &item.Difficulty, &item.Explanation); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+// GetHebrewProgress returns a user's progress for all nodes.
+func (db *DB) GetHebrewProgress(userID string) (map[string]float64, error) {
+	rows, err := db.conn.Query(
+		"SELECT node_id, mastery FROM hebrew_progress WHERE user_id = ?", userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	progress := make(map[string]float64)
+	for rows.Next() {
+		var nid string
+		var mastery float64
+		if err := rows.Scan(&nid, &mastery); err != nil {
+			return nil, err
+		}
+		progress[nid] = mastery
+	}
+	return progress, nil
+}
+
+// UpdateHebrewProgress updates a user's mastery for a Hebrew node.
+func (db *DB) UpdateHebrewProgress(userID, nodeID string, correct bool) error {
+	correctInt := 0
+	mastery := 0.0
+	if correct {
+		correctInt = 1
+		mastery = 0.5
+	}
+	_, err := db.conn.Exec(`
+		INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced)
+		VALUES (?, ?, ?, 1, ?, datetime('now'))
+		ON CONFLICT(user_id, node_id) DO UPDATE SET
+			attempts = attempts + 1,
+			correct = correct + ?,
+			mastery = CAST(correct + ? AS REAL) / (attempts + 1),
+			last_practiced = datetime('now')
+	`, userID, nodeID, mastery, correctInt, correctInt, correctInt)
+	return err
+}

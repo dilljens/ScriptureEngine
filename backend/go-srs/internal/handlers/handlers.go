@@ -933,6 +933,114 @@ func (h *Handler) HebrewFire(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ── Hebrew Lessons ──
+
+// HebrewLesson returns lesson content for a node.
+func (h *Handler) HebrewLesson(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 5 {
+		errorResponse(w, http.StatusBadRequest, "missing node_id")
+		return
+	}
+	nodeID := parts[4]
+	content, err := h.DB.GetHebrewLesson(nodeID)
+	if err != nil {
+		errorResponse(w, http.StatusNotFound, "lesson not found")
+		return
+	}
+	// Parse JSON content for structured response
+	var lessonData interface{}
+	if err := json.Unmarshal([]byte(content), &lessonData); err != nil {
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"ok":      true,
+			"node_id": nodeID,
+			"content": content,
+		})
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":      true,
+		"node_id": nodeID,
+		"lesson":  lessonData,
+	})
+}
+
+// HebrewPractice returns practice items for a node.
+func (h *Handler) HebrewPractice(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 5 {
+		errorResponse(w, http.StatusBadRequest, "missing node_id")
+		return
+	}
+	nodeID := parts[4]
+	items, err := h.DB.GetHebrewPracticeItems(nodeID, 10)
+	if err != nil {
+		errorResponse(w, http.StatusNotFound, "no practice items")
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":    true,
+		"node_id": nodeID,
+		"items": items,
+	})
+}
+
+// HebrewProgress returns or updates user progress.
+func (h *Handler) HebrewProgress(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 5 {
+		errorResponse(w, http.StatusBadRequest, "missing user_id")
+		return
+	}
+	userID := parts[4]
+
+	switch r.Method {
+	case "GET":
+		progress, err := h.DB.GetHebrewProgress(userID)
+		if err != nil {
+			errorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"ok":       true,
+			"user_id":  userID,
+			"progress": progress,
+		})
+	case "POST":
+		var input struct {
+			NodeID string `json:"node_id"`
+			Correct bool  `json:"correct"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			errorResponse(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if err := h.DB.UpdateHebrewProgress(userID, input.NodeID, input.Correct); err != nil {
+			errorResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		// Give FIRe credit via KnowledgeGraph
+		graph := fire.KnowledgeGraph{
+			GetConnections: h.DB.GetHebrewConnections,
+			HasCard:        func(id string) (int64, bool) { return 0, true },
+		}
+		rating := 3
+		if !input.Correct {
+			rating = 1
+		}
+		credits, penalties, _ := h.Fire.ComputeCredits(input.NodeID, rating, graph)
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"ok":            true,
+			"node_id":       input.NodeID,
+			"correct":       input.Correct,
+			"credits":       len(credits),
+			"penalties":     len(penalties),
+		})
+	default:
+		errorResponse(w, http.StatusMethodNotAllowed, "use GET or POST")
+	}
+}
+
 // RegisterRoutes sets up all HTTP routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", h.Health)
@@ -946,6 +1054,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/fire/credit", h.FireCredit)
 	mux.HandleFunc("/api/memorize/hebrew/graph", h.HebrewGraph)
 	mux.HandleFunc("/api/memorize/hebrew/fire/", h.HebrewFire)
+	mux.HandleFunc("/api/memorize/hebrew/lesson/", h.HebrewLesson)
+	mux.HandleFunc("/api/memorize/hebrew/practice/", h.HebrewPractice)
+	mux.HandleFunc("/api/memorize/hebrew/progress/", h.HebrewProgress)
 	mux.HandleFunc("/api/memorize/connections/batch", h.SyncConnections)
 	mux.HandleFunc("/api/memorize/push/subscribe", h.PushSubscribe)
 	mux.HandleFunc("/api/memorize/push/unsubscribe", h.PushUnsubscribe)
