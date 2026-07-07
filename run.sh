@@ -5,6 +5,13 @@
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Load .env if present (API keys, etc.)
+if [ -f "$DIR/.env" ]; then
+  set -a
+  . "$DIR/.env"
+  set +a
+fi
+
 case "${1:-help}" in
   ingest)
     python3 "$DIR/scripts/ingest.py"

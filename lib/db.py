@@ -722,8 +722,12 @@ def search_verses(conn, query, book_id=None, limit=20):
     """
     params = [f"%{query}%"]
     if book_id:
-        sql += " AND v.book_id = ?"
-        params.append(book_id)
+        # Handle D&C prefix: "dc" matches dc1, dc2, etc.
+        if book_id == "dc":
+            sql += " AND (v.book_id LIKE 'dc%' OR b.work_id = 'dc')"
+        else:
+            sql += " AND v.book_id = ?"
+            params.append(book_id)
     sql += " LIMIT ?"
     params.append(limit)
     rows = conn.execute(sql, params).fetchall()

@@ -3754,7 +3754,7 @@ async def llm_chat(body: ChatRequest):
         payload["tool_choice"] = "auto"
 
     tool_results = []
-    max_tool_rounds = 10  # prevent infinite loops; 5 was too low for complex queries
+    max_tool_rounds = 15  # prevent infinite loops; 10 was too low for multi-work searches
 
     async def call_deepseek(req_payload):
         global _http_client
@@ -3899,9 +3899,12 @@ async def llm_chat(body: ChatRequest):
     final_reasoning = choice["message"].get("reasoning_content")
 
     # If LLM only made tool calls without summarizing, force a summary
-    if not final_content and tool_results and not final_reasoning:
+    # Also force summary if the content is just planning text (starts with "Let me")
+    is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
+    if (not final_content or is_planning) and tool_results:
         msgs.append({"role": "user", "content":
-            "Summarize the information above in natural language. "
+            "You have all the data you need from the tool calls above. "
+            "Now synthesize a complete answer in natural language based on the information you found. "
             "Cite the specific verses and data you found. "
             "Use full book names like 'Genesis 1:1'. "
             "Do not list the tools you used."})
