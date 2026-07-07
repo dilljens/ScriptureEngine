@@ -2,11 +2,17 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/dillon/scriptureengine/go-srs/internal/ai"
 	"github.com/dillon/scriptureengine/go-srs/internal/db"
 	"github.com/dillon/scriptureengine/go-srs/internal/fsrs"
 )
@@ -15,15 +21,19 @@ import (
 
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
-	DB     *db.DB
-	Params fsrs.FSRSParams
+	DB            *db.DB
+	Params        fsrs.FSRSParams
+	Openverse     *ai.OpenverseClient
+	ComfyUI       *ai.ComfyUIClient
 }
 
 // New creates a new Handler.
 func New(database *db.DB) *Handler {
 	return &Handler{
-		DB:     database,
-		Params: fsrs.DefaultParams,
+		DB:        database,
+		Params:    fsrs.DefaultParams,
+		Openverse: ai.NewOpenverseClient(database),
+		ComfyUI:   ai.NewComfyUIClient(""),
 	}
 }
 
@@ -126,12 +136,12 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	// Extract card ID from path: /api/memorize/review/{card_id}
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 5 {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
 		errorResponse(w, http.StatusBadRequest, "missing card_id")
 		return
 	}
-	cardID, err := strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	cardID, err := strconv.ParseInt(parts[3], 10, 64)
 	if err != nil {
 		errorResponse(w, http.StatusBadRequest, "invalid card_id")
 		return
@@ -170,13 +180,13 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 // ── Cards by Verse ──
 
 func (h *Handler) GetCardsByVerse(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// /api/memorize/verses/{ref}/cards
-	if len(parts) < 6 {
+	if len(parts) < 5 {
 		errorResponse(w, http.StatusBadRequest, "missing verse reference")
 		return
 	}
-	verseID := parts[len(parts)-2]
+	verseID := parts[3]
 
 	cards, err := h.DB.GetCardsByVerse(verseID)
 	if err != nil {
@@ -233,6 +243,297 @@ func (h *Handler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ── Palace Operations ──
+
+// HandlePalaces dispatches based on path and method.
+//   GET  /api/memorize/palaces         — list
+//   POST /api/memorize/palaces         — create
+//   GET  /api/memorize/palaces/:id     — get with loci
+//   POST /api/memorize/palaces/:id/loci — add locus
+func (h *Handler) HandlePalaces(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// parts[0]=api, parts[1]=memorize, parts[2]=palaces, parts[3]=id (optional), parts[4]=loci (optional)
+
+	if len(parts) >= 4 && parts[3] != "" {
+		// /api/memorize/palaces/:id or /api/memorize/palaces/:id/loci
+		if len(parts) >= 5 && parts[4] == "loci" {
+			if r.Method == "POST" {
+				h.AddLocus(w, r)
+			} else {
+				errorResponse(w, http.StatusMethodNotAllowed, "use POST to add locus")
+			}
+			return
+		}
+		if r.Method == "GET" {
+			h.GetPalace(w, r)
+		} else {
+			errorResponse(w, http.StatusMethodNotAllowed, "use GET for palace details")
+		}
+		return
+	}
+
+	// /api/memorize/palaces (no id)
+	switch r.Method {
+	case "GET":
+		h.ListPalaces(w, r)
+	case "POST":
+		h.CreatePalace(w, r)
+	default:
+		errorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+// HandleLoci dispatches to add locus (POST /api/memorize/palaces/:id/loci)
+// or assign verse (POST /api/memorize/loci/:id/assign).
+func (h *Handler) HandleLoci(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		errorResponse(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	// Determine if this is /palaces/:id/loci or /loci/:id/assign
+	if strings.Contains(r.URL.Path, "/palaces/") {
+		h.AddLocus(w, r)
+	} else {
+		h.AssignVerse(w, r)
+	}
+}
+
+func (h *Handler) CreatePalace(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Name      string `json:"name"`
+		PhotoPath string `json:"photo_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	id, err := h.DB.CreatePalace(input.Name, input.PhotoPath)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true, "palace_id": id})
+}
+
+func (h *Handler) ListPalaces(w http.ResponseWriter, r *http.Request) {
+	palaces, err := h.DB.ListPalaces()
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true, "palaces": palaces})
+}
+
+func (h *Handler) GetPalace(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		errorResponse(w, http.StatusBadRequest, "missing palace_id")
+		return
+	}
+	palaceID, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid palace_id")
+		return
+	}
+
+	palace, loci, err := h.DB.GetPalaceWithLoci(palaceID)
+	if err != nil {
+		errorResponse(w, http.StatusNotFound, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":     true,
+		"palace": palace,
+		"loci":   loci,
+	})
+}
+
+func (h *Handler) AddLocus(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		errorResponse(w, http.StatusBadRequest, "missing palace_id")
+		return
+	}
+	palaceID, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid palace_id")
+		return
+	}
+
+	var input struct {
+		Label string  `json:"label"`
+		X     float64 `json:"x_pct"`
+		Y     float64 `json:"y_pct"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	locusID, err := h.DB.AddLocus(palaceID, input.Label, input.X, input.Y)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true, "locus_id": locusID})
+}
+
+func (h *Handler) AssignVerse(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 4 {
+		errorResponse(w, http.StatusBadRequest, "missing locus_id")
+		return
+	}
+	locusID, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid locus_id")
+		return
+	}
+
+	var input struct {
+		VerseID string `json:"verse_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	if err := h.DB.AssignVerseToLocus(locusID, input.VerseID); err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true})
+}
+
+func (h *Handler) UploadPalacePhoto(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "file required")
+		return
+	}
+	defer file.Close()
+
+	dir := "data/images/palaces"
+	os.MkdirAll(dir, 0755)
+	ext := filepath.Ext(header.Filename)
+	localPath := filepath.Join(dir, "palace_"+fmt.Sprint(time.Now().Unix())+ext)
+
+	dst, err := os.Create(localPath)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "save failed")
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "write failed")
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":   true,
+		"path": localPath,
+	})
+}
+
+// ── Image Generation ──
+
+func (h *Handler) GenerateConcept(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		VerseID   string `json:"verse_id"`
+		VerseText string `json:"verse_text"`
+		Reference string `json:"reference"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	// Auto-select source: Openverse (always works)
+	path, err := h.Openverse.EnsureConceptImage(input.VerseID, input.VerseText, input.Reference)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "no image available: "+err.Error())
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"verse_id": input.VerseID,
+		"path":     path,
+	})
+}
+
+// ServeImage serves a concept image file.
+func (h *Handler) ServeImage(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// /api/memorize/images/{verse_id}
+	if len(parts) < 4 {
+		errorResponse(w, http.StatusBadRequest, "missing verse_id")
+		return
+	}
+	verseID := parts[3]
+
+	path, err := h.DB.GetConceptImage(verseID)
+	if err != nil {
+		errorResponse(w, http.StatusNotFound, "no image for verse")
+		return
+	}
+
+	// Determine content type
+	ext := filepath.Ext(path)
+	contentTypes := map[string]string{
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".png":  "image/png",
+		".svg":  "image/svg+xml",
+		".webp": "image/webp",
+	}
+	ct := contentTypes[ext]
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+
+	w.Header().Set("Content-Type", ct)
+	http.ServeFile(w, r, path)
+}
+
+// UploadImage handles multipart image upload.
+func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
+	verseID := r.FormValue("verse_id")
+	if verseID == "" {
+		errorResponse(w, http.StatusBadRequest, "verse_id required")
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "file required: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	dir := "data/images/concept"
+	os.MkdirAll(dir, 0755)
+	ext := filepath.Ext(header.Filename)
+	localPath := filepath.Join(dir, verseID+ext)
+
+	dst, err := os.Create(localPath)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "save failed")
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "write failed")
+		return
+	}
+
+	h.DB.SaveConceptImage(verseID, localPath, "upload")
+
+	fmt.Fprintf(w, `{"ok":true,"verse_id":"%s","path":"%s"}`, verseID, localPath)
+}
+
 // RegisterRoutes sets up all HTTP routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", h.Health)
@@ -242,6 +543,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/verses/", h.GetCardsByVerse)
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)
+	mux.HandleFunc("/api/memorize/palaces/upload", h.UploadPalacePhoto)
+	mux.HandleFunc("/api/memorize/palaces/", h.HandlePalaces)
+	mux.HandleFunc("/api/memorize/palaces", h.HandlePalaces)
+	mux.HandleFunc("/api/memorize/loci/", h.HandleLoci)
+	mux.HandleFunc("/api/memorize/generate/concept", h.GenerateConcept)
+	mux.HandleFunc("/api/memorize/images/", h.ServeImage)
+	mux.HandleFunc("/api/memorize/upload", h.UploadImage)
 }
 
 // ── CORS Middleware ──

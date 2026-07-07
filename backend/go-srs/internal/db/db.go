@@ -414,6 +414,101 @@ type Palace struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Locus struct for a palace location point.
+type Locus struct {
+	ID       int64   `json:"id"`
+	PalaceID int64   `json:"palace_id"`
+	Label    string  `json:"label"`
+	XPercent float64 `json:"x_pct"`
+	YPercent float64 `json:"y_pct"`
+	VerseID  *string `json:"verse_id,omitempty"`
+}
+
+// GetPalaceWithLoci returns a palace with all its loci.
+func (db *DB) GetPalaceWithLoci(palaceID int64) (*Palace, []Locus, error) {
+	var p Palace
+	var createdAt string
+	err := db.conn.QueryRow(
+		"SELECT id, name, photo_path, created_at FROM palaces WHERE id = ?", palaceID,
+	).Scan(&p.ID, &p.Name, &p.PhotoPath, &createdAt)
+	if err != nil {
+		return nil, nil, err
+	}
+	p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAt)
+
+	rows, err := db.conn.Query(
+		"SELECT id, palace_id, label, x_pct, y_pct, verse_id FROM loci WHERE palace_id = ? ORDER BY id",
+		palaceID,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var loci []Locus
+	for rows.Next() {
+		var l Locus
+		rows.Scan(&l.ID, &l.PalaceID, &l.Label, &l.XPercent, &l.YPercent, &l.VerseID)
+		loci = append(loci, l)
+	}
+	return &p, loci, nil
+}
+
+// AddLocus adds a new locus to a palace.
+func (db *DB) AddLocus(palaceID int64, label string, x, y float64) (int64, error) {
+	result, err := db.conn.Exec(
+		"INSERT INTO loci (palace_id, label, x_pct, y_pct) VALUES (?, ?, ?, ?)",
+		palaceID, label, x, y,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+// AssignVerseToLocus assigns a verse to an existing locus.
+func (db *DB) AssignVerseToLocus(locusID int64, verseID string) error {
+	_, err := db.conn.Exec(
+		"UPDATE loci SET verse_id = ? WHERE id = ?", verseID, locusID,
+	)
+	return err
+}
+
+// ── Image Operations ──
+
+// SaveConceptImage records a concept image for a verse.
+func (db *DB) SaveConceptImage(verseID, filePath, source string) (int64, error) {
+	// Check if one already exists
+	var existing int64
+	err := db.conn.QueryRow(
+		"SELECT id FROM concept_images WHERE verse_id = ?", verseID,
+	).Scan(&existing)
+	if err == nil {
+		// Update existing
+		_, err := db.conn.Exec(
+			"UPDATE concept_images SET file_path = ?, source = ? WHERE id = ?",
+			filePath, source, existing)
+		return existing, err
+	}
+
+	result, err := db.conn.Exec(
+		"INSERT INTO concept_images (verse_id, file_path, source) VALUES (?, ?, ?)",
+		verseID, filePath, source)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+// GetConceptImage returns the file path for a verse's concept image.
+func (db *DB) GetConceptImage(verseID string) (string, error) {
+	var path string
+	err := db.conn.QueryRow(
+		"SELECT file_path FROM concept_images WHERE verse_id = ?", verseID,
+	).Scan(&path)
+	return path, err
+}
+
 // ── XP Operations ──
 
 func (db *DB) AwardXP(xp int) (int, error) {

@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { memorizeApi } from '../memorizeApi'
 import { MemorizeIcon } from '../icons'
 import ReviewSession from './ReviewSession'
+import PalaceList from './PalaceList'
+import PalaceBuilder from './PalaceBuilder'
 
 export default function MemorizeView() {
-  const [view, setView] = useState('loading') // 'loading' | 'dashboard' | 'review'
+  const [view, setView] = useState('loading') // 'loading' | 'dashboard' | 'review' | 'palaces' | 'palace-builder'
+  const [activePalaceId, setActivePalaceId] = useState(null)
   const [stats, setStats] = useState(null)
   const [error, setError] = useState(null)
 
@@ -32,6 +35,17 @@ export default function MemorizeView() {
 
   if (view === 'review') {
     return <ReviewSession onDone={() => setView('dashboard')} />
+  }
+
+  if (view === 'palaces') {
+    return <PalaceList
+      onSelect={(id) => { setActivePalaceId(id); setView('palace-builder') }}
+      onCreate={() => {}}
+    />
+  }
+
+  if (view === 'palace-builder' && activePalaceId) {
+    return <PalaceBuilder palaceId={activePalaceId} onBack={() => setView('palaces')} />
   }
 
   return (
@@ -88,13 +102,15 @@ export default function MemorizeView() {
           badge={stats && stats.DueCards > 0 ? `${stats.DueCards} due` : 'Up to date'}
           ready={stats && stats.DueCards > 0}
         />
-        <FeatureCard
-          icon="🏛️"
-          title="Memory Palaces"
-          description="Upload photos, place loci, assign verses"
-          badge="Phase 5"
-          ready={false}
-        />
+        <button onClick={() => setView('palaces')} className="w-full text-left">
+          <FeatureCard
+            icon="🏛️"
+            title="Memory Palaces"
+            description="Upload photos, place loci, assign verses"
+            badge="Ready"
+            ready={true}
+          />
+        </button>
         <FeatureCard
           icon="🎨"
           title="Image Studio"
