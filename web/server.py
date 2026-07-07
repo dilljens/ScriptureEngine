@@ -3610,6 +3610,28 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_stats",
+            "description": "Get overall connection graph statistics — total connections, unique verses, most-connected hubs, and connection distribution across layers",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_versions",
+            "description": "List all available Bible text versions (KJV, WEB, LSV, DSS_HEBREW, FIRMAMENT, SCROLLMAPPER, etc.)",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──

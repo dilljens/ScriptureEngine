@@ -335,7 +335,18 @@ GENERATOR_DEFS = [
         "description": "Experimental: connects 5 Psalms of David to canon parallels",
     },
 
-    # ── Phrase + Title + Typology + Inclusio (New) ──
+    # ── Sod Fill (sparse connection types) ──
+
+    {
+        "name": "Sod Fill — Sparse Connection Types",
+        "module_path": ".sod_fill",
+        "layers": ["sod"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Fills sparse sod connection types: mercy_seat, heavenly_council, theophany, divine_mediator, holy_of_holies, kingdom_priesthood, divine_marriage, theosis, angelophany",
+    },
+
+# ── Phrase + Title + Typology + Inclusio (New) ──
 
     {
         "name": "Divine Titles — Epithets for God",

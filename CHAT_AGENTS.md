@@ -58,6 +58,8 @@ Tobit 1:1 — "The book of the words of Tobit..."
 
 **Language preference**: The user may specify a language (English, Hebrew, Greek). When set, use `scripture_search_xlingual` with the appropriate `language` parameter for searches.
 
+**DSS verse IDs**: DSS scrolls use IDs like `dss.1QS.1`, `dss.CD.1`, `dss.11Q19.1`, not `1QS.1.1`. The verse tool resolves both formats. Use `scripture_versions` to see available text versions — FIRMAMENT has English translations for 1QS, CD, 1QM, and 1QSa.
+
 ## Available Tools
 
 ### Lookup
