@@ -1,105 +1,74 @@
 #!/usr/bin/env python3
 """Build the prerequisite graph for adaptive assessment.
 
-Connects knowledge items that share the same verse-pair (verse_id → target_verse)
-with prerequisite edges based on type chains and PaRDeS level hierarchy.
+Connects knowledge items sharing the same verse-pair (verse_id → target_verse)
+with prerequisite edges based on PaRDeS level hierarchy.
 
-This produces a sparse, meaningful DAG — not a dense cross-product mesh.
+Uses Python dicts for the cross-layer join — avoids heavy SQL JOINs.
 """
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from collections import defaultdict
 from lib.db import get_db
-
-# ── Type chain definitions (matched to actual knowledge_items types) ──
-# Within each layer, some connection types are prerequisites for others.
-# Items share the same verse-pair to be connected.
-
-PSHAT_CHAINS = [
-    ["same_lemma", "same_morphology"],
-    ["same_lemma", "keyword_linking"],
-    ["same_morphology", "keyword_linking"],
-]
-
-# ── Cross-layer pairs (PaRDeS depth order) ──
-CROSS_LAYER_PAIRS = [
-    ("p'shat", "remez"),
-    ("remez", "drash"),
-    ("drash", "sod"),
-    ("p'shat", "sod"),       # direct skip for layers with gaps
-    ("p'shat", "drash"),
-    ("remez", "sod"),
-]
 
 
 def build_graph():
     conn = get_db()
     conn.execute("DELETE FROM knowledge_prerequisites")
+
+    # Load all items into memory: {(verse_id, target_verse): [(id, level), ...]}
+    rows = conn.execute("""
+        SELECT id, verse_id, target_verse, pa_r_de_s_level
+        FROM knowledge_items
+    """).fetchall()
+
+    # Group by verse-pair
+    pair_to_items = defaultdict(list)
+    for r in rows:
+        pair_to_items[(r["verse_id"], r["target_verse"])].append(
+            (r["id"], r["pa_r_de_s_level"])
+        )
+
+    # PaRDeS depth order
+    LEVEL_DEPTH = {"p'shat": 0, "remez": 1, "drash": 2, "sod": 3}
+
     total_edges = 0
-    edge_sources = {"within": 0, "cross": 0}
+    edge_sources = {"cross": 0}
 
-    # ── Part A: Within-layer chains (same verse-pair) ──
-    for layer_name, chains in [("p'shat", PSHAT_CHAINS)]:
-        for chain in chains:
-            for i in range(len(chain) - 1):
-                prereq_type = chain[i]      # simpler
-                dep_type = chain[i + 1]     # builds on it
+    # For each verse-pair, connect shallower → deeper levels
+    for pair, items in pair_to_items.items():
+        if len(items) < 2:
+            continue
 
-                rows = conn.execute("""
-                    SELECT a.id as prereq_id, b.id as dep_id
-                    FROM knowledge_items a
-                    JOIN knowledge_items b
-                      ON a.verse_id = b.verse_id
-                     AND a.target_verse = b.target_verse
-                    WHERE a.connection_type = ?
-                      AND b.connection_type = ?
-                      AND a.id != b.id
-                """, (prereq_type, dep_type)).fetchall()
+        # Group by level
+        by_level = defaultdict(list)
+        for item_id, level in items:
+            by_level[level].append(item_id)
 
-                for r in rows:
-                    conn.execute(
-                        "INSERT OR IGNORE INTO knowledge_prerequisites (item_id, prerequisite_item_id, confidence, source) VALUES (?, ?, 0.9, 'within')",
-                        (r["dep_id"], r["prereq_id"])
-                    )
-                    total_edges += 1
-                    edge_sources["within"] += 1
+        levels = list(by_level.keys())
+        if len(levels) < 2:
+            continue
 
-                print(f"  within {layer_name}: {prereq_type} → {dep_type}: {len(rows)} edges")
+        # Create edges: every shallower item → every deeper item
+        for shallow_level in levels:
+            for deep_level in levels:
+                if LEVEL_DEPTH.get(shallow_level, -1) >= LEVEL_DEPTH.get(deep_level, -1):
+                    continue
+                for shallow_id in by_level[shallow_level]:
+                    for deep_id in by_level[deep_level]:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO knowledge_prerequisites (item_id, prerequisite_item_id, confidence, source) VALUES (?, ?, 0.8, 'cross')",
+                            (deep_id, shallow_id)
+                        )
+                        total_edges += 1
+                        edge_sources["cross"] += 1
 
-    # ── Part B: Cross-layer prerequisites (same verse-pair) ──
-    for shallow_layer, deep_layer in CROSS_LAYER_PAIRS:
-        rows = conn.execute("""
-            SELECT a.id as shallow_id, b.id as deep_id
-            FROM knowledge_items a
-            JOIN knowledge_items b
-              ON a.verse_id = b.verse_id
-             AND a.target_verse = b.target_verse
-            WHERE a.pa_r_de_s_level = ?
-              AND b.pa_r_de_s_level = ?
-              AND a.id != b.id
-        """, (shallow_layer, deep_layer)).fetchall()
-
-        for r in rows:
-            conn.execute(
-                "INSERT OR IGNORE INTO knowledge_prerequisites (item_id, prerequisite_item_id, confidence, source) VALUES (?, ?, 0.8, 'cross')",
-                (r["deep_id"], r["shallow_id"])
-            )
-            total_edges += 1
-            edge_sources["cross"] += 1
-
-        print(f"  cross-layer {shallow_layer}→{deep_layer}: {len(rows)} edges")
-
-    # ── Part C: Validate DAG ──
-    print("\nValidating DAG...")
+    # Validate DAG
     edges = conn.execute("SELECT item_id, prerequisite_item_id FROM knowledge_prerequisites").fetchall()
-
-    adj = {}
+    adj = defaultdict(list)
     for e in edges:
-        kid = e["item_id"]
-        prereq = e["prerequisite_item_id"]
-        if kid not in adj:
-            adj[kid] = []
-        adj[kid].append(prereq)
+        adj[e["item_id"]].append(e["prerequisite_item_id"])
 
     has_cycle = False
     visited = set()
@@ -122,20 +91,17 @@ def build_graph():
         if node not in visited:
             dfs(node)
 
-    if not has_cycle:
-        print("  \u2713 DAG validation passed — no cycles")
-    else:
-        print("  \u2717 Cycle detected — check chains")
-
     conn.commit()
     conn.close()
 
-    return {"total_edges": total_edges, "edge_sources": edge_sources}
+    print(f"Done: {total_edges:,} prerequisite edges")
+    if has_cycle:
+        print("  \u2717 Cycle detected!")
+    else:
+        print("  \u2713 DAG validation passed")
+    print(f"  cross-layer: {edge_sources['cross']:,}")
 
 
 if __name__ == "__main__":
     print("Building prerequisite graph...")
-    result = build_graph()
-    print(f"\nDone: {result['total_edges']} prerequisite edges")
-    for src, count in result["edge_sources"].items():
-        print(f"  {src}: {count}")
+    build_graph()

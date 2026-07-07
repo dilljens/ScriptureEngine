@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""C1: Build the knowledge domain from high-quality connections.
+"""C1: Build the knowledge domain from quality-filtered connections.
 
 Populates the knowledge_items table with connections that meet
-minimum quality thresholds (star_rating >= 3 by default).
-
-Uses the multi-signal calibration system rather than raw quality_level
-column — catches many more types and layers.
+raw quality_level thresholds. Uses a simple SQL WHERE filter
+instead of computed star ratings.
 """
 
 import sys
@@ -17,7 +15,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.db import get_db, SCHEMA_SQL
 from lib.connections.pardes import get_pardes_level_for_type
-from lib.controls.calibration import rate_connection_row
 
 BLOOM_MAP = {
     "p'shat": "remember",
@@ -26,7 +23,7 @@ BLOOM_MAP = {
     "sod": "evaluate",
 }
 
-MIN_STARS = 3
+QUALITY_LEVELS = ("verified", "strong", "probable", "scholarly", "suggested")
 
 
 def ensure_table(conn):
@@ -35,7 +32,7 @@ def ensure_table(conn):
     conn.commit()
 
 
-def build_domain(min_stars=MIN_STARS):
+def build_domain():
     conn = get_db()
     ensure_table(conn)
 
@@ -44,72 +41,62 @@ def build_domain(min_stars=MIN_STARS):
     conn.execute("DELETE FROM knowledge_items")
     conn.commit()
 
+    # Build from raw quality_level filter — fast, all in SQL
+    placeholders = ",".join("?" for _ in QUALITY_LEVELS)
     total_all = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
 
-    # Process in batches — collect qualifying items, then bulk insert
-    BATCH_SIZE = 5000
-    offset = 0
+    rows = conn.execute(f"""
+        SELECT source_verse, type, target_verse, quality_level,
+               layer, confidence, discovered_by, metadata
+        FROM connections
+        WHERE quality_level IN ({placeholders})
+        ORDER BY source_verse
+    """, QUALITY_LEVELS).fetchall()
+
+    total_candidates = len(rows)
+    BATCH_SIZE = 2000
+    batch = []
     inserted = 0
     pardes_counts = {}
     type_counts = {}
     layer_counts = {}
+    quality_counts = {}
 
-    start_time = time.time()
+    for rd in rows:
+        conn_type = rd["type"]
+        quality_level = rd["quality_level"]
+        pardes = get_pardes_level_for_type(conn_type)
+        difficulty = round(1.0 - rd["confidence"], 3) if rd["confidence"] else 0.5
+        bloom = BLOOM_MAP.get(pardes, "remember")
 
-    while True:
-        rows = conn.execute(f"""
-            SELECT source_verse, type, target_verse, quality_level,
-                   layer, confidence, discovered_by, confirmation_count,
-                   metadata
-            FROM connections
-            LIMIT {BATCH_SIZE} OFFSET {offset}
-        """).fetchall()
+        meta = rd["metadata"]
+        if isinstance(meta, dict):
+            meta = json.dumps(meta)
+        elif not isinstance(meta, str):
+            meta = "{}"
 
-        if not rows:
-            break
+        star_rating = {"pattern": 1, "suggested": 2, "probable": 3,
+                       "strong": 4, "verified": 5, "scholarly": 5}.get(quality_level, 2)
 
-        batch = []
-        for row in rows:
-            rd = dict(row)
-            try:
-                signals = rate_connection_row(rd)
-            except Exception:
-                continue
+        batch.append((
+            rd["source_verse"],
+            conn_type,
+            rd["target_verse"],
+            quality_level,
+            star_rating,
+            pardes,
+            rd["layer"],
+            difficulty,
+            bloom,
+            meta,
+        ))
 
-            if signals["stars"] < min_stars:
-                continue
+        pardes_counts[pardes] = pardes_counts.get(pardes, 0) + 1
+        type_counts[conn_type] = type_counts.get(conn_type, 0) + 1
+        layer_counts[rd["layer"]] = layer_counts.get(rd["layer"], 0) + 1
+        quality_counts[quality_level] = quality_counts.get(quality_level, 0) + 1
 
-            conn_type = rd["type"]
-            quality_score = signals["overall_confidence"]
-            star_rating = signals["stars"]
-            pardes = get_pardes_level_for_type(conn_type)
-            difficulty = round(1.0 - quality_score, 3)
-            bloom = BLOOM_MAP.get(pardes, "remember")
-
-            meta = rd.get("metadata", "{}")
-            if isinstance(meta, dict):
-                meta = json.dumps(meta)
-            elif not isinstance(meta, str):
-                meta = "{}"
-
-            batch.append((
-                rd["source_verse"],
-                conn_type,
-                rd["target_verse"],
-                rd["quality_level"],
-                star_rating,
-                pardes,
-                rd["layer"],
-                difficulty,
-                bloom,
-                meta,
-            ))
-
-            pardes_counts[pardes] = pardes_counts.get(pardes, 0) + 1
-            type_counts[conn_type] = type_counts.get(conn_type, 0) + 1
-            layer_counts[rd["layer"]] = layer_counts.get(rd["layer"], 0) + 1
-
-        if batch:
+        if len(batch) >= BATCH_SIZE:
             conn.executemany("""
                 INSERT OR IGNORE INTO knowledge_items
                     (verse_id, connection_type, target_verse,
@@ -119,34 +106,34 @@ def build_domain(min_stars=MIN_STARS):
             """, batch)
             conn.commit()
             inserted += len(batch)
+            batch = []
 
-        offset += BATCH_SIZE
-        pct = min(100, offset / total_all * 100)
-        elapsed = time.time() - start_time
-        rate = offset / elapsed if elapsed > 0 else 0
-        print(f"\r  {offset:>8,}/{total_all:,} ({pct:.0f}%) | {inserted:,} items | {rate:,.0f} rows/s", end="", flush=True)
-
-    print()
-    elapsed = time.time() - start_time
+    if batch:
+        conn.executemany("""
+            INSERT OR IGNORE INTO knowledge_items
+                (verse_id, connection_type, target_verse,
+                 quality_level, star_rating, pa_r_de_s_level,
+                 layer, difficulty, bloom_level, item_metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, batch)
+        conn.commit()
+        inserted += len(batch)
 
     # Summary
+    qual_str = ", ".join(f"{k}={v}" for k, v in sorted(quality_counts.items(), key=lambda x: -x[1]))
     layers_str = ", ".join(f"{k}={v}" for k, v in sorted(layer_counts.items(), key=lambda x: -x[1]))
     types_str = ", ".join(f"{k}={v}" for k, v in sorted(type_counts.items(), key=lambda x: -x[1]))
     pardes_str = ", ".join(f"{k}={v}" for k, v in sorted(pardes_counts.items(), key=lambda x: -x[1]))
 
-    print(f"\nDomain built: {inserted:,} items from {total_all:,} total connections ({elapsed:.1f}s)")
-    print(f"  Layers: {layers_str}")
-    print(f"  PaRDeS: {pardes_str}")
-    print(f"  Types:  {types_str}")
-    print(f"  Threshold: star_rating >= {min_stars}")
+    print(f"Domain built: {inserted:,} items from {total_candidates:,} candidates ({total_all:,} total)")
+    print(f"  Quality: {qual_str}")
+    print(f"  Layers:  {layers_str}")
+    print(f"  PaRDeS:  {pardes_str}")
+    print(f"  Types:   {types_str}")
 
     conn.close()
     return inserted
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Build knowledge domain from connections")
-    parser.add_argument("--min-stars", type=int, default=MIN_STARS, help="Minimum star rating")
-    args = parser.parse_args()
-    build_domain(min_stars=args.min_stars)
+    build_domain()
