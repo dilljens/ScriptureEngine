@@ -3,7 +3,7 @@
 # Builds frontend, rsyncs API + data to Hetzner CX23, restarts API server.
 #
 # Prerequisites:
-#   - SSH key loaded for root@46.224.171.239
+#   - SSH key loaded for root@40.160.241.74
 #   - Hetzner server has /var/www/scripture/ and the systemd service
 #
 # Usage:

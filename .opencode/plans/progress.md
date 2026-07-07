@@ -1,111 +1,47 @@
-# Progress — Memorization Module for ScriptureEngine
+# Progress — Fix ScriptureEngine Online
 
-## Status Overview
+## Status
 
-| Phase | Track | Status | Started | Completed | Notes |
-|-------|-------|--------|---------|-----------|-------|
-| Phase | Track | Status | Started | Completed | Notes |
-|-------|-------|--------|---------|-----------|-------|
-| P0 | Mobile UX architecture | 🔍 Planned | — | — | Top bar + drawer + settings tab |
-| P0b | Two-layer tab system | 🔍 Planned | — | — | Subjects bar on all sizes, [None] option |
-| P0c | Split-pane reading | ✅ Done | 2026-07-06 | 2026-07-06 | Companion in tab state, split layout in App.jsx, "⊞ Split" button in ChapterView |
-| P1 | Go skeleton + FSRS | ⏳ Pending | — | — | Runs parallel with P0+P0b |
-| P2 | Review queue API | ⏳ Pending | — | — | Blocked on P1 |
-| P3 | Memorize tab UI | 🔍 Planned | — | — | **MVP v0.1** — quick-start, direct-to-review, due badge, memorize button in VerseBlock |
-| P4 | Image pipeline | 🔍 Planned | — | — | 3-tier: AI → Openverse → Upload |
-| P5 | Palace builder | ⏳ Pending | — | — | Blocked on P3 |
-| P6 | Compositing | 🔍 Planned | — | — | Active-recall palace walk (not passive) |
-| P7 | Hint levels | ⏳ Pending | — | — | Blocked on P3 |
-| P8 | Audio | ⏳ Pending | — | — | Blocked on P3 |
-| P9 | Analytics + polish | ⏳ Pending | — | — | Blocked on all |
-| P10 | PWA + push notifications | 🔍 Planned | — | — | Independent, can run in parallel with later phases |
+| Track | Status | Started | Completed |
+|-------|--------|---------|-----------|
+| **A** — Restore missing frontend files | ⏳ Pending | — | — |
+| **B** — Fix App.jsx bugs | ⏳ Pending | — | — |
+| **C** — Update deployment docs | ⏳ Pending | — | — |
+| **D** — Build, ingest & deploy | ⏳ Pending | — | — |
 
-## Session History
+## Detailed Progress
 
-### Session 1 (2026-07-06)
-- Research memorization techniques + AI image gen for 6GB VRAM
-- Explored ScriptureEngine architecture
-- Planned integration architecture (Go microservice + React tab)
-- Created initial plan files
-- Added MemorizeIcon, openMemorizeTab, MemorizeView placeholder, memorizeApi.js
-- Built mobile bottom tab bar: Read · Chat · Memorize · Library · Subjects
-- Desktop: added Memorize icon to toolbar
+### Track A — Missing Generated Files
+- [ ] Create `frontend/index.html`
+- [ ] Create `frontend/src/main.jsx`
+- [ ] Create `frontend/src/index.css`
+- [ ] Create `frontend/src/settings.jsx`
+- [ ] Create `frontend/src/progress.jsx`
+- [ ] Create `frontend/src/useAgentControl.js`
 
-### Session 2 (2026-07-06)
-- Refined mobile UX: top bar + bottom nav + slide-out drawer
-- Settings → full tab, secondary actions → drawer
-- Chat → bottom bar only
+### Track B — App.jsx Fixes
+- [ ] Add `MemorizeIcon` to icon import
+- [ ] Define `openMemorizeTab` function
 
-### Session 3 (2026-07-06)
-- Added two-layer tab system (P0b)
-- Subjects bar on mobile too, [None] option
-- TileDashboard selects workspace on click
-- Performed memorization techniques audit
+### Track C — IP Update
+- [ ] Update `docs/deployment.md` (6 occurrences)
+- [ ] Update `MEMORY.md` (1 occurrence)
+- [ ] Update comment in `scripts/deploy.sh` (1 occurrence)
 
-### Session 4 (2026-07-06)
-- Added hybrid image pipeline to P4
-- Three tiers: ComfyUI (AI) → Openverse (free search) → Manual upload
-- No API key needed for Openverse
-- Auto-select best result, no user picking
-- Updated all plan files
+### Track D — Build & Deploy
+- [ ] `cd frontend && npm install`
+- [ ] `npm run build`
+- [ ] Create `.env` with `DEEPSEEK_API_KEY`
+- [ ] Ingest database or copy scripture.db
+- [ ] `./scripts/deploy.sh`
+- [ ] Verify health endpoint
 
-### Session 5 (2026-07-06)
-- FSRS decision made: Go re-implementation (not Rust crate)
-- Rationale: FSRS-5 is ~300 lines of documented algebra. Published test vectors eliminate re-implementation risk. Keeping stack simple (Go only) outweighs benefit of using fsrs-rs crate.
-- Added decision to findings.md, updated P1.3 with test vector verification
+## Blockers
 
-### Session 6 (2026-07-06)
-- Added Phase P10: PWA + push notifications
-- manifest.json, service worker, Web Push Protocol, Go push scheduler
-- No Firebase needed — uses standard W3C Push API + webpush-go library
-- Works on Android, iOS 16.4+, and desktop Chrome/Edge
-- Added to task_plan.md, findings.md, progress.md
+None currently identified. If user doesn't know the contents of the missing generated files, I can create them based on App.jsx's usage patterns and standard Vite/React/Tailwind templates.
 
-### Session 7 (2026-07-06)
-- Incorporated review suggestions into plan:
-  - Direct-to-review flow, due badge, quick-start path (P3)
-  - "Memorize this verse" button in VerseBlock (P3)
-  - Active-recall palace walk replaces passive slideshow (P6)
-  - Elaborative encoding step before first review (P3)
-  - Keyboard shortcuts for review mode (P3)
-  - Parallel build: P0/P0b and P1 run concurrently
-  - 🎯 MVP v0.1 milestone defined after P2+P3
-- Added Phase P0c: Split-Pane Reading
-  - Two chapters side by side using existing `companion` tab field
-  - "⊞ Split" button in ChapterView
-  - Companion chapter picker
-  - Independent scroll per pane, "Close split" button
-- Added hybrid image pipeline to P4
-- Three tiers: ComfyUI (AI) → Openverse (free search) → Manual upload
-- No API key needed for Openverse
-- Auto-select best result, no user picking
-- Updated all plan files
+## Commands Used
 
-## Notes
+```bash
 
-### Architecture
-- Go microservice at `backend/go-srs/`, serving on `:8090`
-- React frontend integration via new "memorize" tab
-- ComfyUI Docker optional (GPU path) — app works without it
-- Openverse API fallback — free, no key, CC-licensed religious art
-- Direct read of ScriptureEngine's SQLite DB for verse data
-- Two-layer tab system: Subjects (top) + Tabs (bottom) on all sizes
-- Mobile: three-zone layout (top bar, two-layer tabs, bottom tab bar, drawer)
-- Desktop: full toolbar, two-layer tabs, no bottom bar
-
-### Memorization Techniques Audit
-All 7 highest-utility techniques from Dunlosky et al. (2013) are covered.
-See findings.md "Memorization Techniques Coverage" section.
-
-### Dependencies
-- Go 1.22+ installed
-- Docker + Docker Compose (for ComfyUI — optional)
-- NVIDIA GPU with 6GB+ VRAM (for local AI — optional)
-- ScriptureEngine running with `data/processed/scripture.db` populated
-
-### Open Questions
-- [ ] Should the Go service run inside Docker or as a native process?
-- [ ] Which port for Go service? (8090 proposed)
-- [ ] What icon should the PWA use? (Cross, book, or ScriptureEngine logo?)
-- [ ] Push check interval? (15 min proposed)
-- [ ] Should notifications include the verse text or just a count?
+```

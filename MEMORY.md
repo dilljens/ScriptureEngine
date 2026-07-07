@@ -106,7 +106,7 @@
 
 ## Deployment
 
-- **Production**: Hetzner CX23 (46.224.171.239), 4GB RAM, 2 vCPUs
+- **Production**: VPS (40.160.241.74), 4GB RAM, 2 vCPUs
 - **Domains**: `scriptureengine.org` (FastAPI + React), `inklomancer.com` (WebSocket game), `api.daglock.com`
 - **API**: 2 uvicorn workers with RAM cache, served via nginx with Let's Encrypt SSL
 - **Chat**: DeepSeek v4-flash via API, DEEPSEEK_API_KEY in `/var/www/scripture/.env`

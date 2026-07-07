@@ -1,6 +1,6 @@
 # ScriptureEngine — Deployment
 
-> Hosted on Hetzner CX23 (`46.224.171.239`) alongside Inklomancer.
+> Hosted on VPS (`40.160.241.74`) alongside Inklomancer.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ https://inklomancer.com
 | Detail | Value |
 |--------|-------|
 | Host | Hetzner CX23 |
-| IP | `46.224.171.239` |
+| IP | `40.160.241.74` |
 | RAM | 4 GB |
 | CPU | 2 vCPUs |
 | OS | Ubuntu |
@@ -37,7 +37,7 @@ https://inklomancer.com
 
 ```bash
 # SSH into server
-ssh root@46.224.171.239
+ssh root@40.160.241.74
 
 # Install Python deps
 apt install python3 python3-pip python3-venv
@@ -72,9 +72,9 @@ Builds the frontend, rsyncs `dist/` and `server/`, copies nginx + systemd config
 
 | Domain | Type | Value |
 |--------|------|-------|
-| `scriptureengine.org` | A | `46.224.171.239` (DNS only) |
+| `scriptureengine.org` | A | `40.160.241.74` (DNS only) |
 | `www.scriptureengine.org` | CNAME | `scriptureengine.org` |
-| `inklomancer.com` | A | `46.224.171.239` (DNS only) |
+| `inklomancer.com` | A | `40.160.241.74` (DNS only) |
 | `www.inklomancer.com` | CNAME | `inklomancer.com` |
 
 Set to **DNS only** (grey cloud) initially so Let's Encrypt can verify the domain.
@@ -83,7 +83,7 @@ After SSL certs are issued, you can switch to Proxied (orange cloud) for CDN ben
 ### SSL Certificates
 ```bash
 # After DNS is pointing to the server:
-ssh root@46.224.171.239
+ssh root@40.160.241.74
 certbot --nginx -d scriptureengine.org -d www.scriptureengine.org
 certbot --nginx -d inklomancer.com -d www.inklomancer.com
 ```

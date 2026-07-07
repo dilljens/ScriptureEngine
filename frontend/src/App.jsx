@@ -15,7 +15,7 @@ import {
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, LayersIcon, ClockIcon,
   TextSmallIcon, TextLargeIcon, GraphIcon,
-  BookIcon, MenuIcon, PlusIcon,
+  BookIcon, MenuIcon, PlusIcon, MemorizeIcon,
 } from './icons'
 import MobileBottomNav from './components/MobileBottomNav'
 import MobileMenuDrawer from './components/MobileMenuDrawer'
@@ -373,7 +373,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
-    moveTab,
+    moveTab, openMemorizeTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, persist } = useSettings()

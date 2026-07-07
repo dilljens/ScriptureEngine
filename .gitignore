@@ -34,18 +34,10 @@ data/STPJS.pdf
 # Build artifacts
 frontend/dist/
 frontend/node_modules/
-frontend/index.html
 
-# Generated frontend files
+# Generated frontend files (only if they exist)
 frontend/src/cache.js
-frontend/src/bookNames.js
-frontend/src/utils.js
 frontend/src/debug.js
-frontend/src/settings.jsx
-frontend/src/progress.jsx
-frontend/src/useAgentControl.js
-frontend/src/main.jsx
-frontend/src/index.css
 
 # Root-level artifacts
 *.local
