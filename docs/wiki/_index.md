@@ -225,12 +225,40 @@ The Vulgate fills the `vulgate_variant` connection type. Remaining textual varia
 
 ## Plans
 
-See [plans/](plans/) for architecture proposals:
+All plans consolidated in [plans/](plans/):
 
-- [Agent-Driven Connections](plans/agent-connections.md) — agent reads text directly, no API
-- [Lexicon Plan](plans/llm-lexicon-plan.md) — lexicon + connection expansion (agent-driven)
-- [Giliadi Methods](plans/giliadi-methods-comparison.md) — Isaiah techniques tracking
-- [Rabbinic Tools](plans/rabbinic-kabbalistic-tools.md) — planned agent-driven tools
+### Core Architecture
+
+| Plan | Description |
+|------|-------------|
+| [Original Architecture Plan](plans/original-architecture-plan.md) | Early architecture, generator pipeline design, UI vision |
+| [Project Memory](plans/project-memory.md) | Auto-generated snapshot: verses, connections, tools, deployment |
+| [Agent-Driven Connections](plans/agent-connections.md) | Agent reads text directly — 13 types completed |
+| [Lexicon Plan](plans/llm-lexicon-plan.md) | Lexicon + connection expansion (agent-driven) |
+
+### Isaiah & Rabbinic
+
+| Plan | Description |
+|------|-------------|
+| [Giliadi Methods Comparison](plans/giliadi-methods-comparison.md) | Isaiah techniques — all algorithmic items done |
+| [Rabbinic & Kabbalistic Tools](plans/rabbinic-kabbalistic-tools.md) | Planned agent-driven tools |
+
+### Memorization Module
+
+| Plan | Description |
+|------|-------------|
+| [Task Plan](plans/memorization-task-plan.md) | 10-phase memorization module (Go + React) |
+| [Findings](plans/memorization-findings.md) | Architecture decisions & research |
+| [Progress](plans/memorization-progress.md) | Session history — P0c done, rest pending |
+| [Review Suggestions](plans/memorization-review-suggestions.md) | Peer review & risk analysis |
+| [Techniques Comparison](plans/memorization-techniques-comparison.md) | Evidence-based memorization techniques |
+
+### Knowledge Assessment (Next Up)
+
+| Plan | Description |
+|------|-------------|
+| [Knowledge Assessment Plan](plans/knowledge-assessment-plan.md) | 3-track plan: Language tools, Truth-seeking, Assessment engine |
+| [Study Sharing Plan](plans/study-sharing-plan.md) | ✅ Completed — study publish/fork/export |
 
 ## Staleness
 
@@ -242,7 +270,7 @@ See [plans/](plans/) for architecture proposals:
 | Features/lib | 2026-06-17 | FRESH |
 | Features/generators | 2026-06-17 | UPDATED — 35 generators, Rabbinic Kal v'Chomer + Mukdam u'Meuchar added |
 | Features/frontend | 2026-06-21 | NEW — React app, connection panel, footnote tooltip, VersePreviewCard, Playwright tests |
-| Plans | 2026-06-22 | FRESH — completed A+B: JST full text, JS teachings corpus |
+| Plans | 2026-07-07 | UPDATED — consolidated all plans to docs/wiki/plans/ (13 files) |
 | Generators | 2026-06-22 | UPDATED — 36 generators, Temple Themes sod + JST full ingest |
 | Connection types | 2026-06-22 | UPDATED — 128 types, 96.9% populated, JST types added |
 | JS teachings | 2026-06-22 | NEW — js_sources table, js_scripture_refs, FTS search, tools/js_teachings.py |
