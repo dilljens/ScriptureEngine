@@ -148,48 +148,109 @@ CONNECTIONS = [
 ]
 
 
-SON_OF_MAN = [
-    # ═══════════════════════════════════════════════════════════════
-    # 10. SON OF MAN TRAJECTORY — Daniel → Revelation → Abraham
-    # ═══════════════════════════════════════════════════════════════
-    # Daniel 7:13 → Revelation 1:13 (one like unto Son of Man)
-    {"source": "dan.7.13", "target": "rev.1.13", "layer": "intertextual", "type": "direct_quotation",
-     "strength": 0.9, "confidence": 0.85, "note": "Both use 'one like the Son of Man' — Daniel's prophecy of the heavenly figure is echoed in John's vision of the glorified Christ"},
-    # Daniel 7:13 → Revelation 14:14 (Son of Man on cloud)
-    {"source": "dan.7.13", "target": "rev.14.14", "layer": "intertextual", "type": "direct_quotation",
-     "strength": 0.9, "confidence": 0.85, "note": "Both depict 'one like the Son of Man' on/with a cloud — Daniel's prophecy is reused in John's harvest vision"},
-    # Daniel 7:13-14 → Abraham 3:27 (pre-mortal Son of Man)
-    {"source": "dan.7.13", "target": "abraham.3.27", "layer": "intertextual", "type": "allusion",
-     "strength": 0.8, "confidence": 0.75, "note": "Abraham 3:27 'one answered like unto the Son of Man' echoes Daniel 7:13 — the same pre-mortal/divine figure who receives dominion"},
-    # Daniel 7:14 → Abraham 3:27 (dominion / foreordination)
-    {"source": "dan.7.14", "target": "abraham.3.27", "layer": "symbolic", "type": "person_type",
-     "strength": 0.75, "confidence": 0.65, "note": "The Son of Man who receives all dominion in Daniel 7 is the same figure who volunteers in Abraham 3:27 — 'Here am I, send me'"},
-    # Revelation 1:13 → Abraham 3:27 (glorified Son of Man)
-    {"source": "rev.1.13", "target": "abraham.3.27", "layer": "symbolic", "type": "person_type",
-     "strength": 0.7, "confidence": 0.6, "note": "The glorified Son of Man in Revelation 1:13 is the same figure who answered 'like unto the Son of Man' in Abraham 3:27"},
-    # Daniel 7:13 → Matthew 26:64 (Son of Man at God's right hand)
+# ═══════════════════════════════════════════════════════════════
+# 10A. ONE LIKE UNTO THE SON OF MAN — a distinct divine figure
+#     (potentially Michael). NOT Christ — see 10B for Christ as Son of Man.
+#     Connects the figure who appears in Daniel 7, Revelation 1 & 14,
+#     and Abraham 3, using the distinctive phrase "one like unto the Son of Man."
+# ═══════════════════════════════════════════════════════════════
+# Theological note: "one LIKE unto" = a being who resembles/appears-as
+# the Son of Man but may be a distinct personage (Michael/Adam).
+# Christ IS the Son of Man (his own title). The distinction is between
+# appearance (like unto) and identity (is).
+# ═══════════════════════════════════════════════════════════════
+
+ONE_LIKE_UNTO_SON_OF_MAN = [
+    # Daniel 7:13 → Revelation 1:13 (same distinctive phrase)
+    {"source": "dan.7.13", "target": "rev.1.13", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.9, "confidence": 0.85,
+     "note": "Both use 'one LIKE the Son of Man' / 'one LIKE unto the Son of Man' — the same distinctive phrase for a divine being appearing in human-like form. NOT necessarily Christ (who IS the Son of Man, not like one)."},
+    # Daniel 7:13 → Revelation 14:14 (same phrase, cloud imagery)
+    {"source": "dan.7.13", "target": "rev.14.14", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.9, "confidence": 0.85,
+     "note": "Both depict 'one like the Son of Man' on/with a cloud. The cloud is a divine chariot-throne merkabah motif. This figure comes TO the Ancient of Days — he is NOT the Ancient of Days."},
+    # Daniel 7:13-14 → Abraham 3:27 (pre-mortal divine figure)
+    {"source": "dan.7.13", "target": "abraham.3.27", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.85, "confidence": 0.8,
+     "note": "Abraham 3:27 'one answered LIKE unto the Son of Man: Here am I, send me' echoes Daniel 7:13 'one LIKE the Son of Man came with the clouds.' Same distinctive phrase. This is Michael/Adam who volunteers, not Christ who is sent."},
+    # Revelation 1:13 → Abraham 3:27 (same phrase in vision)
+    {"source": "rev.1.13", "target": "abraham.3.27", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.7, "confidence": 0.65,
+     "note": "Both John and Abraham see a figure 'like unto the Son of Man' in the divine council. This is the same figure — Michael/Adam — who stands as the 'one like' in the presence of God."},
+    # Revelation 1:14 → Daniel 7:9 (Ancient of Days imagery)
+    {"source": "rev.1.14", "target": "dan.7.9", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.85, "confidence": 0.75,
+     "note": "John borrows the Ancient of Days description (white hair like wool, throne of fire) to describe the 'one like unto the Son of Man.' This shows the 'one like' shares in the divine appearance but is a distinct figure. NOT the Father (Ancient of Days) and NOT the Son (Son of Man)."},
+    # Revelation 14:14 → Abraham 3:27 (harvest / volunteer)
+    {"source": "rev.14.14", "target": "abraham.3.27", "layer": "sod", "type": "name_symbolic",
+     "subtype": "one_like_unto_son_of_man",
+     "strength": 0.65, "confidence": 0.55,
+     "note": "The 'one like unto the Son of Man' in both visions serves a critical role in the divine plan. Abraham sees him volunteer; John sees him executing the harvest judgment."},
+]
+
+# ═══════════════════════════════════════════════════════════════
+# 10B. SON OF MAN — Christ's self-title
+#     Jesus consistently calls himself "the Son of Man" in the Gospels.
+#     This is his OWN title. It derives from Daniel 7 but Jesus applies
+#     it to himself (Matthew 26:64), identifying himself as the figure
+#     from Daniel's vision. In Ezekiel, ben-adam = mortal, but Christ
+#     transforms it into a divine title.
+# ═══════════════════════════════════════════════════════════════
+
+SON_OF_MAN_CHRIST = [
+    # Daniel 7:13 → Matthew 26:64 (Jesus applies Daniel's figure to himself)
     {"source": "dan.7.13", "target": "matt.26.64", "layer": "intertextual", "type": "direct_quotation",
-     "strength": 0.95, "confidence": 0.9, "note": "Jesus quotes Daniel 7:13 directly at his trial: 'Ye shall see the Son of Man sitting on the right hand of power, and coming in the clouds of heaven'"},
-    # Daniel 7:13 → Mark 14:62 (parallel account)
+     "subtype": "son_of_man_christ",
+     "strength": 0.95, "confidence": 0.9,
+     "note": "Jesus explicitly quotes Daniel 7:13 at his trial, applying the 'one like the Son of Man' to HIMSELF. This is the hermeneutical key: Jesus identifies himself as the Son of Man figure from Daniel 7."},
+    # Daniel 7:13 → Mark 14:62 (parallel)
     {"source": "dan.7.13", "target": "mark.14.62", "layer": "intertextual", "type": "direct_quotation",
-     "strength": 0.95, "confidence": 0.9, "note": "Jesus quotes Daniel 7:13 at his trial before the Sanhedrin"},
-    # Revelation 1:14 (white hair like wool) → Daniel 7:9 (Ancient of Days)
-    {"source": "rev.1.14", "target": "dan.7.9", "layer": "intertextual", "type": "allusion",
-     "strength": 0.85, "confidence": 0.75, "note": "John describes the Son of Man with 'hair white like wool' — directly borrowing the Ancient of Days description from Daniel 7:9"},
-    # Abraham 3:22-23 → Revelation (book of life / foreordination)
-    {"source": "abraham.3.22", "target": "rev.13.8", "layer": "intertextual", "type": "echo",
-     "strength": 0.55, "confidence": 0.45, "note": "Abraham's vision of foreordained intelligences parallels Revelation's 'Lamb slain from the foundation of the world'"},
+     "subtype": "son_of_man_christ",
+     "strength": 0.95, "confidence": 0.9,
+     "note": "Jesus quotes Daniel 7:13 at his trial before the Sanhedrin in Mark's parallel account."},
+    # Matthew 26:64 → Acts 7:56 (Son of Man standing)
+    {"source": "matt.26.64", "target": "acts.7.56", "layer": "intertextual", "type": "allusion",
+     "subtype": "son_of_man_christ",
+     "strength": 0.8, "confidence": 0.7,
+     "note": "Stephen sees the Son of Man 'standing on the right hand of God' — the same figure Jesus identified himself as: the Son of Man who received dominion in Daniel 7."},
+    # Ezekiel's son-of-man (prophetic title) → Jesus' Son of Man (divine title)
+    {"source": "ezek.2.1", "target": "matt.8.20", "layer": "intertextual", "type": "midrashic_connection",
+     "subtype": "son_of_man_christ",
+     "strength": 0.4, "confidence": 0.3,
+     "note": "Ezekiel is called 'son of man' (ben-adam = mortal) 93 times. Jesus takes this phrase and transforms it into his distinctive divine title. The continuity is in the phrase, the discontinuity is in meaning."},
+    # Revelation 14:14 → Matthew 13:41 (Son of Man harvest/angels)
+    {"source": "rev.14.14", "target": "matt.13.41", "layer": "intertextual", "type": "echo",
+     "subtype": "son_of_man_christ",
+     "strength": 0.5, "confidence": 0.4,
+     "note": "The Son of Man sends forth his angels to gather the harvest — Jesus teaches this in the parable of the wheat and tares, and Revelation 14 shows it in vision. Different figures, same function."},
+    # Christ as Son of Man (Daniel 7:13-14 fulfilled in Christ)
+    {"source": "dan.7.14", "target": "rev.11.15", "layer": "intertextual", "type": "echo",
+     "subtype": "son_of_man_christ",
+     "strength": 0.7, "confidence": 0.6,
+     "note": "The dominion given to the 'one like the Son of Man' in Daniel 7 finds ultimate fulfillment in Christ's eternal kingdom proclaimed in Revelation 11:15."},
+    # The Son of Man's coming on clouds (Christ's own words)
+    {"source": "matt.24.30", "target": "dan.7.13", "layer": "intertextual", "type": "direct_quotation",
+     "subtype": "son_of_man_christ",
+     "strength": 0.9, "confidence": 0.85,
+     "note": "Jesus describes his own return as the Son of Man 'coming on the clouds of heaven' — directly quoting Daniel 7:13 and identifying himself as that figure."},
 ]
 
 def main():
     conn = get_db()
     count = 0
     
-    print("Seeding cross-canon connections...")
-    for c in CONNECTIONS + SON_OF_MAN:
+    all_connections = CONNECTIONS + ONE_LIKE_UNTO_SON_OF_MAN + SON_OF_MAN_CHRIST
+    print(f"Seeding {len(all_connections)} cross-canon connections...")
+    for c in all_connections:
+        subtype = c.get("subtype", "")
         existing = conn.execute(
-            "SELECT COUNT(*) FROM connections WHERE source_verse=? AND target_verse=? AND type=?",
-            (c["source"], c["target"], c["type"])
+            "SELECT COUNT(*) FROM connections WHERE source_verse=? AND target_verse=? AND type=? AND subtype=?",
+            (c["source"], c["target"], c["type"], subtype)
         ).fetchone()[0]
         
         if existing == 0:
@@ -197,14 +258,14 @@ def main():
                 add_connection(conn, c["source"], c["target"],
                               layer=c["layer"],
                               type_name=c["type"],
-                              subtype="",
+                              subtype=subtype,
                               strength=c["strength"],
                               confidence=c["confidence"],
                               discovered_by="human",
                               metadata=json.dumps({
                                   "note": c["note"][:200],
-                                  "tag": "dss_cross_canon"
-                              }))
+                                  "tag": "son_of_man_trajectory"
+                              }, ensure_ascii=False))
                 count += 1
             except Exception as e:
                 print(f"  ERROR: {c['source']} → {c['target']}: {e}")
@@ -213,7 +274,7 @@ def main():
     
     conn.commit()
     print(f"  Created {count} new connections")
-    print(f"  Total DSS cross-canon connections: {count}")
+    print(f"  Total connections seeded: {count}")
     conn.close()
 
 
