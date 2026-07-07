@@ -269,6 +269,7 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	// Compute FIRe boosts and penalties
 	var fireBoosts []fire.Boost
 	var fireApplied, firePenalties int
+	var remediation []map[string]interface{}
 	verseID := ""
 	if len(parts) >= 4 {
 		var vID string
@@ -288,17 +289,40 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 				verseID, input.Rating, h.DB.GetConnections, h.DB.HasCard,
 			)
 			firePenalties, _ = h.DB.ApplyFIREPenalties(penalties)
+
+			// Targeted remediation: find connected verses the user has studied
+			if conns, err := h.DB.GetConnections(verseID); err == nil {
+				for _, c := range conns {
+					if cardID, exists := h.DB.HasCard(c.TargetVerse); exists {
+						var stability float64
+						var verseText string
+						_ = h.DB.Conn().QueryRow(
+							"SELECT c.stability, v.text FROM cards c JOIN verses v ON v.id = c.verse_id WHERE c.id = ?",
+							cardID,
+						).Scan(&stability, &verseText)
+						if stability > 0 {
+							remediation = append(remediation, map[string]interface{}{
+								"verse_id":   c.TargetVerse,
+								"conn_type":  c.Type,
+								"conn_weight": fire.ConnectionWeight(c.Type),
+								"text":       truncateText(verseText, 80),
+							})
+						}
+					}
+				}
+			}
 		}
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":           true,
-		"next_state":   nextCard,
-		"xp_awarded":   xp,
-		"streak_days":  streak,
-		"fire_boosts":  fireApplied,
-		"fire_verses":  len(fireBoosts),
-		"fire_penalties": firePenalties,
+		"ok":              true,
+		"next_state":      nextCard,
+		"xp_awarded":      xp,
+		"streak_days":     streak,
+		"fire_boosts":     fireApplied,
+		"fire_verses":     len(fireBoosts),
+		"fire_penalties":  firePenalties,
+		"remediation":     remediation,
 	})
 }
 
@@ -738,6 +762,14 @@ func (h *Handler) PushVapidKey(w http.ResponseWriter, r *http.Request) {
 		"ok":         true,
 		"public_key": publicKey,
 	})
+}
+
+// truncateText truncates a string to maxLen characters.
+func truncateText(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // RegisterRoutes sets up all HTTP routes on the given mux.

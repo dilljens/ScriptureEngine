@@ -163,6 +163,11 @@ func (db *DB) Close() error {
 	return db.conn.Close()
 }
 
+// Conn returns the underlying sql.DB for direct queries.
+func (db *DB) Conn() *sql.DB {
+	return db.conn
+}
+
 // ── Verse Operations ──
 
 // VerseRow represents a verse to sync.

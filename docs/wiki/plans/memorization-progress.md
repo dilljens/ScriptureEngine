@@ -17,8 +17,11 @@
 | P8 | Audio | ⏳ Pending | — | — | |
 | P9 | Analytics + polish | ⏳ Pending | — | — | |
 | P10 | PWA + push notifications | 🔍 Planned | — | — | Independent |
-| F1 | FIRe Implicit Repetition | ✅ Done | 2026-07-07 | 2026-07-07 | Cloned from MIT reference; boosts connected verses |
-| E4 | Interleaved Review | 🔍 Planned | — | — | Mixed-passage ordering |
+| F1 | FIRe Implicit Repetition | ✅ Done | 2026-07-07 | 2026-07-07 | Cloned from MIT reference; credit + penalty + discount |
+| F1a | FIRe penalty flow | ✅ Done | 2026-07-07 | 2026-07-07 | Fail verse penalizes connected; verified (6.02→3.34) |
+| F1b | FIRe early discount | ✅ Done | 2026-07-07 | 2026-07-07 | Credit discounted by retrievability |
+| E4 | Interleaved Review | ✅ Done | 2026-07-07 | 2026-07-07 | Mixed-passage ordering |
+| G1 | XP scaling | ✅ Done | 2026-07-07 | 2026-07-07 | Scales by hint level × rating multiplier |
 | H1 | Hebrew Teaching | 🔍 Planned | — | — | Knowledge graph + curriculum design done |
 
 ## Session History

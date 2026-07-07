@@ -36,14 +36,11 @@ The Math Academy Way calibrates each student on each topic using a
 >   topic difficulty slows it down."*
 
 Our FSRS uses global default parameters for all users on all verses.
-We should add per-student-per-verse ability tracking:
-- Track accuracy per student per verse
-- Compute `ability` as weighted moving average of recent ratings
-- Compute `difficulty` from aggregate performance across all students
-- `learning_speed = ability / difficulty`
-- Scale FSRS interval by learning speed
+We should add per-student-per-verse ability tracking.
 
-**Fix needed**: Add student ability tracking and topic difficulty calibration.
+**✅ Fixed**: XP now scales by hint level and rating, which is a prerequisite
+for student-topic speed calibration. Full per-student-per-verse ability
+tracking is still pending.
 
 ---
 
@@ -69,47 +66,115 @@ Three key properties:
 | Aspect | Research | Our Implementation | Status |
 |--------|----------|-------------------|--------|
 | **Credit direction** | Downward through encompassing graph | DFS ancestor traversal | ✅ Correct |
-| **Penalty direction** | Upward (fail simple → penalize advanced) | ❌ **Missing** | ❌ **Fix** |
+| **Penalty direction** | Upward (fail simple → penalize advanced) | `ComputePenalties()` + `ApplyFIREPenalties()` | ✅ **Fixed** |
 | **Chain weight** | Product of edge weights along path | `chainWeight *= ConnectionWeight(type)` | ✅ Correct |
 | **Best path** | MAX credit when multiple paths reach same node | `bestBoost[verseID]` tracks max | ✅ Correct |
 | **Rating multiplier** | Good=0.5, Easy=1.0 | Cloned from plcourse (MIT) | ✅ Correct |
 | **Minimum threshold** | chainWeight < 0.001 ignored | `if chainWeight < 0.001 { continue }` | ✅ Correct |
 | **Credit application** | `stability *= (1 + boost)` | `newStability = stability * (1.0 + b.Boost)` | ✅ Correct |
-| **Failures** | "Failed repetition flows forward to penalize" | ❌ **Not implemented** | ❌ **Fix** |
-| **Early discount** | "rawDelta discounted if repetition was early" | ❌ **Not implemented** | ❌ **Fix** |
-| **Decay model** | `decay` grows when overdue (summer slide) | ❌ **Not implemented** | ❌ **Fix** |
+| **Penalty application** | "Failed repetition flows forward" | `newStability = stability / (1.0 + penalty)` | ✅ **Fixed** |
+| **Early discount** | "Discounted if repetition was early" | `EarlyDiscount(boost, retrievability)` = `boost * (1 - R²)` | ✅ **Fixed** |
+| **Decay model** | `decay` grows when overdue (summer slide) | ❌ Not implemented | ❌ Pending |
 
-### Critical Gaps
+### Fixed Gaps
 
-#### Gap 2a: Penalty Flow (Upward)
-When a user fails a review on verse A, connected verses that depend on A
-should be penalized. For example, failing Gen 1:1 should penalize connected
-verses like John 1:1 (which quotes it).
+- **Gap 2a (Penalty Flow)**: ✅ `ComputePenalties()` does DFS through connection graph
+  when a verse is failed. Penalty multiplier: Again=1.0, Hard=0.3. Stability reduced by
+  dividing by `(1 + penalty)`. Verified: failing Gen 1:1 reduced John 1:1 stability from
+  6.02 to 3.34 (factor of 1.8).
 
-**Fix**: In the FIRe engine, when rating=Again:
-1. Find all verses that point TO the failed verse (reverse connections)
-2. Reduce their stability by `chain * penaltyMultiplier`
-3. Mark them for earlier review (shorten interval)
+- **Gap 2b (Early Discount)**: ✅ `EarlyDiscount(boost, retrievability)` = `boost * (1 - R²)`.
+  R=0.0 (forgotten) → full credit. R=0.95 (fresh) → 10% credit. Applied in DB layer.
 
-#### Gap 2b: Early Repetition Discount
-When a review happens significantly before the due date (good retention
-still high), the FIRe credit should be discounted because the repetition
-was "too early." This is described in Ch 29:
-
-> *"The magnitude of rawDelta is also discounted if the repetition was
->   completed early relative to the desired interval, i.e., if memory is
->   sufficiently high."*
-
-**Fix**: In `ApplyFIREBoosts`, discount boost by `(1 - retrievability)`:
-```go
-retrievability := card.Retrievability(elapsedDays)
-discount := 1.0 - retrievability  // 0 when memory fresh, 1 when fully decayed
-effectiveBoost := boost * discount
-```
+### Pending Gaps
 
 #### Gap 2c: Decay Model for Overdue Reviews
 The Math Academy Way models "summer slide" where overdue reviews cause
 faster forgetting. Not implemented.
+
+---
+
+## FIRe Architecture: Knowledge vs Memorization
+
+### The Distinction
+
+The Math Academy Way's FIRe operates on a **knowledge graph** of concepts
+(prerequisites, encompassings). Our FIRe implementation operates on a
+**connection graph** of scripture verses. These are fundamentally different.
+
+For our system, FIRe needs to support **three distinct modes**:
+
+| Mode | Graph | Edges | What FIRe Tracks |
+|------|-------|-------|------------------|
+| **Language Learning** | Hebrew concepts (letters → vowels → roots → grammar) | Prerequisite relationships | Understanding of language concepts |
+| **Scripture Knowledge** | Story info, themes, theological concepts | Connection layers (linguistic, symbolic, sod) | Understanding of how scriptures connect |
+| **Verse Memorization** | Verse-to-verse connections | Same as above, but for recall | Ability to recite verses verbatim |
+
+### Separation of Concerns
+
+Memorization and understanding should be **independent but factorizable**:
+
+```
+Student who understands Hebrew can learn faster
+         │
+         ▼
+Hebrew Knowledge ──FIRe──→ Hebrew Concept Mastery
+(letters, vowels,         (P knows what ב means)
+ grammar rules)           
+         │
+         │ (when student also memorizes verses in Hebrew)
+         ▼
+Verse Memorization ──FIRe──→ Verbatim Recall
+(Gen 1:1 in Hebrew)         (P can recite from memory)
+```
+
+- **Without memorization**: FIRe tracks understanding of connections. P knows
+  that Gen 1:1 connects to John 1:1 via direct quotation. This knowledge
+  gets FIRe credit when reviewing connected concepts.
+- **With memorization**: FIRe additionally tracks verbatim recall of verses.
+  Memorizing John 1:1 gives FIRe credit to Gen 1:1 (and vice versa).
+- **Factorized**: A user can understand a connection without memorizing the
+  verse, and FIRe tracks both independently.
+
+### Current Implementation
+
+Our FIRe engine currently operates on **verse-to-verse connections** only
+(memorization mode). To support full knowledge tracking we need:
+
+1. **Abstract the graph**: Make FIRe graph-agnostic — it should work on any
+   directed graph with weighted edges, not just verse connections.
+2. **Add knowledge tracks**: Language concepts, scripture stories/themes.
+3. **Separate state**: Knowledge mastery state is different from memorization
+   state, though they can influence each other.
+
+### Plan for Multi-Mode FIRe
+
+```go
+type KnowledgeGraph struct {
+    Nodes []KnowledgeNode    // could be verses, concepts, grammar rules
+    Edges []KnowledgeEdge     // weighted directed edges
+}
+
+type KnowledgeNode struct {
+    ID        string   // "letter.bet", "gen.1.1", "binyan.qal"
+    Type      string   // "hebrew_letter", "verse", "grammar_rule"
+    Metadata  map[string]interface{}
+}
+
+type KnowledgeEdge struct {
+    SourceID string  // advanced concept
+    TargetID string  // simpler concept it encompasses
+    Weight   float64 // encompassing weight (0.0-1.0)
+    Type     string  // "prerequisite", "encompassing", "connection"
+}
+```
+
+This would allow the same FIRe engine to operate on:
+- Hebrew letter → Hebrew vowel (language learning)
+- Story → connected story (scripture knowledge)
+- Verse → connected verse (memorization)
+
+All three tracks share the same algorithm but maintain separate mastery states.
 
 ---
 
@@ -235,28 +300,21 @@ the user starts from zero. We should add:
 
 | Aspect | Research | Our Implementation | Status |
 |--------|----------|-------------------|--------|
-| **XP** | 1 XP ≈ 1 minute | 10 XP per review (fixed) | ⚠️ Simplistic |
+| **XP** | 1 XP ≈ 1 minute | 10 XP per review (fixed) | ⚠️ **Fixed** |
+| **XP scaling** | By effort and quality | `baseXP=10+ hintLevel×2`, `× ratingMult(0.5-1.25)` | ✅ **Fixed** |
 | **Streak** | Consecutive days | ✅ Tracked in user_xp | ✅ |
 | **Leagues** | Competitive weekly groups | ❌ Not implemented | ❌ |
 | **Badges** | Milestone achievements | ❌ Not implemented | ❌ |
 | **Quality bonus** | Bonus for perfect pass | ❌ Not implemented | ❌ |
-| **Penalty** | Reduced XP for poor performance | ❌ Not implemented | ❌ |
+| **Penalty** | Reduced XP for poor performance | ✅ Lower rating = less XP (0.5× for Again) | ✅ |
 
-### Gap: XP Should Reflect Effort
+### XP Scaling (Fixed)
 
-Our system gives a flat 10 XP per review regardless of:
-- Hint level (level 5 blank recall is harder than level 0 full text)
-- Whether the rating was Easy vs Hard
-- Streak multiplier
-
-**Fix**: Scale XP by hint level and rating:
-```go
-baseXP := 10
-hintBonus := hintLevel * 2  // harder hint = more XP
-ratingMultiplier := map[int]float64{1: 0.5, 2: 0.75, 3: 1.0, 4: 1.25}
-streakMultiplier := 1.0 + float64(streak) * 0.02  // up to 2× at 50 days
-xp := int(float64(baseXP+hintBonus) * ratingMultiplier[r] * streakMultiplier)
-```
+XP now scales with effort:
+- Base: `10 + hintLevel × 2` (harder hints = more XP, range 10-20)
+- Rating multiplier: Again=0.5, Hard=0.75, Good=1.0, Easy=1.25
+- Streak multiplier: `1.0 + streakDays × 0.02` (cap at 2.0)
+- Formula: `XP = base × ratingMult × streakMult`
 
 ---
 
@@ -325,15 +383,21 @@ due hasn't been built yet.
 
 ## Summary: Gaps Needing Fixes
 
-| # | Gap | Impact | Effort |
-|---|-----|--------|--------|
-| 1 | **Student-topic learning speeds** (per-student-per-verse ability) | Medium — better calibration | Medium |
-| 2a | **FIRe penalty flow** — failing a verse should penalize connected verses | High — missing half the FIRe model | Medium |
-| 2b | **FIRe early discount** — discount credit when review is too early | Medium — prevents over-credit | Small |
-| 2c | **FIRe decay model** — overdue review penalty | Low — edge case | Small |
-| 3 | **Connection hint quality** — use connection graph instead of search | Low — cosmetic | Small |
-| 4 | **Diagnostic mode** — initial assessment + conditional completion | Medium — useful feature | Medium |
-| 5 | **XP scaling** — XP should reflect effort (hint level, rating, streak) | Low — nice to have | Small |
-| 6 | **Targeted remediation** — detect failure point, suggest connected verses | High — major learning improvement | Large |
-| 7 | **Push scheduler** — periodic check for due cards | Low — nice to have | Medium |
-| 8 | **Gamification** — leagues, badges, quality bonus | Low — motivational | Medium |
+| # | Gap | Impact | Effort | Status |
+|---|-----|--------|--------|--------|
+| 1 | **Student-topic learning speeds** | Medium | Medium | ⏳ Pending |
+| 2a | **FIRe penalty flow** | High | Medium | ✅ Fixed |
+| 2b | **FIRe early discount** | Medium | Small | ✅ Fixed |
+| 2c | **FIRe decay model** | Low | Small | ⏳ Pending |
+| 3 | **Connection hint quality** | Low | Small | ⏳ Pending |
+| 4 | **Diagnostic mode** | Medium | Medium | ⏳ Pending |
+| 5 | **XP scaling** | Low | Small | ✅ Fixed |
+| 6 | **Targeted remediation** | High | Large | ⏳ Pending |
+| 7 | **Push scheduler** | Low | Medium | ⏳ Pending |
+| 8 | **Gamification** (leagues, badges) | Low | Medium | ⏳ Pending |
+| 9 | **FIRe multi-mode** (knowledge + language) | High | Large | 🔍 Planned |
+
+### Legend
+- ✅ Fixed — implemented and verified
+- ⏳ Pending — not yet implemented
+- 🔍 Planned — design complete, not started
