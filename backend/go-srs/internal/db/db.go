@@ -129,6 +129,22 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS hebrew_nodes (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    level INTEGER NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    description TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS hebrew_edges (
+    source_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
+    target_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
+    edge_type TEXT NOT NULL DEFAULT 'prerequisite',
+    weight REAL NOT NULL DEFAULT 1.0,
+    PRIMARY KEY (source_id, target_id, edge_type)
+);
+
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 `
@@ -856,4 +872,77 @@ func (db *DB) GetAllPushSubscriptions() ([]PushSubscription, error) {
 		subs = append(subs, s)
 	}
 	return subs, nil
+}
+
+// ── Hebrew Knowledge Graph ──
+
+// HebrewNode represents a concept in the Hebrew knowledge graph.
+type HebrewNode struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Level       int    `json:"level"`
+	Category    string `json:"category"`
+	Description string `json:"description"`
+}
+
+// HebrewEdge represents a relationship between Hebrew concepts.
+type HebrewEdge struct {
+	SourceID string  `json:"source_id"`
+	TargetID string  `json:"target_id"`
+	Type     string  `json:"edge_type"`
+	Weight   float64 `json:"weight"`
+}
+
+// GetHebrewGraph returns all nodes and edges of the Hebrew knowledge graph.
+func (db *DB) GetHebrewGraph() ([]HebrewNode, []HebrewEdge, error) {
+	nodes := []HebrewNode{}
+	rows, err := db.conn.Query("SELECT id, title, level, category, description FROM hebrew_nodes ORDER BY level, id")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var n HebrewNode
+		if err := rows.Scan(&n.ID, &n.Title, &n.Level, &n.Category, &n.Description); err != nil {
+			return nil, nil, err
+		}
+		nodes = append(nodes, n)
+	}
+
+	edges := []HebrewEdge{}
+	erows, err := db.conn.Query("SELECT source_id, target_id, edge_type, weight FROM hebrew_edges")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer erows.Close()
+	for erows.Next() {
+		var e HebrewEdge
+		if err := erows.Scan(&e.SourceID, &e.TargetID, &e.Type, &e.Weight); err != nil {
+			return nil, nil, err
+		}
+		edges = append(edges, e)
+	}
+
+	return nodes, edges, nil
+}
+
+// GetHebrewConnections returns outgoing edges from a Hebrew node (for FIRe).
+func (db *DB) GetHebrewConnections(nodeID string) ([]fire.Edge, error) {
+	rows, err := db.conn.Query(
+		"SELECT source_id, target_id, edge_type FROM hebrew_edges WHERE source_id = ?",
+		nodeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var edges []fire.Edge
+	for rows.Next() {
+		var e fire.Edge
+		if err := rows.Scan(&e.SourceNode, &e.TargetNode, &e.Type); err != nil {
+			return nil, err
+		}
+		edges = append(edges, e)
+	}
+	return edges, nil
 }

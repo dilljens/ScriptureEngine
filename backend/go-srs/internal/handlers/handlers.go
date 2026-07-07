@@ -874,6 +874,65 @@ func (h *Handler) FireCredit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ── Hebrew Knowledge Graph ──
+
+// HebrewGraph returns the full Hebrew concept graph.
+func (h *Handler) HebrewGraph(w http.ResponseWriter, r *http.Request) {
+	nodes, edges, err := h.DB.GetHebrewGraph()
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":    true,
+		"nodes": nodes,
+		"edges": edges,
+	})
+}
+
+// HebrewFire computes FIRe credits/penalties for the Hebrew knowledge graph.
+// POST /api/memorize/hebrew/fire/{node_id}
+func (h *Handler) HebrewFire(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		errorResponse(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) < 5 {
+		errorResponse(w, http.StatusBadRequest, "missing node_id")
+		return
+	}
+	nodeID := parts[4]
+
+	var input struct {
+		Rating int `json:"rating"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+
+	graph := fire.KnowledgeGraph{
+		GetConnections: h.DB.GetHebrewConnections,
+		HasCard:        func(id string) (int64, bool) { return 0, true }, // all concepts are tracked
+	}
+
+	credits, penalties, err := h.Fire.ComputeCredits(nodeID, input.Rating, graph)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":            true,
+		"node_id":       nodeID,
+		"credits":       credits,
+		"penalties":     penalties,
+		"credit_count":  len(credits),
+		"penalty_count": len(penalties),
+	})
+}
+
 // RegisterRoutes sets up all HTTP routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", h.Health)
@@ -885,6 +944,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)
 	mux.HandleFunc("/api/memorize/fire/credit", h.FireCredit)
+	mux.HandleFunc("/api/memorize/hebrew/graph", h.HebrewGraph)
+	mux.HandleFunc("/api/memorize/hebrew/fire/", h.HebrewFire)
 	mux.HandleFunc("/api/memorize/connections/batch", h.SyncConnections)
 	mux.HandleFunc("/api/memorize/push/subscribe", h.PushSubscribe)
 	mux.HandleFunc("/api/memorize/push/unsubscribe", h.PushUnsubscribe)
