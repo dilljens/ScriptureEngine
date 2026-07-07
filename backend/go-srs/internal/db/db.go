@@ -121,6 +121,14 @@ CREATE TABLE IF NOT EXISTS user_xp (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh_key TEXT NOT NULL DEFAULT '',
+    auth_key TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
 `
@@ -577,6 +585,12 @@ func (db *DB) ScanCardVerse(cardID int64, verseID *string) error {
 	return db.conn.QueryRow("SELECT verse_id FROM cards WHERE id = ?", cardID).Scan(verseID)
 }
 
+// UpdateHintLevel updates a card's progressive hint level.
+func (db *DB) UpdateHintLevel(cardID int64, level int) error {
+	_, err := db.conn.Exec("UPDATE cards SET hint_level = ? WHERE id = ?", level, cardID)
+	return err
+}
+
 // ── Connection Operations (for FIRe) ──
 
 // SyncConnections bulk-inserts or updates verse connections.
@@ -696,8 +710,52 @@ func (db *DB) ApplyFIREBoosts(boosts []fire.Boost) (int, error) {
 			newStability, newStability, newDue, b.CardID,
 		)
 		if err == nil {
-			applied++
-		}
+	applied++
 	}
-	return applied, nil
+}
+return applied, nil
+}
+
+// ── Push Notification Operations ──
+
+// PushSubscription represents a Web Push subscription.
+type PushSubscription struct {
+	Endpoint       string `json:"endpoint"`
+	P256DHKey      string `json:"p256dh_key"`
+	AuthKey        string `json:"auth_key"`
+}
+
+// SavePushSubscription stores a push subscription.
+func (db *DB) SavePushSubscription(sub PushSubscription) error {
+	_, err := db.conn.Exec(
+		`INSERT INTO push_subscriptions (endpoint, p256dh_key, auth_key)
+		 VALUES (?, ?, ?)
+		 ON CONFLICT(endpoint) DO UPDATE SET p256dh_key=excluded.p256dh_key, auth_key=excluded.auth_key`,
+		sub.Endpoint, sub.P256DHKey, sub.AuthKey,
+	)
+	return err
+}
+
+// RemovePushSubscription removes a push subscription.
+func (db *DB) RemovePushSubscription(endpoint string) error {
+	_, err := db.conn.Exec("DELETE FROM push_subscriptions WHERE endpoint = ?", endpoint)
+	return err
+}
+
+// GetAllPushSubscriptions returns all push subscriptions.
+func (db *DB) GetAllPushSubscriptions() ([]PushSubscription, error) {
+	rows, err := db.conn.Query("SELECT endpoint, p256dh_key, auth_key FROM push_subscriptions")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var subs []PushSubscription
+	for rows.Next() {
+		var s PushSubscription
+		if err := rows.Scan(&s.Endpoint, &s.P256DHKey, &s.AuthKey); err != nil {
+			return nil, err
+		}
+		subs = append(subs, s)
+	}
+	return subs, nil
 }

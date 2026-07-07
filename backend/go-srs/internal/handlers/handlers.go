@@ -238,7 +238,30 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Award XP
-	streak, _ := h.DB.AwardXP(10) // base XP per review
+	streak, _ := h.DB.AwardXP(10)
+
+	// Update hint level based on rating
+	var newHintLevel int
+	if nextCard.HintLevel > 0 {
+		newHintLevel = nextCard.HintLevel
+	} else {
+		newHintLevel = 1 // default starting hint level
+	}
+	switch input.Rating {
+	case 1: // Again — decrease hint level
+		if newHintLevel > 0 {
+			newHintLevel--
+		}
+	case 2: // Hard — keep same
+	case 3, 4: // Good/Easy — increase hint level
+		if newHintLevel < 5 {
+			newHintLevel++
+		}
+	}
+	if newHintLevel != int(nextCard.HintLevel) {
+		h.DB.UpdateHintLevel(cardID, newHintLevel)
+		nextCard.HintLevel = newHintLevel
+	}
 
 	// Compute FIRe boosts for connected verses
 	var fireBoosts []fire.Boost
@@ -662,6 +685,52 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"ok":true,"verse_id":"%s","path":"%s"}`, verseID, localPath)
 }
 
+// ── Push Notifications ──
+
+func (h *Handler) PushSubscribe(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Endpoint       string `json:"endpoint"`
+		P256DHKey      string `json:"p256dh_key"`
+		AuthKey        string `json:"auth_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if err := h.DB.SavePushSubscription(db.PushSubscription{
+		Endpoint:  input.Endpoint,
+		P256DHKey: input.P256DHKey,
+		AuthKey:   input.AuthKey,
+	}); err != nil {
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true})
+}
+
+func (h *Handler) PushUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	h.DB.RemovePushSubscription(input.Endpoint)
+	jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": true})
+}
+
+func (h *Handler) PushVapidKey(w http.ResponseWriter, r *http.Request) {
+	publicKey := os.Getenv("VAPID_PUBLIC_KEY")
+	if publicKey == "" {
+		publicKey = "BC-mZ7kPA4xQJ0YHIxQJ0YHIxQJ0YHIxQJ0YHIxQJ0Y"
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":         true,
+		"public_key": publicKey,
+	})
+}
+
 // RegisterRoutes sets up all HTTP routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", h.Health)
@@ -672,6 +741,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)
 	mux.HandleFunc("/api/memorize/connections/batch", h.SyncConnections)
+	mux.HandleFunc("/api/memorize/push/subscribe", h.PushSubscribe)
+	mux.HandleFunc("/api/memorize/push/unsubscribe", h.PushUnsubscribe)
+	mux.HandleFunc("/api/memorize/push/vapid-public-key", h.PushVapidKey)
 	mux.HandleFunc("/api/memorize/palaces/upload", h.UploadPalacePhoto)
 	mux.HandleFunc("/api/memorize/palaces/", h.HandlePalaces)
 	mux.HandleFunc("/api/memorize/palaces", h.HandlePalaces)
