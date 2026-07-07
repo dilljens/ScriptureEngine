@@ -3147,13 +3147,14 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_search",
-            "description": "Search for verses by keyword in English text across all 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha)",
+            "description": "Search for verses by keyword across all 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha). Returns 25 results by default covering multiple works. Only use book/works filters if you need results from a specific work — otherwise search all works at once.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search term"},
-                    "book": {"type": "string", "description": "Optional book filter (e.g., '1en' for 1 Enoch, '1QS' for Community Rule, 'jub' for Jubilees)"},
-                    "limit": {"type": "integer", "default": 10},
+                    "query": {"type": "string", "description": "Search term (e.g., 'atonement', 'covenant', 'Son of Man')"},
+                    "book": {"type": "string", "description": "Optional book filter. Use 'dc' for all D&C sections, '1en' for 1 Enoch, '1QS' for Community Rule. NOT needed for broad searches."},
+                    "works": {"type": "array", "items": {"type": "string", "enum": ["ot", "nt", "bom", "dc", "pgp", "dss", "apoc", "pseu"]}, "description": "Optional: filter by specific works (e.g., ['ot','nt']). NOT needed for broad searches."},
+                    "limit": {"type": "integer", "default": 25, "description": "Results per call (max 50). Default 25 is enough to see results from multiple works."},
                 },
                 "required": ["query"],
             },

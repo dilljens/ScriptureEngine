@@ -66,7 +66,7 @@ Tobit 1:1 — "The book of the words of Tobit..."
 - `scripture_interlinear(b,c,v)` — word-by-word Hebrew/Greek
 
 ### Search
-- `scripture_search(query, book?, limit?)` — English text
+- `scripture_search(query, book?, works?, limit?)` — English text across all 8 works. **Search ALL works first** (omit book/works), then narrow down if needed. Results include `work_id` so you can see which work each hit is from. Use `book="dc"` for D&C sections.
 - `scripture_search_xlingual(query, language?)` — Hebrew + Greek + English
 
 ### Connections & Scholars
