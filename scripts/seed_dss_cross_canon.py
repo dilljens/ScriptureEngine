@@ -148,12 +148,45 @@ CONNECTIONS = [
 ]
 
 
+SON_OF_MAN = [
+    # ═══════════════════════════════════════════════════════════════
+    # 10. SON OF MAN TRAJECTORY — Daniel → Revelation → Abraham
+    # ═══════════════════════════════════════════════════════════════
+    # Daniel 7:13 → Revelation 1:13 (one like unto Son of Man)
+    {"source": "dan.7.13", "target": "rev.1.13", "layer": "intertextual", "type": "direct_quotation",
+     "strength": 0.9, "confidence": 0.85, "note": "Both use 'one like the Son of Man' — Daniel's prophecy of the heavenly figure is echoed in John's vision of the glorified Christ"},
+    # Daniel 7:13 → Revelation 14:14 (Son of Man on cloud)
+    {"source": "dan.7.13", "target": "rev.14.14", "layer": "intertextual", "type": "direct_quotation",
+     "strength": 0.9, "confidence": 0.85, "note": "Both depict 'one like the Son of Man' on/with a cloud — Daniel's prophecy is reused in John's harvest vision"},
+    # Daniel 7:13-14 → Abraham 3:27 (pre-mortal Son of Man)
+    {"source": "dan.7.13", "target": "abraham.3.27", "layer": "intertextual", "type": "allusion",
+     "strength": 0.8, "confidence": 0.75, "note": "Abraham 3:27 'one answered like unto the Son of Man' echoes Daniel 7:13 — the same pre-mortal/divine figure who receives dominion"},
+    # Daniel 7:14 → Abraham 3:27 (dominion / foreordination)
+    {"source": "dan.7.14", "target": "abraham.3.27", "layer": "symbolic", "type": "person_type",
+     "strength": 0.75, "confidence": 0.65, "note": "The Son of Man who receives all dominion in Daniel 7 is the same figure who volunteers in Abraham 3:27 — 'Here am I, send me'"},
+    # Revelation 1:13 → Abraham 3:27 (glorified Son of Man)
+    {"source": "rev.1.13", "target": "abraham.3.27", "layer": "symbolic", "type": "person_type",
+     "strength": 0.7, "confidence": 0.6, "note": "The glorified Son of Man in Revelation 1:13 is the same figure who answered 'like unto the Son of Man' in Abraham 3:27"},
+    # Daniel 7:13 → Matthew 26:64 (Son of Man at God's right hand)
+    {"source": "dan.7.13", "target": "matt.26.64", "layer": "intertextual", "type": "direct_quotation",
+     "strength": 0.95, "confidence": 0.9, "note": "Jesus quotes Daniel 7:13 directly at his trial: 'Ye shall see the Son of Man sitting on the right hand of power, and coming in the clouds of heaven'"},
+    # Daniel 7:13 → Mark 14:62 (parallel account)
+    {"source": "dan.7.13", "target": "mark.14.62", "layer": "intertextual", "type": "direct_quotation",
+     "strength": 0.95, "confidence": 0.9, "note": "Jesus quotes Daniel 7:13 at his trial before the Sanhedrin"},
+    # Revelation 1:14 (white hair like wool) → Daniel 7:9 (Ancient of Days)
+    {"source": "rev.1.14", "target": "dan.7.9", "layer": "intertextual", "type": "allusion",
+     "strength": 0.85, "confidence": 0.75, "note": "John describes the Son of Man with 'hair white like wool' — directly borrowing the Ancient of Days description from Daniel 7:9"},
+    # Abraham 3:22-23 → Revelation (book of life / foreordination)
+    {"source": "abraham.3.22", "target": "rev.13.8", "layer": "intertextual", "type": "echo",
+     "strength": 0.55, "confidence": 0.45, "note": "Abraham's vision of foreordained intelligences parallels Revelation's 'Lamb slain from the foundation of the world'"},
+]
+
 def main():
     conn = get_db()
     count = 0
     
     print("Seeding cross-canon connections...")
-    for c in CONNECTIONS:
+    for c in CONNECTIONS + SON_OF_MAN:
         existing = conn.execute(
             "SELECT COUNT(*) FROM connections WHERE source_verse=? AND target_verse=? AND type=?",
             (c["source"], c["target"], c["type"])
