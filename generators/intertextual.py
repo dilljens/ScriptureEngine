@@ -94,6 +94,23 @@ TARGET_PAIRS = [
     # PSEUDEPIGRAPHA — DSS cross-references  
     ("1en", "1QHa"), ("1en", "1QS"),
     ("jub", "CD"), ("jub", "11Q19"),
+    # DSS — NT cross-references (now with Vermès English!)
+    ("1QS", "matt"), ("1QS", "luke"), ("1QS", "john"),
+    ("1QS", "acts"), ("1QS", "rom"), ("1QS", "heb"),
+    ("1QS", "eph"), ("1QS", "1cor"), ("1QS", "2cor"),
+    ("CD", "matt"), ("CD", "luke"), ("CD", "rom"),
+    ("CD", "gal"), ("CD", "heb"),
+    ("1QHa", "matt"), ("1QHa", "luke"), ("1QHa", "john"),
+    ("1QHa", "psa"), ("1QHa", "rom"),
+    ("1QM", "matt"), ("1QM", "luke"), ("1QM", "rev"),
+    ("1QM", "eph"), ("1QM", "rev"),
+    # DSS — OT cross-references
+    ("1QS", "isa"), ("1QS", "psa"), ("1QS", "jer"),
+    ("CD", "isa"), ("CD", "psa"), ("CD", "deu"),
+    ("1QHa", "psa"), ("1QHa", "isa"),
+    # DSS — BoM cross-references
+    ("1QS", "2ne"), ("1QS", "mosiah"),
+    ("CD", "alma"),
 ]
 
 
