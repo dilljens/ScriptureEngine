@@ -88,6 +88,7 @@ type Card struct {
 	ScheduledDays float64  `json:"scheduled_days"`
 	Reps         int       `json:"reps"`
 	Lapses       int       `json:"lapses"`
+	HintLevel    int       `json:"hint_level"`
 	LastReview   time.Time `json:"last_review"`
 	Due          time.Time `json:"due"`
 }
