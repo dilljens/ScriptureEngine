@@ -3,20 +3,18 @@
 // Adapted from plcourse (MIT): https://github.com/moaaz-ae/plcourse
 // And Skycak's "The Math Academy Way" (Chapter 29).
 //
-// When a verse is reviewed successfully (Good/Easy), connected verses
-// get fractional implicit repetition credit. This boosts their stability
-// and extends their due date without requiring an explicit review.
-//
-// Connection weights determine how much credit flows:
-//   direct_quotation:  0.8  (nearly identical text)
-//   same_lemma:        0.4  (shared vocabulary)
-//   parallel:          0.5  (same idea, different words)
-//   allusion:          0.3  (thematic echo)
-//   default:           0.2  (any other connection)
+// FIRe generalizes spaced repetition to connected knowledge:
+//   1. CREDIT flows downward — reviewing a verse gives implicit
+//      repetition credit to connected verses (already implemented).
+//   2. PENALTIES flow upward — failing a foundational verse
+//      penalizes the verses that depend on it.
+//   3. EARLY DISCOUNT — implicit credit is discounted when the
+//      review was done early (retrievability still high).
 
 package fire
 
-// Engine computes FIRe boosts using DFS through the connection graph.
+// Engine computes FIRe boosts and penalties using DFS through
+// the verse connection graph.
 type Engine struct{}
 
 // Boost represents implicit repetition credit for a connected verse.
@@ -32,6 +30,8 @@ func New() *Engine {
 }
 
 // ConnectionWeight returns the encompassing weight for a connection type.
+// These represent what fraction of the target verse is practiced when
+// reviewing the source verse.
 func ConnectionWeight(connType string) float64 {
 	switch connType {
 	case "direct_quotation":
@@ -82,8 +82,52 @@ func RatingMultiplier(rating int) float64 {
 	}
 }
 
-// ComputeBoosts runs DFS through the connection graph starting from sourceVerseID.
-// It finds all reachable verses and computes FIRe credit for each.
+// PenaltyMultiplier returns how much of the chain weight counts as penalty.
+// Again = 1.0 (full penalty), Hard = 0.3 (weak penalty).
+func PenaltyMultiplier(rating int) float64 {
+	switch rating {
+	case 1: // Again
+		return 1.0
+	case 2: // Hard
+		return 0.3
+	default:
+		return 0.0
+	}
+}
+
+// EarlyDiscount reduces FIRe credit when the review was too early.
+//
+// From Math Academy Way (Ch 29):
+//   "rawDelta is discounted if the repetition was completed early
+//    relative to the desired interval, i.e., if memory is sufficiently high."
+//
+// When retrievability is still high (the review was premature), the
+// implicit credit is discounted because the brain didn't have to work
+// as hard to recall the information. When retrievability is low (the
+// review was well-timed or late), full credit is given.
+//
+// Formula: effective = boost * (1 - R^2)
+//
+//	R=0.0 (forgotten):    1.0 × boost  (full credit)
+//	R=0.5 (moderate):     0.75 × boost
+//	R=0.8 (strong):       0.36 × boost
+//	R=0.95 (fresh):       0.10 × boost  (heavily discounted)
+func EarlyDiscount(boost, retrievability float64) float64 {
+	if retrievability <= 0 {
+		return boost
+	}
+	if retrievability >= 1 {
+		return 0
+	}
+	discount := retrievability * retrievability // 0 to 1
+	return boost * (1.0 - discount)
+}
+
+// ── Credit Flow (downward) ──
+
+// ComputeBoosts runs DFS through the connection graph starting from
+// sourceVerseID. It finds all reachable verses and computes FIRe credit
+// for each — the "lightning bolts" of credit flowing downward.
 //
 // Args:
 //   sourceVerseID: the verse being reviewed
@@ -104,15 +148,14 @@ func (e *Engine) ComputeBoosts(
 		return nil, nil
 	}
 
-	// DFS through the connection graph
+	bestBoost := make(map[string]float64)
+	bestCardID := make(map[string]int64)
+	visited := make(map[string]bool)
+
 	type node struct {
 		verseID     string
 		chainWeight float64
 	}
-
-	bestBoost := make(map[string]float64) // verseID -> best chain weight
-	bestCardID := make(map[string]int64)   // verseID -> card ID
-	visited := make(map[string]bool)
 	stack := []node{{verseID: sourceVerseID, chainWeight: 1.0}}
 
 	for len(stack) > 0 {
@@ -143,23 +186,19 @@ func (e *Engine) ComputeBoosts(
 				continue
 			}
 
-			// Don't boost the source verse itself
 			if conn.TargetVerse == sourceVerseID {
 				continue
 			}
 
-			// Check if this path gives a better boost
 			if chainWeight <= bestBoost[conn.TargetVerse] {
 				continue
 			}
 
-			// Check if the target verse has a card
 			if cardID, exists := hasCard(conn.TargetVerse); exists {
 				bestBoost[conn.TargetVerse] = chainWeight
 				bestCardID[conn.TargetVerse] = cardID
 			}
 
-			// Continue DFS
 			stack = append(stack, node{
 				verseID:     conn.TargetVerse,
 				chainWeight: chainWeight,
@@ -167,7 +206,6 @@ func (e *Engine) ComputeBoosts(
 		}
 	}
 
-	// Convert to result
 	var boosts []Boost
 	for verseID, chainWeight := range bestBoost {
 		boosts = append(boosts, Boost{
@@ -178,6 +216,102 @@ func (e *Engine) ComputeBoosts(
 	}
 
 	return boosts, nil
+}
+
+// ── Penalty Flow (upward) ──
+
+// ComputePenalties runs DFS from sourceVerseID to find connected verses
+// that should be penalized when the source verse is failed.
+//
+// From Math Academy Way (Ch 29):
+//   "If you fail a repetition on a simpler topic, the failed repetition
+//    flows forward to penalize more advanced topics that depend on it."
+//
+// For scripture memorization: failing a foundational verse suggests that
+// verses building on it may also be shaky. Penalty flows along the same
+// connection paths but in the opposite direction of credit.
+//
+// Returns:
+//   penalties: list of (verseID, cardID, penalty) where penalty ∈ [0, 1]
+func (e *Engine) ComputePenalties(
+	sourceVerseID string,
+	rating int,
+	getConnections func(verseID string) ([]Connection, error),
+	hasCard func(verseID string) (cardID int64, exists bool),
+) ([]Boost, error) {
+	multiplier := PenaltyMultiplier(rating)
+	if multiplier <= 0 {
+		return nil, nil
+	}
+
+	bestPenalty := make(map[string]float64)
+	bestCardID := make(map[string]int64)
+	visited := make(map[string]bool)
+
+	type node struct {
+		verseID     string
+		chainWeight float64
+	}
+	stack := []node{{verseID: sourceVerseID, chainWeight: 1.0}}
+
+	for len(stack) > 0 {
+		current := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		if current.chainWeight < 0.001 {
+			continue
+		}
+		if visited[current.verseID] {
+			continue
+		}
+		visited[current.verseID] = true
+
+		conns, err := getConnections(current.verseID)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, conn := range conns {
+			weight := ConnectionWeight(conn.Type)
+			if weight <= 0 {
+				continue
+			}
+
+			chainWeight := current.chainWeight * weight
+			if chainWeight < 0.001 {
+				continue
+			}
+
+			if conn.TargetVerse == sourceVerseID {
+				continue
+			}
+
+			if chainWeight <= bestPenalty[conn.TargetVerse] {
+				continue
+			}
+
+			if cardID, exists := hasCard(conn.TargetVerse); exists {
+				bestPenalty[conn.TargetVerse] = chainWeight
+				bestCardID[conn.TargetVerse] = cardID
+			}
+
+			stack = append(stack, node{
+				verseID:     conn.TargetVerse,
+				chainWeight: chainWeight,
+			})
+		}
+	}
+
+	var penalties []Boost
+	for verseID, chainWeight := range bestPenalty {
+		penalties = append(penalties, Boost{
+			VerseID: verseID,
+			CardID:  bestCardID[verseID],
+			Boost:   chainWeight * multiplier, // penalty value (positive)
+		})
+	}
+
+	return penalties, nil
 }
 
 // Connection represents an edge in the scripture connection graph.

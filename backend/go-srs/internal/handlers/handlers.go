@@ -237,8 +237,11 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Award XP
-	streak, _ := h.DB.AwardXP(10)
+	// Compute XP based on hint level and rating
+	baseXP := 10 + int(nextCard.HintLevel)*2
+	ratingMult := map[int]float64{1: 0.5, 2: 0.75, 3: 1.0, 4: 1.25}
+	xp := int(float64(baseXP) * ratingMult[input.Rating])
+	streak, _ := h.DB.AwardXP(xp)
 
 	// Update hint level based on rating
 	var newHintLevel int
@@ -263,33 +266,39 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		nextCard.HintLevel = newHintLevel
 	}
 
-	// Compute FIRe boosts for connected verses
+	// Compute FIRe boosts and penalties
 	var fireBoosts []fire.Boost
-	var fireApplied int
+	var fireApplied, firePenalties int
 	verseID := ""
 	if len(parts) >= 4 {
-		// Get the verse ID for the card being reviewed
 		var vID string
 		h.DB.ScanCardVerse(cardID, &vID)
 		verseID = vID
 	}
-	if verseID != "" && input.Rating >= 3 {
-		fireBoosts, _ = h.Fire.ComputeBoosts(
-			verseID,
-			input.Rating,
-			h.DB.GetConnections,
-			h.DB.HasCard,
-		)
-		fireApplied, _ = h.DB.ApplyFIREBoosts(fireBoosts)
+	if verseID != "" {
+		if input.Rating >= 3 {
+			// Credit flow: successful review boosts connected verses
+			fireBoosts, _ = h.Fire.ComputeBoosts(
+				verseID, input.Rating, h.DB.GetConnections, h.DB.HasCard,
+			)
+			fireApplied, _ = h.DB.ApplyFIREBoosts(fireBoosts)
+		} else if input.Rating <= 2 {
+			// Penalty flow: failed review penalizes connected verses
+			penalties, _ := h.Fire.ComputePenalties(
+				verseID, input.Rating, h.DB.GetConnections, h.DB.HasCard,
+			)
+			firePenalties, _ = h.DB.ApplyFIREPenalties(penalties)
+		}
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"ok":           true,
 		"next_state":   nextCard,
-		"xp_awarded":   10,
+		"xp_awarded":   xp,
 		"streak_days":  streak,
 		"fire_boosts":  fireApplied,
 		"fire_verses":  len(fireBoosts),
+		"fire_penalties": firePenalties,
 	})
 }
 

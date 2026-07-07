@@ -661,7 +661,7 @@ func (db *DB) HasCard(verseID string) (int64, bool) {
 }
 
 // ApplyFIREBoosts applies FIRe credit to connected cards.
-// Returns the number of cards that were boosted.
+// Applies early discount based on retrievability.
 func (db *DB) ApplyFIREBoosts(boosts []fire.Boost) (int, error) {
 	if len(boosts) == 0 {
 		return 0, nil
@@ -673,32 +673,42 @@ func (db *DB) ApplyFIREBoosts(boosts []fire.Boost) (int, error) {
 			continue
 		}
 
-		// Get current card state
-		var stability, scheduledDays float64
+		var stability float64
 		var lastReview string
 		err := db.conn.QueryRow(
-			"SELECT stability, scheduled_days, last_review FROM cards WHERE id = ?",
+			"SELECT stability, last_review FROM cards WHERE id = ?",
 			b.CardID,
-		).Scan(&stability, &scheduledDays, &lastReview)
-		if err != nil {
+		).Scan(&stability, &lastReview)
+		if err != nil || stability <= 0 {
 			continue
 		}
 
-		// Only boost cards in review state (not new cards)
-		if stability <= 0 {
+		// Compute retrievability for early discount
+		var retrievability float64
+		if lastReview != "" {
+			t, err := time.Parse("2006-01-02 15:04:05", lastReview)
+			if err == nil {
+				elapsed := time.Since(t).Hours() / 24.0
+				if elapsed > 0 && stability > 0 {
+					// Simple retrievability estimate
+					retrievability = 1.0 / (1.0 + elapsed/(9.0*stability))
+				}
+			}
+		}
+
+		// Apply early discount: when retrievability is high (review was early),
+		// the implicit credit is discounted
+		effectiveBoost := fire.EarlyDiscount(b.Boost, retrievability)
+		if effectiveBoost <= 0.001 {
 			continue
 		}
 
-		// Apply boost: new_stability = stability * (1 + boost)
-		newStability := stability * (1.0 + b.Boost)
-
-		// Compute new due date
+		newStability := stability * (1.0 + effectiveBoost)
 		var newDue string
 		if lastReview != "" {
 			t, err := time.Parse("2006-01-02 15:04:05", lastReview)
 			if err == nil {
-				newDueTime := t.Add(time.Duration(newStability*24) * time.Hour)
-				newDue = newDueTime.Format("2006-01-02 15:04:05")
+				newDue = t.Add(time.Duration(newStability*24) * time.Hour).Format("2006-01-02 15:04:05")
 			}
 		}
 		if newDue == "" {
@@ -710,10 +720,62 @@ func (db *DB) ApplyFIREBoosts(boosts []fire.Boost) (int, error) {
 			newStability, newStability, newDue, b.CardID,
 		)
 		if err == nil {
-	applied++
+			applied++
+		}
 	}
+	return applied, nil
 }
-return applied, nil
+
+// ApplyFIREPenalties applies FIRe penalty to connected cards when a verse is failed.
+// Reduces stability and shortens interval for connected verses.
+func (db *DB) ApplyFIREPenalties(penalties []fire.Boost) (int, error) {
+	if len(penalties) == 0 {
+		return 0, nil
+	}
+
+	applied := 0
+	for _, p := range penalties {
+		if p.Boost <= 0 {
+			continue
+		}
+
+		var stability float64
+		var lastReview string
+		err := db.conn.QueryRow(
+			"SELECT stability, last_review FROM cards WHERE id = ?",
+			p.CardID,
+		).Scan(&stability, &lastReview)
+		if err != nil || stability <= 0 {
+			continue
+		}
+
+		// Apply penalty: new_stability = stability / (1 + penalty)
+		// This reduces stability and shortens the interval
+		newStability := stability / (1.0 + p.Boost)
+		if newStability < 0.5 {
+			newStability = 0.5 // minimum stability floor
+		}
+
+		var newDue string
+		if lastReview != "" {
+			t, err := time.Parse("2006-01-02 15:04:05", lastReview)
+			if err == nil {
+				newDue = t.Add(time.Duration(newStability*24) * time.Hour).Format("2006-01-02 15:04:05")
+			}
+		}
+		if newDue == "" {
+			newDue = time.Now().Add(time.Duration(newStability*24) * time.Hour).Format("2006-01-02 15:04:05")
+		}
+
+		_, err = db.conn.Exec(
+			"UPDATE cards SET stability = ?, scheduled_days = ?, due = ? WHERE id = ?",
+			newStability, newStability, newDue, p.CardID,
+		)
+		if err == nil {
+			applied++
+		}
+	}
+	return applied, nil
 }
 
 // ── Push Notification Operations ──
