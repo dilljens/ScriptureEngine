@@ -231,19 +231,22 @@ func (db *DB) EnsureCard(verseID, cardType string) (int64, error) {
 	return result.LastInsertId()
 }
 
+// DueCardItem represents a card due for review.
+type DueCardItem struct {
+	CardID        int64   `json:"CardID"`
+	VerseID       string  `json:"VerseID"`
+	VerseText     string  `json:"VerseText"`
+	Reference     string  `json:"Reference"`
+	CardType      string  `json:"CardType"`
+	HintLevel     int     `json:"HintLevel"`
+	State         int     `json:"State"`
+	Stability     float64 `json:"Stability"`
+	Difficulty    float64 `json:"Difficulty"`
+	ScheduledDays float64 `json:"ScheduledDays"`
+}
+
 // GetDueCards returns cards scheduled for review.
-func (db *DB) GetDueCards(limit int) ([]struct {
-	CardID        int64
-	VerseID       string
-	VerseText     string
-	Reference     string
-	CardType      string
-	HintLevel     int
-	State         int
-	Stability     float64
-	Difficulty    float64
-	ScheduledDays float64
-}, error) {
+func (db *DB) GetDueCards(limit int) ([]DueCardItem, error) {
 	rows, err := db.conn.Query(`
 		SELECT c.id, c.verse_id, v.text, v.reference, c.card_type,
 		       c.hint_level, c.state, c.stability, c.difficulty, c.scheduled_days
@@ -258,31 +261,9 @@ func (db *DB) GetDueCards(limit int) ([]struct {
 	}
 	defer rows.Close()
 
-	var items []struct {
-		CardID        int64
-		VerseID       string
-		VerseText     string
-		Reference     string
-		CardType      string
-		HintLevel     int
-		State         int
-		Stability     float64
-		Difficulty    float64
-		ScheduledDays float64
-	}
+	var items []DueCardItem
 	for rows.Next() {
-		var item struct {
-			CardID        int64
-			VerseID       string
-			VerseText     string
-			Reference     string
-			CardType      string
-			HintLevel     int
-			State         int
-			Stability     float64
-			Difficulty    float64
-			ScheduledDays float64
-		}
+		var item DueCardItem
 		if err := rows.Scan(&item.CardID, &item.VerseID, &item.VerseText, &item.Reference,
 			&item.CardType, &item.HintLevel, &item.State, &item.Stability, &item.Difficulty,
 			&item.ScheduledDays); err != nil {

@@ -122,10 +122,16 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	items, err := h.DB.GetDueCards(limit)
+	items, err := h.DB.GetDueCards(limit * 3) // fetch extra for interleaving pool
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	// Interleave: mix verses from different passages
+	interleave := r.URL.Query().Get("interleave") != "false"
+	if interleave && len(items) > 2 {
+		items = interleaveQueue(items, limit)
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -133,6 +139,68 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		"count": len(items),
 		"cards": items,
 	})
+}
+
+// interleaveQueue rearranges cards so verses from the same passage
+// are spread out — at most 2 consecutive from any passage.
+func interleaveQueue(items []db.DueCardItem, limit int) []db.DueCardItem {
+	if len(items) <= 2 {
+		return items
+	}
+
+	// Group by passage (book.chapter)
+	type group struct {
+		passage string
+		cards   []db.DueCardItem
+	}
+	groups := make(map[string]*group)
+	order := []string{}
+
+	for _, item := range items {
+		// Extract passage from verse_id, e.g., "gen.1.1" → "gen.1"
+		verseID := item.VerseID
+		passage := verseID
+		if lastDot := strings.LastIndex(verseID, "."); lastDot > 0 {
+			passage = verseID[:lastDot]
+		}
+
+		if _, ok := groups[passage]; !ok {
+			groups[passage] = &group{passage: passage}
+			order = append(order, passage)
+		}
+		groups[passage].cards = append(groups[passage].cards, item)
+	}
+
+	// Interleave: take at most 2 from each passage, cycle through
+	result := make([]db.DueCardItem, 0, limit)
+	maxPerPassage := 2
+	round := 0
+
+	for len(result) < limit {
+		addedThisRound := 0
+		for _, passage := range order {
+			g := groups[passage]
+			if len(g.cards) == 0 {
+				continue
+			}
+			take := maxPerPassage
+			if len(g.cards) < take {
+				take = len(g.cards)
+			}
+			if remaining := limit - len(result); remaining < take {
+				take = remaining
+			}
+			result = append(result, g.cards[:take]...)
+			g.cards = g.cards[take:]
+			addedThisRound++
+		}
+		if addedThisRound == 0 {
+			break
+		}
+		round++
+	}
+
+	return result
 }
 
 // ── Review ──
