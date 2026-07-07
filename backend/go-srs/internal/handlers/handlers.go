@@ -122,10 +122,35 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	items, err := h.DB.GetDueCards(limit * 3) // fetch extra for interleaving pool
+	items, err := h.DB.GetDueCards(limit * 4) // fetch extra for interleaving pool
 	if err != nil {
 		errorResponse(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	// Repetition compression: detect groups of connected due cards
+	compress := r.URL.Query().Get("compress") != "false"
+	hidden := 0
+	if compress && len(items) > 1 {
+		visible := make([]db.DueCardItem, 0, len(items))
+		hiddenIDs := make(map[int64]bool)
+		for _, item := range items {
+			if hiddenIDs[item.CardID] {
+				continue
+			}
+			// Check if this card has connected cards also due
+			connected, err := h.DB.GetConnectedDueCards(item.VerseID, item.CardID)
+			if err == nil && len(connected) > 0 {
+				item.CompressedWith = make([]int64, 0, len(connected))
+				for _, cc := range connected {
+					item.CompressedWith = append(item.CompressedWith, cc.CardID)
+					hiddenIDs[cc.CardID] = true
+					hidden++
+				}
+			}
+			visible = append(visible, item)
+		}
+		items = visible
 	}
 
 	// Interleave: mix verses from different passages
@@ -138,6 +163,7 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 		"ok":    true,
 		"count": len(items),
 		"cards": items,
+		"hidden": hidden,
 	})
 }
 
@@ -323,6 +349,46 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 		"fire_verses":     len(fireBoosts),
 		"fire_penalties":  firePenalties,
 		"remediation":     remediation,
+	})
+}
+
+// ReviewBatch handles a compressed group review — applies the same rating
+// to all cards in the group (the primary card + its compressed companions).
+func (h *Handler) ReviewBatch(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		CardIDs []int `json:"card_ids"`
+		Rating  int   `json:"rating"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if input.Rating < 1 || input.Rating > 4 {
+		errorResponse(w, http.StatusBadRequest, "rating must be 1-4")
+		return
+	}
+
+	totalXP := 0
+	reviewsDone := 0
+	for _, cid := range input.CardIDs {
+		card, err := h.DB.ReviewCard(int64(cid), fsrs.Rating(input.Rating), h.Params)
+		if err != nil {
+			continue
+		}
+		// Award XP for each card in the group (discounted for companions)
+		xp := 10 + int(card.HintLevel)*2
+		if reviewsDone > 0 {
+			xp = int(float64(xp) * 0.5) // 50% for compressed cards
+		}
+		h.DB.AwardXP(xp)
+		totalXP += xp
+		reviewsDone++
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":          true,
+		"total_xp":    totalXP,
+		"reviews_done": reviewsDone,
 	})
 }
 
@@ -778,6 +844,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/verses/batch", h.SyncVerses)
 	mux.HandleFunc("/api/memorize/queue", h.GetQueue)
 	mux.HandleFunc("/api/memorize/review/", h.ReviewCard)
+	mux.HandleFunc("/api/memorize/review-batch", h.ReviewBatch)
 	mux.HandleFunc("/api/memorize/verses/", h.GetCardsByVerse)
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)

@@ -246,16 +246,17 @@ func (db *DB) EnsureCard(verseID, cardType string) (int64, error) {
 
 // DueCardItem represents a card due for review.
 type DueCardItem struct {
-	CardID        int64   `json:"CardID"`
-	VerseID       string  `json:"VerseID"`
-	VerseText     string  `json:"VerseText"`
-	Reference     string  `json:"Reference"`
-	CardType      string  `json:"CardType"`
-	HintLevel     int     `json:"HintLevel"`
-	State         int     `json:"State"`
-	Stability     float64 `json:"Stability"`
-	Difficulty    float64 `json:"Difficulty"`
-	ScheduledDays float64 `json:"ScheduledDays"`
+	CardID        int64    `json:"CardID"`
+	VerseID       string   `json:"VerseID"`
+	VerseText     string   `json:"VerseText"`
+	Reference     string   `json:"Reference"`
+	CardType      string   `json:"CardType"`
+	HintLevel     int      `json:"HintLevel"`
+	State         int      `json:"State"`
+	Stability     float64  `json:"Stability"`
+	Difficulty    float64  `json:"Difficulty"`
+	ScheduledDays float64  `json:"ScheduledDays"`
+	CompressedWith []int64 `json:"CompressedWith,omitempty"`
 }
 
 // GetDueCards returns cards scheduled for review.
@@ -594,6 +595,36 @@ func (db *DB) ScanCardVerse(cardID int64, verseID *string) error {
 func (db *DB) UpdateHintLevel(cardID int64, level int) error {
 	_, err := db.conn.Exec("UPDATE cards SET hint_level = ? WHERE id = ?", level, cardID)
 	return err
+}
+
+// GetConnectedDueCards finds due cards connected to a given verse (for repetition compression).
+func (db *DB) GetConnectedDueCards(verseID string, excludeCardID int64) ([]DueCardItem, error) {
+	rows, err := db.conn.Query(`
+		SELECT c.id, c.verse_id, v.text, v.reference, c.card_type,
+		       c.hint_level, c.state, c.stability, c.difficulty, c.scheduled_days
+		FROM cards c
+		JOIN verses v ON v.id = c.verse_id
+		JOIN verse_connections vc ON (vc.connected_verse_id = c.verse_id)
+		WHERE vc.verse_id = ? AND c.due <= datetime('now') AND c.id != ?
+		ORDER BY c.hint_level DESC
+		LIMIT 5
+	`, verseID, excludeCardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []DueCardItem
+	for rows.Next() {
+		var item DueCardItem
+		if err := rows.Scan(&item.CardID, &item.VerseID, &item.VerseText, &item.Reference,
+			&item.CardType, &item.HintLevel, &item.State, &item.Stability, &item.Difficulty,
+			&item.ScheduledDays); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
 }
 
 // ── Connection Operations (for FIRe) ──
