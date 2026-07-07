@@ -5,6 +5,16 @@ import ReviewSession from './ReviewSession'
 import PalaceList from './PalaceList'
 import PalaceBuilder from './PalaceBuilder'
 
+const BADGE_NAMES = {
+  '100_xp': '🌟 Scholar',
+  '500_xp': '🔥 Dedicated',
+  '1000_xp': '💎 Master',
+  '10_mastered': '📖 Learner',
+  '50_mastered': '🏆 Memorizer',
+  'week_streak': '📅 Weekly Warrior',
+  'month_streak': '📅 Iron Will',
+}
+
 export default function MemorizeView() {
   const [view, setView] = useState('loading') // 'loading' | 'dashboard' | 'review' | 'palaces' | 'palace-builder'
   const [activePalaceId, setActivePalaceId] = useState(null)
@@ -48,7 +58,7 @@ export default function MemorizeView() {
     return <PalaceBuilder palaceId={activePalaceId} onBack={() => setView('palaces')} />
   }
 
-  return (
+  return (<>
     <div className="max-w-2xl mx-auto p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
@@ -73,34 +83,99 @@ export default function MemorizeView() {
         </div>
       )}
 
-      {/* Stats row */}
+      {/* Stats row + Quick start + Feature cards */}
       {stats && (
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          <StatBox label="Cards" value={stats.TotalCards || 0} />
-          <StatBox label="Due" value={stats.DueCards || 0} highlight />
-          <StatBox label="Mastered" value={stats.Mastered || 0} />
-          <StatBox label="Streak" value={`${stats.Streak || 0}d`} />
+        <div className="contents">
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          <StatBox label="Cards" value={stats.total_cards || 0} />
+          <StatBox label="Due" value={stats.due_cards || 0} highlight />
+          <StatBox label="Mastered" value={stats.mastered || 0} />
+          <StatBox label="Streak" value={`${stats.streak || 0}d`} />
         </div>
+
+        {/* XP + Reviews Today */}
+        <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-4 px-1">
+          <span>{stats.total_xp || 0} total XP</span>
+          <span>{stats.reviews_today || 0} reviews today</span>
+        </div>
+
+        {/* Badges */}
+        {stats.badges && stats.badges.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Badges</p>
+            <div className="flex flex-wrap gap-1.5">
+              {stats.badges.map(b => (
+                <span key={b} className="text-[10px] px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                  {BADGE_NAMES[b] || b}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Heatmap (last 30 days) */}
+        {stats.heatmap && stats.heatmap.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Last 30 Days</p>
+            <div className="flex gap-0.5 flex-wrap">
+              {stats.heatmap.map((d, i) => (
+                <div
+                  key={i}
+                  className="w-3 h-3 rounded-sm"
+                  style={{
+                    backgroundColor: d.count > 10
+                      ? '#4f46e5'
+                      : d.count > 5
+                      ? '#818cf8'
+                      : d.count > 2
+                      ? '#a5b4fc'
+                      : d.count > 0
+                      ? '#c7d2fe'
+                      : '#e5e7eb'
+                  }}
+                  title={`${d.date}: ${d.count} reviews`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top verses */}
+        {stats.top_verses && stats.top_verses.length > 0 && (
+          <div className="mb-4">
+            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Most Reviewed</p>
+            <div className="space-y-0.5">
+              {stats.top_verses.map((v, i) => (
+                <div key={i} className="text-[11px] text-neutral-500 dark:text-neutral-400 flex justify-between">
+                  <span>{v.verse}</span>
+                  <span className="tabular-nums">{v.reviews}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        </div>
+        )}
       )}
 
       {/* Quick start */}
-      {stats && stats.DueCards > 0 && (
+      {stats && stats.due_cards > 0 && (
         <button
           onClick={() => setView('review')}
           className="w-full py-3 px-4 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white font-medium text-sm mb-6 transition-colors"
         >
-          Start Review ({stats.DueCards} cards due)
+          Start Review ({stats.due_cards} cards due)
         </button>
       )}
 
       {/* Feature cards */}
-      <div className="grid gap-3">
+      {stats && <div className="grid gap-3">
         <FeatureCard
           icon="📋"
           title="Review Queue"
           description="FSRS spaced repetition — review due cards"
-          badge={stats && stats.DueCards > 0 ? `${stats.DueCards} due` : 'Up to date'}
-          ready={stats && stats.DueCards > 0}
+          badge={stats.due_cards > 0 ? `${stats.due_cards} due` : 'Up to date'}
+          ready={stats.due_cards > 0}
         />
         <button onClick={() => setView('palaces')} className="w-full text-left">
           <FeatureCard
@@ -132,8 +207,9 @@ export default function MemorizeView() {
           badge="Phase 9"
           ready={false}
         />
-      </div>
+      </div>}
     </div>
+    </>
   )
 }
 

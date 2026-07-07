@@ -629,34 +629,109 @@ func (db *DB) AwardXP(xp int) (int, error) {
 	return streak, nil
 }
 
-func (db *DB) GetStats() (struct {
-	TotalCards  int
-	DueCards    int
-	Mastered    int
-	Streak      int
-	TotalXP     int
-	ReviewsToday int
-}, error) {
-	var s struct {
-		TotalCards  int
-		DueCards    int
-		Mastered    int
-		Streak      int
-		TotalXP     int
-		ReviewsToday int
-	}
+// GetStats returns comprehensive dashboard stats.
+func (db *DB) GetStats() (map[string]interface{}, error) {
+	stats := map[string]interface{}{}
 
-	db.conn.QueryRow("SELECT COUNT(*) FROM cards").Scan(&s.TotalCards)
-	db.conn.QueryRow("SELECT COUNT(*) FROM cards WHERE due <= datetime('now')").Scan(&s.DueCards)
-	db.conn.QueryRow("SELECT COUNT(*) FROM cards WHERE stability > 30 AND state = 2").Scan(&s.Mastered)
-	db.conn.QueryRow("SELECT xp, streak_count FROM user_xp WHERE id=1").Scan(&s.TotalXP, &s.Streak)
+	var tc, dc, mastered, xp, streak, reviewsToday int
+	db.conn.QueryRow("SELECT COUNT(*) FROM cards").Scan(&tc)
+	db.conn.QueryRow("SELECT COUNT(*) FROM cards WHERE due <= datetime('now')").Scan(&dc)
+	db.conn.QueryRow("SELECT COUNT(*) FROM cards WHERE stability > 30 AND state = 2").Scan(&mastered)
+	db.conn.QueryRow("SELECT xp, streak_count FROM user_xp WHERE id=1").Scan(&xp, &streak)
+
+	stats["total_cards"] = tc
+	stats["due_cards"] = dc
+	stats["mastered"] = mastered
+	stats["total_xp"] = xp
+	stats["streak"] = streak
 
 	today := time.Now().Format("2006-01-02")
 	db.conn.QueryRow(
 		"SELECT COUNT(*) FROM review_log WHERE date(reviewed_at) = ?", today,
-	).Scan(&s.ReviewsToday)
+	).Scan(&reviewsToday)
+	stats["reviews_today"] = reviewsToday
 
-	return s, nil
+	// Heatmap data: last 30 days of review activity
+	heatmap := []map[string]interface{}{}
+	rows, _ := db.conn.Query(`
+		SELECT date(reviewed_at) as day, COUNT(*) as count
+		FROM review_log
+		WHERE reviewed_at >= date('now', '-30 days')
+		GROUP BY date(reviewed_at)
+		ORDER BY day
+	`)
+	if rows != nil {
+		defer rows.Close()
+		for rows.Next() {
+			var day string
+			var count int
+			rows.Scan(&day, &count)
+			heatmap = append(heatmap, map[string]interface{}{"date": day, "count": count})
+		}
+	}
+	stats["heatmap"] = heatmap
+
+	// Badges earned
+	badges := []string{}
+	if s, _ := stats["total_xp"].(int); s >= 100 {
+		badges = append(badges, "100_xp")
+	}
+	if s, _ := stats["total_xp"].(int); s >= 500 {
+		badges = append(badges, "500_xp")
+	}
+	if s, _ := stats["total_xp"].(int); s >= 1000 {
+		badges = append(badges, "1000_xp")
+	}
+	if s, _ := stats["mastered"].(int); s >= 10 {
+		badges = append(badges, "10_mastered")
+	}
+	if s, _ := stats["mastered"].(int); s >= 50 {
+		badges = append(badges, "50_mastered")
+	}
+	if s, _ := stats["streak"].(int); s >= 7 {
+		badges = append(badges, "week_streak")
+	}
+	if s, _ := stats["streak"].(int); s >= 30 {
+		badges = append(badges, "month_streak")
+	}
+	stats["badges"] = badges
+
+	// Review count by rating (last 30 days)
+	ratingBreakdown := map[int]int{}
+	rrows, _ := db.conn.Query(`
+		SELECT rating, COUNT(*) as c FROM review_log
+		WHERE reviewed_at >= date('now', '-30 days')
+		GROUP BY rating
+	`)
+	if rrows != nil {
+		defer rrows.Close()
+		for rrows.Next() {
+			var r, c int
+			rrows.Scan(&r, &c)
+			ratingBreakdown[r] = c
+		}
+	}
+	stats["rating_breakdown"] = ratingBreakdown
+
+	// Top 5 verses by total reviews
+	topVerses := []map[string]interface{}{}
+	vrows, _ := db.conn.Query(`
+		SELECT c.verse_id, COUNT(*) as c FROM review_log rl
+		JOIN cards c ON c.id = rl.card_id
+		GROUP BY c.verse_id ORDER BY c DESC LIMIT 5
+	`)
+	if vrows != nil {
+		defer vrows.Close()
+		for vrows.Next() {
+			var vid string
+			var count int
+			vrows.Scan(&vid, &count)
+			topVerses = append(topVerses, map[string]interface{}{"verse": vid, "reviews": count})
+		}
+	}
+	stats["top_verses"] = topVerses
+
+	return stats, nil
 }
 
 // ScanCardVerse retrieves the verse_id for a card (used for FIRe).
