@@ -838,6 +838,42 @@ func truncateText(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
+// ── FIRe Credit API (for assessment engine integration) ──
+
+// FireCredit accepts a verse ID and rating, computes FIRe boosts/penalties,
+// and applies them. Used by the assessment engine to give implicit credit
+// when a user demonstrates understanding of a connection.
+func (h *Handler) FireCredit(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		VerseID string `json:"verse_id"`
+		Rating  int    `json:"rating"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		errorResponse(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if input.VerseID == "" {
+		errorResponse(w, http.StatusBadRequest, "verse_id required")
+		return
+	}
+
+	var fireApplied, firePenalties int
+	if input.Rating >= 3 {
+		boosts, _ := h.Fire.ComputeBoosts(input.VerseID, input.Rating, h.DB.GetConnections, h.DB.HasCard)
+		fireApplied, _ = h.DB.ApplyFIREBoosts(boosts)
+	} else if input.Rating <= 2 && input.Rating > 0 {
+		penalties, _ := h.Fire.ComputePenalties(input.VerseID, input.Rating, h.DB.GetConnections, h.DB.HasCard)
+		firePenalties, _ = h.DB.ApplyFIREPenalties(penalties)
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"ok":            true,
+		"verse_id":      input.VerseID,
+		"fire_boosts":   fireApplied,
+		"fire_penalties": firePenalties,
+	})
+}
+
 // RegisterRoutes sets up all HTTP routes on the given mux.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", h.Health)
@@ -848,6 +884,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/memorize/verses/", h.GetCardsByVerse)
 	mux.HandleFunc("/api/memorize/cards", h.CreateCard)
 	mux.HandleFunc("/api/memorize/stats", h.GetStats)
+	mux.HandleFunc("/api/memorize/fire/credit", h.FireCredit)
 	mux.HandleFunc("/api/memorize/connections/batch", h.SyncConnections)
 	mux.HandleFunc("/api/memorize/push/subscribe", h.PushSubscribe)
 	mux.HandleFunc("/api/memorize/push/unsubscribe", h.PushUnsubscribe)

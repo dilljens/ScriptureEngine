@@ -8,6 +8,8 @@ Within a long-running MCP/HTTP server, the in-memory cache avoids disk I/O.
 import json
 import os
 import time
+import urllib.request
+import urllib.error
 
 from lib.assessment import AssessmentEngine, KnowledgeState
 
@@ -182,6 +184,10 @@ def submit_answer(conn, user_id="default", correct=False):
     session["engine"].assess_response(session["state"], item_id, correct)
     session["history"].append({"item_id": item_id, "correct": correct})
 
+    # If correct, give FIRe credit via the Go memorization service
+    if correct:
+        _fire_credit_for_item(conn, item_id)
+
     # Check termination
     should_stop, reason = session["engine"].should_terminate(
         session["state"],
@@ -303,3 +309,35 @@ def _get_question(conn, item_id):
         "layer": ki["pa_r_de_s_level"],
         "bloom_level": "remember",
     }
+
+
+def _fire_credit_for_item(conn, item_id):
+    """Give FIRe credit to verses involved in a knowledge item when answered correctly.
+    
+    Calls the Go memorization service to boost connected verse cards.
+    """
+    ki = conn.execute(
+        "SELECT verse_id, target_verse FROM knowledge_items WHERE id = ?",
+        (item_id,)
+    ).fetchone()
+    if not ki:
+        return
+
+    verse_id = ki["verse_id"]
+    target = ki["target_verse"]
+    if not verse_id or not target:
+        return
+
+    # Call Go FIRe credit endpoint for both verses (Good rating = 3)
+    for vid in (verse_id, target):
+        try:
+            payload = json.dumps({"verse_id": vid, "rating": 3}).encode()
+            req = urllib.request.Request(
+                "http://localhost:8090/api/memorize/fire/credit",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            # Non-blocking — timeout after 2s
+            urllib.request.urlopen(req, timeout=2)
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+            pass  # FIRe is optional — service may not be running
