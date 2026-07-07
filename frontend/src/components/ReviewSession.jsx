@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { memorizeApi } from '../memorizeApi'
 
 const RATINGS = [
@@ -16,6 +16,9 @@ export default function ReviewSession({ onDone }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [conceptImage, setConceptImage] = useState(null)
+  const [imageLoading, setImageLoading] = useState(false)
+  const imageFetched = useRef({})
 
   const loadQueue = useCallback(async () => {
     try {
@@ -36,6 +39,19 @@ export default function ReviewSession({ onDone }) {
   }, [])
 
   useEffect(() => { loadQueue() }, [loadQueue])
+
+  // Fetch concept image when answer is revealed
+  useEffect(() => {
+    const card = queue[currentIdx]
+    if (!card || !showAnswer || imageFetched.current[card.CardID]) return
+
+    imageFetched.current[card.CardID] = true
+    // Try loading image — if 404, no concept image exists
+    const img = new Image()
+    img.onload = () => setConceptImage(`/api/memorize/images/${card.VerseID}?t=${Date.now()}`)
+    img.onerror = () => setConceptImage(null)
+    img.src = `/api/memorize/images/${card.VerseID}`
+  }, [showAnswer, currentIdx, queue])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -149,12 +165,24 @@ export default function ReviewSession({ onDone }) {
       </div>
 
       {/* Verse card */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 mb-6 min-h-[120px] flex items-center justify-center shadow-sm">
-        <p className="text-lg leading-relaxed text-neutral-800 dark:text-neutral-200 text-center font-serif">
-          {showAnswer
-            ? card.VerseText
-            : card.VerseText.split(' ').map(w => w[0]).join(' ')}
-        </p>
+      <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden mb-6 shadow-sm">
+        {/* Concept image (shown when answer revealed) */}
+        {showAnswer && conceptImage && (
+          <div className="w-full h-48 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+            <img
+              src={conceptImage}
+              alt="Concept illustration"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <div className="p-6 min-h-[100px] flex items-center justify-center">
+          <p className="text-lg leading-relaxed text-neutral-800 dark:text-neutral-200 text-center font-serif">
+            {showAnswer
+              ? card.VerseText
+              : card.VerseText.split(' ').map(w => w[0]).join(' ')}
+          </p>
+        </div>
       </div>
 
       {/* Hint level indicator */}
