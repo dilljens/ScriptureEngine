@@ -1,0 +1,49 @@
+{
+  "ref": "gen.1.1_schmueloff",
+  "duration": 7.04,
+  "word_count": 7,
+  "words": [
+    {
+      "word": "בראשית",
+      "start": 0.0,
+      "end": 0.76,
+      "confidence": 0.994
+    },
+    {
+      "word": "ברא",
+      "start": 1.0,
+      "end": 1.7,
+      "confidence": 0.703
+    },
+    {
+      "word": "אלוהים",
+      "start": 1.7,
+      "end": 2.88,
+      "confidence": 0.992
+    },
+    {
+      "word": "את",
+      "start": 3.14,
+      "end": 3.84,
+      "confidence": 0.999
+    },
+    {
+      "word": "השממיים",
+      "start": 3.84,
+      "end": 4.74,
+      "confidence": 0.793
+    },
+    {
+      "word": "ואת",
+      "start": 4.74,
+      "end": 6.32,
+      "confidence": 0.999
+    },
+    {
+      "word": "הארץ",
+      "start": 6.32,
+      "end": 7.04,
+      "confidence": 1.0
+    }
+  ]
+}

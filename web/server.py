@@ -2615,16 +2615,13 @@ def play_verse_audio(verse_id: str):
     
     vid = verse_id.strip("/")
     
-    audio_file = AUDIO_DIR / f"{vid}.wav"
-    if not audio_file.exists():
-        audio_file = AUDIO_DIR / vid
-        if not audio_file.exists() or not str(audio_file).endswith('.wav'):
-            raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
+    # Prefer schmueloff (natural voice) version, then cloned, then default
+    for suffix in ['_schmueloff', '_cloned', '']:
+        audio_file = AUDIO_DIR / f"{vid}{suffix}.wav"
+        if audio_file.exists():
+            return FileResponse(str(audio_file), media_type="audio/wav", filename=f"{vid}.wav")
     
-    if not audio_file.exists():
-        raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
-    
-    return FileResponse(str(audio_file), media_type="audio/wav", filename=f"{vid}.wav")
+    raise HTTPException(status_code=404, detail=f"Audio not found: {vid}")
 
 
 @app.get("/api/v1/audio/align/{verse_id:path}")
@@ -2634,15 +2631,16 @@ def get_verse_alignment(verse_id: str):
     Returns JSON with word timestamps for highlighting during playback.
     """
     vid = verse_id.strip("/")
-    align_file = ALIGN_DIR / f"{vid}.json"
     
-    if not align_file.exists():
-        raise HTTPException(status_code=404, detail=f"Alignment not found: {vid}")
+    # Prefer schmueloff alignment, then cloned, then default
+    for suffix in ['_schmueloff', '_cloned', '']:
+        align_file = ALIGN_DIR / f"{vid}{suffix}.json"
+        if align_file.exists():
+            with open(align_file) as f:
+                data = json.load(f)
+            return {"ok": True, "data": data}
     
-    with open(align_file) as f:
-        data = json.load(f)
-    
-    return {"ok": True, "data": data}
+    raise HTTPException(status_code=404, detail=f"Alignment not found: {vid}")
 
 
 # ─── Forum System ───
