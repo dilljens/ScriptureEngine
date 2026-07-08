@@ -1627,7 +1627,7 @@ def get_hebrew_curriculum(user_id: str = "default"):
         "mastered": mastered,
         "in_progress": in_progress,
         "locked": locked,
-        "categories": ["consonant", "vowel", "syllable", "word", "verb", "noun", "grammar", "syntax", "reading"],
+        "categories": ["consonant", "vowel", "syllable", "word", "verb", "noun", "grammar", "syntax", "reading", "root", "phrase"],
     }}
 
 

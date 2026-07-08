@@ -414,6 +414,7 @@ function AppInner() {
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
+  const [showGlobalKeyboard, setShowGlobalKeyboard] = useState(false)
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCheatsheet, setShowCheatsheet] = useState(false)
@@ -641,6 +642,7 @@ function AppInner() {
       if (matchesHotkey(e, 'toggleTimes')) { e.preventDefault(); toggleDispatch('times'); return }
       if (matchesHotkey(e, 'togglePlaces')) { e.preventDefault(); toggleDispatch('places'); return }
       if (matchesHotkey(e, 'toggleIsaiah')) { e.preventDefault(); toggleDispatch('isaiah'); return }
+      if (e.ctrlKey && e.shiftKey && e.key === 'H') { e.preventDefault(); setShowGlobalKeyboard(p => !p); return }
 
       // Alt+Arrow for history (browser-like)
       if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); doHistoryBack(); return }
@@ -1111,6 +1113,17 @@ function AppInner() {
               <LayersPopover open={showLayers} onClose={() => setShowLayers(false)}
                 poetryMode={poetryMode} setPoetryMode={setPoetryMode} buttonRef={layersBtnRef} />
             </div>
+
+            {/* Hebrew keyboard toggle */}
+            <button onClick={() => setShowGlobalKeyboard(p => !p)}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                showGlobalKeyboard
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400'
+              }`}
+              title="Toggle Hebrew keyboard (Ctrl+Shift+H)">
+              <span className="text-sm font-serif" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>א</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1273,6 +1286,53 @@ function AppInner() {
         />
       )}
 
+      {/* Global Hebrew keyboard (floating at bottom) */}
+      {showGlobalKeyboard && (
+        <div className="fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 p-2 shadow-2xl">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium">Hebrew Keyboard</span>
+            <button onClick={() => setShowGlobalKeyboard(false)}
+              className="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">✕</button>
+          </div>
+          {React.createElement(React.lazy(() => import('./components/HebrewKeyboard')), {
+            value: '',
+            onCharClick: (c) => {
+              // Dispatch keyboard input event for any focused Hebrew input
+              const el = document.activeElement
+              if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                const start = el.selectionStart || 0
+                const end = el.selectionEnd || 0
+                el.value = el.value.substring(0, start) + c + el.value.substring(end)
+                el.selectionStart = el.selectionEnd = start + c.length
+                el.dispatchEvent(new Event('input', { bubbles: true }))
+                el.focus()
+              }
+            },
+            onBackspace: () => {
+              const el = document.activeElement
+              if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                const start = el.selectionStart || 0
+                if (start > 0) {
+                  el.value = el.value.substring(0, start - 1) + el.value.substring(el.selectionEnd || start)
+                  el.selectionStart = el.selectionEnd = start - 1
+                  el.dispatchEvent(new Event('input', { bubbles: true }))
+                  el.focus()
+                }
+              }
+            },
+            onClear: () => {
+              const el = document.activeElement
+              if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                el.value = ''
+                el.dispatchEvent(new Event('input', { bubbles: true }))
+                el.focus()
+              }
+            },
+            onDone: () => setShowGlobalKeyboard(false),
+          })}
+        </div>
+      )}
+
       {/* Mobile: FAB — New Chat */}
       <button onClick={() => { openChatTab(); setShowMobileMenu(false) }}
         className="sm:hidden fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 active:bg-blue-800 transition-all active:scale-95 cursor-pointer"
@@ -1325,6 +1385,9 @@ function AppInner() {
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
         onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
+        onHebrew={() => { setShowMobileMenu(false); setShowHebrewLearn(true); setHebrewLessonId(null) }}
+        onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
+        onKnowledge={() => { setShowMobileMenu(false); setChatInitialMsg('Run a scripture knowledge assessment to test what I know about connections between verses. Start with a diagnostic covering all layers.'); handleOpenChat() }}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         fontSize={fontSize}
