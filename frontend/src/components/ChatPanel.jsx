@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import VerseChip from './VerseChip'
+import QuizCard from './QuizCard'
 import VersePopup from './VersePopup'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
@@ -882,7 +883,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // Returns an array of plain text and React elements.
   function renderWithMarkers(text) {
     if (!text) return text
-    const parts = text.split(/(%%%(?:VERSE|CLICK):[^%]+%%%)/g)
+    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW):[^%]+%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
     const elements = parts.map((part, i) => {
@@ -904,6 +905,26 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             {cm[1]}
           </button>
         )
+      }
+      const qm = part.match(/%%%QUIZ:({[^%]+})%%%/)
+      if (qm) {
+        try {
+          const quizData = JSON.parse(qm[1])
+          return <QuizCard key={`q${i}`} question={quizData.question} options={quizData.options} />
+        } catch { return <span className="text-red-500 text-xs">[invalid quiz]</span> }
+      }
+      const hm = part.match(/%%%HEBREW:({[^%]+})%%%/)
+      if (hm) {
+        try {
+          const hd = JSON.parse(hm[1])
+          return (
+            <span key={`h${i}`} className="inline-flex flex-col items-center mx-1 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50" dir="rtl">
+              <span className="text-lg font-serif leading-relaxed">{hd.hebrew}</span>
+              {hd.translit && <span className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">{hd.translit}</span>}
+              {hd.gloss && <span className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">{hd.gloss}</span>}
+            </span>
+          )
+        } catch { return <span className="text-red-500 text-xs">[invalid hebrew]</span> }
       }
       return part  // plain text
     })
@@ -944,7 +965,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     })
 
     // Check if there are any markers that need special rendering
-    const hasMarkers = /%%%(?:VERSE|CLICK):[^%]+%%%/g.test(processed)
+    const hasMarkers = /%%%(?:VERSE|CLICK|QUIZ|HEBREW):[^%]+%%%/g.test(processed)
     if (!hasMarkers) {
       return (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>

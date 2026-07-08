@@ -1511,6 +1511,83 @@ def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
 
 # ─── List Available Tools ───
 
+@app.get("/api/v1/hebrew/lessons")
+def list_hebrew_lessons(category: str = ""):
+    """List available Hebrew lesson nodes, optionally filtered by category.
+    
+    The Hebrew teaching system has 102 concept nodes across 7 levels:
+    letter, vowel, word, grammar, phrase, reading, root_concept.
+    """
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        return {"ok": True, "data": {"lessons": [], "total": 0,
+                "note": "Hebrew lesson DB not found. Run scripts/seed_hebrew_content.py first."}}
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    if category:
+        rows = conn.execute("""
+            SELECT n.id, n.title, n.category, n.level, n.description,
+                   COUNT(e.source_id) as prerequisite_count
+            FROM hebrew_nodes n
+            LEFT JOIN hebrew_edges e ON e.target_id = n.id
+            WHERE n.category = ?
+            GROUP BY n.id
+            ORDER BY n.level
+        """, (category,)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT n.id, n.title, n.category, n.level, n.description,
+                   COUNT(e.source_id) as prerequisite_count
+            FROM hebrew_nodes n
+            LEFT JOIN hebrew_edges e ON e.target_id = n.id
+            GROUP BY n.id
+            ORDER BY n.level
+        """).fetchall()
+    conn.close()
+    
+    lessons = [dict(r) for r in rows]
+    return {"ok": True, "data": {"lessons": lessons, "total": len(lessons),
+                                  "categories": ["letter", "vowel", "word", "grammar", "phrase", "reading", "root_concept"]}}
+
+
+@app.get("/api/v1/hebrew/lesson/{node_id}")
+def get_hebrew_lesson(node_id: str):
+    """Get full lesson content for a Hebrew concept node.
+    
+    Returns explanation, examples, vocabulary, and practice items.
+    """
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        raise HTTPException(status_code=404, detail="Hebrew lesson DB not found")
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    
+    node = conn.execute("SELECT * FROM hebrew_nodes WHERE id = ?", (node_id,)).fetchone()
+    if not node:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Lesson not found: {node_id}")
+    
+    lesson = conn.execute("SELECT * FROM hebrew_lessons WHERE node_id = ?", (node_id,)).fetchone()
+    practices = conn.execute("SELECT * FROM hebrew_practice_items WHERE node_id = ?", (node_id,)).fetchall()
+    prerequisites = conn.execute("""
+        SELECT n.id, n.title, n.category
+        FROM hebrew_edges e JOIN hebrew_nodes n ON n.id = e.source_id
+        WHERE e.target_id = ?
+    """, (node_id,)).fetchall()
+    
+    conn.close()
+    
+    result = dict(node)
+    if lesson:
+        result["lesson"] = lesson["content"] if "content" in dict(lesson).keys() else str(dict(lesson))
+    result["practice_items"] = [dict(p) for p in practices]
+    result["prerequisites"] = [dict(p) for p in prerequisites]
+    
+    return {"ok": True, "data": result}
+
+
 @app.get("/api/v1/tools")
 def list_api_tools():
     """List all available tools with their schemas."""
@@ -3851,6 +3928,35 @@ TOOL_DEFINITIONS = [
                     "user_id": {"type": "string", "default": "default"},
                 },
                 "required": [],
+            },
+        },
+    },
+    # ── Hebrew Learning ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_lessons",
+            "description": "List available Hebrew lesson nodes. Optional category filter: letter, vowel, word, grammar, phrase, reading, root_concept. Returns all lessons by default.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Optional filter: letter, vowel, word, grammar, phrase, reading, root_concept"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_lesson",
+            "description": "Get full lesson content for a Hebrew concept node. Returns explanation, vocabulary, practice items, and prerequisites. Use with a node ID from scripture_hebrew_lessons.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "node_id": {"type": "string", "description": "Node ID (e.g., 'aleph', 'bet', 'qal_verb', 'construct_chain')"},
+                },
+                "required": ["node_id"],
             },
         },
     },

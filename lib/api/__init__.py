@@ -830,6 +830,77 @@ register(
     "Promote a conversation-discovered connection to the main connection graph",
 )
 
+# ─── Hebrew Learning Tools ───
+
+def _hebrew_lessons(category=""):
+    """List available Hebrew lesson nodes from the Go backend's memorize.db."""
+    import sqlite3
+    from pathlib import Path
+    db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+    if not db.exists():
+        return {"lessons": [], "total": 0, "note": "Hebrew lesson DB not found"}
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    if category:
+        rows = conn.execute("SELECT id, title, category, level, description FROM hebrew_nodes WHERE category=? ORDER BY level", (category,)).fetchall()
+    else:
+        rows = conn.execute("SELECT id, title, category, level, description FROM hebrew_nodes ORDER BY level").fetchall()
+    conn.close()
+    return {"lessons": [dict(r) for r in rows], "total": len(rows)}
+
+def _hebrew_lesson(node_id=""):
+    """Get full lesson content for a Hebrew concept node."""
+    import sqlite3, json
+    from pathlib import Path
+    db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+    if not db.exists():
+        return {"error": "Hebrew lesson DB not found"}
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    node = conn.execute("SELECT * FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+    if not node:
+        conn.close()
+        return {"error": f"Lesson not found: {node_id}"}
+    lesson = conn.execute("SELECT * FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
+    practices = conn.execute("SELECT * FROM hebrew_practice_items WHERE node_id=?", (node_id,)).fetchall()
+    prereqs = conn.execute("SELECT n.id,n.title,n.category FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id WHERE e.target_id=?", (node_id,)).fetchall()
+    conn.close()
+    result = dict(node)
+    if lesson:
+        try:
+            result["content"] = json.loads(lesson["content"]) if lesson["content"].startswith("{") else lesson["content"]
+        except:
+            result["content"] = lesson["content"]
+    result["practice_items"] = [dict(p) for p in practices]
+    result["prerequisites"] = [dict(p) for p in prereqs]
+    return result
+
+register(
+    "scripture_hebrew_lessons",
+    _hebrew_lessons,
+    {
+        "type": "object",
+        "properties": {
+            "category": {"type": "string", "description": "Optional filter: letter, vowel, word, grammar, phrase, reading, root_concept"},
+        },
+        "required": [],
+    },
+    "List available Hebrew lesson nodes across 7 categories. Returns 102 lessons covering the full Biblical Hebrew curriculum.",
+)
+
+register(
+    "scripture_hebrew_lesson",
+    _hebrew_lesson,
+    {
+        "type": "object",
+        "properties": {
+            "node_id": {"type": "string", "description": "Node ID (e.g., 'aleph', 'bet', 'qal_verb', 'construct_chain')"},
+        },
+        "required": ["node_id"],
+    },
+    "Get full lesson content for a Hebrew concept node. Returns explanation, examples, vocabulary, practice items, and prerequisite nodes.",
+)
+
 # ─── Export all registered tool names ───
 
 def list_tools():
