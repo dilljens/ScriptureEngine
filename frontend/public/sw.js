@@ -1,43 +1,35 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'scripture-engine-v1'
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-]
+const CACHE_NAME = 'scripture-engine-v3'
+const BUILD_TIME = '1783474668'
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS)
-    })
-  )
+self.addEventListener('install', () => {
   self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
+      return Promise.all(keys.map((key) => caches.delete(key)))
     })
   )
   self.clients.claim()
 })
 
+// Network-first: try network, fall back to cache
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         if (response.status === 200) {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone))
         }
         return response
       })
-    })
+      .catch(() => caches.match(event.request))
   )
 })
 
@@ -45,24 +37,18 @@ self.addEventListener('push', (event) => {
   if (!event.data) return
   try {
     const data = event.data.json()
-    const title = data.title || 'ScriptureEngine'
-    const options = {
+    self.registration.showNotification(data.title || 'ScriptureEngine', {
       body: data.body || 'Time for your scripture review!',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       vibrate: [200, 100, 200],
-      data: {
-        url: data.url || '/',
-      },
-    }
-    event.waitUntil(self.registration.showNotification(title, options))
+      data: { url: data.url || '/' },
+    })
   } catch {
-    event.waitUntil(
-      self.registration.showNotification('ScriptureEngine', {
-        body: event.data.text(),
-        icon: '/icon-192.png',
-      })
-    )
+    self.registration.showNotification('ScriptureEngine', {
+      body: event.data.text(),
+      icon: '/icon-192.png',
+    })
   }
 })
 
@@ -72,13 +58,9 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === url && 'focus' in client) {
-          return client.focus()
-        }
+        if (client.url === url && 'focus' in client) return client.focus()
       }
-      if (clients.openWindow) {
-        return clients.openWindow(url)
-      }
+      if (clients.openWindow) clients.openWindow(url)
     })
   )
 })
