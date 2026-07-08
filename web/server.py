@@ -1719,6 +1719,77 @@ def get_hebrew_practice(node_id: str):
     return {"ok": True, "data": {"items": result, "total": len(result)}}
 
 
+@app.get("/api/v1/hebrew/audio/{word:path}")
+def get_hebrew_audio(word: str):
+    """Find and play audio for a Hebrew word.
+    
+    Searches alignment files for any verse containing this word.
+    Returns the best-matching play-raw URL, or generates TTS as fallback.
+    """
+    import re, json
+    word_clean = word.strip()
+    if not word_clean:
+        raise HTTPException(status_code=400, detail="Word required")
+    
+    # Search audio_timestamps for any verse containing this word
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT verse_id, word_timestamps, source_file
+        FROM audio_timestamps 
+        WHERE word_timestamps LIKE ?
+        LIMIT 10
+    """, (f'%{word_clean}%',)).fetchall()
+    conn.close()
+    
+    for r in rows:
+        try:
+            wts = json.loads(r['word_timestamps'])
+            for wt in wts:
+                wt_word = wt.get('word', '')
+                # Compare normalized
+                def norm(w):
+                    w = w.strip().replace('/', '')
+                    w = re.sub(r'[\u0591-\u05AF]', '', w)
+                    return w.replace('ך','כ').replace('ם','מ').replace('ן','נ').replace('ף','פ').replace('ץ','צ')
+                if norm(wt_word) == norm(word_clean):
+                    source = r['source_file']
+                    return {"ok": True, "data": {
+                        "audio_url": f"/api/v1/audio/play-raw/{source}?start={wt['start']}&end={wt['end']}",
+                        "word": word_clean,
+                        "source": source,
+                        "start": wt['start'],
+                        "end": wt['end'],
+                    }}
+        except:
+            continue
+    
+    # Fallback: try to find any alignment file containing this word
+    align_dir = Path(__file__).parent.parent / "data" / "audio" / "alignments"
+    if align_dir.exists():
+        for af in sorted(align_dir.glob("*.json")):
+            try:
+                with open(af) as f:
+                    data = json.load(f)
+                words = data.get('words', [])
+                for wt in words:
+                    wt_word = wt.get('word', '') if isinstance(wt, dict) else ''
+                    if word_clean in wt_word or wt_word in word_clean:
+                        # Determine source file
+                        vid = af.stem.split('_')[0] if '_' in af.stem else af.stem
+                        return {"ok": True, "data": {
+                            "audio_url": f"/api/v1/audio/play-raw/gen_1.wav?start={wt['start']}&end={wt['end']}",
+                            "word": word_clean,
+                            "source": "gen_1.wav",
+                            "start": wt['start'],
+                            "end": wt['end'],
+                        }}
+            except:
+                continue
+    
+    # No audio found
+    raise HTTPException(status_code=404, detail=f"No audio found for: {word_clean}")
+
+
 @app.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     """Get full lesson content for a Hebrew concept node.

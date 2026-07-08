@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 /**
- * HebrewLearnView — structured curriculum dashboard.
- * Shows all Hebrew lessons organized by level/category.
- * Tracks mastery, shows prerequisites, enables progression.
+ * HebrewLearnView — curriculum dashboard with gamification.
+ * - 602 lessons across 9 categories with mastery tracking
+ * - Streak counter + XP
+ * - 5-minute quick session mode
+ * - Category filter tabs
+ * - Progress bar showing mastered/total
  */
 
-const CATEGORY_COLORS = {
-  consonant: { bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-300 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', label: 'Letters' },
-  vowel: { bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-300 dark:border-blue-700', text: 'text-blue-800 dark:text-blue-200', label: 'Vowels' },
-  syllable: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-300 dark:border-cyan-700', text: 'text-cyan-800 dark:text-cyan-200', label: 'Syllables' },
-  word: { bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-800 dark:text-green-200', label: 'Words' },
-  verb: { bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-300 dark:border-purple-700', text: 'text-purple-800 dark:text-purple-200', label: 'Verbs' },
-  noun: { bg: 'bg-pink-100 dark:bg-pink-900/30', border: 'border-pink-300 dark:border-pink-700', text: 'text-pink-800 dark:text-pink-200', label: 'Nouns' },
-  syntax: { bg: 'bg-orange-100 dark:bg-orange-900/30', border: 'border-orange-300 dark:border-orange-700', text: 'text-orange-800 dark:text-orange-200', label: 'Syntax' },
-  reading: { bg: 'bg-indigo-100 dark:bg-indigo-900/30', border: 'border-indigo-300 dark:border-indigo-700', text: 'text-indigo-800 dark:text-indigo-200', label: 'Reading' },
+const CATEGORY_STYLES = {
+  consonant: { bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-300 dark:border-amber-700', text: 'text-amber-800 dark:text-amber-200', label: 'Letters', icon: 'א' },
+  vowel: { bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-300 dark:border-blue-700', text: 'text-blue-800 dark:text-blue-200', label: 'Vowels', icon: 'ַ' },
+  syllable: { bg: 'bg-cyan-100 dark:bg-cyan-900/30', border: 'border-cyan-300 dark:border-cyan-700', text: 'text-cyan-800 dark:text-cyan-200', label: 'Syllables', icon: '◌' },
+  word: { bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', text: 'text-green-800 dark:text-green-200', label: 'Vocabulary', icon: 'מ' },
+  verb: { bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-300 dark:border-purple-700', text: 'text-purple-800 dark:text-purple-200', label: 'Verbs', icon: 'ע' },
+  noun: { bg: 'bg-pink-100 dark:bg-pink-900/30', border: 'border-pink-300 dark:border-pink-700', text: 'text-pink-800 dark:text-pink-200', label: 'Nouns', icon: 'ד' },
+  syntax: { bg: 'bg-orange-100 dark:bg-orange-900/30', border: 'border-orange-300 dark:border-orange-700', text: 'text-orange-800 dark:text-orange-200', label: 'Syntax', icon: '⇄' },
+  reading: { bg: 'bg-indigo-100 dark:bg-indigo-900/30', border: 'border-indigo-300 dark:border-indigo-700', text: 'text-indigo-800 dark:text-indigo-200', label: 'Reading', icon: 'ק' },
+  grammar: { bg: 'bg-rose-100 dark:bg-rose-900/30', border: 'border-rose-300 dark:border-rose-700', text: 'text-rose-800 dark:text-rose-200', label: 'Grammar', icon: 'דק' },
 }
 
 export default function HebrewLearnView({ onOpenLesson }) {
@@ -22,188 +26,279 @@ export default function HebrewLearnView({ onOpenLesson }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [streak, setStreak] = useState(0)
+  const [xp, setXp] = useState(0)
+  const [quickMode, setQuickMode] = useState(false)
+  const [quickQuestions, setQuickQuestions] = useState([])
+  const [quickIdx, setQuickIdx] = useState(0)
+  const [timeLeft, setTimeLeft] = useState(300)
+  const [quickScore, setQuickScore] = useState(0)
 
-  useEffect(() => {
+  // Load curriculum
+  const loadCurriculum = () => {
+    setLoading(true)
     fetch('/api/v1/hebrew/curriculum')
       .then(r => r.json())
       .then(d => {
-        if (d.ok) setCurriculum(d.data)
-        else setError(d.detail || 'Failed to load')
+        if (d.ok) {
+          setCurriculum(d.data)
+          computeStreak(d.data.nodes)
+        } else setError(d.detail || 'Failed to load')
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }
+  useEffect(loadCurriculum, [])
 
-  if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3" />
-          <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4" />
-          {[1,2,3,4].map(i => <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-xl" />)}
-        </div>
-      </div>
-    )
+  // Compute streak from progress data (stored in localStorage for persistence)
+  const computeStreak = (nodes) => {
+    // Simple: count consecutive days from localStorage
+    const last = localStorage.getItem('hebrew_last_practice')
+    const today = new Date().toDateString()
+    if (last === today) {
+      // Already practiced today, keep streak
+    } else if (last && new Date(last).getTime() >= Date.now() - 2 * 86400000) {
+      // Practiced yesterday, increment
+    } else {
+      // Streak broken
+      localStorage.setItem('hebrew_streak', '0')
+    }
+    const saved = parseInt(localStorage.getItem('hebrew_streak') || '0')
+    setStreak(saved)
+    const savedXp = parseInt(localStorage.getItem('hebrew_xp') || '0')
+    setXp(savedXp)
   }
 
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
-          Failed to load Hebrew curriculum: {error}
-        </div>
-      </div>
-    )
+  // Start quick session
+  const startQuickSession = () => {
+    if (!curriculum?.nodes) return
+    // Pick from unlocked nodes
+    const unlocked = curriculum.nodes.filter(n => n.unlocked && n.mastery < 0.8)
+    if (unlocked.length === 0) {
+      // Pick from mastered for review
+      unlocked.push(...curriculum.nodes.filter(n => n.mastery >= 0.8))
+    }
+    const shuffled = [...unlocked].sort(() => Math.random() - 0.5).slice(0, 10)
+    setQuickQuestions(shuffled)
+    setQuickIdx(0)
+    setQuickScore(0)
+    setTimeLeft(300)
+    setQuickMode(true)
   }
+
+  // Quick session timer
+  useEffect(() => {
+    if (!quickMode) return
+    if (timeLeft <= 0) { setQuickMode(false); return }
+    const timer = setInterval(() => setTimeLeft(t => t - 1), 1000)
+    return () => clearInterval(timer)
+  }, [quickMode, timeLeft])
+
+  const recordPractice = () => {
+    // Update streak
+    const today = new Date().toDateString()
+    localStorage.setItem('hebrew_last_practice', today)
+    const curStreak = parseInt(localStorage.getItem('hebrew_streak') || '0')
+    const newStreak = curStreak + 1
+    localStorage.setItem('hebrew_streak', String(newStreak))
+    setStreak(newStreak)
+    // Add XP
+    const newXp = parseInt(localStorage.getItem('hebrew_xp') || '0') + 10
+    localStorage.setItem('hebrew_xp', String(newXp))
+    setXp(newXp)
+    // Reload curriculum (to update mastery)
+    setTimeout(loadCurriculum, 500)
+  }
+
+  if (loading) return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3" />
+        <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4" />
+        {[1,2,3,4].map(i => <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-xl" />)}
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">Failed to load: {error}</div>
+    </div>
+  )
 
   if (!curriculum) return null
 
-  const { nodes, total, mastered, in_progress, locked, categories } = curriculum
-
-  // Filter nodes
+  const { nodes, total, mastered, in_progress, locked } = curriculum
   const filtered = filter === 'all' ? nodes : nodes.filter(n => n.category === filter)
-
-  // Group by level
   const byLevel = {}
   for (const n of filtered) {
     if (!byLevel[n.level]) byLevel[n.level] = []
     byLevel[n.level].push(n)
   }
 
+  // Quick mode rendering
+  if (quickMode) {
+    const q = quickQuestions[quickIdx]
+    if (!q) {
+      setQuickMode(false)
+      return null
+    }
+    const mins = Math.floor(timeLeft / 60)
+    const secs = timeLeft % 60
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <div className="text-center mb-6">
+          <span className={`text-2xl font-mono font-bold ${timeLeft < 30 ? 'text-red-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
+            {mins}:{String(secs).padStart(2, '0')}
+          </span>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Quick Session · {quickScore}/{quickQuestions.length}</p>
+        </div>
+        <div className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 text-center">
+          <p className="text-lg font-serif leading-relaxed mb-2" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
+            {q.title?.split('—')[0]?.trim() || q.title}
+          </p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">{q.title?.split('—')[1]?.trim() || q.description}</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-6">Level {q.level} · {q.category}</p>
+          <button onClick={() => { onOpenLesson(q.id); setQuickMode(false) }}
+            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium cursor-pointer transition-colors">
+            Practice this word
+          </button>
+          <div className="flex gap-2 justify-center mt-3">
+            <button onClick={() => { setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1)); setQuickScore(s => s + 1) }}
+              className="px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium cursor-pointer transition-colors">Know it ✓</button>
+            <button onClick={() => setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1))}
+              className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-medium cursor-pointer transition-colors">Skip →</button>
+          </div>
+        </div>
+        <button onClick={() => setQuickMode(false)} className="mt-4 w-full py-2 rounded-lg text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer transition-colors">
+          End session
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Biblical Hebrew</h2>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          {total} lessons · {mastered} mastered · {in_progress} in progress · {locked} locked
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-1">Biblical Hebrew</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{total} lessons · {mastered} mastered · {locked} locked</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {streak > 0 && (
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+              <span className="text-sm">🔥</span>
+              <span className="text-sm font-bold text-amber-700 dark:text-amber-300">{streak}</span>
+              <span className="text-[9px] text-amber-500 dark:text-amber-400">day streak</span>
+            </div>
+          )}
+          {xp > 0 && (
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
+              <span className="text-sm">✨</span>
+              <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">{xp}</span>
+              <span className="text-[9px] text-indigo-500 dark:text-indigo-400">XP</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-4 mb-6 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
+      {/* Stats + Quick mode button */}
+      <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <div className="flex-1">
           <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-            <div className="h-full rounded-full bg-green-500" style={{ width: `${(mastered / Math.max(total, 1)) * 100}%` }} />
+            <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${(mastered / Math.max(total, 1)) * 100}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {mastered} mastered</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {in_progress} learning</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {in_progress}</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-600" /> {locked} locked</span>
         </div>
-      </div>
-
-      {/* Category filter tabs */}
-      <div className="flex flex-wrap gap-1.5 mb-6">
-        <button onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-            filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-          }`}>
-          All ({total})
+        <button onClick={startQuickSession}
+          className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          ⏱ 5-min quick
         </button>
-        {categories.map(cat => {
-          const cc = CATEGORY_COLORS[cat]
-          const count = nodes.filter(n => n.category === cat).length
-          return (
-            <button key={cat} onClick={() => setFilter(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                filter === cat
-                  ? `${cc.bg} ${cc.text} ${cc.border} border`
-                  : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-              }`}>
-              {cc?.label || cat} ({count})
-            </button>
-          )
-        })}
       </div>
 
-      {/* Curriculum tree by level */}
+      {/* Category filter */}
+      <div className="flex flex-wrap gap-1.5 mb-6">
+        {[{id:'all',count:total,label:'All'}].concat(
+          Object.entries(CATEGORY_STYLES).map(([cat, cs]) => ({
+            id: cat, count: nodes.filter(n => n.category === cat).length, ...cs
+          })).filter(c => c.count > 0)
+        ).map(c => (
+          <button key={c.id} onClick={() => setFilter(c.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              filter === c.id
+                ? 'bg-indigo-600 text-white'
+                : `${c.bg || 'bg-neutral-100 dark:bg-neutral-800'} ${c.text || 'text-neutral-600 dark:text-neutral-400'} hover:bg-neutral-200 dark:hover:bg-neutral-700`
+            }`}>
+            {c.icon && <span className="mr-1">{c.icon}</span>}
+            {c.label || c.id} ({c.count})
+          </button>
+        ))}
+      </div>
+
+      {/* Lessons by level */}
       <div className="space-y-6">
         {Object.entries(byLevel).map(([level, levelNodes]) => (
           <div key={level}>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
-              Level {level}
-            </h3>
-            <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">Level {level}</h3>
+            <div className="space-y-1.5">
               {levelNodes.map(node => {
-                const cc = CATEGORY_COLORS[node.category] || {}
-                const mastered = node.mastery >= 0.8
-                const learning = node.mastery > 0 && node.mastery < 0.8
-                const locked = !node.unlocked
+                const cs = CATEGORY_STYLES[node.category] || {}
+                const isMastered = node.mastery >= 0.8
+                const isLearning = node.mastery > 0 && node.mastery < 0.8
+                const isLocked = !node.unlocked
 
                 return (
-                  <button
-                    key={node.id}
-                    onClick={() => {
-                      if (!locked) onOpenLesson?.(node.id)
-                    }}
-                    disabled={locked}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer
-                      ${locked
-                        ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
-                        : mastered
-                          ? `${cc.bg} ${cc.border} hover:shadow-sm`
-                          : learning
-                            ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
-                            : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
-                      }`}
-                  >
-                    {/* Status indicator */}
-                    <div className={`w-3 h-3 rounded-full shrink-0 ${
-                      locked ? 'bg-neutral-300 dark:bg-neutral-600'
-                        : mastered ? 'bg-green-500'
-                        : learning ? 'bg-amber-500'
+                  <button key={node.id} onClick={() => { if (!isLocked) onOpenLesson?.(node.id) }} disabled={isLocked}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
+                      ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
+                        : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
+                        : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
+                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
+                      }`}>
+                    {/* Status dot */}
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
+                        : isMastered ? 'bg-green-500'
+                        : isLearning ? 'bg-amber-500'
                         : 'bg-neutral-200 dark:bg-neutral-700'
                     }`} />
 
-                    {/* Level badge */}
-                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-8 shrink-0">
-                      L{node.level}
-                    </span>
+                    {/* Level */}
+                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-6 shrink-0">L{node.level}</span>
 
-                    {/* Title and description */}
+                    {/* Title + category */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium ${
-                          locked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'
-                        }`}>
+                        <span className={`text-sm font-medium truncate ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'}`}>
                           {node.title}
                         </span>
-                        {cc?.label && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${cc.bg} ${cc.text} ${cc.border} border`}>
-                            {cc.label}
+                        {cs?.label && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cs.bg} ${cs.text} ${cs.border} border`}>
+                            {cs.icon} {cs.label}
                           </span>
                         )}
                       </div>
                       {node.description && (
-                        <p className={`text-xs mt-0.5 truncate ${locked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-500 dark:text-neutral-400'}`}>
-                          {node.description}
-                        </p>
+                        <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
                       )}
                     </div>
 
                     {/* Mastery bar */}
-                    <div className="w-16 shrink-0">
+                    <div className="w-14 shrink-0">
                       <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                        <div className={`h-full rounded-full ${
-                          mastered ? 'bg-green-500' : learning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'
-                        }`} style={{ width: `${node.mastery * 100}%` }} />
+                        <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
+                          style={{ width: `${node.mastery * 100}%` }} />
                       </div>
-                      <span className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">
-                        {Math.round(node.mastery * 100)}%
-                      </span>
+                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>
                     </div>
 
-                    {/* Prerequisites indicator */}
-                    {locked && node.prerequisites?.length > 0 && (
-                      <span className="text-[9px] text-neutral-400 dark:text-neutral-500 shrink-0" title={node.prerequisites.map(p => p.title).join(', ')}>
-                        🔒
-                      </span>
-                    )}
-                    {!locked && !mastered && (
-                      <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0">→</span>
-                    )}
+                    {isLocked && <span className="text-xs text-neutral-400 shrink-0">🔒</span>}
+                    {!isLocked && !isMastered && <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
                   </button>
                 )
               })}
@@ -211,6 +306,12 @@ export default function HebrewLearnView({ onOpenLesson }) {
           </div>
         ))}
       </div>
+
+      {filtered.length === 0 && (
+        <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          No lessons in this category. Try another filter.
+        </div>
+      )}
     </div>
   )
 }
