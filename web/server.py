@@ -1551,6 +1551,174 @@ def list_hebrew_lessons(category: str = ""):
                                   "categories": ["letter", "vowel", "word", "grammar", "phrase", "reading", "root_concept"]}}
 
 
+@app.get("/api/v1/hebrew/curriculum")
+def get_hebrew_curriculum(user_id: str = "default"):
+    """Get the full Hebrew curriculum, ordered by level, with prerequisites
+    and user's mastery progress for each node.
+    """
+    import sqlite3
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        return {"ok": True, "data": {"nodes": [], "total": 0}}
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    
+    # Get all nodes with their prerequisites
+    nodes = conn.execute("""
+        SELECT n.*, 
+               COUNT(DISTINCT e.source_id) as prerequisite_count,
+               COUNT(DISTINCT e2.source_id) as dependent_count,
+               COALESCE(p.mastery, 0) as mastery,
+               COALESCE(p.attempts, 0) as attempts,
+               COALESCE(p.correct, 0) as correct,
+               COALESCE(l.content_json, '') as has_content
+        FROM hebrew_nodes n
+        LEFT JOIN hebrew_edges e ON e.target_id = n.id
+        LEFT JOIN hebrew_edges e2 ON e2.source_id = n.id
+        LEFT JOIN hebrew_progress p ON p.node_id = n.id AND p.user_id = ?
+        LEFT JOIN hebrew_lessons l ON l.node_id = n.id
+        GROUP BY n.id
+        ORDER BY n.level, n.id
+    """, (user_id,)).fetchall()
+    
+    # For each node, get its prerequisites' status
+    result_nodes = []
+    for n in nodes:
+        prereqs = conn.execute("""
+            SELECT e.source_id, n.title, n.level, COALESCE(p.mastery, 0) as mastery
+            FROM hebrew_edges e
+            JOIN hebrew_nodes n ON n.id = e.source_id
+            LEFT JOIN hebrew_progress p ON p.node_id = e.source_id AND p.user_id = ?
+            WHERE e.target_id = ?
+        """, (user_id, n['id'])).fetchall()
+        
+        # Check if all prerequisites are mastered (mastery >= 0.8)
+        prereq_list = [dict(r) for r in prereqs]
+        all_prereqs_mastered = all(r['mastery'] >= 0.8 for r in prereqs) if prereq_list else True
+        
+        result_nodes.append({
+            "id": n['id'],
+            "title": n['title'],
+            "category": n['category'],
+            "level": n['level'],
+            "description": n['description'],
+            "mastery": n['mastery'],
+            "attempts": n['attempts'],
+            "correct": n['correct'],
+            "prerequisite_count": n['prerequisite_count'],
+            "dependent_count": n['dependent_count'],
+            "prerequisites": prereq_list,
+            "unlocked": all_prereqs_mastered,
+            "has_content": bool(n['has_content']),
+        })
+    
+    conn.close()
+    
+    # Count stats
+    total = len(result_nodes)
+    mastered = sum(1 for n in result_nodes if n['mastery'] >= 0.8)
+    in_progress = sum(1 for n in result_nodes if 0 < n['mastery'] < 0.8)
+    locked = sum(1 for n in result_nodes if not n['unlocked'])
+    
+    return {"ok": True, "data": {
+        "nodes": result_nodes,
+        "total": total,
+        "mastered": mastered,
+        "in_progress": in_progress,
+        "locked": locked,
+        "categories": ["consonant", "vowel", "syllable", "word", "verb", "noun", "syntax", "reading"],
+    }}
+
+
+@app.post("/api/v1/hebrew/progress")
+def update_hebrew_progress(body: dict):
+    """Update mastery progress for a Hebrew node.
+    
+    Body: { "user_id": "...", "node_id": "...", "correct": true/false }
+    """
+    import sqlite3, json
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        raise HTTPException(status_code=404, detail="Hebrew lesson DB not found")
+    
+    user_id = body.get("user_id", "default")
+    node_id = body.get("node_id", "")
+    correct = body.get("correct", False)
+    
+    if not node_id:
+        raise HTTPException(status_code=400, detail="node_id required")
+    
+    conn = sqlite3.connect(str(memorize_db))
+    
+    # Get current progress
+    row = conn.execute(
+        "SELECT mastery, attempts, correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
+        (user_id, node_id)
+    ).fetchone()
+    
+    if row:
+        attempts = row[1] + 1
+        correct_count = row[2] + (1 if correct else 0)
+        # Simple mastery formula: ratio of correct, boosted by attempts
+        # More sophisticated: use FSRS-like progression
+        mastery = min(1.0, correct_count / max(attempts, 1) * (1 - 1 / (attempts + 2)))
+        conn.execute(
+            "UPDATE hebrew_progress SET mastery=?, attempts=?, correct=?, last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
+            (mastery, attempts, correct_count, user_id, node_id)
+        )
+    else:
+        attempts = 1
+        correct_count = 1 if correct else 0
+        mastery = 0.8 if correct else 0.0
+        conn.execute(
+            "INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+            (user_id, node_id, mastery, attempts, correct_count)
+        )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"ok": True, "data": {"node_id": node_id, "mastery": round(mastery, 3),
+                                  "attempts": attempts, "correct": correct_count}}
+
+
+@app.get("/api/v1/hebrew/practice/{node_id}")
+def get_hebrew_practice(node_id: str):
+    """Get practice items for a Hebrew concept node.
+    
+    Returns quiz questions with options, correct answer, and explanations.
+    Shuffles questions for variety.
+    """
+    import sqlite3, json, random
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        return {"ok": True, "data": {"items": [], "total": 0}}
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    items = conn.execute(
+        "SELECT * FROM hebrew_practice_items WHERE node_id=? ORDER BY RANDOM()",
+        (node_id,)
+    ).fetchall()
+    conn.close()
+    
+    result = []
+    for item in items:
+        result.append({
+            "id": item['id'],
+            "question_type": item['question_type'],
+            "question_text": item['question_text'],
+            "options_json": item['options_json'],
+            "correct_answer": item['correct_answer'],
+            "explanation": item['explanation'] or '',
+            "difficulty": item['difficulty'],
+        })
+    
+    random.shuffle(result)
+    return {"ok": True, "data": {"items": result, "total": len(result)}}
+
+
 @app.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     """Get full lesson content for a Hebrew concept node.

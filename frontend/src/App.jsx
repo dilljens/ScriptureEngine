@@ -412,6 +412,8 @@ function AppInner() {
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+  const [showHebrewLearn, setShowHebrewLearn] = useState(false)
+  const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCheatsheet, setShowCheatsheet] = useState(false)
@@ -813,6 +815,22 @@ function AppInner() {
   const highlightVerse = currentTab?.highlights?.[0] || null
 
   const renderMainContent = () => {
+    if (hebrewLessonId !== null) {
+      const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
+          <HebrewLessonView nodeId={hebrewLessonId} onBack={() => setHebrewLessonId(null)} />
+        </Suspense>
+      )
+    }
+    if (showHebrewLearn) {
+      const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading curriculum...</div>}>
+          <HebrewLearnView onOpenLesson={(nodeId) => setHebrewLessonId(nodeId)} />
+        </Suspense>
+      )
+    }
     if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
     if (viewLevel === 'library') return <LibraryView bookData={bookData} onNavigate={handleChatNavigate} />
     if (viewLevel === 'work' && viewRef) return <WorkView workId={viewRef} />
@@ -1028,17 +1046,7 @@ function AppInner() {
             </button>
 
             {/* Learn (Hebrew) */}
-            <button onClick={() => {
-                setChatInitialMsg(`I want to learn Biblical Hebrew. We have 102 lessons covering the aleph-bet through advanced grammar, 194 practice items, and a concept graph of 102 Hebrew concepts. 
-
-The system has these tools available:
-- scripture_search_hebrew — search for Hebrew words
-- scripture_gematria — look up Hebrew word values
-- scripture_verse — read verses in Hebrew
-
-Guide me through the lessons step by step. Start with Lesson 1: the Hebrew alphabet (aleph-bet).`);
-                handleOpenChat();
-              }}
+            <button onClick={() => { setShowHebrewLearn(true); setHebrewLessonId(null) }}
               className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0"
               title="Learn Biblical Hebrew (102 lessons)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
