@@ -813,7 +813,7 @@ function AppInner() {
   const highlightVerse = currentTab?.highlights?.[0] || null
 
   const renderMainContent = () => {
-    if (showHistory) return <ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} />
+    if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
     if (viewLevel === 'library') return <LibraryView bookData={bookData} onNavigate={handleChatNavigate} />
     if (viewLevel === 'work' && viewRef) return <WorkView workId={viewRef} />
     if (viewLevel === 'book') return <BookView bookId={book} />
@@ -1000,7 +1000,7 @@ function AppInner() {
 
             {/* Memorize */}
             <button onClick={() => openMemorizeTab()} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
-              <MemorizeIcon />
+              <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
             </button>
 
             {/* History */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { memorizeApi } from '../memorizeApi'
-import { MemorizeIcon } from '../icons'
+
 import ReviewSession from './ReviewSession'
 import PalaceList from './PalaceList'
 import PalaceBuilder from './PalaceBuilder'
@@ -62,7 +62,7 @@ export default function MemorizeView() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-          <MemorizeIcon />
+          <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-indigo-600 dark:text-indigo-400"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
         </div>
         <div>
           <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Memorize</h1>
