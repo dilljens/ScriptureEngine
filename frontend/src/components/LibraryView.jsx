@@ -18,13 +18,22 @@ const workCardColors = {
 }
 
 export default function LibraryView({ bookData, onNavigate }) {
-  const { goToWork: ctxGoToWork, currentTab, viewRef } = useTabs()
+  const { goToWork: ctxGoToWork, goToBook, currentTab, viewRef } = useTabs()
   const works = bookData?.works || []
   const focusedWorkId = viewRef || works[0]?.id || null
 
+  // Works where "books" are really chapters/sections (single-chapter books).
+  // D&C: 138 sections, each stored as a 1-chapter "book" — skip book list.
+  const FLAT_WORKS = new Set(['dc'])
+
   const goToWork = (workId) => {
     const w = works.find(wi => wi.id === workId)
-    if (w) {
+    if (!w) return
+    if (FLAT_WORKS.has(workId) && w.books?.[0]) {
+      // Jump straight to the first section/chapter
+      goToBook(currentTab?.id, w.books[0].id, w.title || workId)
+    } else {
+      // Show book list (WorkView)
       ctxGoToWork(currentTab?.id, w.id, w.title || w.id)
     }
   }
