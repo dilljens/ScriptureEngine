@@ -1790,6 +1790,215 @@ def get_hebrew_audio(word: str):
     raise HTTPException(status_code=404, detail=f"No audio found for: {word_clean}")
 
 
+@app.get("/api/v1/hebrew/review-queue")
+def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
+    """Get Hebrew nodes due for review, sorted by priority.
+    
+    Uses FSRS-like scheduling based on mastery, attempts, and time since last practice.
+    Returns the next N nodes that need review.
+    """
+    import sqlite3, datetime, math
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        return {"ok": True, "data": {"reviews": [], "due_count": 0}}
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    
+    now = datetime.datetime.now()
+    
+    # Get all nodes with practice history
+    rows = conn.execute("""
+        SELECT p.node_id, n.title, n.level, n.category, n.description,
+               p.mastery, p.attempts, p.correct, p.last_practiced
+        FROM hebrew_progress p
+        JOIN hebrew_nodes n ON n.id = p.node_id
+        WHERE p.user_id = ?
+        ORDER BY p.last_practiced DESC
+    """, (user_id,)).fetchall()
+    
+    due_reviews = []
+    for r in rows:
+        mastery = r['mastery']
+        attempts = r['attempts']
+        correct = r['correct']
+        last_str = r['last_practiced']
+        
+        if not last_str:
+            continue
+        
+        try:
+            last_time = datetime.datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
+        except:
+            continue
+        
+        days_since = (now - last_time).total_seconds() / 86400.0
+        
+        # FSRS-5 style: compute stability based on mastery and attempts
+        # Higher mastery → longer stability
+        # More attempts → longer stability
+        stability = 1.0  # base: 1 day
+        if mastery >= 0.9:
+            stability = 21.0  # 3 weeks
+        elif mastery >= 0.8:
+            stability = 14.0  # 2 weeks
+        elif mastery >= 0.6:
+            stability = 7.0   # 1 week
+        elif mastery >= 0.4:
+            stability = 3.0   # 3 days
+        elif mastery >= 0.2:
+            stability = 1.0   # 1 day
+        
+        # Boost stability by attempts
+        stability *= min(attempts, 10) / 3.0
+        stability = min(stability, 90.0)  # cap at 90 days
+        
+        # Compute retrievability (R = e^(-t/s))
+        retrievability = math.exp(-days_since / stability) if stability > 0 else 0
+        
+        # Due if retrievability < 0.9 (or never practiced)
+        due = retrievability < 0.9
+        
+        if due:
+            due_reviews.append({
+                "node_id": r['node_id'],
+                "title": r['title'],
+                "level": r['level'],
+                "category": r['category'],
+                "description": r['description'],
+                "mastery": mastery,
+                "attempts": attempts,
+                "correct": correct,
+                "days_since": round(days_since, 1),
+                "stability": round(stability, 1),
+                "retrievability": round(retrievability, 3),
+                "last_practiced": last_str,
+            })
+    
+    # Sort by retrievability (lowest first = most urgent)
+    due_reviews.sort(key=lambda x: x['retrievability'])
+    
+    conn.close()
+    
+    return {"ok": True, "data": {
+        "reviews": due_reviews[:limit],
+        "due_count": len(due_reviews),
+        "total_practiced": len(rows),
+    }}
+
+
+@app.get("/api/v1/hebrew/verb-drill")
+def get_hebrew_verb_drill(count: int = 5, user_id: str = "default"):
+    """Generate verb parsing drill questions.
+    
+    Tests the ability to identify person, gender, number, tense, and stem
+    of Hebrew verb forms. Uses the verb lessons as a source.
+    """
+    import sqlite3, json, random
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        return {"ok": True, "data": {"drills": []}}
+    
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    
+    # Get all verb node lessons with their content
+    verb_lessons = conn.execute("""
+        SELECT n.id, n.title, l.content_json
+        FROM hebrew_nodes n
+        JOIN hebrew_lessons l ON l.node_id = n.id
+        WHERE n.category = 'verb'
+    """).fetchall()
+    
+    drills = []
+    for lesson in verb_lessons:
+        try:
+            content = json.loads(lesson['content_json'])
+        except:
+            continue
+        
+        explanation = content.get('explanation', '')
+        title = lesson['title']
+        nid = lesson['id']
+        
+        # Generate drill questions based on the verb lesson
+        if 'perfect' in nid or 'imperfect' in nid:
+            tense = 'perfect' if 'perfect' in nid else 'imperfect'
+            # Ask about the function
+            drills.append({
+                "node_id": nid,
+                "question": f"What does the {title} verb form express?",
+                "type": "multiple_choice",
+                "options": json.dumps(["Completed action", "Incomplete/future action", "Command", "Emphasis"]),
+                "correct": "Completed action" if tense == 'perfect' else "Incomplete/future action",
+                "explanation": explanation.split('.')[0][:100] if explanation else '',
+            })
+            # Ask for person/number example
+            drills.append({
+                "node_id": nid,
+                "question": f"What is the 3ms form of the {title}?",
+                "type": "recall",
+                "options": "",
+                "correct": f"3ms {title}",
+                "explanation": f"The 3ms is the base form of {title}. Pattern: CāCaC",
+            })
+        
+        if 'qal' in nid:
+            drills.append({
+                "node_id": nid,
+                "question": "Which binyan is the simple active stem?",
+                "type": "multiple_choice",
+                "options": json.dumps(["Qal", "Niphal", "Piel", "Hiphil"]),
+                "correct": "Qal",
+                "explanation": "Qal is the simple active stem (he killed).",
+            })
+        
+        if 'niphal' in nid:
+            drills.append({
+                "node_id": nid,
+                "question": "Which binyan is the simple passive stem?",
+                "type": "multiple_choice",
+                "options": json.dumps(["Qal", "Niphal", "Pual", "Hophal"]),
+                "correct": "Niphal",
+                "explanation": "Niphal is the simple passive (he was killed).",
+            })
+        
+        if 'piel' in nid:
+            drills.append({
+                "node_id": nid,
+                "question": "Which binyan is the intensive active stem?",
+                "type": "multiple_choice",
+                "options": json.dumps(["Qal", "Piel", "Hiphil", "Hithpael"]),
+                "correct": "Piel",
+                "explanation": "Piel is the intensive active (he slaughtered).",
+            })
+        
+        if 'hiphil' in nid:
+            drills.append({
+                "node_id": nid,
+                "question": "Which binyan is the causative active stem?",
+                "type": "multiple_choice",
+                "options": json.dumps(["Piel", "Hiphil", "Hophal", "Hithpael"]),
+                "correct": "Hiphil",
+                "explanation": "Hiphil is the causative active (he caused to kill).",
+            })
+    
+    if not drills:
+        drills.append({
+            "node_id": "qal_perfect",
+            "question": "What is the function of the Qal binyan?",
+            "type": "multiple_choice",
+            "options": json.dumps(["Simple active", "Simple passive", "Intensive", "Causative"]),
+            "correct": "Simple active",
+            "explanation": "Qal is the simple active stem, the most common binyan.",
+        })
+    
+    random.shuffle(drills)
+    conn.close()
+    
+    return {"ok": True, "data": {"drills": drills[:count], "total": len(drills)}}
+
+
 @app.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     """Get full lesson content for a Hebrew concept node.
