@@ -1004,7 +1004,21 @@ function AppInner() {
             </button>
 
             {/* Knowledge (Assessment) */}
-            <button onClick={() => { setChatInitialMsg('Run a scripture knowledge assessment to test what I know about connections between verses. Start with a diagnostic covering all layers.'); handleOpenChat(); }}
+            <button onClick={async () => {
+                // Start assessment via API, then open chat with results
+                try {
+                  const r = await fetch('/api/v1/tools/scripture_assess_start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
+                  const d = await r.json();
+                  if (d.ok && d.data?.question) {
+                    setChatInitialMsg(`📝 Knowledge Assessment started!\n\nQuestion: ${d.data.question}\n\nType your answer, then I'll tell you if it's correct and give you the next question.`);
+                  } else {
+                    setChatInitialMsg('📝 Knowledge Assessment — ready when you are. Ask me to start!');
+                  }
+                } catch {
+                  setChatInitialMsg('Run a scripture knowledge assessment. Start with a diagnostic covering all layers.');
+                }
+                handleOpenChat();
+              }}
               className="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer shrink-0"
               title="Knowledge Assessment (test your understanding of scripture connections)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -1014,9 +1028,19 @@ function AppInner() {
             </button>
 
             {/* Learn (Hebrew) */}
-            <button onClick={() => { setChatInitialMsg('I want to learn Biblical Hebrew. Start with the aleph-bet and guide me through the lessons.'); handleOpenChat(); }}
+            <button onClick={() => {
+                setChatInitialMsg(`I want to learn Biblical Hebrew. We have 102 lessons covering the aleph-bet through advanced grammar, 194 practice items, and a concept graph of 102 Hebrew concepts. 
+
+The system has these tools available:
+- scripture_search_hebrew — search for Hebrew words
+- scripture_gematria — look up Hebrew word values
+- scripture_verse — read verses in Hebrew
+
+Guide me through the lessons step by step. Start with Lesson 1: the Hebrew alphabet (aleph-bet).`);
+                handleOpenChat();
+              }}
               className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0"
-              title="Learn Biblical Hebrew">
+              title="Learn Biblical Hebrew (102 lessons)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
                 <path d="M3 4h10M3 8h10M3 12h8" />
                 <circle cx={12.5} cy={7.5} r={0.5} fill="currentColor" stroke="none" />

@@ -3808,6 +3808,52 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    # ── Knowledge Assessment ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_start",
+            "description": "Start an adaptive assessment session for scripture knowledge. Tests understanding of verse connections across all 8 works. Optional: target_layer (pshat/remez/drash/sod) to focus on one layer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "default": "default"},
+                    "target_layer": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "default": None},
+                    "max_items": {"type": "integer", "default": 20},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_answer",
+            "description": "Submit an answer to the current assessment question and get the next one. Call after the user answers a question.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "default": "default"},
+                    "correct": {"type": "boolean", "description": "Whether the user's answer was correct"},
+                },
+                "required": ["correct"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_progress",
+            "description": "Get current assessment progress — questions answered, score, remaining items. Shows the assessment status at any point.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "default": "default"},
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──
