@@ -1,0 +1,196 @@
+{
+  "ref": "gen.1.29",
+  "duration": 19.1,
+  "word_count": 27,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 318.06,
+      "end": 319.36,
+      "confidence": 0.82,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 319.36,
+      "end": 320.06,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "הנה",
+      "start": 320.06,
+      "end": 320.74,
+      "confidence": 0.981,
+      "source": "hybrid"
+    },
+    {
+      "word": "נתתי",
+      "start": 320.74,
+      "end": 321.68,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "לכם",
+      "start": 321.68,
+      "end": 322.22,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 322.22,
+      "end": 322.4,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 322.4,
+      "end": 322.74,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "עשב",
+      "start": 322.74,
+      "end": 323.36,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "זורע",
+      "start": 323.36,
+      "end": 323.94,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "זרע",
+      "start": 323.94,
+      "end": 325.18,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 325.18,
+      "end": 325.7,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 325.7,
+      "end": 325.94,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "פני",
+      "start": 325.94,
+      "end": 326.36,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 326.36,
+      "end": 326.76,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 326.76,
+      "end": 328.3,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ואת",
+      "start": 328.3,
+      "end": 329.42,
+      "confidence": 0.984,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 329.42,
+      "end": 329.66,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "העץ",
+      "start": 329.66,
+      "end": 330.22,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 330.22,
+      "end": 330.6,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "בו",
+      "start": 330.6,
+      "end": 331.0,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "פרי",
+      "start": 331.0,
+      "end": 331.66,
+      "confidence": 0.918,
+      "source": "hybrid"
+    },
+    {
+      "word": "עץ",
+      "start": 331.66,
+      "end": 332.28,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "זורע",
+      "start": 332.28,
+      "end": 333.04,
+      "confidence": 0.993,
+      "source": "hybrid"
+    },
+    {
+      "word": "זרע",
+      "start": 333.04,
+      "end": 334.0,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "לכם",
+      "start": 334.0,
+      "end": 334.92,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "יהיה",
+      "start": 334.92,
+      "end": 335.76,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "לאוכלה",
+      "start": 335.76,
+      "end": 337.16,
+      "confidence": 0.978,
+      "source": "hybrid"
+    }
+  ]
+}

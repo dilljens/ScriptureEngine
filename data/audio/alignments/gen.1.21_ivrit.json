@@ -1,0 +1,121 @@
+{
+  "ref": "gen.1.21",
+  "duration": 17.32,
+  "word_count": 19,
+  "words": [
+    {
+      "word": "ויברא",
+      "start": 213.52,
+      "end": 215.0,
+      "confidence": 0.828
+    },
+    {
+      "word": "את",
+      "start": 215.94,
+      "end": 216.2,
+      "confidence": 0.999
+    },
+    {
+      "word": "התנינים",
+      "start": 216.2,
+      "end": 217.36,
+      "confidence": 0.913
+    },
+    {
+      "word": "ואת",
+      "start": 218.74,
+      "end": 219.4,
+      "confidence": 0.997
+    },
+    {
+      "word": "כל",
+      "start": 219.4,
+      "end": 219.6,
+      "confidence": 0.999
+    },
+    {
+      "word": "נפש",
+      "start": 219.6,
+      "end": 220.28,
+      "confidence": 1.0
+    },
+    {
+      "word": "החיה",
+      "start": 220.28,
+      "end": 220.9,
+      "confidence": 0.996
+    },
+    {
+      "word": "אשר",
+      "start": 222.18,
+      "end": 222.86,
+      "confidence": 0.998
+    },
+    {
+      "word": "שרצו",
+      "start": 222.86,
+      "end": 223.64,
+      "confidence": 0.994
+    },
+    {
+      "word": "המים",
+      "start": 223.64,
+      "end": 224.42,
+      "confidence": 0.999
+    },
+    {
+      "word": "למיניהם",
+      "start": 224.42,
+      "end": 225.66,
+      "confidence": 0.994
+    },
+    {
+      "word": "ואת",
+      "start": 225.66,
+      "end": 226.42,
+      "confidence": 0.995
+    },
+    {
+      "word": "כל",
+      "start": 226.42,
+      "end": 226.66,
+      "confidence": 1.0
+    },
+    {
+      "word": "עוף",
+      "start": 226.66,
+      "end": 227.06,
+      "confidence": 0.999
+    },
+    {
+      "word": "כנף",
+      "start": 227.06,
+      "end": 227.72,
+      "confidence": 0.997
+    },
+    {
+      "word": "למיניהו",
+      "start": 227.72,
+      "end": 228.6,
+      "confidence": 0.932
+    },
+    {
+      "word": "וירא",
+      "start": 228.6,
+      "end": 229.56,
+      "confidence": 0.945
+    },
+    {
+      "word": "כי",
+      "start": 230.38,
+      "end": 230.56,
+      "confidence": 0.454
+    },
+    {
+      "word": "טוב",
+      "start": 230.56,
+      "end": 230.84,
+      "confidence": 0.988
+    }
+  ]
+}

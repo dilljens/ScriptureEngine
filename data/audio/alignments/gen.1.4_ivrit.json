@@ -1,0 +1,61 @@
+{
+  "ref": "gen.1.4",
+  "duration": 6.6,
+  "word_count": 9,
+  "words": [
+    {
+      "word": "וירא",
+      "start": 34.37,
+      "end": 34.81,
+      "confidence": 0.94
+    },
+    {
+      "word": "את",
+      "start": 35.67,
+      "end": 35.93,
+      "confidence": 0.99
+    },
+    {
+      "word": "האור",
+      "start": 35.93,
+      "end": 36.65,
+      "confidence": 0.996
+    },
+    {
+      "word": "כי",
+      "start": 36.65,
+      "end": 36.85,
+      "confidence": 0.561
+    },
+    {
+      "word": "טוב",
+      "start": 36.85,
+      "end": 37.17,
+      "confidence": 0.987
+    },
+    {
+      "word": "ויבדל",
+      "start": 38.11,
+      "end": 38.83,
+      "confidence": 0.846
+    },
+    {
+      "word": "בין",
+      "start": 39.51,
+      "end": 39.87,
+      "confidence": 0.999
+    },
+    {
+      "word": "האור",
+      "start": 39.87,
+      "end": 40.47,
+      "confidence": 1.0
+    },
+    {
+      "word": "ובין",
+      "start": 40.47,
+      "end": 40.97,
+      "confidence": 0.998
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "ref": "gen.1.15",
+  "duration": 7.6,
+  "word_count": 8,
+  "words": [
+    {
+      "word": "והיו",
+      "start": 156.76,
+      "end": 157.74,
+      "confidence": 0.896,
+      "source": "hybrid"
+    },
+    {
+      "word": "למאורות",
+      "start": 157.74,
+      "end": 158.64,
+      "confidence": 0.985,
+      "source": "hybrid"
+    },
+    {
+      "word": "ברקיע",
+      "start": 158.64,
+      "end": 159.5,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 159.5,
+      "end": 161.02,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "להאיר",
+      "start": 161.02,
+      "end": 162.2,
+      "confidence": 0.98,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 162.2,
+      "end": 162.46,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 162.46,
+      "end": 163.52,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 163.52,
+      "end": 164.36,
+      "confidence": 0.91,
+      "source": "hybrid"
+    }
+  ]
+}

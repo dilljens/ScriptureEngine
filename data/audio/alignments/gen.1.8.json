@@ -1,0 +1,67 @@
+{
+  "ref": "gen.1.8",
+  "duration": 3.24,
+  "word_count": 10,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 0.0,
+      "end": 0.5,
+      "confidence": 0.811
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.5,
+      "end": 0.76,
+      "confidence": 0.755
+    },
+    {
+      "word": "לערכי",
+      "start": 0.76,
+      "end": 1.2,
+      "confidence": 0.764
+    },
+    {
+      "word": "השמיים",
+      "start": 1.2,
+      "end": 1.68,
+      "confidence": 0.915
+    },
+    {
+      "word": "והיא",
+      "start": 1.7,
+      "end": 1.98,
+      "confidence": 0.506
+    },
+    {
+      "word": "ערב",
+      "start": 1.98,
+      "end": 2.2,
+      "confidence": 0.934
+    },
+    {
+      "word": "והיא",
+      "start": 2.2,
+      "end": 2.44,
+      "confidence": 0.762
+    },
+    {
+      "word": "בוקר",
+      "start": 2.44,
+      "end": 2.76,
+      "confidence": 0.994
+    },
+    {
+      "word": "יום",
+      "start": 2.76,
+      "end": 2.94,
+      "confidence": 0.995
+    },
+    {
+      "word": "שני",
+      "start": 2.94,
+      "end": 3.24,
+      "confidence": 0.998
+    }
+  ]
+}

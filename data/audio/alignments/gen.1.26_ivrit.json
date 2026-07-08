@@ -1,0 +1,109 @@
+{
+  "ref": "gen.1.26",
+  "duration": 17.06,
+  "word_count": 17,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 272.16,
+      "end": 272.86,
+      "confidence": 0.884
+    },
+    {
+      "word": "נעשה",
+      "start": 274.12,
+      "end": 274.82,
+      "confidence": 0.975
+    },
+    {
+      "word": "אדם",
+      "start": 274.82,
+      "end": 275.48,
+      "confidence": 0.999
+    },
+    {
+      "word": "בצלמנו",
+      "start": 275.48,
+      "end": 276.38,
+      "confidence": 0.989
+    },
+    {
+      "word": "כדמותנו",
+      "start": 276.38,
+      "end": 277.42,
+      "confidence": 0.963
+    },
+    {
+      "word": "וירדו",
+      "start": 277.42,
+      "end": 278.74,
+      "confidence": 0.988
+    },
+    {
+      "word": "בדגת",
+      "start": 278.74,
+      "end": 279.62,
+      "confidence": 0.902
+    },
+    {
+      "word": "הים",
+      "start": 279.62,
+      "end": 280.24,
+      "confidence": 0.999
+    },
+    {
+      "word": "ובעוף",
+      "start": 280.24,
+      "end": 280.88,
+      "confidence": 0.989
+    },
+    {
+      "word": "השמים",
+      "start": 280.88,
+      "end": 281.58,
+      "confidence": 0.694
+    },
+    {
+      "word": "ובבהמה",
+      "start": 281.58,
+      "end": 283.44,
+      "confidence": 0.932
+    },
+    {
+      "word": "ובכל",
+      "start": 283.44,
+      "end": 284.44,
+      "confidence": 0.999
+    },
+    {
+      "word": "הארץ",
+      "start": 284.44,
+      "end": 285.3,
+      "confidence": 0.998
+    },
+    {
+      "word": "ובכל",
+      "start": 285.66,
+      "end": 286.36,
+      "confidence": 0.993
+    },
+    {
+      "word": "הרמס",
+      "start": 286.36,
+      "end": 287.04,
+      "confidence": 0.882
+    },
+    {
+      "word": "על",
+      "start": 288.2,
+      "end": 288.4,
+      "confidence": 0.994
+    },
+    {
+      "word": "הארץ",
+      "start": 288.4,
+      "end": 289.22,
+      "confidence": 0.999
+    }
+  ]
+}

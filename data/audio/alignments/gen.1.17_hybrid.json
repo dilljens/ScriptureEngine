@@ -1,0 +1,63 @@
+{
+  "ref": "gen.1.17",
+  "duration": 7.58,
+  "word_count": 8,
+  "words": [
+    {
+      "word": "ויתן",
+      "start": 180.42,
+      "end": 182.14,
+      "confidence": 0.617,
+      "source": "hybrid"
+    },
+    {
+      "word": "אותם",
+      "start": 182.14,
+      "end": 182.56,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 182.56,
+      "end": 183.18,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "ברקיע",
+      "start": 183.18,
+      "end": 184.0,
+      "confidence": 0.87,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 184.0,
+      "end": 185.34,
+      "confidence": 0.551,
+      "source": "hybrid"
+    },
+    {
+      "word": "להאיר",
+      "start": 185.34,
+      "end": 186.34,
+      "confidence": 0.981,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 186.34,
+      "end": 186.62,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 186.62,
+      "end": 188.0,
+      "confidence": 1.0,
+      "source": "hybrid"
+    }
+  ]
+}

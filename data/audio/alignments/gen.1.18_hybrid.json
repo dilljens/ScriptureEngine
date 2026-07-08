@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.18",
+  "duration": 9.2,
+  "word_count": 12,
+  "words": [
+    {
+      "word": "ולמשול",
+      "start": 188.0,
+      "end": 189.3,
+      "confidence": 0.965,
+      "source": "hybrid"
+    },
+    {
+      "word": "ביום",
+      "start": 189.3,
+      "end": 190.14,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובלילה",
+      "start": 190.14,
+      "end": 191.32,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולהבדיל",
+      "start": 191.32,
+      "end": 192.64,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "בין",
+      "start": 192.64,
+      "end": 192.88,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "האור",
+      "start": 192.88,
+      "end": 193.4,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובין",
+      "start": 193.4,
+      "end": 193.76,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "החושך",
+      "start": 193.76,
+      "end": 194.56,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירא",
+      "start": 194.56,
+      "end": 195.58,
+      "confidence": 0.969,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 195.58,
+      "end": 196.24,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "כי",
+      "start": 196.24,
+      "end": 196.48,
+      "confidence": 0.442,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 196.48,
+      "end": 197.2,
+      "confidence": 0.999,
+      "source": "hybrid"
+    }
+  ]
+}

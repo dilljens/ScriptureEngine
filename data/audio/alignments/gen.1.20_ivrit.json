@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.20",
+  "duration": 12.22,
+  "word_count": 14,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 201.3,
+      "end": 202.0,
+      "confidence": 0.987
+    },
+    {
+      "word": "ישרצו",
+      "start": 204.26,
+      "end": 204.96,
+      "confidence": 0.984
+    },
+    {
+      "word": "המים",
+      "start": 204.96,
+      "end": 205.68,
+      "confidence": 0.996
+    },
+    {
+      "word": "שרץ",
+      "start": 205.68,
+      "end": 206.76,
+      "confidence": 0.988
+    },
+    {
+      "word": "נפש",
+      "start": 206.76,
+      "end": 207.26,
+      "confidence": 0.995
+    },
+    {
+      "word": "חיה",
+      "start": 207.26,
+      "end": 207.64,
+      "confidence": 0.992
+    },
+    {
+      "word": "ועוף",
+      "start": 207.64,
+      "end": 208.84,
+      "confidence": 0.836
+    },
+    {
+      "word": "יעופף",
+      "start": 208.84,
+      "end": 209.66,
+      "confidence": 0.981
+    },
+    {
+      "word": "על",
+      "start": 209.66,
+      "end": 209.86,
+      "confidence": 0.996
+    },
+    {
+      "word": "הארץ",
+      "start": 209.86,
+      "end": 210.72,
+      "confidence": 0.999
+    },
+    {
+      "word": "על",
+      "start": 210.72,
+      "end": 211.24,
+      "confidence": 0.935
+    },
+    {
+      "word": "פני",
+      "start": 211.24,
+      "end": 211.86,
+      "confidence": 0.996
+    },
+    {
+      "word": "רקיע",
+      "start": 211.86,
+      "end": 212.56,
+      "confidence": 0.434
+    },
+    {
+      "word": "השמים",
+      "start": 212.56,
+      "end": 213.52,
+      "confidence": 0.733
+    }
+  ]
+}

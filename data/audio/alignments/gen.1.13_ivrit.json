@@ -1,0 +1,37 @@
+{
+  "ref": "gen.1.13",
+  "duration": 3.4,
+  "word_count": 5,
+  "words": [
+    {
+      "word": "ויהי",
+      "start": 137.96,
+      "end": 138.66,
+      "confidence": 0.93
+    },
+    {
+      "word": "ערב",
+      "start": 138.66,
+      "end": 139.28,
+      "confidence": 0.999
+    },
+    {
+      "word": "ויהי",
+      "start": 139.28,
+      "end": 139.74,
+      "confidence": 0.996
+    },
+    {
+      "word": "יום",
+      "start": 140.36,
+      "end": 140.66,
+      "confidence": 0.996
+    },
+    {
+      "word": "שלישי",
+      "start": 140.66,
+      "end": 141.36,
+      "confidence": 0.998
+    }
+  ]
+}

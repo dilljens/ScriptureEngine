@@ -1,0 +1,79 @@
+{
+  "ref": "gen.1.4",
+  "duration": 3.64,
+  "word_count": 12,
+  "words": [
+    {
+      "word": "וירא",
+      "start": 0.0,
+      "end": 0.52,
+      "confidence": 0.985
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.52,
+      "end": 0.88,
+      "confidence": 0.729
+    },
+    {
+      "word": "את",
+      "start": 0.88,
+      "end": 0.94,
+      "confidence": 0.665
+    },
+    {
+      "word": "האור",
+      "start": 0.94,
+      "end": 1.26,
+      "confidence": 0.993
+    },
+    {
+      "word": "כי",
+      "start": 1.26,
+      "end": 1.4,
+      "confidence": 0.794
+    },
+    {
+      "word": "טוב",
+      "start": 1.4,
+      "end": 1.68,
+      "confidence": 0.996
+    },
+    {
+      "word": "ויבדל",
+      "start": 1.68,
+      "end": 2.22,
+      "confidence": 0.923
+    },
+    {
+      "word": "אלוהים",
+      "start": 2.22,
+      "end": 2.5,
+      "confidence": 0.995
+    },
+    {
+      "word": "בין",
+      "start": 2.5,
+      "end": 2.7,
+      "confidence": 0.999
+    },
+    {
+      "word": "האור",
+      "start": 2.7,
+      "end": 2.98,
+      "confidence": 0.997
+    },
+    {
+      "word": "ובין",
+      "start": 2.98,
+      "end": 3.26,
+      "confidence": 0.998
+    },
+    {
+      "word": "החשך",
+      "start": 3.26,
+      "end": 3.64,
+      "confidence": 0.992
+    }
+  ]
+}

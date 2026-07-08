@@ -1,0 +1,73 @@
+{
+  "ref": "gen.1.18",
+  "duration": 5.16,
+  "word_count": 11,
+  "words": [
+    {
+      "word": "ולמשול",
+      "start": 0.0,
+      "end": 0.66,
+      "confidence": 0.987
+    },
+    {
+      "word": "ביום",
+      "start": 0.66,
+      "end": 1.12,
+      "confidence": 0.996
+    },
+    {
+      "word": "ובלילה",
+      "start": 1.12,
+      "end": 1.94,
+      "confidence": 0.908
+    },
+    {
+      "word": "ולהבדיל",
+      "start": 1.94,
+      "end": 2.5,
+      "confidence": 0.971
+    },
+    {
+      "word": "בין",
+      "start": 2.5,
+      "end": 2.76,
+      "confidence": 0.999
+    },
+    {
+      "word": "האור",
+      "start": 2.76,
+      "end": 3.18,
+      "confidence": 0.993
+    },
+    {
+      "word": "ובין",
+      "start": 3.18,
+      "end": 3.62,
+      "confidence": 0.997
+    },
+    {
+      "word": "חשך",
+      "start": 3.62,
+      "end": 4.1,
+      "confidence": 0.93
+    },
+    {
+      "word": "וירא",
+      "start": 4.1,
+      "end": 4.46,
+      "confidence": 0.975
+    },
+    {
+      "word": "אלוהים",
+      "start": 4.46,
+      "end": 4.78,
+      "confidence": 0.986
+    },
+    {
+      "word": "כטוב",
+      "start": 4.78,
+      "end": 5.16,
+      "confidence": 0.975
+    }
+  ]
+}

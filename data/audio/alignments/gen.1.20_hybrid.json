@@ -1,0 +1,112 @@
+{
+  "ref": "gen.1.20",
+  "duration": 13.12,
+  "word_count": 15,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 201.06,
+      "end": 202.18,
+      "confidence": 0.987,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 202.18,
+      "end": 203.54,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ישרצו",
+      "start": 203.54,
+      "end": 205.04,
+      "confidence": 0.984,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 205.04,
+      "end": 206.0,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "שרץ",
+      "start": 206.0,
+      "end": 206.84,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "נפש",
+      "start": 206.84,
+      "end": 207.38,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיה",
+      "start": 207.38,
+      "end": 208.12,
+      "confidence": 0.992,
+      "source": "hybrid"
+    },
+    {
+      "word": "ועוף",
+      "start": 208.12,
+      "end": 208.96,
+      "confidence": 0.836,
+      "source": "hybrid"
+    },
+    {
+      "word": "יעופף",
+      "start": 208.96,
+      "end": 209.82,
+      "confidence": 0.981,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 209.82,
+      "end": 209.98,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 209.98,
+      "end": 211.0,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 211.0,
+      "end": 211.48,
+      "confidence": 0.935,
+      "source": "hybrid"
+    },
+    {
+      "word": "פני",
+      "start": 211.48,
+      "end": 211.9,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "רקיע",
+      "start": 211.9,
+      "end": 212.82,
+      "confidence": 0.434,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 212.82,
+      "end": 214.18,
+      "confidence": 0.733,
+      "source": "hybrid"
+    }
+  ]
+}

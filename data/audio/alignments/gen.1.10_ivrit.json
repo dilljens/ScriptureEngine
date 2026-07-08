@@ -1,0 +1,67 @@
+{
+  "ref": "gen.1.10",
+  "duration": 9.2,
+  "word_count": 10,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 96.87,
+      "end": 97.57,
+      "confidence": 0.791
+    },
+    {
+      "word": "ליבשה",
+      "start": 98.37,
+      "end": 99.49,
+      "confidence": 0.999
+    },
+    {
+      "word": "ארץ",
+      "start": 99.49,
+      "end": 100.03,
+      "confidence": 0.998
+    },
+    {
+      "word": "ולמקווה",
+      "start": 100.03,
+      "end": 101.35,
+      "confidence": 0.926
+    },
+    {
+      "word": "המים",
+      "start": 101.35,
+      "end": 102.19,
+      "confidence": 0.999
+    },
+    {
+      "word": "קרה",
+      "start": 102.19,
+      "end": 102.97,
+      "confidence": 0.621
+    },
+    {
+      "word": "ימים",
+      "start": 102.97,
+      "end": 103.73,
+      "confidence": 0.999
+    },
+    {
+      "word": "וירא",
+      "start": 103.73,
+      "end": 104.83,
+      "confidence": 0.97
+    },
+    {
+      "word": "כי",
+      "start": 105.57,
+      "end": 105.75,
+      "confidence": 0.232
+    },
+    {
+      "word": "טוב",
+      "start": 105.75,
+      "end": 106.07,
+      "confidence": 0.987
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "ref": "gen.1.16",
+  "duration": 14.12,
+  "word_count": 15,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 165.52,
+      "end": 166.22,
+      "confidence": 0.902
+    },
+    {
+      "word": "את",
+      "start": 166.86,
+      "end": 167.0,
+      "confidence": 0.999
+    },
+    {
+      "word": "שני",
+      "start": 167.0,
+      "end": 167.42,
+      "confidence": 0.996
+    },
+    {
+      "word": "את",
+      "start": 169.12,
+      "end": 169.74,
+      "confidence": 0.906
+    },
+    {
+      "word": "המאור",
+      "start": 169.74,
+      "end": 170.66,
+      "confidence": 0.999
+    },
+    {
+      "word": "הגדול",
+      "start": 170.66,
+      "end": 171.38,
+      "confidence": 0.999
+    },
+    {
+      "word": "לממשלת",
+      "start": 171.38,
+      "end": 172.56,
+      "confidence": 0.999
+    },
+    {
+      "word": "היום",
+      "start": 172.56,
+      "end": 173.08,
+      "confidence": 0.991
+    },
+    {
+      "word": "ואת",
+      "start": 173.42,
+      "end": 174.12,
+      "confidence": 0.892
+    },
+    {
+      "word": "המאור",
+      "start": 174.12,
+      "end": 174.96,
+      "confidence": 0.998
+    },
+    {
+      "word": "הקטון",
+      "start": 174.96,
+      "end": 175.74,
+      "confidence": 0.965
+    },
+    {
+      "word": "לממשלת",
+      "start": 175.74,
+      "end": 176.94,
+      "confidence": 0.997
+    },
+    {
+      "word": "הלילה",
+      "start": 176.94,
+      "end": 177.6,
+      "confidence": 0.999
+    },
+    {
+      "word": "ואת",
+      "start": 177.6,
+      "end": 178.38,
+      "confidence": 0.84
+    },
+    {
+      "word": "הכוכבים",
+      "start": 178.38,
+      "end": 179.64,
+      "confidence": 0.998
+    }
+  ]
+}

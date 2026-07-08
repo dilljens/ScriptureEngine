@@ -1,0 +1,97 @@
+{
+  "ref": "gen.1.31",
+  "duration": 4.98,
+  "word_count": 15,
+  "words": [
+    {
+      "word": "וירא",
+      "start": 0.0,
+      "end": 0.64,
+      "confidence": 0.975
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.64,
+      "end": 0.96,
+      "confidence": 0.984
+    },
+    {
+      "word": "את",
+      "start": 0.96,
+      "end": 1.06,
+      "confidence": 0.999
+    },
+    {
+      "word": "כל",
+      "start": 1.06,
+      "end": 1.18,
+      "confidence": 0.996
+    },
+    {
+      "word": "אשר",
+      "start": 1.18,
+      "end": 1.48,
+      "confidence": 0.991
+    },
+    {
+      "word": "רשע",
+      "start": 1.48,
+      "end": 1.82,
+      "confidence": 0.853
+    },
+    {
+      "word": "והנה",
+      "start": 1.82,
+      "end": 2.18,
+      "confidence": 0.629
+    },
+    {
+      "word": "טוב",
+      "start": 2.18,
+      "end": 2.38,
+      "confidence": 0.997
+    },
+    {
+      "word": "מאוד",
+      "start": 2.38,
+      "end": 2.68,
+      "confidence": 0.945
+    },
+    {
+      "word": "ויהי",
+      "start": 2.68,
+      "end": 3.12,
+      "confidence": 0.884
+    },
+    {
+      "word": "ערב",
+      "start": 3.12,
+      "end": 3.42,
+      "confidence": 0.997
+    },
+    {
+      "word": "ויהי",
+      "start": 3.42,
+      "end": 4.06,
+      "confidence": 0.85
+    },
+    {
+      "word": "בוקר",
+      "start": 4.06,
+      "end": 4.36,
+      "confidence": 0.999
+    },
+    {
+      "word": "יום",
+      "start": 4.36,
+      "end": 4.58,
+      "confidence": 0.999
+    },
+    {
+      "word": "השישי",
+      "start": 4.58,
+      "end": 4.98,
+      "confidence": 0.996
+    }
+  ]
+}

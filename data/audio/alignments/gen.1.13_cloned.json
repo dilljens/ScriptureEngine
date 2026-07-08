@@ -1,0 +1,43 @@
+{
+  "ref": "gen.1.13_cloned",
+  "duration": 3.26,
+  "word_count": 6,
+  "words": [
+    {
+      "word": "ויהי",
+      "start": 0.0,
+      "end": 1.22,
+      "confidence": 0.95
+    },
+    {
+      "word": "ערב",
+      "start": 1.22,
+      "end": 1.6,
+      "confidence": 0.987
+    },
+    {
+      "word": "ויהי",
+      "start": 1.6,
+      "end": 2.2,
+      "confidence": 0.898
+    },
+    {
+      "word": "בקר",
+      "start": 2.2,
+      "end": 2.48,
+      "confidence": 0.901
+    },
+    {
+      "word": "יום",
+      "start": 2.48,
+      "end": 2.72,
+      "confidence": 0.997
+    },
+    {
+      "word": "שלישי",
+      "start": 2.72,
+      "end": 3.26,
+      "confidence": 1.0
+    }
+  ]
+}

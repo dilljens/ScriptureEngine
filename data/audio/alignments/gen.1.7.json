@@ -1,0 +1,109 @@
+{
+  "ref": "gen.1.7",
+  "duration": 6.46,
+  "word_count": 17,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 0.0,
+      "end": 0.52,
+      "confidence": 0.908
+    },
+    {
+      "word": "להם",
+      "start": 0.52,
+      "end": 0.88,
+      "confidence": 0.683
+    },
+    {
+      "word": "את",
+      "start": 0.88,
+      "end": 1.12,
+      "confidence": 0.955
+    },
+    {
+      "word": "הרקיעה",
+      "start": 1.12,
+      "end": 1.78,
+      "confidence": 0.913
+    },
+    {
+      "word": "ויבדל",
+      "start": 1.78,
+      "end": 2.36,
+      "confidence": 0.894
+    },
+    {
+      "word": "בין",
+      "start": 2.36,
+      "end": 2.68,
+      "confidence": 0.999
+    },
+    {
+      "word": "המים",
+      "start": 2.68,
+      "end": 3.1,
+      "confidence": 0.963
+    },
+    {
+      "word": "אשר",
+      "start": 3.1,
+      "end": 3.36,
+      "confidence": 0.996
+    },
+    {
+      "word": "מתחת",
+      "start": 3.36,
+      "end": 3.82,
+      "confidence": 0.999
+    },
+    {
+      "word": "לרקיעה",
+      "start": 3.82,
+      "end": 4.36,
+      "confidence": 0.979
+    },
+    {
+      "word": "ובין",
+      "start": 4.36,
+      "end": 4.66,
+      "confidence": 0.995
+    },
+    {
+      "word": "המים",
+      "start": 4.66,
+      "end": 4.96,
+      "confidence": 0.999
+    },
+    {
+      "word": "אשר",
+      "start": 4.96,
+      "end": 5.26,
+      "confidence": 0.865
+    },
+    {
+      "word": "מעל",
+      "start": 5.26,
+      "end": 5.6,
+      "confidence": 0.999
+    },
+    {
+      "word": "לרקיעה",
+      "start": 5.6,
+      "end": 6.14,
+      "confidence": 0.994
+    },
+    {
+      "word": "ויהי",
+      "start": 6.14,
+      "end": 6.4,
+      "confidence": 0.882
+    },
+    {
+      "word": "כן",
+      "start": 6.4,
+      "end": 6.46,
+      "confidence": 0.695
+    }
+  ]
+}

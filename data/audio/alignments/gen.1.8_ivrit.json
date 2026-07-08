@@ -1,0 +1,55 @@
+{
+  "ref": "gen.1.8",
+  "duration": 6.9,
+  "word_count": 8,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 76.51,
+      "end": 77.21,
+      "confidence": 0.859
+    },
+    {
+      "word": "לרקיע",
+      "start": 78.05,
+      "end": 78.71,
+      "confidence": 0.999
+    },
+    {
+      "word": "שמים",
+      "start": 78.71,
+      "end": 79.47,
+      "confidence": 0.659
+    },
+    {
+      "word": "ויהי",
+      "start": 79.47,
+      "end": 80.75,
+      "confidence": 0.983
+    },
+    {
+      "word": "ערב",
+      "start": 80.75,
+      "end": 81.29,
+      "confidence": 1.0
+    },
+    {
+      "word": "ויהי",
+      "start": 81.29,
+      "end": 81.77,
+      "confidence": 0.997
+    },
+    {
+      "word": "יום",
+      "start": 82.53,
+      "end": 83.01,
+      "confidence": 0.994
+    },
+    {
+      "word": "שני",
+      "start": 83.01,
+      "end": 83.41,
+      "confidence": 0.997
+    }
+  ]
+}

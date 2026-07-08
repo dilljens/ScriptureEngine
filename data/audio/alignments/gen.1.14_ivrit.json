@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.14",
+  "duration": 13.94,
+  "word_count": 14,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 142.16,
+      "end": 142.86,
+      "confidence": 0.992
+    },
+    {
+      "word": "יהי",
+      "start": 144.24,
+      "end": 144.74,
+      "confidence": 0.904
+    },
+    {
+      "word": "ברקיע",
+      "start": 145.62,
+      "end": 146.14,
+      "confidence": 0.916
+    },
+    {
+      "word": "השמים",
+      "start": 146.14,
+      "end": 147.08,
+      "confidence": 0.644
+    },
+    {
+      "word": "להבדיל",
+      "start": 147.08,
+      "end": 148.64,
+      "confidence": 0.925
+    },
+    {
+      "word": "בין",
+      "start": 148.64,
+      "end": 148.96,
+      "confidence": 0.998
+    },
+    {
+      "word": "היום",
+      "start": 148.96,
+      "end": 149.68,
+      "confidence": 0.993
+    },
+    {
+      "word": "ובין",
+      "start": 149.68,
+      "end": 150.18,
+      "confidence": 0.997
+    },
+    {
+      "word": "הלילה",
+      "start": 150.18,
+      "end": 150.98,
+      "confidence": 1.0
+    },
+    {
+      "word": "והיו",
+      "start": 151.48,
+      "end": 152.18,
+      "confidence": 0.753
+    },
+    {
+      "word": "לאותות",
+      "start": 152.18,
+      "end": 153.0,
+      "confidence": 0.989
+    },
+    {
+      "word": "ולמועדים",
+      "start": 153.0,
+      "end": 154.08,
+      "confidence": 0.994
+    },
+    {
+      "word": "ולימים",
+      "start": 154.08,
+      "end": 155.38,
+      "confidence": 0.994
+    },
+    {
+      "word": "ושנים",
+      "start": 155.38,
+      "end": 156.1,
+      "confidence": 0.995
+    }
+  ]
+}

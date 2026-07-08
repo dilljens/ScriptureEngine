@@ -1,0 +1,43 @@
+{
+  "ref": "gen.1.17",
+  "duration": 6.06,
+  "word_count": 6,
+  "words": [
+    {
+      "word": "ויתן",
+      "start": 181.21,
+      "end": 182.05,
+      "confidence": 0.617
+    },
+    {
+      "word": "ברקיע",
+      "start": 183.09,
+      "end": 183.77,
+      "confidence": 0.87
+    },
+    {
+      "word": "השמים",
+      "start": 183.77,
+      "end": 184.81,
+      "confidence": 0.551
+    },
+    {
+      "word": "להאיר",
+      "start": 184.81,
+      "end": 186.27,
+      "confidence": 0.981
+    },
+    {
+      "word": "על",
+      "start": 186.27,
+      "end": 186.41,
+      "confidence": 0.999
+    },
+    {
+      "word": "הארץ",
+      "start": 186.41,
+      "end": 187.27,
+      "confidence": 1.0
+    }
+  ]
+}

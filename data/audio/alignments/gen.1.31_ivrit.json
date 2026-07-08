@@ -1,0 +1,85 @@
+{
+  "ref": "gen.1.31",
+  "duration": 12.63,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "וירא",
+      "start": 351.37,
+      "end": 352.04,
+      "confidence": 0.838
+    },
+    {
+      "word": "את",
+      "start": 352.98,
+      "end": 353.3,
+      "confidence": 0.999
+    },
+    {
+      "word": "כל",
+      "start": 353.3,
+      "end": 353.58,
+      "confidence": 0.999
+    },
+    {
+      "word": "אשר",
+      "start": 353.58,
+      "end": 354.08,
+      "confidence": 1.0
+    },
+    {
+      "word": "עשה",
+      "start": 354.08,
+      "end": 354.46,
+      "confidence": 0.998
+    },
+    {
+      "word": "והנה",
+      "start": 354.46,
+      "end": 355.48,
+      "confidence": 0.974
+    },
+    {
+      "word": "טוב",
+      "start": 355.48,
+      "end": 355.9,
+      "confidence": 0.998
+    },
+    {
+      "word": "מאוד",
+      "start": 355.9,
+      "end": 356.58,
+      "confidence": 0.982
+    },
+    {
+      "word": "ויהי",
+      "start": 356.99,
+      "end": 357.66,
+      "confidence": 0.963
+    },
+    {
+      "word": "ערב",
+      "start": 357.66,
+      "end": 358.24,
+      "confidence": 1.0
+    },
+    {
+      "word": "ויהי",
+      "start": 358.24,
+      "end": 358.68,
+      "confidence": 0.995
+    },
+    {
+      "word": "יום",
+      "start": 359.46,
+      "end": 360.12,
+      "confidence": 0.995
+    },
+    {
+      "word": "השמים",
+      "start": 363.06,
+      "end": 364.0,
+      "confidence": 0.56
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.2",
+  "duration": 4.66,
+  "word_count": 14,
+  "words": [
+    {
+      "word": "והארץ",
+      "start": 0.0,
+      "end": 0.72,
+      "confidence": 0.8
+    },
+    {
+      "word": "הייתה",
+      "start": 0.72,
+      "end": 1.0,
+      "confidence": 0.97
+    },
+    {
+      "word": "תוהו",
+      "start": 1.0,
+      "end": 1.38,
+      "confidence": 0.846
+    },
+    {
+      "word": "ובהו",
+      "start": 1.38,
+      "end": 1.88,
+      "confidence": 0.849
+    },
+    {
+      "word": "הוחשך",
+      "start": 1.88,
+      "end": 2.28,
+      "confidence": 0.892
+    },
+    {
+      "word": "על",
+      "start": 2.28,
+      "end": 2.4,
+      "confidence": 0.957
+    },
+    {
+      "word": "פני",
+      "start": 2.4,
+      "end": 2.66,
+      "confidence": 0.998
+    },
+    {
+      "word": "תהום",
+      "start": 2.66,
+      "end": 2.98,
+      "confidence": 0.99
+    },
+    {
+      "word": "ורוח",
+      "start": 2.98,
+      "end": 3.24,
+      "confidence": 0.811
+    },
+    {
+      "word": "אלוהים",
+      "start": 3.24,
+      "end": 3.56,
+      "confidence": 0.781
+    },
+    {
+      "word": "מרחפת",
+      "start": 3.56,
+      "end": 3.96,
+      "confidence": 0.858
+    },
+    {
+      "word": "על",
+      "start": 3.96,
+      "end": 4.06,
+      "confidence": 0.989
+    },
+    {
+      "word": "פני",
+      "start": 4.06,
+      "end": 4.32,
+      "confidence": 0.999
+    },
+    {
+      "word": "ימאים",
+      "start": 4.32,
+      "end": 4.66,
+      "confidence": 0.872
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "ref": "gen.1.28",
+  "duration": 18.64,
+  "word_count": 22,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 299.42,
+      "end": 300.7,
+      "confidence": 0.976,
+      "source": "hybrid"
+    },
+    {
+      "word": "אותם",
+      "start": 300.7,
+      "end": 301.16,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 301.16,
+      "end": 301.78,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויאמר",
+      "start": 301.78,
+      "end": 302.46,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "להם",
+      "start": 302.46,
+      "end": 303.18,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 303.18,
+      "end": 304.3,
+      "confidence": 0.991,
+      "source": "hybrid"
+    },
+    {
+      "word": "פירו",
+      "start": 304.3,
+      "end": 305.18,
+      "confidence": 0.899,
+      "source": "hybrid"
+    },
+    {
+      "word": "ורבו",
+      "start": 305.18,
+      "end": 306.02,
+      "confidence": 0.921,
+      "source": "hybrid"
+    },
+    {
+      "word": "ומלאו",
+      "start": 306.02,
+      "end": 306.9,
+      "confidence": 0.839,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 306.9,
+      "end": 307.16,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 307.16,
+      "end": 308.12,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "וכבשוה",
+      "start": 308.12,
+      "end": 309.72,
+      "confidence": 0.948,
+      "source": "hybrid"
+    },
+    {
+      "word": "ורדו",
+      "start": 309.72,
+      "end": 310.68,
+      "confidence": 0.893,
+      "source": "hybrid"
+    },
+    {
+      "word": "בדגת",
+      "start": 310.68,
+      "end": 311.42,
+      "confidence": 0.989,
+      "source": "hybrid"
+    },
+    {
+      "word": "הים",
+      "start": 311.42,
+      "end": 312.14,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובעוף",
+      "start": 312.14,
+      "end": 312.84,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 312.84,
+      "end": 313.88,
+      "confidence": 0.651,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובכל",
+      "start": 313.88,
+      "end": 314.7,
+      "confidence": 0.966,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיה",
+      "start": 314.7,
+      "end": 315.44,
+      "confidence": 0.961,
+      "source": "hybrid"
+    },
+    {
+      "word": "הרומסת",
+      "start": 315.44,
+      "end": 316.52,
+      "confidence": 0.993,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 316.52,
+      "end": 316.76,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 316.76,
+      "end": 318.06,
+      "confidence": 0.999,
+      "source": "hybrid"
+    }
+  ]
+}

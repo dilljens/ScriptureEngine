@@ -1,0 +1,103 @@
+{
+  "ref": "gen.1.12",
+  "duration": 13.56,
+  "word_count": 16,
+  "words": [
+    {
+      "word": "ותוצא",
+      "start": 123.78,
+      "end": 124.48,
+      "confidence": 0.83
+    },
+    {
+      "word": "הארץ",
+      "start": 124.48,
+      "end": 125.3,
+      "confidence": 0.995
+    },
+    {
+      "word": "דשא",
+      "start": 125.3,
+      "end": 125.92,
+      "confidence": 0.997
+    },
+    {
+      "word": "עשב",
+      "start": 125.92,
+      "end": 127.14,
+      "confidence": 0.932
+    },
+    {
+      "word": "מזריע",
+      "start": 127.14,
+      "end": 127.88,
+      "confidence": 0.991
+    },
+    {
+      "word": "זרע",
+      "start": 127.88,
+      "end": 128.68,
+      "confidence": 0.997
+    },
+    {
+      "word": "למינהו",
+      "start": 128.68,
+      "end": 129.34,
+      "confidence": 0.974
+    },
+    {
+      "word": "ועץ",
+      "start": 129.34,
+      "end": 130.78,
+      "confidence": 0.983
+    },
+    {
+      "word": "פרי",
+      "start": 131.54,
+      "end": 131.84,
+      "confidence": 0.999
+    },
+    {
+      "word": "אשר",
+      "start": 131.84,
+      "end": 132.96,
+      "confidence": 0.999
+    },
+    {
+      "word": "זרעו",
+      "start": 132.96,
+      "end": 133.54,
+      "confidence": 0.998
+    },
+    {
+      "word": "בו",
+      "start": 133.54,
+      "end": 134.06,
+      "confidence": 0.996
+    },
+    {
+      "word": "למינהו",
+      "start": 134.06,
+      "end": 134.84,
+      "confidence": 0.994
+    },
+    {
+      "word": "וירא",
+      "start": 134.84,
+      "end": 135.88,
+      "confidence": 0.967
+    },
+    {
+      "word": "כי",
+      "start": 136.76,
+      "end": 137.0,
+      "confidence": 0.568
+    },
+    {
+      "word": "טוב",
+      "start": 137.0,
+      "end": 137.34,
+      "confidence": 0.977
+    }
+  ]
+}

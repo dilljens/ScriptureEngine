@@ -1,0 +1,73 @@
+{
+  "ref": "gen.1.9",
+  "duration": 10.94,
+  "word_count": 11,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 85.17,
+      "end": 85.87,
+      "confidence": 0.96
+    },
+    {
+      "word": "המים",
+      "start": 88.19,
+      "end": 88.99,
+      "confidence": 0.995
+    },
+    {
+      "word": "מתחת",
+      "start": 88.99,
+      "end": 90.03,
+      "confidence": 0.997
+    },
+    {
+      "word": "השמים",
+      "start": 90.03,
+      "end": 90.81,
+      "confidence": 0.722
+    },
+    {
+      "word": "אל",
+      "start": 90.81,
+      "end": 91.13,
+      "confidence": 0.974
+    },
+    {
+      "word": "מקום",
+      "start": 91.13,
+      "end": 92.05,
+      "confidence": 0.997
+    },
+    {
+      "word": "אחד",
+      "start": 92.05,
+      "end": 92.31,
+      "confidence": 0.998
+    },
+    {
+      "word": "ותרעה",
+      "start": 92.31,
+      "end": 93.85,
+      "confidence": 0.707
+    },
+    {
+      "word": "היבשה",
+      "start": 93.85,
+      "end": 94.85,
+      "confidence": 0.998
+    },
+    {
+      "word": "ויהי",
+      "start": 94.85,
+      "end": 95.65,
+      "confidence": 0.947
+    },
+    {
+      "word": "חן",
+      "start": 95.65,
+      "end": 96.11,
+      "confidence": 0.79
+    }
+  ]
+}

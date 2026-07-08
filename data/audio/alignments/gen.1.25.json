@@ -1,0 +1,109 @@
+{
+  "ref": "gen.1.25",
+  "duration": 7.24,
+  "word_count": 17,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 0.0,
+      "end": 0.58,
+      "confidence": 0.937
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.58,
+      "end": 0.92,
+      "confidence": 0.697
+    },
+    {
+      "word": "את",
+      "start": 0.92,
+      "end": 1.02,
+      "confidence": 0.997
+    },
+    {
+      "word": "חיית",
+      "start": 1.02,
+      "end": 1.46,
+      "confidence": 0.985
+    },
+    {
+      "word": "הארץ",
+      "start": 1.46,
+      "end": 1.92,
+      "confidence": 0.997
+    },
+    {
+      "word": "למינה",
+      "start": 1.92,
+      "end": 2.36,
+      "confidence": 0.831
+    },
+    {
+      "word": "ואת",
+      "start": 2.63,
+      "end": 3.02,
+      "confidence": 0.972
+    },
+    {
+      "word": "הבהמה",
+      "start": 3.02,
+      "end": 3.36,
+      "confidence": 0.81
+    },
+    {
+      "word": "למינה",
+      "start": 3.36,
+      "end": 3.84,
+      "confidence": 0.992
+    },
+    {
+      "word": "ואת",
+      "start": 3.88,
+      "end": 4.36,
+      "confidence": 0.999
+    },
+    {
+      "word": "כל",
+      "start": 4.36,
+      "end": 4.66,
+      "confidence": 0.929
+    },
+    {
+      "word": "רמש",
+      "start": 4.66,
+      "end": 5.02,
+      "confidence": 0.899
+    },
+    {
+      "word": "האדמה",
+      "start": 5.02,
+      "end": 5.44,
+      "confidence": 0.815
+    },
+    {
+      "word": "למינה",
+      "start": 5.44,
+      "end": 5.9,
+      "confidence": 0.995
+    },
+    {
+      "word": "וירא",
+      "start": 5.9,
+      "end": 6.58,
+      "confidence": 0.868
+    },
+    {
+      "word": "אלוהים",
+      "start": 6.58,
+      "end": 6.9,
+      "confidence": 0.995
+    },
+    {
+      "word": "כטוב",
+      "start": 6.9,
+      "end": 7.24,
+      "confidence": 0.97
+    }
+  ]
+}

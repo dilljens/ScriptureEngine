@@ -1,0 +1,127 @@
+{
+  "ref": "gen.1.30",
+  "duration": 13.46,
+  "word_count": 20,
+  "words": [
+    {
+      "word": "ולכל",
+      "start": 337.2,
+      "end": 337.9,
+      "confidence": 0.976
+    },
+    {
+      "word": "חיית",
+      "start": 337.9,
+      "end": 338.56,
+      "confidence": 0.985
+    },
+    {
+      "word": "הארץ",
+      "start": 338.56,
+      "end": 339.36,
+      "confidence": 0.999
+    },
+    {
+      "word": "ולכל",
+      "start": 339.36,
+      "end": 339.74,
+      "confidence": 0.998
+    },
+    {
+      "word": "עוף",
+      "start": 339.74,
+      "end": 340.04,
+      "confidence": 0.991
+    },
+    {
+      "word": "השמים",
+      "start": 340.04,
+      "end": 340.7,
+      "confidence": 0.603
+    },
+    {
+      "word": "ולכל",
+      "start": 340.7,
+      "end": 341.84,
+      "confidence": 0.999
+    },
+    {
+      "word": "רומס",
+      "start": 341.84,
+      "end": 342.76,
+      "confidence": 0.997
+    },
+    {
+      "word": "על",
+      "start": 342.76,
+      "end": 342.92,
+      "confidence": 0.998
+    },
+    {
+      "word": "הארץ",
+      "start": 342.92,
+      "end": 343.82,
+      "confidence": 0.999
+    },
+    {
+      "word": "אשר",
+      "start": 344.08,
+      "end": 344.68,
+      "confidence": 0.97
+    },
+    {
+      "word": "בו",
+      "start": 344.68,
+      "end": 344.96,
+      "confidence": 0.994
+    },
+    {
+      "word": "נפש",
+      "start": 344.96,
+      "end": 345.52,
+      "confidence": 0.999
+    },
+    {
+      "word": "חיה",
+      "start": 345.52,
+      "end": 346.08,
+      "confidence": 0.988
+    },
+    {
+      "word": "את",
+      "start": 346.08,
+      "end": 346.82,
+      "confidence": 0.612
+    },
+    {
+      "word": "כל",
+      "start": 346.82,
+      "end": 347.16,
+      "confidence": 0.997
+    },
+    {
+      "word": "ירק",
+      "start": 347.16,
+      "end": 348.02,
+      "confidence": 0.998
+    },
+    {
+      "word": "עשב",
+      "start": 348.02,
+      "end": 348.64,
+      "confidence": 0.988
+    },
+    {
+      "word": "ויהי",
+      "start": 349.24,
+      "end": 350.14,
+      "confidence": 0.873
+    },
+    {
+      "word": "חן",
+      "start": 350.14,
+      "end": 350.66,
+      "confidence": 0.945
+    }
+  ]
+}

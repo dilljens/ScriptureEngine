@@ -1,0 +1,79 @@
+{
+  "ref": "gen.1.22",
+  "duration": 5.44,
+  "word_count": 12,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 0.0,
+      "end": 0.66,
+      "confidence": 0.891
+    },
+    {
+      "word": "אתם",
+      "start": 0.66,
+      "end": 1.04,
+      "confidence": 0.912
+    },
+    {
+      "word": "אלוהים",
+      "start": 1.04,
+      "end": 1.42,
+      "confidence": 0.818
+    },
+    {
+      "word": "לאמר",
+      "start": 1.42,
+      "end": 1.8,
+      "confidence": 0.97
+    },
+    {
+      "word": "פראו",
+      "start": 1.8,
+      "end": 2.14,
+      "confidence": 0.715
+    },
+    {
+      "word": "ורבו",
+      "start": 2.14,
+      "end": 2.46,
+      "confidence": 0.858
+    },
+    {
+      "word": "מלאו",
+      "start": 2.46,
+      "end": 2.86,
+      "confidence": 0.734
+    },
+    {
+      "word": "אתמים",
+      "start": 2.86,
+      "end": 3.16,
+      "confidence": 0.804
+    },
+    {
+      "word": "בימים",
+      "start": 3.16,
+      "end": 3.92,
+      "confidence": 0.99
+    },
+    {
+      "word": "ועגוף",
+      "start": 3.92,
+      "end": 4.5,
+      "confidence": 0.684
+    },
+    {
+      "word": "ירע",
+      "start": 4.5,
+      "end": 4.78,
+      "confidence": 0.615
+    },
+    {
+      "word": "בארץ",
+      "start": 4.78,
+      "end": 5.44,
+      "confidence": 0.99
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "ref": "gen.1.13",
+  "duration": 1.6,
+  "word_count": 6,
+  "words": [
+    {
+      "word": "ויהי",
+      "start": 0.0,
+      "end": 0.38,
+      "confidence": 0.88
+    },
+    {
+      "word": "רב",
+      "start": 0.38,
+      "end": 0.66,
+      "confidence": 0.99
+    },
+    {
+      "word": "ויהי",
+      "start": 0.66,
+      "end": 0.86,
+      "confidence": 0.948
+    },
+    {
+      "word": "בוקר",
+      "start": 0.86,
+      "end": 1.06,
+      "confidence": 1.0
+    },
+    {
+      "word": "יום",
+      "start": 1.06,
+      "end": 1.22,
+      "confidence": 0.998
+    },
+    {
+      "word": "שלישי",
+      "start": 1.22,
+      "end": 1.6,
+      "confidence": 1.0
+    }
+  ]
+}

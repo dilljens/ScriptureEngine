@@ -1,0 +1,97 @@
+{
+  "ref": "gen.1.14",
+  "duration": 7.9,
+  "word_count": 15,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.6,
+      "confidence": 0.764
+    },
+    {
+      "word": "להם",
+      "start": 0.6,
+      "end": 1.02,
+      "confidence": 0.924
+    },
+    {
+      "word": "יהי",
+      "start": 1.02,
+      "end": 1.28,
+      "confidence": 0.66
+    },
+    {
+      "word": "מאורת",
+      "start": 1.28,
+      "end": 1.64,
+      "confidence": 0.658
+    },
+    {
+      "word": "ברכי",
+      "start": 1.64,
+      "end": 2.02,
+      "confidence": 0.769
+    },
+    {
+      "word": "השמים",
+      "start": 2.02,
+      "end": 2.48,
+      "confidence": 0.665
+    },
+    {
+      "word": "להבדיל",
+      "start": 2.48,
+      "end": 3.32,
+      "confidence": 0.971
+    },
+    {
+      "word": "בין",
+      "start": 3.32,
+      "end": 3.56,
+      "confidence": 0.995
+    },
+    {
+      "word": "היום",
+      "start": 3.56,
+      "end": 3.96,
+      "confidence": 0.977
+    },
+    {
+      "word": "ובין",
+      "start": 3.96,
+      "end": 4.28,
+      "confidence": 0.996
+    },
+    {
+      "word": "הלילה",
+      "start": 4.28,
+      "end": 4.92,
+      "confidence": 0.998
+    },
+    {
+      "word": "והיולאתו",
+      "start": 4.92,
+      "end": 6.02,
+      "confidence": 0.679
+    },
+    {
+      "word": "למאדים",
+      "start": 6.02,
+      "end": 6.68,
+      "confidence": 0.72
+    },
+    {
+      "word": "ולימים",
+      "start": 6.68,
+      "end": 7.5,
+      "confidence": 0.979
+    },
+    {
+      "word": "ושנים",
+      "start": 7.5,
+      "end": 7.9,
+      "confidence": 0.987
+    }
+  ]
+}

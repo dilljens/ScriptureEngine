@@ -1,0 +1,61 @@
+{
+  "ref": "gen.1.17",
+  "duration": 2.88,
+  "word_count": 9,
+  "words": [
+    {
+      "word": "הוא",
+      "start": 0.0,
+      "end": 0.22,
+      "confidence": 0.597
+    },
+    {
+      "word": "ייתן",
+      "start": 0.22,
+      "end": 0.54,
+      "confidence": 0.885
+    },
+    {
+      "word": "אותם",
+      "start": 0.54,
+      "end": 0.78,
+      "confidence": 0.998
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.78,
+      "end": 1.04,
+      "confidence": 0.76
+    },
+    {
+      "word": "ברכי",
+      "start": 1.04,
+      "end": 1.44,
+      "confidence": 0.92
+    },
+    {
+      "word": "השמיים",
+      "start": 1.44,
+      "end": 2.0,
+      "confidence": 0.903
+    },
+    {
+      "word": "להאיר",
+      "start": 2.0,
+      "end": 2.4,
+      "confidence": 0.926
+    },
+    {
+      "word": "על",
+      "start": 2.4,
+      "end": 2.48,
+      "confidence": 0.971
+    },
+    {
+      "word": "הארץ",
+      "start": 2.48,
+      "end": 2.88,
+      "confidence": 0.998
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "ref": "gen.1.30",
+  "duration": 13.12,
+  "word_count": 20,
+  "words": [
+    {
+      "word": "ולכל",
+      "start": 337.16,
+      "end": 338.06,
+      "confidence": 0.976,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיית",
+      "start": 338.06,
+      "end": 338.66,
+      "confidence": 0.985,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 338.66,
+      "end": 339.4,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולכל",
+      "start": 339.4,
+      "end": 339.9,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "עוף",
+      "start": 339.9,
+      "end": 340.18,
+      "confidence": 0.991,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 340.18,
+      "end": 341.24,
+      "confidence": 0.603,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולכל",
+      "start": 341.24,
+      "end": 342.12,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "רומס",
+      "start": 342.12,
+      "end": 342.82,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 342.82,
+      "end": 343.06,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 343.06,
+      "end": 344.06,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 344.06,
+      "end": 344.76,
+      "confidence": 0.97,
+      "source": "hybrid"
+    },
+    {
+      "word": "בו",
+      "start": 344.76,
+      "end": 345.0,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "נפש",
+      "start": 345.0,
+      "end": 345.56,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיה",
+      "start": 345.56,
+      "end": 346.12,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 346.12,
+      "end": 347.0,
+      "confidence": 0.612,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 347.0,
+      "end": 347.38,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "ירק",
+      "start": 347.38,
+      "end": 348.1,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "עשב",
+      "start": 348.1,
+      "end": 348.68,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "לאוכלה",
+      "start": 348.68,
+      "end": 349.6,
+      "confidence": 0.969,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 349.6,
+      "end": 350.28,
+      "confidence": 0.873,
+      "source": "hybrid"
+    }
+  ]
+}

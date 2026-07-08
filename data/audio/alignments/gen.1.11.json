@@ -1,0 +1,133 @@
+{
+  "ref": "gen.1.11",
+  "duration": 6.54,
+  "word_count": 21,
+  "words": [
+    {
+      "word": "ויהי",
+      "start": 0.0,
+      "end": 0.34,
+      "confidence": 0.73
+    },
+    {
+      "word": "אמר",
+      "start": 0.34,
+      "end": 0.54,
+      "confidence": 0.785
+    },
+    {
+      "word": "אלהים",
+      "start": 0.54,
+      "end": 0.86,
+      "confidence": 0.649
+    },
+    {
+      "word": "תדשה",
+      "start": 0.86,
+      "end": 1.18,
+      "confidence": 0.777
+    },
+    {
+      "word": "הארץ",
+      "start": 1.18,
+      "end": 1.64,
+      "confidence": 0.993
+    },
+    {
+      "word": "דש",
+      "start": 1.64,
+      "end": 1.94,
+      "confidence": 0.699
+    },
+    {
+      "word": "אשב",
+      "start": 1.94,
+      "end": 2.3,
+      "confidence": 0.77
+    },
+    {
+      "word": "מזריע",
+      "start": 2.3,
+      "end": 2.6,
+      "confidence": 0.98
+    },
+    {
+      "word": "זרעץ",
+      "start": 2.6,
+      "end": 2.98,
+      "confidence": 0.762
+    },
+    {
+      "word": "פרי",
+      "start": 2.98,
+      "end": 3.26,
+      "confidence": 0.981
+    },
+    {
+      "word": "אשא",
+      "start": 3.26,
+      "end": 3.5,
+      "confidence": 0.928
+    },
+    {
+      "word": "פרי",
+      "start": 3.5,
+      "end": 3.76,
+      "confidence": 0.998
+    },
+    {
+      "word": "למינו",
+      "start": 3.76,
+      "end": 4.54,
+      "confidence": 0.847
+    },
+    {
+      "word": "אשר",
+      "start": 4.54,
+      "end": 4.92,
+      "confidence": 0.995
+    },
+    {
+      "word": "זרע",
+      "start": 4.92,
+      "end": 5.18,
+      "confidence": 0.813
+    },
+    {
+      "word": "או",
+      "start": 5.18,
+      "end": 5.32,
+      "confidence": 0.286
+    },
+    {
+      "word": "בוא",
+      "start": 5.32,
+      "end": 5.56,
+      "confidence": 0.734
+    },
+    {
+      "word": "על",
+      "start": 5.56,
+      "end": 5.62,
+      "confidence": 0.571
+    },
+    {
+      "word": "האדרץ",
+      "start": 5.62,
+      "end": 6.04,
+      "confidence": 0.789
+    },
+    {
+      "word": "ויהי",
+      "start": 6.04,
+      "end": 6.42,
+      "confidence": 0.915
+    },
+    {
+      "word": "כן",
+      "start": 6.42,
+      "end": 6.54,
+      "confidence": 0.747
+    }
+  ]
+}

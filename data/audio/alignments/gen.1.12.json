@@ -1,0 +1,115 @@
+{
+  "ref": "gen.1.12",
+  "duration": 6.3,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ותוצא",
+      "start": 0.0,
+      "end": 0.56,
+      "confidence": 0.963
+    },
+    {
+      "word": "הארץ",
+      "start": 0.56,
+      "end": 1.0,
+      "confidence": 0.968
+    },
+    {
+      "word": "דש",
+      "start": 1.0,
+      "end": 1.22,
+      "confidence": 0.988
+    },
+    {
+      "word": "אשב",
+      "start": 1.22,
+      "end": 1.5,
+      "confidence": 0.898
+    },
+    {
+      "word": "מזריע",
+      "start": 1.5,
+      "end": 1.76,
+      "confidence": 0.975
+    },
+    {
+      "word": "זרע",
+      "start": 1.76,
+      "end": 2.04,
+      "confidence": 0.93
+    },
+    {
+      "word": "למיניה",
+      "start": 2.04,
+      "end": 2.42,
+      "confidence": 0.871
+    },
+    {
+      "word": "ובעץ",
+      "start": 2.42,
+      "end": 3.24,
+      "confidence": 0.729
+    },
+    {
+      "word": "אשא",
+      "start": 3.24,
+      "end": 3.46,
+      "confidence": 0.774
+    },
+    {
+      "word": "פרי",
+      "start": 3.46,
+      "end": 3.72,
+      "confidence": 0.987
+    },
+    {
+      "word": "אשר",
+      "start": 3.72,
+      "end": 4.1,
+      "confidence": 0.998
+    },
+    {
+      "word": "זרע",
+      "start": 4.1,
+      "end": 4.4,
+      "confidence": 0.976
+    },
+    {
+      "word": "ובו",
+      "start": 4.4,
+      "end": 4.72,
+      "confidence": 0.836
+    },
+    {
+      "word": "למיניה",
+      "start": 4.72,
+      "end": 5.06,
+      "confidence": 0.997
+    },
+    {
+      "word": "ובירא",
+      "start": 5.06,
+      "end": 5.76,
+      "confidence": 0.853
+    },
+    {
+      "word": "אלוהים",
+      "start": 5.76,
+      "end": 6.02,
+      "confidence": 0.955
+    },
+    {
+      "word": "כי",
+      "start": 6.02,
+      "end": 6.12,
+      "confidence": 0.82
+    },
+    {
+      "word": "טוב",
+      "start": 6.12,
+      "end": 6.3,
+      "confidence": 0.994
+    }
+  ]
+}

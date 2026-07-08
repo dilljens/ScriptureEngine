@@ -1,0 +1,14 @@
+{
+  "chapter": "gen_1",
+  "statistics": {
+    "ivrit_words": 437,
+    "mms_words": 434,
+    "hybrid_words": 573,
+    "avg_gap_ivrit": 0.09231121281464583,
+    "avg_gap_mms": 9.21658986175423e-05,
+    "avg_gap_hybrid": 0.030087260034904018,
+    "boundary_matches": 7,
+    "mean_start_diff": 0.24571428571428605,
+    "mean_end_diff": 0.27142857142857146
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "ref": "gen.1.21",
+  "duration": 9.48,
+  "word_count": 22,
+  "words": [
+    {
+      "word": "ויברא",
+      "start": 0.0,
+      "end": 0.46,
+      "confidence": 0.977
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.46,
+      "end": 0.92,
+      "confidence": 0.99
+    },
+    {
+      "word": "את",
+      "start": 0.92,
+      "end": 1.04,
+      "confidence": 0.996
+    },
+    {
+      "word": "התנינים",
+      "start": 1.04,
+      "end": 1.52,
+      "confidence": 0.904
+    },
+    {
+      "word": "הגדולים",
+      "start": 1.52,
+      "end": 2.1,
+      "confidence": 0.998
+    },
+    {
+      "word": "ואת",
+      "start": 2.1,
+      "end": 2.66,
+      "confidence": 0.696
+    },
+    {
+      "word": "כל",
+      "start": 2.66,
+      "end": 2.84,
+      "confidence": 0.999
+    },
+    {
+      "word": "נפש",
+      "start": 2.84,
+      "end": 3.28,
+      "confidence": 0.999
+    },
+    {
+      "word": "החיה",
+      "start": 3.28,
+      "end": 4.0,
+      "confidence": 0.976
+    },
+    {
+      "word": "הרמשת",
+      "start": 4.0,
+      "end": 4.56,
+      "confidence": 0.981
+    },
+    {
+      "word": "אשר",
+      "start": 4.56,
+      "end": 4.86,
+      "confidence": 0.998
+    },
+    {
+      "word": "שרתשו",
+      "start": 4.86,
+      "end": 5.3,
+      "confidence": 0.862
+    },
+    {
+      "word": "המין",
+      "start": 5.3,
+      "end": 5.92,
+      "confidence": 0.883
+    },
+    {
+      "word": "למיניהם",
+      "start": 5.92,
+      "end": 6.56,
+      "confidence": 0.992
+    },
+    {
+      "word": "ואת",
+      "start": 6.56,
+      "end": 7.08,
+      "confidence": 0.943
+    },
+    {
+      "word": "כל",
+      "start": 7.08,
+      "end": 7.28,
+      "confidence": 0.999
+    },
+    {
+      "word": "עוף",
+      "start": 7.28,
+      "end": 7.5,
+      "confidence": 0.985
+    },
+    {
+      "word": "כנף",
+      "start": 7.5,
+      "end": 7.84,
+      "confidence": 0.945
+    },
+    {
+      "word": "למיניהו",
+      "start": 7.84,
+      "end": 8.38,
+      "confidence": 0.972
+    },
+    {
+      "word": "וירא",
+      "start": 8.38,
+      "end": 8.72,
+      "confidence": 0.953
+    },
+    {
+      "word": "אלוהים",
+      "start": 8.72,
+      "end": 9.12,
+      "confidence": 0.997
+    },
+    {
+      "word": "כטוב",
+      "start": 9.12,
+      "end": 9.48,
+      "confidence": 0.967
+    }
+  ]
+}

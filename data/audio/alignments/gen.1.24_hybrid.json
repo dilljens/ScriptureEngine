@@ -1,0 +1,98 @@
+{
+  "ref": "gen.1.24",
+  "duration": 11.56,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 246.52,
+      "end": 247.82,
+      "confidence": 0.964,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 247.82,
+      "end": 248.74,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "תוצא",
+      "start": 248.74,
+      "end": 249.64,
+      "confidence": 0.984,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 249.64,
+      "end": 250.6,
+      "confidence": 0.992,
+      "source": "hybrid"
+    },
+    {
+      "word": "נפש",
+      "start": 250.6,
+      "end": 251.16,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיה",
+      "start": 251.18,
+      "end": 251.86,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינה",
+      "start": 251.86,
+      "end": 252.84,
+      "confidence": 0.891,
+      "source": "hybrid"
+    },
+    {
+      "word": "בהמה",
+      "start": 252.84,
+      "end": 253.82,
+      "confidence": 0.983,
+      "source": "hybrid"
+    },
+    {
+      "word": "ורמס",
+      "start": 253.82,
+      "end": 254.88,
+      "confidence": 0.978,
+      "source": "hybrid"
+    },
+    {
+      "word": "וחייתו",
+      "start": 254.88,
+      "end": 255.88,
+      "confidence": 0.835,
+      "source": "hybrid"
+    },
+    {
+      "word": "ארץ",
+      "start": 255.88,
+      "end": 256.6,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינה",
+      "start": 256.6,
+      "end": 257.4,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 257.4,
+      "end": 258.08,
+      "confidence": 0.984,
+      "source": "hybrid"
+    }
+  ]
+}

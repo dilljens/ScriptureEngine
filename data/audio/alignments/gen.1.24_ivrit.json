@@ -1,0 +1,85 @@
+{
+  "ref": "gen.1.24",
+  "duration": 11.52,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 246.9,
+      "end": 247.6,
+      "confidence": 0.964
+    },
+    {
+      "word": "תוצא",
+      "start": 248.9,
+      "end": 249.6,
+      "confidence": 0.984
+    },
+    {
+      "word": "הארץ",
+      "start": 249.6,
+      "end": 250.48,
+      "confidence": 0.992
+    },
+    {
+      "word": "נפש",
+      "start": 250.48,
+      "end": 251.12,
+      "confidence": 1.0
+    },
+    {
+      "word": "חיה",
+      "start": 251.12,
+      "end": 251.76,
+      "confidence": 0.994
+    },
+    {
+      "word": "למינה",
+      "start": 251.76,
+      "end": 252.36,
+      "confidence": 0.891
+    },
+    {
+      "word": "בהמה",
+      "start": 252.36,
+      "end": 253.6,
+      "confidence": 0.983
+    },
+    {
+      "word": "ורמס",
+      "start": 253.6,
+      "end": 254.5,
+      "confidence": 0.978
+    },
+    {
+      "word": "וחייתו",
+      "start": 254.5,
+      "end": 255.74,
+      "confidence": 0.835
+    },
+    {
+      "word": "ארץ",
+      "start": 255.74,
+      "end": 256.52,
+      "confidence": 0.999
+    },
+    {
+      "word": "למינה",
+      "start": 256.52,
+      "end": 257.1,
+      "confidence": 0.995
+    },
+    {
+      "word": "ויהי",
+      "start": 257.1,
+      "end": 257.94,
+      "confidence": 0.984
+    },
+    {
+      "word": "חן",
+      "start": 257.94,
+      "end": 258.42,
+      "confidence": 0.821
+    }
+  ]
+}

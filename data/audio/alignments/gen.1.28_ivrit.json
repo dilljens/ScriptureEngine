@@ -1,0 +1,109 @@
+{
+  "ref": "gen.1.28",
+  "duration": 17.7,
+  "word_count": 17,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 299.7,
+      "end": 300.4,
+      "confidence": 0.976
+    },
+    {
+      "word": "ויאמר",
+      "start": 301.72,
+      "end": 302.28,
+      "confidence": 0.995
+    },
+    {
+      "word": "להם",
+      "start": 302.28,
+      "end": 302.86,
+      "confidence": 0.998
+    },
+    {
+      "word": "ורבו",
+      "start": 304.92,
+      "end": 305.8,
+      "confidence": 0.921
+    },
+    {
+      "word": "ומלאו",
+      "start": 305.8,
+      "end": 306.74,
+      "confidence": 0.839
+    },
+    {
+      "word": "את",
+      "start": 306.74,
+      "end": 307.02,
+      "confidence": 0.998
+    },
+    {
+      "word": "הארץ",
+      "start": 307.02,
+      "end": 307.88,
+      "confidence": 1.0
+    },
+    {
+      "word": "וכבשוה",
+      "start": 307.88,
+      "end": 309.24,
+      "confidence": 0.948
+    },
+    {
+      "word": "ורדו",
+      "start": 309.24,
+      "end": 310.68,
+      "confidence": 0.893
+    },
+    {
+      "word": "בדגת",
+      "start": 310.68,
+      "end": 311.34,
+      "confidence": 0.989
+    },
+    {
+      "word": "הים",
+      "start": 311.34,
+      "end": 311.96,
+      "confidence": 0.998
+    },
+    {
+      "word": "ובעוף",
+      "start": 311.96,
+      "end": 312.54,
+      "confidence": 0.994
+    },
+    {
+      "word": "השמים",
+      "start": 312.54,
+      "end": 313.24,
+      "confidence": 0.651
+    },
+    {
+      "word": "ובכל",
+      "start": 313.9,
+      "end": 314.6,
+      "confidence": 0.966
+    },
+    {
+      "word": "חיה",
+      "start": 314.6,
+      "end": 315.18,
+      "confidence": 0.961
+    },
+    {
+      "word": "על",
+      "start": 316.46,
+      "end": 316.6,
+      "confidence": 0.997
+    },
+    {
+      "word": "הארץ",
+      "start": 316.6,
+      "end": 317.4,
+      "confidence": 0.999
+    }
+  ]
+}

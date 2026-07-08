@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.9",
+  "duration": 11.42,
+  "word_count": 12,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 84.36,
+      "end": 86.08,
+      "confidence": 0.96,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 86.08,
+      "end": 86.98,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ייקבעו",
+      "start": 86.98,
+      "end": 88.1,
+      "confidence": 0.67,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 88.1,
+      "end": 89.18,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "מתחת",
+      "start": 89.18,
+      "end": 90.08,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 90.08,
+      "end": 91.22,
+      "confidence": 0.722,
+      "source": "hybrid"
+    },
+    {
+      "word": "אל",
+      "start": 91.22,
+      "end": 91.62,
+      "confidence": 0.974,
+      "source": "hybrid"
+    },
+    {
+      "word": "מקום",
+      "start": 91.62,
+      "end": 92.14,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "אחד",
+      "start": 92.14,
+      "end": 92.84,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ותרעה",
+      "start": 92.84,
+      "end": 93.86,
+      "confidence": 0.707,
+      "source": "hybrid"
+    },
+    {
+      "word": "היבשה",
+      "start": 93.86,
+      "end": 95.16,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 95.16,
+      "end": 95.78,
+      "confidence": 0.947,
+      "source": "hybrid"
+    }
+  ]
+}

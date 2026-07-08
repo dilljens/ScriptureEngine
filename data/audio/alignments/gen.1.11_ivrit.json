@@ -1,0 +1,115 @@
+{
+  "ref": "gen.1.11",
+  "duration": 15.88,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 107.1,
+      "end": 107.8,
+      "confidence": 0.948
+    },
+    {
+      "word": "תדשה",
+      "start": 109.14,
+      "end": 109.84,
+      "confidence": 0.867
+    },
+    {
+      "word": "הארץ",
+      "start": 109.84,
+      "end": 110.88,
+      "confidence": 0.993
+    },
+    {
+      "word": "דשא",
+      "start": 110.88,
+      "end": 111.5,
+      "confidence": 0.997
+    },
+    {
+      "word": "עשב",
+      "start": 112.18,
+      "end": 112.88,
+      "confidence": 0.953
+    },
+    {
+      "word": "מזריע",
+      "start": 112.88,
+      "end": 113.62,
+      "confidence": 0.996
+    },
+    {
+      "word": "זרע",
+      "start": 113.62,
+      "end": 114.24,
+      "confidence": 0.993
+    },
+    {
+      "word": "עץ",
+      "start": 114.6,
+      "end": 115.3,
+      "confidence": 0.964
+    },
+    {
+      "word": "פרי",
+      "start": 115.3,
+      "end": 115.74,
+      "confidence": 0.991
+    },
+    {
+      "word": "פרי",
+      "start": 117.0,
+      "end": 117.44,
+      "confidence": 0.998
+    },
+    {
+      "word": "למינו",
+      "start": 117.44,
+      "end": 118.12,
+      "confidence": 0.99
+    },
+    {
+      "word": "אשר",
+      "start": 118.12,
+      "end": 119.14,
+      "confidence": 0.947
+    },
+    {
+      "word": "זרעו",
+      "start": 119.14,
+      "end": 119.72,
+      "confidence": 0.987
+    },
+    {
+      "word": "בו",
+      "start": 119.72,
+      "end": 120.16,
+      "confidence": 0.9
+    },
+    {
+      "word": "על",
+      "start": 120.26,
+      "end": 120.96,
+      "confidence": 0.98
+    },
+    {
+      "word": "הארץ",
+      "start": 120.96,
+      "end": 121.92,
+      "confidence": 0.998
+    },
+    {
+      "word": "ויהי",
+      "start": 121.92,
+      "end": 122.48,
+      "confidence": 0.936
+    },
+    {
+      "word": "חן",
+      "start": 122.48,
+      "end": 122.98,
+      "confidence": 0.798
+    }
+  ]
+}

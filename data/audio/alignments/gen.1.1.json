@@ -1,0 +1,49 @@
+{
+  "ref": "gen.1.1",
+  "duration": 2.02,
+  "word_count": 7,
+  "words": [
+    {
+      "word": "בראשית",
+      "start": 0.0,
+      "end": 0.5,
+      "confidence": 0.997
+    },
+    {
+      "word": "ברא",
+      "start": 0.5,
+      "end": 0.78,
+      "confidence": 0.963
+    },
+    {
+      "word": "אלהים",
+      "start": 0.78,
+      "end": 1.02,
+      "confidence": 0.876
+    },
+    {
+      "word": "את",
+      "start": 1.02,
+      "end": 1.1,
+      "confidence": 0.997
+    },
+    {
+      "word": "השמיים",
+      "start": 1.1,
+      "end": 1.5,
+      "confidence": 0.82
+    },
+    {
+      "word": "ואת",
+      "start": 1.5,
+      "end": 1.7,
+      "confidence": 0.999
+    },
+    {
+      "word": "הארץ",
+      "start": 1.7,
+      "end": 2.02,
+      "confidence": 0.929
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "ref": "gen.1.7",
+  "duration": 13.02,
+  "word_count": 16,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 62.26,
+      "end": 63.72,
+      "confidence": 0.951,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 63.72,
+      "end": 64.48,
+      "confidence": 0.951,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 64.48,
+      "end": 64.82,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "הרקיע",
+      "start": 64.82,
+      "end": 65.88,
+      "confidence": 0.989,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויבדל",
+      "start": 65.88,
+      "end": 67.08,
+      "confidence": 0.919,
+      "source": "hybrid"
+    },
+    {
+      "word": "בין",
+      "start": 67.08,
+      "end": 67.36,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 67.36,
+      "end": 68.36,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 68.36,
+      "end": 68.96,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "מתחת",
+      "start": 68.96,
+      "end": 69.88,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "לרקיע",
+      "start": 69.88,
+      "end": 70.88,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובין",
+      "start": 70.88,
+      "end": 71.64,
+      "confidence": 0.984,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 71.64,
+      "end": 72.52,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 72.52,
+      "end": 73.1,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "מעל",
+      "start": 73.1,
+      "end": 73.7,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "לרקיע",
+      "start": 73.7,
+      "end": 74.6,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 74.6,
+      "end": 75.28,
+      "confidence": 0.917,
+      "source": "hybrid"
+    }
+  ]
+}

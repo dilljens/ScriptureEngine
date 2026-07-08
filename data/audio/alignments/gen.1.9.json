@@ -1,0 +1,85 @@
+{
+  "ref": "gen.1.9",
+  "duration": 4.44,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.46,
+      "confidence": 0.974
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.46,
+      "end": 0.88,
+      "confidence": 0.946
+    },
+    {
+      "word": "יקעו",
+      "start": 0.88,
+      "end": 1.24,
+      "confidence": 0.733
+    },
+    {
+      "word": "המאים",
+      "start": 1.24,
+      "end": 1.56,
+      "confidence": 0.702
+    },
+    {
+      "word": "מתחת",
+      "start": 1.56,
+      "end": 2.04,
+      "confidence": 0.999
+    },
+    {
+      "word": "השמיים",
+      "start": 2.04,
+      "end": 2.44,
+      "confidence": 0.771
+    },
+    {
+      "word": "אל",
+      "start": 2.44,
+      "end": 2.56,
+      "confidence": 0.992
+    },
+    {
+      "word": "מקום",
+      "start": 2.56,
+      "end": 2.9,
+      "confidence": 0.998
+    },
+    {
+      "word": "אחד",
+      "start": 2.9,
+      "end": 3.06,
+      "confidence": 0.998
+    },
+    {
+      "word": "ותרעה",
+      "start": 3.06,
+      "end": 3.6,
+      "confidence": 0.878
+    },
+    {
+      "word": "היבשה",
+      "start": 3.6,
+      "end": 4.02,
+      "confidence": 0.959
+    },
+    {
+      "word": "ויהי",
+      "start": 4.02,
+      "end": 4.38,
+      "confidence": 0.835
+    },
+    {
+      "word": "כן",
+      "start": 4.38,
+      "end": 4.44,
+      "confidence": 0.884
+    }
+  ]
+}

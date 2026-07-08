@@ -1,0 +1,61 @@
+{
+  "ref": "gen.1.27",
+  "duration": 8.7,
+  "word_count": 9,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 289.72,
+      "end": 290.42,
+      "confidence": 0.444
+    },
+    {
+      "word": "את",
+      "start": 291.28,
+      "end": 291.54,
+      "confidence": 0.998
+    },
+    {
+      "word": "האדם",
+      "start": 291.54,
+      "end": 292.28,
+      "confidence": 1.0
+    },
+    {
+      "word": "בצלמו",
+      "start": 292.28,
+      "end": 292.9,
+      "confidence": 0.998
+    },
+    {
+      "word": "בצלם",
+      "start": 292.9,
+      "end": 294.32,
+      "confidence": 0.982
+    },
+    {
+      "word": "ברא",
+      "start": 294.96,
+      "end": 295.28,
+      "confidence": 0.997
+    },
+    {
+      "word": "זכר",
+      "start": 295.62,
+      "end": 297.2,
+      "confidence": 0.912
+    },
+    {
+      "word": "ונקבה",
+      "start": 297.2,
+      "end": 297.82,
+      "confidence": 0.994
+    },
+    {
+      "word": "ברא",
+      "start": 297.82,
+      "end": 298.42,
+      "confidence": 0.998
+    }
+  ]
+}

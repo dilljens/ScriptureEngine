@@ -1,0 +1,77 @@
+{
+  "ref": "gen.1.8",
+  "duration": 8.24,
+  "word_count": 10,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 76.12,
+      "end": 77.36,
+      "confidence": 0.859,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 77.36,
+      "end": 78.14,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "לרקיע",
+      "start": 78.14,
+      "end": 79.04,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "שמים",
+      "start": 79.04,
+      "end": 80.12,
+      "confidence": 0.659,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 80.12,
+      "end": 80.92,
+      "confidence": 0.983,
+      "source": "hybrid"
+    },
+    {
+      "word": "ערב",
+      "start": 80.92,
+      "end": 81.38,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 81.38,
+      "end": 81.92,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "בוקר",
+      "start": 81.92,
+      "end": 82.7,
+      "confidence": 0.993,
+      "source": "hybrid"
+    },
+    {
+      "word": "יום",
+      "start": 82.7,
+      "end": 83.12,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "שני",
+      "start": 83.12,
+      "end": 84.36,
+      "confidence": 0.997,
+      "source": "hybrid"
+    }
+  ]
+}

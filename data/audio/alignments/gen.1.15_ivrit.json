@@ -1,0 +1,61 @@
+{
+  "ref": "gen.1.15",
+  "duration": 8.68,
+  "word_count": 9,
+  "words": [
+    {
+      "word": "והיו",
+      "start": 156.1,
+      "end": 157.62,
+      "confidence": 0.896
+    },
+    {
+      "word": "למאורות",
+      "start": 157.62,
+      "end": 158.52,
+      "confidence": 0.985
+    },
+    {
+      "word": "ברקיע",
+      "start": 158.52,
+      "end": 159.22,
+      "confidence": 0.999
+    },
+    {
+      "word": "השמים",
+      "start": 159.22,
+      "end": 160.3,
+      "confidence": 0.988
+    },
+    {
+      "word": "להאיר",
+      "start": 160.3,
+      "end": 162.14,
+      "confidence": 0.98
+    },
+    {
+      "word": "על",
+      "start": 162.14,
+      "end": 162.26,
+      "confidence": 0.999
+    },
+    {
+      "word": "הארץ",
+      "start": 162.26,
+      "end": 163.26,
+      "confidence": 1.0
+    },
+    {
+      "word": "ויהי",
+      "start": 163.26,
+      "end": 164.26,
+      "confidence": 0.91
+    },
+    {
+      "word": "חן",
+      "start": 164.26,
+      "end": 164.78,
+      "confidence": 0.751
+    }
+  ]
+}

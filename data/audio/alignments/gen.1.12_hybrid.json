@@ -1,0 +1,133 @@
+{
+  "ref": "gen.1.12",
+  "duration": 14.44,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ותוצא",
+      "start": 123.46,
+      "end": 124.6,
+      "confidence": 0.83,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 124.6,
+      "end": 125.44,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "דשא",
+      "start": 125.44,
+      "end": 126.28,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "עשב",
+      "start": 126.28,
+      "end": 127.2,
+      "confidence": 0.932,
+      "source": "hybrid"
+    },
+    {
+      "word": "מזריע",
+      "start": 127.2,
+      "end": 128.12,
+      "confidence": 0.991,
+      "source": "hybrid"
+    },
+    {
+      "word": "זרע",
+      "start": 128.12,
+      "end": 128.76,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינהו",
+      "start": 128.76,
+      "end": 129.84,
+      "confidence": 0.974,
+      "source": "hybrid"
+    },
+    {
+      "word": "ועץ",
+      "start": 129.84,
+      "end": 131.04,
+      "confidence": 0.983,
+      "source": "hybrid"
+    },
+    {
+      "word": "עושה",
+      "start": 131.04,
+      "end": 131.6,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "פרי",
+      "start": 131.6,
+      "end": 132.24,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 132.24,
+      "end": 133.06,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "זרעו",
+      "start": 133.06,
+      "end": 133.78,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "בו",
+      "start": 133.78,
+      "end": 134.06,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינהו",
+      "start": 134.06,
+      "end": 135.12,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירא",
+      "start": 135.12,
+      "end": 136.16,
+      "confidence": 0.967,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 136.16,
+      "end": 136.86,
+      "confidence": 0.927,
+      "source": "hybrid"
+    },
+    {
+      "word": "כי",
+      "start": 136.86,
+      "end": 137.14,
+      "confidence": 0.568,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 137.14,
+      "end": 137.9,
+      "confidence": 0.977,
+      "source": "hybrid"
+    }
+  ]
+}

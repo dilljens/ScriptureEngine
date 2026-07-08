@@ -1,0 +1,112 @@
+{
+  "ref": "gen.1.31",
+  "duration": 9.76,
+  "word_count": 15,
+  "words": [
+    {
+      "word": "וירא",
+      "start": 351.08,
+      "end": 352.36,
+      "confidence": 0.838,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 352.36,
+      "end": 353.14,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 353.14,
+      "end": 353.44,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 353.44,
+      "end": 353.74,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 353.74,
+      "end": 354.14,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "עשה",
+      "start": 354.14,
+      "end": 354.82,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "והנה",
+      "start": 354.82,
+      "end": 355.8,
+      "confidence": 0.974,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 355.8,
+      "end": 356.24,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "מאוד",
+      "start": 356.24,
+      "end": 357.04,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 357.04,
+      "end": 357.82,
+      "confidence": 0.963,
+      "source": "hybrid"
+    },
+    {
+      "word": "ערב",
+      "start": 357.82,
+      "end": 358.34,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 358.34,
+      "end": 358.82,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "בוקר",
+      "start": 358.82,
+      "end": 359.64,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "יום",
+      "start": 359.64,
+      "end": 360.28,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "השישי",
+      "start": 360.28,
+      "end": 360.84,
+      "confidence": 0.995,
+      "source": "hybrid"
+    }
+  ]
+}

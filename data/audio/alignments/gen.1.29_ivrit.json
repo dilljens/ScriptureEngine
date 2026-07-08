@@ -1,0 +1,145 @@
+{
+  "ref": "gen.1.29",
+  "duration": 17.12,
+  "word_count": 23,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 318.48,
+      "end": 319.18,
+      "confidence": 0.82
+    },
+    {
+      "word": "הנה",
+      "start": 319.9,
+      "end": 320.72,
+      "confidence": 0.981
+    },
+    {
+      "word": "נתתי",
+      "start": 320.72,
+      "end": 321.4,
+      "confidence": 0.994
+    },
+    {
+      "word": "לכם",
+      "start": 321.4,
+      "end": 322.12,
+      "confidence": 1.0
+    },
+    {
+      "word": "את",
+      "start": 322.12,
+      "end": 322.28,
+      "confidence": 0.998
+    },
+    {
+      "word": "כל",
+      "start": 322.28,
+      "end": 322.52,
+      "confidence": 1.0
+    },
+    {
+      "word": "עשב",
+      "start": 322.52,
+      "end": 323.24,
+      "confidence": 0.982
+    },
+    {
+      "word": "זרע",
+      "start": 323.7,
+      "end": 324.5,
+      "confidence": 0.997
+    },
+    {
+      "word": "אשר",
+      "start": 324.92,
+      "end": 325.62,
+      "confidence": 0.994
+    },
+    {
+      "word": "על",
+      "start": 325.62,
+      "end": 325.76,
+      "confidence": 0.999
+    },
+    {
+      "word": "פני",
+      "start": 325.76,
+      "end": 326.3,
+      "confidence": 0.999
+    },
+    {
+      "word": "כל",
+      "start": 326.3,
+      "end": 326.52,
+      "confidence": 0.998
+    },
+    {
+      "word": "הארץ",
+      "start": 326.52,
+      "end": 327.38,
+      "confidence": 1.0
+    },
+    {
+      "word": "ואת",
+      "start": 328.6,
+      "end": 329.3,
+      "confidence": 0.984
+    },
+    {
+      "word": "כל",
+      "start": 329.3,
+      "end": 329.54,
+      "confidence": 1.0
+    },
+    {
+      "word": "העץ",
+      "start": 329.54,
+      "end": 330.14,
+      "confidence": 0.998
+    },
+    {
+      "word": "אשר",
+      "start": 330.14,
+      "end": 330.58,
+      "confidence": 1.0
+    },
+    {
+      "word": "בו",
+      "start": 330.58,
+      "end": 330.9,
+      "confidence": 0.997
+    },
+    {
+      "word": "פרי",
+      "start": 330.9,
+      "end": 331.5,
+      "confidence": 0.918
+    },
+    {
+      "word": "עץ",
+      "start": 331.5,
+      "end": 332.06,
+      "confidence": 0.998
+    },
+    {
+      "word": "זרע",
+      "start": 332.94,
+      "end": 333.72,
+      "confidence": 0.996
+    },
+    {
+      "word": "לכם",
+      "start": 333.72,
+      "end": 334.76,
+      "confidence": 0.996
+    },
+    {
+      "word": "יהיה",
+      "start": 334.76,
+      "end": 335.6,
+      "confidence": 0.994
+    }
+  ]
+}

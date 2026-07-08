@@ -1,0 +1,140 @@
+{
+  "ref": "gen.1.26",
+  "duration": 17.18,
+  "word_count": 19,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 272.46,
+      "end": 273.08,
+      "confidence": 0.884,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 273.08,
+      "end": 273.98,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "נעשה",
+      "start": 273.98,
+      "end": 274.96,
+      "confidence": 0.975,
+      "source": "hybrid"
+    },
+    {
+      "word": "אדם",
+      "start": 274.96,
+      "end": 275.52,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "בצלמנו",
+      "start": 275.52,
+      "end": 276.54,
+      "confidence": 0.989,
+      "source": "hybrid"
+    },
+    {
+      "word": "כדמותנו",
+      "start": 276.54,
+      "end": 277.8,
+      "confidence": 0.963,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירדו",
+      "start": 277.8,
+      "end": 279.04,
+      "confidence": 0.988,
+      "source": "hybrid"
+    },
+    {
+      "word": "בדגת",
+      "start": 279.04,
+      "end": 279.68,
+      "confidence": 0.902,
+      "source": "hybrid"
+    },
+    {
+      "word": "הים",
+      "start": 279.68,
+      "end": 280.42,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובעוף",
+      "start": 280.42,
+      "end": 281.02,
+      "confidence": 0.989,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 281.02,
+      "end": 282.2,
+      "confidence": 0.694,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובבהמה",
+      "start": 282.2,
+      "end": 283.7,
+      "confidence": 0.932,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובכל",
+      "start": 283.7,
+      "end": 284.5,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 284.5,
+      "end": 285.6,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובכל",
+      "start": 285.6,
+      "end": 286.42,
+      "confidence": 0.993,
+      "source": "hybrid"
+    },
+    {
+      "word": "הרמס",
+      "start": 286.42,
+      "end": 287.56,
+      "confidence": 0.882,
+      "source": "hybrid"
+    },
+    {
+      "word": "הרומס",
+      "start": 287.56,
+      "end": 288.32,
+      "confidence": 0.987,
+      "source": "hybrid"
+    },
+    {
+      "word": "על",
+      "start": 288.32,
+      "end": 288.58,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 288.58,
+      "end": 289.64,
+      "confidence": 0.999,
+      "source": "hybrid"
+    }
+  ]
+}

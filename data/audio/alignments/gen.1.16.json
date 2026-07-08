@@ -1,0 +1,115 @@
+{
+  "ref": "gen.1.16",
+  "duration": 8.38,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 0.0,
+      "end": 0.5,
+      "confidence": 0.859
+    },
+    {
+      "word": "להם",
+      "start": 0.5,
+      "end": 0.82,
+      "confidence": 0.996
+    },
+    {
+      "word": "את",
+      "start": 0.82,
+      "end": 0.96,
+      "confidence": 0.997
+    },
+    {
+      "word": "שני",
+      "start": 0.96,
+      "end": 1.26,
+      "confidence": 0.999
+    },
+    {
+      "word": "המאורות",
+      "start": 1.26,
+      "end": 1.82,
+      "confidence": 0.934
+    },
+    {
+      "word": "הגדלים",
+      "start": 1.82,
+      "end": 2.3,
+      "confidence": 0.982
+    },
+    {
+      "word": "את",
+      "start": 2.3,
+      "end": 2.48,
+      "confidence": 0.482
+    },
+    {
+      "word": "המאור",
+      "start": 2.48,
+      "end": 3.06,
+      "confidence": 1.0
+    },
+    {
+      "word": "הגדל",
+      "start": 3.06,
+      "end": 3.9,
+      "confidence": 0.996
+    },
+    {
+      "word": "לממשלת",
+      "start": 3.9,
+      "end": 4.56,
+      "confidence": 0.875
+    },
+    {
+      "word": "היום",
+      "start": 4.56,
+      "end": 5.02,
+      "confidence": 0.991
+    },
+    {
+      "word": "ואת",
+      "start": 5.02,
+      "end": 5.82,
+      "confidence": 0.937
+    },
+    {
+      "word": "המאור",
+      "start": 5.82,
+      "end": 6.24,
+      "confidence": 1.0
+    },
+    {
+      "word": "קטנו",
+      "start": 6.24,
+      "end": 6.48,
+      "confidence": 0.698
+    },
+    {
+      "word": "לממשלת",
+      "start": 6.48,
+      "end": 7.1,
+      "confidence": 0.997
+    },
+    {
+      "word": "הלילה",
+      "start": 7.1,
+      "end": 7.58,
+      "confidence": 0.997
+    },
+    {
+      "word": "ואת",
+      "start": 7.58,
+      "end": 7.74,
+      "confidence": 0.985
+    },
+    {
+      "word": "הכוכבים",
+      "start": 7.74,
+      "end": 8.38,
+      "confidence": 0.998
+    }
+  ]
+}

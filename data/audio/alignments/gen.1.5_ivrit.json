@@ -1,0 +1,67 @@
+{
+  "ref": "gen.1.5",
+  "duration": 9.64,
+  "word_count": 10,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 42.75,
+      "end": 43.45,
+      "confidence": 0.908
+    },
+    {
+      "word": "לאור",
+      "start": 44.29,
+      "end": 44.81,
+      "confidence": 0.999
+    },
+    {
+      "word": "יום",
+      "start": 44.81,
+      "end": 45.19,
+      "confidence": 0.999
+    },
+    {
+      "word": "ולחושך",
+      "start": 45.99,
+      "end": 46.87,
+      "confidence": 0.994
+    },
+    {
+      "word": "קר",
+      "start": 46.87,
+      "end": 47.43,
+      "confidence": 0.901
+    },
+    {
+      "word": "ויהי",
+      "start": 48.29,
+      "end": 48.99,
+      "confidence": 0.935
+    },
+    {
+      "word": "ערב",
+      "start": 48.99,
+      "end": 49.69,
+      "confidence": 0.999
+    },
+    {
+      "word": "ויהי",
+      "start": 49.69,
+      "end": 50.19,
+      "confidence": 0.995
+    },
+    {
+      "word": "יום",
+      "start": 51.35,
+      "end": 52.05,
+      "confidence": 0.998
+    },
+    {
+      "word": "אחד",
+      "start": 52.05,
+      "end": 52.39,
+      "confidence": 0.999
+    }
+  ]
+}

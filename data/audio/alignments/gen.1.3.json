@@ -1,0 +1,43 @@
+{
+  "ref": "gen.1.3",
+  "duration": 1.84,
+  "word_count": 6,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.5,
+      "confidence": 0.867
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.5,
+      "end": 0.9,
+      "confidence": 0.964
+    },
+    {
+      "word": "יהי",
+      "start": 0.9,
+      "end": 1.1,
+      "confidence": 0.586
+    },
+    {
+      "word": "אור",
+      "start": 1.1,
+      "end": 1.32,
+      "confidence": 0.972
+    },
+    {
+      "word": "ויהי",
+      "start": 1.32,
+      "end": 1.62,
+      "confidence": 0.988
+    },
+    {
+      "word": "אור",
+      "start": 1.62,
+      "end": 1.84,
+      "confidence": 0.992
+    }
+  ]
+}

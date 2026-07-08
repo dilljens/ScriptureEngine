@@ -1,0 +1,98 @@
+{
+  "ref": "gen.1.27",
+  "duration": 9.78,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 289.64,
+      "end": 290.66,
+      "confidence": 0.444,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 290.66,
+      "end": 291.4,
+      "confidence": 0.917,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 291.4,
+      "end": 291.68,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "האדם",
+      "start": 291.68,
+      "end": 292.3,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "בצלמו",
+      "start": 292.3,
+      "end": 293.3,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "בצלם",
+      "start": 293.3,
+      "end": 294.4,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 294.4,
+      "end": 295.04,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "ברא",
+      "start": 295.04,
+      "end": 295.44,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "אותו",
+      "start": 295.44,
+      "end": 296.26,
+      "confidence": 0.961,
+      "source": "hybrid"
+    },
+    {
+      "word": "זכר",
+      "start": 296.26,
+      "end": 297.3,
+      "confidence": 0.912,
+      "source": "hybrid"
+    },
+    {
+      "word": "ונקבה",
+      "start": 297.3,
+      "end": 298.1,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "ברא",
+      "start": 298.1,
+      "end": 298.6,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "אותם",
+      "start": 298.6,
+      "end": 299.42,
+      "confidence": 0.996,
+      "source": "hybrid"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "ref": "gen.1.3",
+  "duration": 4.8,
+  "word_count": 5,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 28.71,
+      "end": 29.41,
+      "confidence": 0.981
+    },
+    {
+      "word": "יהי",
+      "start": 30.21,
+      "end": 31.25,
+      "confidence": 0.982
+    },
+    {
+      "word": "אור",
+      "start": 31.25,
+      "end": 31.71,
+      "confidence": 0.996
+    },
+    {
+      "word": "ויהי",
+      "start": 32.19,
+      "end": 32.89,
+      "confidence": 0.994
+    },
+    {
+      "word": "אור",
+      "start": 32.89,
+      "end": 33.51,
+      "confidence": 1.0
+    }
+  ]
+}

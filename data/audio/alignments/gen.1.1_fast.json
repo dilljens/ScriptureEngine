@@ -1,0 +1,43 @@
+{
+  "ref": "gen.1.1_fast",
+  "duration": 3.26,
+  "word_count": 6,
+  "words": [
+    {
+      "word": "ברא",
+      "start": 0.0,
+      "end": 0.5,
+      "confidence": 0.965
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.5,
+      "end": 1.08,
+      "confidence": 0.984
+    },
+    {
+      "word": "את",
+      "start": 1.08,
+      "end": 1.54,
+      "confidence": 0.993
+    },
+    {
+      "word": "השמיים",
+      "start": 1.54,
+      "end": 2.34,
+      "confidence": 0.969
+    },
+    {
+      "word": "ואת",
+      "start": 2.34,
+      "end": 2.66,
+      "confidence": 1.0
+    },
+    {
+      "word": "הארץ",
+      "start": 2.66,
+      "end": 3.26,
+      "confidence": 1.0
+    }
+  ]
+}

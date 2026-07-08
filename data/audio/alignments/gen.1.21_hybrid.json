@@ -1,0 +1,168 @@
+{
+  "ref": "gen.1.21",
+  "duration": 17.24,
+  "word_count": 23,
+  "words": [
+    {
+      "word": "ויברא",
+      "start": 214.18,
+      "end": 215.28,
+      "confidence": 0.828,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 215.28,
+      "end": 216.08,
+      "confidence": 0.985,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 216.08,
+      "end": 216.34,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "התנינים",
+      "start": 216.34,
+      "end": 217.76,
+      "confidence": 0.913,
+      "source": "hybrid"
+    },
+    {
+      "word": "הגדולים",
+      "start": 217.76,
+      "end": 218.98,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ואת",
+      "start": 218.98,
+      "end": 219.5,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 219.5,
+      "end": 219.78,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "נפש",
+      "start": 219.78,
+      "end": 220.36,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "החיה",
+      "start": 220.36,
+      "end": 221.16,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "הרומסת",
+      "start": 221.16,
+      "end": 222.36,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "אשר",
+      "start": 222.36,
+      "end": 222.96,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "שרצו",
+      "start": 222.96,
+      "end": 223.72,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 223.72,
+      "end": 224.64,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "למיניהם",
+      "start": 224.64,
+      "end": 225.9,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "ואת",
+      "start": 225.9,
+      "end": 226.54,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 226.54,
+      "end": 226.82,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "עוף",
+      "start": 226.82,
+      "end": 227.24,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "כנף",
+      "start": 227.24,
+      "end": 227.8,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "למיניהו",
+      "start": 227.8,
+      "end": 228.8,
+      "confidence": 0.932,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירא",
+      "start": 228.8,
+      "end": 229.76,
+      "confidence": 0.945,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 229.76,
+      "end": 230.44,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "כי",
+      "start": 230.44,
+      "end": 230.68,
+      "confidence": 0.454,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 230.68,
+      "end": 231.42,
+      "confidence": 0.988,
+      "source": "hybrid"
+    }
+  ]
+}

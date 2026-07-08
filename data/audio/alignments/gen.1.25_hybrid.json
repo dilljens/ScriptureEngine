@@ -1,0 +1,133 @@
+{
+  "ref": "gen.1.25",
+  "duration": 13.52,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 258.94,
+      "end": 260.4,
+      "confidence": 0.953,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 260.4,
+      "end": 261.1,
+      "confidence": 0.891,
+      "source": "hybrid"
+    },
+    {
+      "word": "את",
+      "start": 261.1,
+      "end": 261.36,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "חיית",
+      "start": 261.36,
+      "end": 262.0,
+      "confidence": 0.951,
+      "source": "hybrid"
+    },
+    {
+      "word": "הארץ",
+      "start": 262.0,
+      "end": 262.82,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינה",
+      "start": 262.82,
+      "end": 263.94,
+      "confidence": 0.725,
+      "source": "hybrid"
+    },
+    {
+      "word": "ואת",
+      "start": 263.94,
+      "end": 264.64,
+      "confidence": 0.857,
+      "source": "hybrid"
+    },
+    {
+      "word": "הבהמה",
+      "start": 264.64,
+      "end": 265.46,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "למינה",
+      "start": 265.46,
+      "end": 266.42,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "ואת",
+      "start": 266.42,
+      "end": 267.0,
+      "confidence": 0.98,
+      "source": "hybrid"
+    },
+    {
+      "word": "כל",
+      "start": 267.0,
+      "end": 267.3,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "רמס",
+      "start": 267.3,
+      "end": 267.92,
+      "confidence": 0.963,
+      "source": "hybrid"
+    },
+    {
+      "word": "האדמה",
+      "start": 267.92,
+      "end": 268.48,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "למיניהו",
+      "start": 268.48,
+      "end": 269.76,
+      "confidence": 0.775,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירא",
+      "start": 269.76,
+      "end": 270.38,
+      "confidence": 0.922,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 270.38,
+      "end": 271.1,
+      "confidence": 0.982,
+      "source": "hybrid"
+    },
+    {
+      "word": "כי",
+      "start": 271.1,
+      "end": 271.36,
+      "confidence": 0.814,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 271.36,
+      "end": 272.46,
+      "confidence": 0.994,
+      "source": "hybrid"
+    }
+  ]
+}

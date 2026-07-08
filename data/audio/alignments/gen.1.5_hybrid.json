@@ -1,0 +1,98 @@
+{
+  "ref": "gen.1.5",
+  "duration": 10.86,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 42.28,
+      "end": 43.58,
+      "confidence": 0.908,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 43.58,
+      "end": 44.34,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "לאור",
+      "start": 44.34,
+      "end": 44.88,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "יום",
+      "start": 44.88,
+      "end": 45.58,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולחושך",
+      "start": 45.58,
+      "end": 46.98,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "קר",
+      "start": 46.98,
+      "end": 47.54,
+      "confidence": 0.901,
+      "source": "hybrid"
+    },
+    {
+      "word": "הלילה",
+      "start": 47.54,
+      "end": 48.34,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 48.34,
+      "end": 49.32,
+      "confidence": 0.935,
+      "source": "hybrid"
+    },
+    {
+      "word": "ערב",
+      "start": 49.34,
+      "end": 49.82,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 49.82,
+      "end": 50.32,
+      "confidence": 0.995,
+      "source": "hybrid"
+    },
+    {
+      "word": "בוקר",
+      "start": 50.32,
+      "end": 51.36,
+      "confidence": 0.992,
+      "source": "hybrid"
+    },
+    {
+      "word": "יום",
+      "start": 51.36,
+      "end": 52.14,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "אחד",
+      "start": 52.14,
+      "end": 53.14,
+      "confidence": 0.999,
+      "source": "hybrid"
+    }
+  ]
+}

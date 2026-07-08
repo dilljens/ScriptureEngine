@@ -1,0 +1,84 @@
+{
+  "ref": "gen.1.6",
+  "duration": 9.12,
+  "word_count": 11,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 53.14,
+      "end": 54.34,
+      "confidence": 0.95,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 54.34,
+      "end": 55.26,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "יהי",
+      "start": 55.26,
+      "end": 56.06,
+      "confidence": 0.985,
+      "source": "hybrid"
+    },
+    {
+      "word": "רקיע",
+      "start": 56.06,
+      "end": 56.9,
+      "confidence": 0.969,
+      "source": "hybrid"
+    },
+    {
+      "word": "בתוך",
+      "start": 56.9,
+      "end": 57.34,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 57.34,
+      "end": 58.3,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "ויהי",
+      "start": 58.3,
+      "end": 59.06,
+      "confidence": 0.92,
+      "source": "hybrid"
+    },
+    {
+      "word": "מבדיל",
+      "start": 59.06,
+      "end": 59.92,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "בין",
+      "start": 59.92,
+      "end": 60.28,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "מים",
+      "start": 60.28,
+      "end": 60.96,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "למים",
+      "start": 60.96,
+      "end": 62.26,
+      "confidence": 0.999,
+      "source": "hybrid"
+    }
+  ]
+}

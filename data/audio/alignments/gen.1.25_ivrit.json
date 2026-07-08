@@ -1,0 +1,103 @@
+{
+  "ref": "gen.1.25",
+  "duration": 12.22,
+  "word_count": 16,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 259.36,
+      "end": 260.12,
+      "confidence": 0.953
+    },
+    {
+      "word": "את",
+      "start": 261.0,
+      "end": 261.2,
+      "confidence": 0.996
+    },
+    {
+      "word": "חיית",
+      "start": 261.2,
+      "end": 261.88,
+      "confidence": 0.951
+    },
+    {
+      "word": "הארץ",
+      "start": 261.88,
+      "end": 262.68,
+      "confidence": 0.999
+    },
+    {
+      "word": "למינה",
+      "start": 262.68,
+      "end": 263.36,
+      "confidence": 0.725
+    },
+    {
+      "word": "ואת",
+      "start": 263.36,
+      "end": 264.54,
+      "confidence": 0.857
+    },
+    {
+      "word": "הבהמה",
+      "start": 264.54,
+      "end": 265.36,
+      "confidence": 0.996
+    },
+    {
+      "word": "למינה",
+      "start": 265.36,
+      "end": 266.04,
+      "confidence": 0.982
+    },
+    {
+      "word": "ואת",
+      "start": 266.04,
+      "end": 266.9,
+      "confidence": 0.98
+    },
+    {
+      "word": "כל",
+      "start": 266.9,
+      "end": 267.1,
+      "confidence": 1.0
+    },
+    {
+      "word": "רמס",
+      "start": 267.1,
+      "end": 267.76,
+      "confidence": 0.963
+    },
+    {
+      "word": "האדמה",
+      "start": 267.76,
+      "end": 268.4,
+      "confidence": 0.999
+    },
+    {
+      "word": "למיניהו",
+      "start": 268.4,
+      "end": 269.18,
+      "confidence": 0.775
+    },
+    {
+      "word": "וירא",
+      "start": 269.18,
+      "end": 270.2,
+      "confidence": 0.922
+    },
+    {
+      "word": "כי",
+      "start": 271.02,
+      "end": 271.22,
+      "confidence": 0.814
+    },
+    {
+      "word": "טוב",
+      "start": 271.22,
+      "end": 271.58,
+      "confidence": 0.994
+    }
+  ]
+}

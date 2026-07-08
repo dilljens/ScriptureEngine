@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.10",
+  "duration": 10.74,
+  "word_count": 12,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 96.58,
+      "end": 97.72,
+      "confidence": 0.791,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 97.72,
+      "end": 98.42,
+      "confidence": 0.972,
+      "source": "hybrid"
+    },
+    {
+      "word": "ליבשה",
+      "start": 98.42,
+      "end": 99.62,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "ארץ",
+      "start": 99.62,
+      "end": 100.42,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולמקווה",
+      "start": 100.42,
+      "end": 101.44,
+      "confidence": 0.926,
+      "source": "hybrid"
+    },
+    {
+      "word": "המים",
+      "start": 101.44,
+      "end": 102.5,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "קרה",
+      "start": 102.5,
+      "end": 103.14,
+      "confidence": 0.621,
+      "source": "hybrid"
+    },
+    {
+      "word": "ימים",
+      "start": 103.14,
+      "end": 104.08,
+      "confidence": 0.999,
+      "source": "hybrid"
+    },
+    {
+      "word": "וירא",
+      "start": 104.08,
+      "end": 105.04,
+      "confidence": 0.97,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 105.04,
+      "end": 105.66,
+      "confidence": 0.996,
+      "source": "hybrid"
+    },
+    {
+      "word": "כי",
+      "start": 105.66,
+      "end": 105.88,
+      "confidence": 0.232,
+      "source": "hybrid"
+    },
+    {
+      "word": "טוב",
+      "start": 105.88,
+      "end": 107.32,
+      "confidence": 0.987,
+      "source": "hybrid"
+    }
+  ]
+}

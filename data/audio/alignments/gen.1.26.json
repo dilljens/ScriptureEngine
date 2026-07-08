@@ -1,0 +1,121 @@
+{
+  "ref": "gen.1.26",
+  "duration": 9.14,
+  "word_count": 19,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.48,
+      "confidence": 0.915
+    },
+    {
+      "word": "להם",
+      "start": 0.48,
+      "end": 0.76,
+      "confidence": 0.978
+    },
+    {
+      "word": "נעשה",
+      "start": 0.76,
+      "end": 1.16,
+      "confidence": 0.883
+    },
+    {
+      "word": "אדם",
+      "start": 1.16,
+      "end": 1.52,
+      "confidence": 0.982
+    },
+    {
+      "word": "מסלמנו",
+      "start": 1.52,
+      "end": 2.44,
+      "confidence": 0.696
+    },
+    {
+      "word": "כדמותנו",
+      "start": 2.44,
+      "end": 3.08,
+      "confidence": 0.905
+    },
+    {
+      "word": "וירדו",
+      "start": 3.08,
+      "end": 3.48,
+      "confidence": 0.96
+    },
+    {
+      "word": "בדגת",
+      "start": 3.48,
+      "end": 3.84,
+      "confidence": 0.799
+    },
+    {
+      "word": "הים",
+      "start": 3.84,
+      "end": 4.22,
+      "confidence": 0.997
+    },
+    {
+      "word": "ובעוף",
+      "start": 4.22,
+      "end": 5.26,
+      "confidence": 0.925
+    },
+    {
+      "word": "השמים",
+      "start": 5.26,
+      "end": 5.64,
+      "confidence": 0.964
+    },
+    {
+      "word": "ובמה",
+      "start": 5.64,
+      "end": 6.28,
+      "confidence": 0.862
+    },
+    {
+      "word": "ובכל",
+      "start": 6.28,
+      "end": 7.16,
+      "confidence": 0.954
+    },
+    {
+      "word": "הארץ",
+      "start": 7.16,
+      "end": 7.52,
+      "confidence": 0.996
+    },
+    {
+      "word": "ובכל",
+      "start": 7.52,
+      "end": 7.82,
+      "confidence": 0.997
+    },
+    {
+      "word": "הרמש",
+      "start": 7.82,
+      "end": 8.16,
+      "confidence": 0.746
+    },
+    {
+      "word": "הרמש",
+      "start": 8.16,
+      "end": 8.56,
+      "confidence": 0.831
+    },
+    {
+      "word": "על",
+      "start": 8.56,
+      "end": 8.7,
+      "confidence": 0.99
+    },
+    {
+      "word": "הארץ",
+      "start": 8.7,
+      "end": 9.14,
+      "confidence": 0.996
+    }
+  ]
+}

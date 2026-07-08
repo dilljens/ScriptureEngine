@@ -1,0 +1,61 @@
+{
+  "ref": "gen.1.22",
+  "duration": 10.22,
+  "word_count": 9,
+  "words": [
+    {
+      "word": "ויברך",
+      "start": 231.76,
+      "end": 232.46,
+      "confidence": 0.932
+    },
+    {
+      "word": "לאמר",
+      "start": 233.58,
+      "end": 233.92,
+      "confidence": 0.829
+    },
+    {
+      "word": "ורבו",
+      "start": 235.1,
+      "end": 235.82,
+      "confidence": 0.949
+    },
+    {
+      "word": "ומלאו",
+      "start": 235.82,
+      "end": 236.7,
+      "confidence": 0.871
+    },
+    {
+      "word": "את",
+      "start": 236.7,
+      "end": 237.06,
+      "confidence": 0.994
+    },
+    {
+      "word": "המים",
+      "start": 237.06,
+      "end": 237.82,
+      "confidence": 0.997
+    },
+    {
+      "word": "בימים",
+      "start": 237.82,
+      "end": 239.14,
+      "confidence": 0.998
+    },
+    {
+      "word": "והעוף",
+      "start": 239.72,
+      "end": 240.42,
+      "confidence": 0.963
+    },
+    {
+      "word": "בארץ",
+      "start": 241.12,
+      "end": 241.98,
+      "confidence": 1.0
+    }
+  ]
+}

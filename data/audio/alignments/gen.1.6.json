@@ -1,0 +1,73 @@
+{
+  "ref": "gen.1.6",
+  "duration": 3.82,
+  "word_count": 11,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.56,
+      "confidence": 0.792
+    },
+    {
+      "word": "להם",
+      "start": 0.56,
+      "end": 0.94,
+      "confidence": 0.979
+    },
+    {
+      "word": "היא",
+      "start": 0.94,
+      "end": 1.02,
+      "confidence": 0.549
+    },
+    {
+      "word": "רקיעה",
+      "start": 1.02,
+      "end": 1.5,
+      "confidence": 0.556
+    },
+    {
+      "word": "בתוך",
+      "start": 1.5,
+      "end": 1.84,
+      "confidence": 0.999
+    },
+    {
+      "word": "המעים",
+      "start": 1.84,
+      "end": 2.26,
+      "confidence": 0.806
+    },
+    {
+      "word": "והיא",
+      "start": 2.26,
+      "end": 2.46,
+      "confidence": 0.917
+    },
+    {
+      "word": "מבדיל",
+      "start": 2.46,
+      "end": 2.86,
+      "confidence": 0.999
+    },
+    {
+      "word": "בין",
+      "start": 2.86,
+      "end": 3.08,
+      "confidence": 0.998
+    },
+    {
+      "word": "מעים",
+      "start": 3.08,
+      "end": 3.42,
+      "confidence": 0.992
+    },
+    {
+      "word": "למעים",
+      "start": 3.42,
+      "end": 3.82,
+      "confidence": 0.984
+    }
+  ]
+}

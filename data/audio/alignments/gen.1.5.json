@@ -1,0 +1,85 @@
+{
+  "ref": "gen.1.5",
+  "duration": 3.8,
+  "word_count": 13,
+  "words": [
+    {
+      "word": "ויקרא",
+      "start": 0.0,
+      "end": 0.52,
+      "confidence": 0.97
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.52,
+      "end": 0.86,
+      "confidence": 0.975
+    },
+    {
+      "word": "לאור",
+      "start": 0.86,
+      "end": 1.14,
+      "confidence": 0.996
+    },
+    {
+      "word": "יום",
+      "start": 1.14,
+      "end": 1.42,
+      "confidence": 0.998
+    },
+    {
+      "word": "ולחשך",
+      "start": 1.42,
+      "end": 1.86,
+      "confidence": 0.946
+    },
+    {
+      "word": "קרא",
+      "start": 1.86,
+      "end": 2.08,
+      "confidence": 0.718
+    },
+    {
+      "word": "לילה",
+      "start": 2.08,
+      "end": 2.38,
+      "confidence": 0.995
+    },
+    {
+      "word": "ויהי",
+      "start": 2.38,
+      "end": 2.56,
+      "confidence": 0.867
+    },
+    {
+      "word": "רב",
+      "start": 2.56,
+      "end": 2.9,
+      "confidence": 0.995
+    },
+    {
+      "word": "ויהי",
+      "start": 2.9,
+      "end": 3.14,
+      "confidence": 0.99
+    },
+    {
+      "word": "בוקר",
+      "start": 3.14,
+      "end": 3.5,
+      "confidence": 0.997
+    },
+    {
+      "word": "יום",
+      "start": 3.5,
+      "end": 3.68,
+      "confidence": 0.999
+    },
+    {
+      "word": "אחד",
+      "start": 3.68,
+      "end": 3.8,
+      "confidence": 0.999
+    }
+  ]
+}

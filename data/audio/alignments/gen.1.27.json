@@ -1,0 +1,67 @@
+{
+  "ref": "gen.1.27",
+  "duration": 4.96,
+  "word_count": 10,
+  "words": [
+    {
+      "word": "ויברא",
+      "start": 0.0,
+      "end": 0.62,
+      "confidence": 0.93
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.62,
+      "end": 1.04,
+      "confidence": 0.683
+    },
+    {
+      "word": "את",
+      "start": 1.04,
+      "end": 1.16,
+      "confidence": 0.995
+    },
+    {
+      "word": "האדם",
+      "start": 1.16,
+      "end": 1.7,
+      "confidence": 0.998
+    },
+    {
+      "word": "ובצלם",
+      "start": 1.7,
+      "end": 2.32,
+      "confidence": 0.82
+    },
+    {
+      "word": "אלוהים",
+      "start": 2.32,
+      "end": 2.7,
+      "confidence": 0.96
+    },
+    {
+      "word": "ברא",
+      "start": 2.7,
+      "end": 3.0,
+      "confidence": 0.866
+    },
+    {
+      "word": "ותזכר",
+      "start": 3.0,
+      "end": 4.08,
+      "confidence": 0.894
+    },
+    {
+      "word": "ונקווה",
+      "start": 4.08,
+      "end": 4.5,
+      "confidence": 0.76
+    },
+    {
+      "word": "בראותם",
+      "start": 4.5,
+      "end": 4.96,
+      "confidence": 0.902
+    }
+  ]
+}

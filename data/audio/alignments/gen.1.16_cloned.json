@@ -1,0 +1,115 @@
+{
+  "ref": "gen.1.16_cloned",
+  "duration": 14.18,
+  "word_count": 18,
+  "words": [
+    {
+      "word": "ויעש",
+      "start": 0.0,
+      "end": 1.72,
+      "confidence": 0.859
+    },
+    {
+      "word": "אלוהים",
+      "start": 1.72,
+      "end": 2.32,
+      "confidence": 0.98
+    },
+    {
+      "word": "את",
+      "start": 2.32,
+      "end": 3.14,
+      "confidence": 0.991
+    },
+    {
+      "word": "שני",
+      "start": 3.14,
+      "end": 3.7,
+      "confidence": 0.984
+    },
+    {
+      "word": "המראת",
+      "start": 3.7,
+      "end": 5.0,
+      "confidence": 0.843
+    },
+    {
+      "word": "הגדלים",
+      "start": 5.0,
+      "end": 5.82,
+      "confidence": 0.876
+    },
+    {
+      "word": "את",
+      "start": 5.82,
+      "end": 6.76,
+      "confidence": 0.423
+    },
+    {
+      "word": "מאור",
+      "start": 6.76,
+      "end": 7.52,
+      "confidence": 0.974
+    },
+    {
+      "word": "הקדול",
+      "start": 7.52,
+      "end": 8.46,
+      "confidence": 0.918
+    },
+    {
+      "word": "לממשלת",
+      "start": 8.46,
+      "end": 9.18,
+      "confidence": 0.953
+    },
+    {
+      "word": "היום",
+      "start": 9.18,
+      "end": 9.64,
+      "confidence": 0.96
+    },
+    {
+      "word": "את",
+      "start": 9.64,
+      "end": 10.2,
+      "confidence": 0.899
+    },
+    {
+      "word": "מאור",
+      "start": 10.2,
+      "end": 11.22,
+      "confidence": 0.997
+    },
+    {
+      "word": "הקדול",
+      "start": 11.22,
+      "end": 11.66,
+      "confidence": 0.877
+    },
+    {
+      "word": "לממשלת",
+      "start": 11.66,
+      "end": 12.32,
+      "confidence": 0.997
+    },
+    {
+      "word": "הלילה",
+      "start": 12.32,
+      "end": 12.8,
+      "confidence": 0.993
+    },
+    {
+      "word": "ואת",
+      "start": 12.8,
+      "end": 13.48,
+      "confidence": 0.992
+    },
+    {
+      "word": "הכוכבים",
+      "start": 13.48,
+      "end": 14.18,
+      "confidence": 0.982
+    }
+  ]
+}

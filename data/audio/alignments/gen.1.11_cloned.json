@@ -1,0 +1,121 @@
+{
+  "ref": "gen.1.11_cloned",
+  "duration": 11.16,
+  "word_count": 19,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.92,
+      "end": 1.6,
+      "confidence": 0.973
+    },
+    {
+      "word": "אלוהים",
+      "start": 1.6,
+      "end": 2.08,
+      "confidence": 0.929
+    },
+    {
+      "word": "תדשי",
+      "start": 2.08,
+      "end": 2.6,
+      "confidence": 0.934
+    },
+    {
+      "word": "הארשת",
+      "start": 2.6,
+      "end": 3.28,
+      "confidence": 0.9
+    },
+    {
+      "word": "דשא",
+      "start": 3.76,
+      "end": 4.28,
+      "confidence": 0.94
+    },
+    {
+      "word": "אשם",
+      "start": 4.28,
+      "end": 4.58,
+      "confidence": 0.776
+    },
+    {
+      "word": "זיו",
+      "start": 4.58,
+      "end": 4.92,
+      "confidence": 0.637
+    },
+    {
+      "word": "זרה",
+      "start": 4.92,
+      "end": 5.1,
+      "confidence": 0.728
+    },
+    {
+      "word": "אצ",
+      "start": 5.1,
+      "end": 5.34,
+      "confidence": 0.701
+    },
+    {
+      "word": "פרי",
+      "start": 5.34,
+      "end": 5.66,
+      "confidence": 0.768
+    },
+    {
+      "word": "אשא",
+      "start": 5.66,
+      "end": 6.36,
+      "confidence": 0.902
+    },
+    {
+      "word": "פרי",
+      "start": 6.36,
+      "end": 6.84,
+      "confidence": 0.998
+    },
+    {
+      "word": "למין",
+      "start": 6.84,
+      "end": 7.42,
+      "confidence": 0.961
+    },
+    {
+      "word": "ואשר",
+      "start": 7.42,
+      "end": 8.38,
+      "confidence": 0.944
+    },
+    {
+      "word": "זרה",
+      "start": 8.38,
+      "end": 8.76,
+      "confidence": 0.954
+    },
+    {
+      "word": "ובועל",
+      "start": 8.76,
+      "end": 10.34,
+      "confidence": 0.834
+    },
+    {
+      "word": "הארץ",
+      "start": 10.34,
+      "end": 10.98,
+      "confidence": 0.995
+    },
+    {
+      "word": "ויהי",
+      "start": 11.48,
+      "end": 12.0,
+      "confidence": 0.943
+    },
+    {
+      "word": "כן",
+      "start": 12.0,
+      "end": 12.08,
+      "confidence": 0.594
+    }
+  ]
+}

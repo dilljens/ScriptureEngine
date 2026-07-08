@@ -1,0 +1,119 @@
+{
+  "ref": "gen.1.14",
+  "duration": 15.0,
+  "word_count": 16,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 141.76,
+      "end": 143.06,
+      "confidence": 0.992,
+      "source": "hybrid"
+    },
+    {
+      "word": "אלוהים",
+      "start": 143.06,
+      "end": 144.0,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "יהי",
+      "start": 144.0,
+      "end": 144.86,
+      "confidence": 0.904,
+      "source": "hybrid"
+    },
+    {
+      "word": "מאורות",
+      "start": 144.86,
+      "end": 145.68,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "ברקיע",
+      "start": 145.68,
+      "end": 146.46,
+      "confidence": 0.916,
+      "source": "hybrid"
+    },
+    {
+      "word": "השמים",
+      "start": 146.46,
+      "end": 147.68,
+      "confidence": 0.644,
+      "source": "hybrid"
+    },
+    {
+      "word": "להבדיל",
+      "start": 147.68,
+      "end": 148.72,
+      "confidence": 0.925,
+      "source": "hybrid"
+    },
+    {
+      "word": "בין",
+      "start": 148.72,
+      "end": 149.0,
+      "confidence": 0.998,
+      "source": "hybrid"
+    },
+    {
+      "word": "היום",
+      "start": 149.0,
+      "end": 149.78,
+      "confidence": 0.993,
+      "source": "hybrid"
+    },
+    {
+      "word": "ובין",
+      "start": 149.78,
+      "end": 150.26,
+      "confidence": 0.997,
+      "source": "hybrid"
+    },
+    {
+      "word": "הלילה",
+      "start": 150.26,
+      "end": 151.36,
+      "confidence": 1.0,
+      "source": "hybrid"
+    },
+    {
+      "word": "והיו",
+      "start": 151.36,
+      "end": 152.3,
+      "confidence": 0.753,
+      "source": "hybrid"
+    },
+    {
+      "word": "לאותות",
+      "start": 152.3,
+      "end": 153.08,
+      "confidence": 0.989,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולמועדים",
+      "start": 153.08,
+      "end": 154.38,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "ולימים",
+      "start": 154.38,
+      "end": 155.56,
+      "confidence": 0.994,
+      "source": "hybrid"
+    },
+    {
+      "word": "ושנים",
+      "start": 155.56,
+      "end": 156.76,
+      "confidence": 0.995,
+      "source": "hybrid"
+    }
+  ]
+}

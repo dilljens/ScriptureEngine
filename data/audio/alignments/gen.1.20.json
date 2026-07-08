@@ -1,0 +1,91 @@
+{
+  "ref": "gen.1.20",
+  "duration": 5.6,
+  "word_count": 14,
+  "words": [
+    {
+      "word": "ויאמר",
+      "start": 0.0,
+      "end": 0.84,
+      "confidence": 0.918
+    },
+    {
+      "word": "אלוהים",
+      "start": 0.84,
+      "end": 1.18,
+      "confidence": 0.949
+    },
+    {
+      "word": "ישרצו",
+      "start": 1.18,
+      "end": 1.62,
+      "confidence": 0.879
+    },
+    {
+      "word": "המאים",
+      "start": 1.62,
+      "end": 1.98,
+      "confidence": 0.672
+    },
+    {
+      "word": "שרץ",
+      "start": 1.98,
+      "end": 2.34,
+      "confidence": 0.978
+    },
+    {
+      "word": "נפש",
+      "start": 2.34,
+      "end": 2.86,
+      "confidence": 0.79
+    },
+    {
+      "word": "חיה",
+      "start": 2.86,
+      "end": 3.16,
+      "confidence": 0.957
+    },
+    {
+      "word": "ואופף",
+      "start": 3.16,
+      "end": 3.64,
+      "confidence": 0.842
+    },
+    {
+      "word": "על",
+      "start": 3.64,
+      "end": 4.04,
+      "confidence": 0.961
+    },
+    {
+      "word": "ארץ",
+      "start": 4.04,
+      "end": 4.38,
+      "confidence": 0.879
+    },
+    {
+      "word": "על",
+      "start": 4.38,
+      "end": 4.46,
+      "confidence": 0.995
+    },
+    {
+      "word": "פני",
+      "start": 4.46,
+      "end": 4.78,
+      "confidence": 0.998
+    },
+    {
+      "word": "רקיע",
+      "start": 4.78,
+      "end": 5.12,
+      "confidence": 0.847
+    },
+    {
+      "word": "השמאים",
+      "start": 5.12,
+      "end": 5.6,
+      "confidence": 0.844
+    }
+  ]
+}
