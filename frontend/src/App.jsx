@@ -925,9 +925,9 @@ function AppInner() {
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
       {/* Toolbar — desktop only */}
       <header className={`hidden sm:flex sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
-        <div className="max-w-6xl mx-auto flex items-center justify-between h-10 px-2">
+        <div className="max-w-6xl mx-auto flex items-center justify-between h-9 px-2">
           {/* Left: nav arrows + clickable breadcrumb */}
-          <div className="flex items-center gap-1 text-sm min-w-0">
+          <div className="flex items-center gap-0.5 text-sm min-w-0">
             {/* Up arrow — zoom out */}
             <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
               title={`Zoom out (${getHotkey('goUp') || '↑'})`}>
@@ -940,18 +940,18 @@ function AppInner() {
             </button>
 
             {/* Clickable breadcrumb */}
-            <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none">
+            <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-sm">
               {workTitle ? (
                 <button onClick={() => {
                   if (viewLevel !== 'work') {
                     const wId = nav?.flat[nav.idx]?.workId
                     if (wId) goToWork(currentTab?.id, wId, workTitle)
                   }
-                }} className="text-neutral-400 dark:text-neutral-500 font-normal text-xs mr-1 whitespace-nowrap hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
+                }} className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5 whitespace-nowrap hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
                   {workTitle}
                 </button>
               ) : isLibraryView ? (
-                <span className="text-neutral-400 dark:text-neutral-500 font-normal text-xs mr-1">Library</span>
+                <span className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5">Library</span>
               ) : null}
               {isChapterView ? (
                 <button onClick={() => {
@@ -962,7 +962,7 @@ function AppInner() {
               ) : (
                 <span>{bookTitle}</span>
               )}
-              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
+              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400 text-xs"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
             </h1>
 
             {/* Left arrow — previous at current level */}
@@ -980,52 +980,52 @@ function AppInner() {
           </div>
 
           {/* Right: Search + command icons */}
-          <div className="flex items-center gap-1 text-neutral-400 dark:text-neutral-500">
+          <div className="flex items-center gap-0.5 text-neutral-400 dark:text-neutral-500">
             <SearchBar onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} bookData={bookData} onCommand={handleSearchCommand} />
 
             {/* Divider */}
-            <span className="w-px h-5 bg-neutral-200 dark:bg-neutral-700 mx-1 shrink-0" />
+            <span className="w-px h-4 bg-neutral-200 dark:bg-neutral-700 mx-0.5 shrink-0" />
 
             {/* Chat */}
-            <button onClick={handleOpenChat} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Chat (${getHotkey('chat')})`}>
+            <button onClick={handleOpenChat} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Chat (${getHotkey('chat')})`}>
               <ChatIcon />
             </button>
 
             {/* Structure (Isaiah) */}
             <button onClick={() => setShowStructure(true)}
-              className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
+              className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
               title={`Isaiah Structure (${getHotkey('structureModal')})`}>
               <GridIcon />
             </button>
 
             {/* Memorize */}
-            <button onClick={() => openMemorizeTab()} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
+            <button onClick={() => openMemorizeTab()} className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
             </button>
 
             {/* History */}
-            <button onClick={() => setShowHistory(p => !p)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Conversation History">
+            <button onClick={() => setShowHistory(p => !p)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Conversation History">
               <ClockIcon />
             </button>
 
             {/* Font size */}
-            <div className="flex items-center gap-0.5">
-              <button onClick={() => changeFontSize(-1)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Smaller (${getHotkey('fontDown')})`}>
+            <div className="flex items-center gap-0">
+              <button onClick={() => changeFontSize(-1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Smaller (${getHotkey('fontDown')})`}>
                 <TextSmallIcon />
               </button>
-              <span className="text-[9px] w-5 text-center shrink-0 font-mono">{fontSize}%</span>
-              <button onClick={() => changeFontSize(1)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Larger (${getHotkey('fontUp')})`}>
+              <span className="text-[9px] w-4 text-center shrink-0 font-mono">{fontSize}%</span>
+              <button onClick={() => changeFontSize(1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Larger (${getHotkey('fontUp')})`}>
                 <TextLargeIcon />
               </button>
             </div>
 
             {/* Dark mode */}
-            <button onClick={toggleDarkMode} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Dark mode (${getHotkey('darkMode')})`}>
+            <button onClick={toggleDarkMode} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Dark mode (${getHotkey('darkMode')})`}>
               {darkMode ? <MoonIcon /> : <SunIcon />}
             </button>
 
             {/* Settings */}
-            <button onClick={() => setShowSettings(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}>
+            <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}>
               <GearIcon />
             </button>
 

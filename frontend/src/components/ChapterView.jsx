@@ -4,6 +4,7 @@ import { useProgress } from '../progress'
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections } from '../api'
 import ChiasmPanel from './ChiasmPanel'
 import VerseBlock from './VerseBlock'
+import VerseAudioPlayer from './VerseAudioPlayer'
 
 function useChapterData(book, chapter) {
   const cache = {}
@@ -166,13 +167,13 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const progressPct = totalVerses > 0 ? Math.round(reviewedCount / totalVerses * 100) : 0
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-6">
-      <div className="mb-3 flex items-center gap-2 text-[10px] text-neutral-400 dark:text-neutral-500">
+    <div className="max-w-6xl mx-auto px-3 py-2">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500 flex-wrap">
         {/* Language selector */}
         <div className="flex items-center gap-1">
           <span className="text-neutral-400 dark:text-neutral-500 font-medium">Language:</span>
           <select value={displayLang} onChange={e => setDisplayLang(e.target.value)}
-            className="px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] font-mono bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer">
+            className="px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[9px] font-mono bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer">
             <option value="english">English</option>
             <option value="hebrew">Hebrew</option>
             <option value="greek">Greek</option>
@@ -222,6 +223,17 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
           </div>
         )}
       </div>
+
+      {/* Audio player for Hebrew — auto checks if alignment exists */}
+      {displayLang === 'hebrew' && data.verses?.[0] && (
+        <div className="mb-2">
+          <VerseAudioPlayer
+            verseId={`${book}.${chapter}.${data.verses[0].verse}`}
+            verseTextHebrew={data.verses[0]?.text_hebrew}
+            autoPlay={false}
+          />
+        </div>
+      )}
 
       {data.verses?.map(v => {
         const vs = String(v.verse)
