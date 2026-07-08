@@ -2,6 +2,47 @@
 
 > Hosted on VPS (`40.160.241.74`) alongside Inklomancer.
 
+## Reproduction from Git
+
+To recreate this project from a fresh checkout, you need these things that are
+**NOT tracked in git**:
+
+| What | Why not tracked | How to get it |
+|------|----------------|---------------|
+| `data/processed/scripture.db` (1.8 GB) | Too large + binary | Run `scripts/build_all.sh` (runs all ingest/seed scripts in order) OR copy from a running instance |
+| `data/audio/verses/*.wav` | Large binary files | Run `scripts/generate_audio.py` (TTS generation) |
+| `data/audio/raw/*.mp3` | Large binary files | Download Shmueloff recordings from Archive.org or Mechon Mamre, place in `data/audio/raw/` |
+| `data/audio/alignments/*.json` | Derived from audio | Run `scripts/align_hebrew_hybrid.py --chapter gen_1` (and for each chapter) |
+| `data/raw/` (cloned repos) | External sources | Cloned by `scripts/setup.sh` |
+| `.env` | Contains secrets | Create with `DATABASE_PATH=data/processed/scripture.db` |
+| `.venv/` | Platform-specific | `python3 -m venv .venv && .venv/bin/pip install -r web/requirements.txt` |
+| `frontend/node_modules/` | Platform-specific | `cd frontend && npm install` |
+| `frontend/dist/` | Build artifact | `cd frontend && npx vite build` |
+
+### The minimum to get running (API only, no audio):
+```bash
+git clone https://github.com/dilljens/ScriptureEngine.git
+cd ScriptureEngine
+python3 -m venv .venv
+.venv/bin/pip install -r web/requirements.txt
+# Obtain scripture.db from a running instance or build it
+cp /path/to/existing/scripture.db data/processed/
+# Start API
+.venv/bin/uvicorn web.server:app --host 0.0.0.0 --port 8000
+```
+
+### Full rebuild from source data:
+```bash
+# Will set up VENV, clone repos, build DB, generate audio, etc.
+bash scripts/build_all.sh
+# Or step by step:
+bash scripts/setup.sh              # Clone external data sources
+bash scripts/ingest_all.sh         # Build scripture.db from source texts
+bash scripts/seed_all.sh           # Run connection generators
+bash scripts/generate_audio.py     # Generate TTS audio
+bash scripts/align_hebrew_hybrid.py --chapter gen_1  # Align audio
+```
+
 ## Architecture
 
 ### ScriptureEngine
