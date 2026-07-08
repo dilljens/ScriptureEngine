@@ -22,7 +22,8 @@ data/*.db
 
 # Large data files (never git-track)
 data/giliadi_books/
-data/audio/
+data/audio/verses/
+data/audio/raw/
 data/agent_connections/
 data/llm_connections/
 data/dss/
