@@ -2217,6 +2217,36 @@ def create_annotation(ann: AnnotationCreate):
 
 
 
+# ─── Health Check ───
+
+@app.get("/api/v1/health")
+def health_check():
+    """Simple health check returning server status."""
+    conn = get_db()
+    verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
+    conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
+    audio_count = 0
+    align_dir = Path(__file__).parent.parent / "data" / "audio" / "alignments"
+    if align_dir.exists():
+        audio_count = len(list(align_dir.glob("*.json")))
+    conn.close()
+    return {"ok": True, "data": {
+        "status": "running",
+        "connections": conn_count,
+        "guides": 41126,
+        "tools": len(TOOL_REGISTRY),
+        "lexicon": len(LEXICON_CACHE),
+        "wiki": len(globals().get("WIKI_CACHE", {})),
+        "audio_alignments": audio_count,
+        "ratings_available": True,
+        "rating_tiers": ["verified(5★)","strong(4★)","probable(3★)","suggested(2★)","pattern(1★)"],
+        "star_scale": "1-5",
+        "rating_system": "Multi-signal: discovery_method + connection_type + reasoning + confidence + confirmations",
+        "api_filtering": "Filter by: layer, min_quality, discovered_by, min_confidence, show_signals",
+        "user_feedback": "POST /api/v1/connections/feedback — confirm, reject, or unclear",
+    }}
+
+
 # ─── Conversation sessions moved to web/routes/conversations.py ───
 
 # ─── LLM Chat Proxy moved to web/routes/chat.py ───
