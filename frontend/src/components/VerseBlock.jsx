@@ -274,12 +274,11 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
     const hasWordGloss = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.english?.trim())
     return (
       <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
-        <div className="flex items-start gap-1.5">
-          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center">
-            <span onClick={(e) => { e.stopPropagation(); onToggleReview?.() }}
-              className={`inline-block w-2 h-2 rounded-sm mr-0.5 cursor-pointer border transition-colors
-                ${reviewed ? 'bg-blue-500 dark:bg-blue-400 border-blue-500 dark:border-blue-400' : 'border-neutral-300 dark:border-neutral-600 hover:border-blue-400'}`}
-              title={reviewed ? 'Mark as unread' : 'Mark as read'} />
+        <div className="flex items-start gap-1">
+          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center gap-0.5">
+            <button onClick={() => setExpanded(!expanded)} className="cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" title="Toggle details">
+              {expanded ? '▼' : '▶'}
+            </button>
             {verse.verse}
           </span>
           <div className="flex-1 min-w-0">
@@ -515,10 +514,6 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
         </div>
       )}
 
-      <button onClick={() => setExpanded(!expanded)}
-        className="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer px-1">
-        {expanded ? '▲ less' : '▼ more'}
-      </button>
     </div>
   )
 }
