@@ -39,6 +39,8 @@ def align_verse(audio_path: str, model, verse_id: str) -> list[dict]:
         language="he",
         word_timestamps=True,
         beam_size=5,
+        vad_filter=True,
+        vad_parameters=dict(min_silence_duration_ms=500),
     )
 
     words = []

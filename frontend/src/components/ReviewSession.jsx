@@ -30,6 +30,7 @@ export default function ReviewSession({ onDone }) {
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [conceptImage, setConceptImage] = useState(null)
+  const [remediation, setRemediation] = useState([])
   const [connectionHint, setConnectionHint] = useState(null)
   const imageFetched = useRef({})
   const connectionFetched = useRef({})
@@ -107,11 +108,13 @@ export default function ReviewSession({ onDone }) {
     setSubmitting(true)
     try {
       const result = await memorizeApi.post(`/review/${card.CardID}`, { rating })
+      setRemediation(result.remediation || [])
       if (currentIdx + 1 < queue.length) {
         setCurrentIdx(i => i + 1)
         setShowAnswer(false)
         setConceptImage(null)
         setConnectionHint(null)
+        setRemediation([])
       } else {
         await loadQueue()
       }
@@ -216,6 +219,20 @@ export default function ReviewSession({ onDone }) {
           <div key={level} className={`w-2 h-2 rounded-full ${level <= hintLevel ? 'bg-indigo-400' : 'bg-neutral-200 dark:bg-neutral-700'}`} />
         ))}
       </div>
+
+      {/* Remediation suggestions (shown after failed review) */}
+      {remediation.length > 0 && (
+        <div className="mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">You might want to review these connected verses:</p>
+          {remediation.map((r, i) => (
+            <div key={i} className="text-xs text-amber-600 dark:text-amber-300 mb-1">
+              <span className="font-medium">{r.verse_id}</span>
+              <span className="opacity-60"> ({r.conn_type})</span>
+              <p className="text-[11px] text-amber-500 dark:text-amber-400 mt-0.5">{r.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Show answer button */}
       {!showAnswer && (

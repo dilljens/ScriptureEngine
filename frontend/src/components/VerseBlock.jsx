@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { cleanHebrew, lineHasChiasmRole } from '../utils'
+import WordPopup from './WordPopup'
 
 // ── Transliteration maps ──
 
@@ -241,6 +242,8 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   const [tooltip, setTooltip] = useState(null) // { fn, x, y } | null
   const tooltipRef = useRef(null)
   const tooltipTimer = useRef(null)
+  const [wordPopupData, setWordPopupData] = useState(null)
+  const [readAlongCache, setReadAlongCache] = useState(null)
   const lines = verse.lines || []
   const hasMultipleLines = lines.length >= 2
   const showLines = poetryMode && hasMultipleLines
@@ -248,6 +251,22 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   const chColor = chiasmRole ? CHIASMUS_COLORS[chiasmRole.label] : null
   const intraPar = verse.intra_parallelisms || []
   const isHighlighted = highlights?.includes(verse.verse)
+
+  // Listen for word click events to show WordPopup
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail.verseId === verse.id) {
+        // Fetch read-along data for word audio
+        fetch(`/api/v1/read-along/${e.detail.verseId}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { setReadAlongCache(d?.data || null) })
+          .catch(() => {})
+        setWordPopupData(e.detail)
+      }
+    }
+    window.addEventListener('word-click', handler)
+    return () => window.removeEventListener('word-click', handler)
+  }, [verse.id])
 
   // Navigate to a verse reference (left click = current tab, Ctrl+click = new tab)
   const navigateToRef = (targetVerse, e) => {
@@ -272,50 +291,88 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
     const verseWordData = wordData || null
     const words = sourceText.trim().split(/\s+/).filter(Boolean)
     const hasWordGloss = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.english?.trim())
+    const hasTranslit = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.transliteration?.trim())
     return (
-      <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
-        <div className="flex items-start gap-1">
-          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center gap-0.5">
-            <button onClick={() => setExpanded(!expanded)} className="cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" title="Toggle details">
-              {expanded ? '▼' : '▶'}
-            </button>
-            {verse.verse}
-          </span>
-          <div className="flex-1 min-w-0">
-            {/* Word-by-word layout */}
-            <div className={`flex flex-wrap gap-x-4 gap-y-2 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
-              dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
-              {words.map((word, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  {/* Line 1: Original language */}
-                  <span className={`text-lg leading-relaxed ${displayLang === 'hebrew' ? HEBREW_FONT : ''}`}
-                    style={displayLang === 'hebrew' ? { fontSize: '1.1em' } : {}}>
-                    {word}
-                  </span>
-                  {/* Line 2: Transliteration (toggleable) */}
-                  {showTranslit && translitFn && (
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 leading-tight">
-                      {translitFn(word)}
-                    </span>
-                  )}
-                  {/* Line 3: English gloss per word (toggleable) */}
-                  {showEnglish && hasWordGloss && verseWordData[i]?.english && (
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 leading-tight text-center max-w-[120px]">
-                      {verseWordData[i].english}
-                    </span>
-                  )}
-                </div>
-              ))}
+      <>
+        <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
+          <div className="flex items-start gap-1">
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center gap-0.5">
+              <button onClick={() => setExpanded(!expanded)} className="cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" title="Toggle details">
+                {expanded ? '▼' : '▶'}
+              </button>
+              {verse.verse}
+            </span>
+            <div className="flex-1 min-w-0">
+              {/* Word-by-word layout */}
+              <div className={`flex flex-wrap gap-x-4 gap-y-2 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
+                dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
+                {words.map((word, i) => {
+                  // Prefer clean hebrew from wordData; fall back to raw word with / removed
+                  const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
+                  const wordTranslit = verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
+                  const wordEnglish = verseWordData?.[i]?.english || ''
+                  const wordLemma = verseWordData?.[i]?.lemma || ''
+                  const wordDef = verseWordData?.[i]?.definition || ''
+                  const wordMorph = verseWordData?.[i]?.morph || ''
+                  const wordPos = verseWordData?.[i]?.pos || ''
+                  const wordRoot = verseWordData?.[i]?.root_letters || ''
+                  const wordGematria = verseWordData?.[i]?.gematria || null
+
+                  return (
+                    <div key={i} className="flex flex-col items-center group cursor-pointer relative"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('word-click', {
+                          detail: {
+                            verseId: verse.id,
+                            wordIndex: i,
+                            word: wordClean,
+                            transliteration: wordTranslit,
+                            english: wordEnglish,
+                            definition: wordDef,
+                            lemma: wordLemma,
+                            morph: wordMorph,
+                            pos: wordPos,
+                            root: wordRoot,
+                            gematria: wordGematria,
+                          }
+                        }))
+                      }}
+                    >
+                      {/* Line 1: Hebrew word (clean, no slashes) */}
+                      <span className={`text-lg leading-relaxed ${displayLang === 'hebrew' ? HEBREW_FONT : ''}`}
+                        style={displayLang === 'hebrew' ? { fontSize: '1.1em' } : {}}>
+                        {wordClean}
+                      </span>
+                      {/* Line 2: Transliteration (always show in Hebrew mode — like TanakhReadAlong) */}
+                      {wordTranslit && (
+                        <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                          {wordTranslit}
+                        </span>
+                      )}
+                      {/* Line 3: English gloss per word (always show in Hebrew mode) */}
+                      {wordEnglish && (
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 leading-tight text-center max-w-[120px]">
+                          {wordEnglish}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Fallback English: full verse text if no word-level glosses */}
+              {showEnglish && !hasWordGloss && (
+                <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
+                  {verse.text_english}
+                </p>
+              )}
             </div>
-            {/* Fallback English: full verse text if no word-level glosses */}
-            {showEnglish && !hasWordGloss && (
-              <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
-                {verse.text_english}
-              </p>
-            )}
           </div>
         </div>
-      </div>
+        {/* Word info popup */}
+        {wordPopupData && (
+          <WordPopup data={wordPopupData} onClose={() => setWordPopupData(null)} readAlongData={readAlongCache} />
+        )}
+      </>
     )
   }
 
@@ -497,21 +554,61 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
       {/* Unified connections panel — grouped, filterable, clickable */}
       <ConnectionPanel extraConnections={extraConnections} tskRefs={tskRefs} navigateToRef={navigateToRef} />
 
-      {/* Expand */}
+      {/* Expand — footnotes with clickable references */}
       {expanded && (
-        <div className="mt-2 ml-1 p-3 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs text-neutral-600 dark:text-neutral-400">
-          <p className="font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">Details</p>
-          {footnotes?.map((fn, i) => (
-            <div key={i} className="flex items-start gap-2 py-0.5">
-              <span className={`text-[10px] px-1 rounded font-mono ${fn.category === 'cross-ref' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : fn.category === 'tg' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'}`}>
-                {CATEGORY_ICONS[fn.category] || '•'}
-              </span>
-              <span className="text-neutral-500 dark:text-neutral-400">{fn.context_word}</span>
-              <span className="text-neutral-300 dark:text-neutral-600">→</span>
-              <span className="text-neutral-600 dark:text-neutral-300">{CATEGORY_LABELS[fn.category] || fn.category}</span>
+        <div className="mt-1 ml-1 p-2 bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs text-neutral-600 dark:text-neutral-400 space-y-1.5">
+          {/* Footnotes with full reference text */}
+          {footnotes?.length > 0 && (
+            <div>
+              <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-1">Footnotes</p>
+              {footnotes.map((fn, i) => (
+                <div key={i} className="flex items-start gap-1.5 py-0.5">
+                  <span className={`text-[9px] px-1 rounded font-mono shrink-0 ${fn.category === 'cross-ref' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : fn.category === 'tg' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'}`}>
+                    {CATEGORY_ICONS[fn.category] || '•'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] text-neutral-700 dark:text-neutral-300 font-medium">{fn.context_word}</span>
+                    <span className="text-neutral-400 mx-1">→</span>
+                    <span className="text-[9px] text-neutral-500">{CATEGORY_LABELS[fn.category] || fn.category}</span>
+                    {fn.references?.map((r, ri) => {
+                      const m = r.href?.match(/\/([^/]+)\.(\d+)\.(\d+)/)
+                      const verseId = m ? `${m[1]}.${m[2]}.${m[3]}` : null
+                      return verseId ? (
+                        <button key={ri}
+                          onClick={() => {
+                            const tabEl = document.querySelector('[data-tab-id]')
+                            const evt = new MouseEvent('click', { metaKey: true })
+                            navigateToRef(verseId, evt)
+                          }}
+                          className="block text-[9px] text-blue-600 dark:text-blue-400 hover:underline text-left mt-0.5 w-full">
+                          {r.text || verseId} ↪
+                        </button>
+                      ) : (
+                        <div key={ri} className="text-[9px] text-neutral-500 mt-0.5">{r.text || r.href}</div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* TSK count */}
+          {tskRefs?.length > 0 && (
+            <div className="text-[9px] text-purple-500 dark:text-purple-400">
+              ᵗ {tskRefs.length} TSK cross-references — open Connections panel to browse
+            </div>
+          )}
+
+          {!footnotes?.length && !tskRefs?.length && (
+            <p className="text-[10px] text-neutral-400 text-center py-1">No details for this verse</p>
+          )}
         </div>
+      )}
+
+      {/* Word info popup — shown when clicking a Hebrew word */}
+      {wordPopupData && (
+        <WordPopup data={wordPopupData} onClose={() => setWordPopupData(null)} readAlongData={readAlongCache} />
       )}
 
     </div>

@@ -23,6 +23,8 @@ from pydantic import BaseModel
 from typing import Optional
 
 from lib.db import get_db, get_db_vec, DEFAULT_DB_PATH
+from biblical_transliteration import HebrewTransliterator, HebrewOptions
+from biblical_transliteration.hebrew import TransliterationScheme
 from lib.gematria import compute_all, find_divine_name_matches
 from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
 from lib.sod import atbash as atb, acrostic, gematria_advanced, hidden_names
@@ -899,16 +901,44 @@ def get_chapter_grammar(ref: str):
             ORDER BY g.verse_id, g.word_index
         """, (f"{verse_prefix}%",)).fetchall()
     else:
+        # Fetch raw gematria data, then enrich with lexicon/gloss in Python
+        # (SQL joins on compound lemmas like "b/7225" are unreliable)
         rows = conn.execute("""
             SELECT g.verse_id, g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
-                   g.value_standard, g.value_ordinal, g.value_reduced,
-                   COALESCE(lg.english_gloss, g.word_english, '') as gloss
+                   g.value_standard, g.value_ordinal, g.value_reduced
             FROM gematria g
-            LEFT JOIN lemma_gloss lg ON g.lemma = lg.lemma
             WHERE g.verse_id LIKE ?
             ORDER BY g.verse_id, g.word_index
         """, (f"{verse_prefix}%",)).fetchall()
-
+        
+        # Build lookup maps from lemma_gloss and lexicon
+        gloss_map = {}
+        for r in conn.execute("SELECT lemma, english_gloss FROM lemma_gloss"):
+            gloss_map[r['lemma']] = r['english_gloss'] or ''
+        lex_map = {}
+        for r in conn.execute("SELECT lemma, definition, part_of_speech, root_letters FROM lexicon"):
+            lex_map[r['lemma']] = dict(r)
+        
+        def extract_lemma_key(raw_lemma):
+            """Extract the numeric key from a compound lemma like 'b/7225' -> '7225'."""
+            if '/' in raw_lemma:
+                return raw_lemma.split('/')[1]
+            return raw_lemma
+        
+        def lookup_gloss(raw_lemma):
+            """Try full lemma match first, then numeric extraction."""
+            if raw_lemma in gloss_map:
+                return gloss_map[raw_lemma]
+            key = extract_lemma_key(raw_lemma)
+            return gloss_map.get(key, '')
+        
+        def lookup_lexicon(raw_lemma):
+            """Try full lemma match first, then numeric extraction."""
+            if raw_lemma in lex_map:
+                return lex_map[raw_lemma]
+            key = extract_lemma_key(raw_lemma)
+            return lex_map.get(key, {})
+    
     # Group by verse
     verses = {}
     for w in rows:
@@ -922,11 +952,28 @@ def get_chapter_grammar(ref: str):
             if morph.startswith(pfx):
                 color = c
                 break
+        word_raw = w["word_hebrew"] or ""
+        # Clean Hebrew: remove / separators
+        word_clean = word_raw.replace("/", "")
+        # Transliterate using biblical-transliteration SIMPLE scheme
+        try:
+            translit = _hebrew_trans.transliterate_word(word_clean)
+        except Exception:
+            translit = ""
+        # Look up gloss and lexicon data in Python
+        raw_lemma = w["lemma"] or ""
+        gloss = lookup_gloss(raw_lemma)
+        lex = lookup_lexicon(raw_lemma)
         verses[vid].append({
-            "hebrew": w["word_hebrew"] or "",
-            "english": w["gloss"] or "",
+            "hebrew": word_raw,
+            "hebrew_clean": word_clean,
+            "transliteration": translit,
+            "english": gloss or w["word_english"] or "",
+            "definition": lex.get("definition", ""),
             "morph": morph,
-            "lemma": w["lemma"] or "",
+            "pos": lex.get("part_of_speech", ""),
+            "root_letters": lex.get("root_letters", ""),
+            "lemma": raw_lemma,
             "word_index": w["word_index"],
             "color": color,
             "gematria": {"standard": w["value_standard"], "ordinal": w["value_ordinal"], "reduced": w["value_reduced"]},
@@ -2466,6 +2513,12 @@ def get_read_along_data(verse_id: str):
         except (json.JSONDecodeError, TypeError):
             word_ts = []
     
+    # Compute word count and duration from timestamps
+    word_count = len(word_ts)
+    duration = 0.0
+    if word_ts:
+        duration = round(word_ts[-1]["end"] - word_ts[0]["start"], 3)
+    
     # Also get the full audio file URL for the raw book recording
     raw_audio_url = None
     if ts_row and ts_row["source_file"]:
@@ -2478,6 +2531,8 @@ def get_read_along_data(verse_id: str):
         "text_greek": verse["text_greek"],
         "audio_url": audio_url,
         "word_timestamps": word_ts,
+        "word_count": word_count,
+        "duration": duration,
         "audio_source": audio_source,
     }
     
@@ -2493,6 +2548,15 @@ def get_read_along_data(verse_id: str):
 import subprocess, os as audio_os
 
 RAW_AUDIO_DIR = Path(__file__).parent.parent / "data" / "audio" / "raw"
+
+# Hebrew transliterator for SIMPLE scheme (e.g., "bereshit", "bara", "elohim")
+_hebrew_trans = HebrewTransliterator(options=HebrewOptions(
+    scheme=TransliterationScheme.SIMPLE,
+    preserve_dagesh_distinction=False,
+    mark_shva_na=False,
+    handle_qamats_qatan=False,
+    preserve_final_he=False,
+))
 
 @app.get("/api/v1/audio/play-raw/{filename:path}")
 def play_raw_audio_segment(filename: str, start: float = 0.0, end: float = 30.0):

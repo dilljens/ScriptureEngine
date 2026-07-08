@@ -8,17 +8,35 @@ export default function VerseAudioPlayer({ verseId, verseTextHebrew, autoPlay })
   const [error, setError] = useState(null)
   const audioRef = useRef(null)
   const animFrameRef = useRef(null)
+  const [readAlongData, setReadAlongData] = useState(null)
 
-  // Load alignment data
+  // Load read-along data (word timestamps + audio source)
   useEffect(() => {
     if (!verseId) return
     setLoading(true)
     setError(null)
-    fetch(`/api/v1/audio/align/${verseId}`)
+    fetch(`/api/v1/read-along/${verseId}`)
       .then(r => r.ok ? r.json() : Promise.reject('Not found'))
-      .then(d => { setAlignment(d.data); setLoading(false) })
+      .then(d => {
+        const data = d.data
+        setReadAlongData(data)
+        // Build alignment object matching the old format
+        setAlignment({
+          ref: verseId,
+          words: data.word_timestamps || [],
+          word_count: data.word_count || (data.word_timestamps || []).length,
+          duration: data.duration || 0,
+        })
+        setLoading(false)
+      })
       .catch(e => { setError(e); setLoading(false) })
   }, [verseId])
+
+  // Determine which audio URL to use: prefer raw (Shmueloff) then fall back to WAV
+  const audioUrl = useCallback(() => {
+    if (readAlongData?.raw_audio_url) return readAlongData.raw_audio_url
+    return `/api/v1/audio/play/${verseId}`
+  }, [readAlongData, verseId])
 
   // Track audio position to highlight current word
   const updateWord = useCallback(() => {
@@ -67,17 +85,21 @@ export default function VerseAudioPlayer({ verseId, verseTextHebrew, autoPlay })
   if (!verseId) return null
 
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 overflow-hidden">
-      {/* Audio element (hidden) */}
+    <div className={`rounded-xl border overflow-hidden transition-opacity ${
+      error
+        ? 'border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 opacity-60'
+        : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900'
+    }`}>
+      {/* Audio element (hidden) — uses play-raw when available (Shmueloff audio) */}
       <audio ref={audioRef} preload="metadata" onEnded={() => { setPlaying(false); setCurrentWordIdx(-1) }}>
-        <source src={`/api/v1/audio/play/${verseId}`} type="audio/wav" />
+        <source src={audioUrl()} type="audio/wav" />
       </audio>
 
       {/* Playback controls */}
       <div className="flex items-center gap-3 p-3 border-b border-neutral-100 dark:border-neutral-800">
         <button
           onClick={togglePlay}
-          disabled={loading || error}
+          disabled={loading || !!error}
           className="w-10 h-10 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 text-white flex items-center justify-center transition-colors shrink-0"
         >
           {loading ? (
@@ -88,9 +110,14 @@ export default function VerseAudioPlayer({ verseId, verseTextHebrew, autoPlay })
         </button>
         <div className="text-xs text-neutral-500 dark:text-neutral-400">
           {error ? (
-            <span className="text-red-500">Audio not available</span>
+            <span className="text-neutral-400 dark:text-neutral-500">Audio not yet available</span>
           ) : alignment ? (
-            <span>{alignment.word_count} words · {alignment.duration.toFixed(1)}s</span>
+            <span>
+              {alignment.word_count} words · {alignment.duration.toFixed(1)}s
+              {readAlongData?.audio_source === 'schmueloff' && (
+                <span className="ml-2 text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">Shmueloff</span>
+              )}
+            </span>
           ) : loading ? (
             <span className="animate-pulse">Loading...</span>
           ) : null}
