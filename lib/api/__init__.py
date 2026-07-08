@@ -832,39 +832,39 @@ register(
 
 # ─── Hebrew Learning Tools ───
 
-def _hebrew_lessons(category=""):
+def _hebrew_lessons(conn=None, category=""):
     """List available Hebrew lesson nodes from the Go backend's memorize.db."""
     import sqlite3
     from pathlib import Path
     db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
     if not db.exists():
         return {"lessons": [], "total": 0, "note": "Hebrew lesson DB not found"}
-    conn = sqlite3.connect(str(db))
-    conn.row_factory = sqlite3.Row
+    c = sqlite3.connect(str(db))
+    c.row_factory = sqlite3.Row
     if category:
-        rows = conn.execute("SELECT id, title, category, level, description FROM hebrew_nodes WHERE category=? ORDER BY level", (category,)).fetchall()
+        rows = c.execute("SELECT id, title, category, level, description FROM hebrew_nodes WHERE category=? ORDER BY level", (category,)).fetchall()
     else:
-        rows = conn.execute("SELECT id, title, category, level, description FROM hebrew_nodes ORDER BY level").fetchall()
-    conn.close()
+        rows = c.execute("SELECT id, title, category, level, description FROM hebrew_nodes ORDER BY level").fetchall()
+    c.close()
     return {"lessons": [dict(r) for r in rows], "total": len(rows)}
 
-def _hebrew_lesson(node_id=""):
+def _hebrew_lesson(conn=None, node_id=""):
     """Get full lesson content for a Hebrew concept node."""
     import sqlite3, json
     from pathlib import Path
     db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
     if not db.exists():
         return {"error": "Hebrew lesson DB not found"}
-    conn = sqlite3.connect(str(db))
-    conn.row_factory = sqlite3.Row
-    node = conn.execute("SELECT * FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+    c = sqlite3.connect(str(db))
+    c.row_factory = sqlite3.Row
+    node = c.execute("SELECT * FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
     if not node:
-        conn.close()
+        c.close()
         return {"error": f"Lesson not found: {node_id}"}
-    lesson = conn.execute("SELECT * FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
-    practices = conn.execute("SELECT * FROM hebrew_practice_items WHERE node_id=?", (node_id,)).fetchall()
-    prereqs = conn.execute("SELECT n.id,n.title,n.category FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id WHERE e.target_id=?", (node_id,)).fetchall()
-    conn.close()
+    lesson = c.execute("SELECT * FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
+    practices = c.execute("SELECT * FROM hebrew_practice_items WHERE node_id=?", (node_id,)).fetchall()
+    prereqs = c.execute("SELECT n.id,n.title,n.category FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id WHERE e.target_id=?", (node_id,)).fetchall()
+    c.close()
     result = dict(node)
     if lesson:
         try:
@@ -899,6 +899,117 @@ register(
         "required": ["node_id"],
     },
     "Get full lesson content for a Hebrew concept node. Returns explanation, examples, vocabulary, practice items, and prerequisite nodes.",
+)
+
+# ─── Hebrew Quiz Tools ───
+
+def _hebrew_quiz(conn=None, category="consonant", count=5):
+    """Generate Hebrew knowledge quiz questions from the practice items database.
+    
+    Returns quiz questions suitable for interactive rendering.
+    By default returns consonant (aleph-bet) questions.
+    """
+    import sqlite3, json, random
+    from pathlib import Path
+    db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+    if not db.exists():
+        return {"questions": [], "total": 0, "note": "Hebrew lesson DB not found"}
+    
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    
+    # Get all consonants with their glyph from descriptions
+    nodes = conn.execute("""
+        SELECT n.id, n.title, n.category, n.level, n.description,
+               p.id as practice_id, p.question_type, p.question_text,
+               p.options_json, p.correct_answer, p.explanation
+        FROM hebrew_nodes n
+        JOIN hebrew_practice_items p ON p.node_id = n.id
+        WHERE n.category = ? AND p.question_type IN ('multiple_choice', 'transliteration', 'recall')
+        ORDER BY RANDOM()
+        LIMIT ?
+    """, (category, count * 3)).fetchall()  # extra for diversity
+    
+    conn.close()
+    
+    if not nodes:
+        return {"questions": [], "total": 0}
+    
+    # Build quiz questions
+    questions = []
+    seen_nodes = set()
+    
+    for n in nodes:
+        if len(questions) >= count:
+            break
+        nid = n['id']
+        if nid in seen_nodes:
+            continue
+        seen_nodes.add(nid)
+        
+        options = json.loads(n['options_json']) if n['options_json'] else []
+        correct = n['correct_answer']
+        
+        # Determine the correct answer index
+        correct_idx = 0
+        for i, opt in enumerate(options):
+            if opt == correct or opt.strip() == correct.strip():
+                correct_idx = i
+                break
+        
+        questions.append({
+            "node_id": nid,
+            "question": n['question_text'],
+            "options": options,
+            "correctAnswer": correct_idx,
+            "explanation": n['explanation'] or '',
+            "category": n['category'],
+            "nodeTitle": n['title'],
+            "questionType": n['question_type'],
+        })
+    
+    # If we have less than count, add simple letter-name quiz questions
+    if len(questions) < count:
+        conn2 = sqlite3.connect(str(db))
+        remaining = conn2.execute("""
+            SELECT id, title, description, category FROM hebrew_nodes
+            WHERE category = ? AND id NOT IN ({})
+            ORDER BY RANDOM()
+            LIMIT ?
+        """.format(','.join('?' for _ in seen_nodes) if seen_nodes else 'NULL'),
+            tuple(seen_nodes) + (count - len(questions),) if seen_nodes else (category, count - len(questions))
+        ).fetchall()
+        conn2.close()
+        
+        for r in remaining:
+            if len(questions) >= count:
+                break
+            questions.append({
+                "node_id": r['id'],
+                "question": f"What letter is this: {r['description']}",
+                "options": [],  # LLM should generate options
+                "correctAnswer": 0,
+                "explanation": f"This is {r['title']}",
+                "category": r['category'],
+                "nodeTitle": r['title'],
+                "questionType": "letter_name",
+            })
+    
+    random.shuffle(questions)
+    return {"questions": questions[:count], "total": len(questions)}
+
+register(
+    "scripture_hebrew_quiz",
+    _hebrew_quiz,
+    {
+        "type": "object",
+        "properties": {
+            "category": {"type": "string", "description": "Category: consonant, vowel, word, grammar, phrase, reading (default: consonant for aleph-bet practice)"},
+            "count": {"type": "integer", "default": 5, "description": "Number of questions to generate"},
+        },
+        "required": [],
+    },
+    "Generate Hebrew knowledge quiz questions. Perfect for practicing letter names (aleph-bet), vowel recognition, and vocabulary. Defaults to consonant/aleph-bet questions.",
 )
 
 # ─── Export all registered tool names ───

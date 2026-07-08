@@ -10,6 +10,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import VerseChip from './VerseChip'
 import QuizCard from './QuizCard'
+import HebrewQuizCard from './HebrewQuizCard'
 import VersePopup from './VersePopup'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
@@ -883,7 +884,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // Returns an array of plain text and React elements.
   function renderWithMarkers(text) {
     if (!text) return text
-    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW):[^%]+%%%)/g)
+    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
     const elements = parts.map((part, i) => {
@@ -912,6 +913,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           const quizData = JSON.parse(qm[1])
           return <QuizCard key={`q${i}`} question={quizData.question} options={quizData.options} />
         } catch { return <span className="text-red-500 text-xs">[invalid quiz]</span> }
+      }
+      const hqm = part.match(/%%%HEBREW_QUIZ:({[^%]+})%%%/)
+      if (hqm) {
+        try {
+          const quizData = JSON.parse(hqm[1])
+          return <HebrewQuizCard key={`hq${i}`} quizData={quizData} />
+        } catch { return <span className="text-red-500 text-xs">[invalid hebrew quiz]</span> }
       }
       const hm = part.match(/%%%HEBREW:({[^%]+})%%%/)
       if (hm) {
@@ -965,7 +973,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     })
 
     // Check if there are any markers that need special rendering
-    const hasMarkers = /%%%(?:VERSE|CLICK|QUIZ|HEBREW):[^%]+%%%/g.test(processed)
+    const hasMarkers = /%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%/g.test(processed)
     if (!hasMarkers) {
       return (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>

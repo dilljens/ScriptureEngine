@@ -131,6 +131,16 @@ Use this for knowledge check questions during assessment or teaching.
 ```
 Use this when introducing new Hebrew vocabulary during lessons.
 
+**Hebrew quiz card** — renders an interactive Hebrew knowledge quiz:
+```
+%%%HEBREW_QUIZ:{"node_id":"aleph","question":"Which letter is described as 'Aleph (א) is the first letter of the Hebrew alphabet'?","options":["Aleph","Bet","Gimel","Dalet"],"correctAnswer":0,"explanation":"The description matches Aleph.","category":"consonant","nodeTitle":"Aleph (א)"}%%%
+```
+Use this for interactive Hebrew letter/vocabulary practice. The quiz card supports:
+- Letter name recognition (shows description, pick the letter name)
+- Multiple choice knowledge questions
+- Shows the letter glyph in large script
+- Gives correct/incorrect feedback with explanation
+
 ## Rules
 
 1. Call tools to look up verses — do not fabricate references
