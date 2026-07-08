@@ -18,7 +18,13 @@ self.addEventListener('activate', (event) => {
 
 // Network-first: try network, fall back to cache
 self.addEventListener('fetch', (event) => {
+  // Only handle GET requests from supported schemes (http, https)
   if (event.request.method !== 'GET') return
+  const url = new URL(event.request.url)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+
+  // Skip tracking/analytics
+  if (url.hostname.includes('cloudflareinsights') || url.hostname.includes('beacon')) return
 
   event.respondWith(
     fetch(event.request)

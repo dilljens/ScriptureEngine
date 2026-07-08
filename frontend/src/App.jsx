@@ -15,7 +15,7 @@ import {
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, LayersIcon, ClockIcon,
   TextSmallIcon, TextLargeIcon, GraphIcon,
-  BookIcon, MenuIcon, PlusIcon, MemorizeIcon,
+  BookIcon, MenuIcon, PlusIcon,
 } from './icons'
 import MobileBottomNav from './components/MobileBottomNav'
 import MobileMenuDrawer from './components/MobileMenuDrawer'
