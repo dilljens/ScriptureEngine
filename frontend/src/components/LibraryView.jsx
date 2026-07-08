@@ -18,14 +18,14 @@ const workCardColors = {
 }
 
 export default function LibraryView({ bookData, onNavigate }) {
-  const { goToBook, currentTab, viewRef } = useTabs()
+  const { goToWork: ctxGoToWork, currentTab, viewRef } = useTabs()
   const works = bookData?.works || []
   const focusedWorkId = viewRef || works[0]?.id || null
 
   const goToWork = (workId) => {
     const w = works.find(wi => wi.id === workId)
-    if (w && w.books?.[0]) {
-      goToBook(currentTab?.id, w.books[0].id, w.books[0].title)
+    if (w) {
+      ctxGoToWork(currentTab?.id, w.id, w.title || w.id)
     }
   }
 
