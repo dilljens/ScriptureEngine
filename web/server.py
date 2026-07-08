@@ -71,6 +71,29 @@ VEC_CACHE = {"available": False}  # vector search — populated by embed script
 
 
 @app.on_event("startup")
+def _startup_debug():
+    """Create client_logs table for debug error reporting."""
+    try:
+        import sqlite3 as _s
+        from pathlib import Path as _P
+        _c = _s.connect(str(_P(__file__).parent.parent / "data" / "processed" / "scripture.db"))
+        _c.execute(
+            "CREATE TABLE IF NOT EXISTS client_logs ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "level TEXT DEFAULT 'error', "
+            "message TEXT, "
+            "stack TEXT DEFAULT '', "
+            "url TEXT DEFAULT '', "
+            "user_agent TEXT DEFAULT '', "
+            "created_at TEXT DEFAULT (datetime('now'))"
+            ")"
+        )
+        _c.commit()
+        _c.close()
+    except Exception:
+        pass
+
+@app.on_event("startup")
 def load_ram_cache():
     """Load all passage guides + verse data into RAM at startup.
     
@@ -4019,6 +4042,54 @@ def client_error_log(data: dict):
         ')')
         conn.execute(
             'INSERT INTO client_logs (level, message, stack, url, user_agent) VALUES (?, ?, ?, ?, ?)',
+            (data.get("level", "error"), data.get("message", "")[:500],
+             data.get("stack", "")[:2000], data.get("url", ""), data.get("userAgent", ""))
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return {"ok": True}
+
+@app.get("/api/v1/debug/logs")
+def get_client_logs(limit: int = 50):
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM client_logs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    conn.close()
+    return {"ok": True, "data": [dict(r) for r in rows]}
+
+@app.get("/api/v1/debug/check")
+def debug_check():
+    import os, sys
+    conn = get_db()
+    try:
+        verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
+        conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
+        audio_count = 0
+        for root, dirs, files in os.walk("data/audio/alignments"):
+            audio_count = len(files)
+    except:
+        verse_count = conn_count = audio_count = 0
+    conn.close()
+    return {"ok": True, "data": {
+        "python": sys.version,
+        "platform": __import__("platform").platform(),
+        "verses": verse_count,
+        "connections": conn_count,
+        "audio_alignments": audio_count,
+        "assets": os.listdir("frontend/dist/assets/") if os.path.isdir("frontend/dist/assets/") else [],
+    }}
+
+# ─── Client-side error logging (for debugging) ───
+
+@app.post("/api/v1/debug/log")
+def client_error_log(data: dict):
+    import datetime
+    try:
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO client_logs (level, message, stack, url, user_agent) "
+            "VALUES (?, ?, ?, ?, ?)",
             (data.get("level", "error"), data.get("message", "")[:500],
              data.get("stack", "")[:2000], data.get("url", ""), data.get("userAgent", ""))
         )
