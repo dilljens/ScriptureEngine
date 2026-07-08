@@ -4,6 +4,7 @@ import { useProgress } from '../progress'
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections } from '../api'
 import ChiasmPanel from './ChiasmPanel'
 import VerseBlock from './VerseBlock'
+import VerseAudioPlayer from './VerseAudioPlayer'
 
 function useChapterData(book, chapter) {
   const cache = {}
@@ -222,6 +223,17 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
           </div>
         )}
       </div>
+
+      {/* Hebrew audio player (shown when Hebrew is selected and first verse has audio) */}
+      {displayLang === 'hebrew' && data.verses?.[0] && book && (
+        <div className="mb-4">
+          <VerseAudioPlayer
+            verseId={`${book}.${chapter}.${data.verses[0].verse}`}
+            verseTextHebrew={data.verses[0]?.text_hebrew}
+            autoPlay={false}
+          />
+        </div>
+      )}
 
       {data.verses?.map(v => {
         const vs = String(v.verse)
