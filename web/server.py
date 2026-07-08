@@ -1999,6 +1999,55 @@ def get_hebrew_verb_drill(count: int = 5, user_id: str = "default"):
     return {"ok": True, "data": {"drills": drills[:count], "total": len(drills)}}
 
 
+@app.get("/api/v1/grammar-reference")
+def search_grammar_reference(q: str = "", section: str = "", paragraph_id: int = 0, limit: int = 10):
+    """Search Joüon's Hebrew Grammar reference.
+    
+    Query params:
+      q: search term in grammar text
+      section: filter by section (Écriture, Morphologie, Syntaxe, Introduction)
+      paragraph_id: get a specific paragraph
+      limit: max results (default 10)
+    """
+    memorize_db = Path(__file__).parent.parent / "data" / "memorize.db"
+    if not memorize_db.exists():
+        raise HTTPException(status_code=404, detail="Grammar reference DB not found")
+    
+    import sqlite3
+    conn = sqlite3.connect(str(memorize_db))
+    conn.row_factory = sqlite3.Row
+    
+    if paragraph_id > 0:
+        row = conn.execute("SELECT * FROM grammar_reference WHERE paragraph_id=?", (paragraph_id,)).fetchone()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Paragraph {paragraph_id} not found")
+        result = dict(row)
+        return {"ok": True, "data": result}
+    
+    query = "SELECT paragraph_id, section, subsection, summary, hebrew_examples FROM grammar_reference WHERE 1=1"
+    params = []
+    
+    if q:
+        query += " AND (summary LIKE ? OR subsection LIKE ?)"
+        params.extend([f'%{q}%', f'%{q}%'])
+    if section:
+        query += " AND section = ?"
+        params.append(section)
+    
+    query += " ORDER BY paragraph_id LIMIT ?"
+    params.append(limit)
+    
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    
+    return {"ok": True, "data": {
+        "results": [dict(r) for r in rows],
+        "total": len(rows),
+        "sections": ["Écriture", "Morphologie", "Syntaxe", "Introduction"],
+    }}
+
+
 @app.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     """Get full lesson content for a Hebrew concept node.
@@ -3815,12 +3864,24 @@ PRICING = {
     "cache_hit": 0.07,
 }
 
-# Load system prompt from CHAT_AGENTS.md
-_CHAT_AGENTS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "CHAT_AGENTS.md")
-CHAT_SYSTEM_PROMPT = ""
-if os.path.exists(_CHAT_AGENTS_PATH):
-    with open(_CHAT_AGENTS_PATH) as f:
-        CHAT_SYSTEM_PROMPT = f.read()
+# Load system prompts by mode
+_CHAT_PROMPTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CHAT_PROMPT_FILES = {
+    "chat": "CHAT_AGENTS.md",
+    "hebrew": "CHAT_AGENTS_HEBREW.md",
+    "knowledge": "CHAT_AGENTS_KNOWLEDGE.md",
+}
+CHAT_PROMPTS = {}
+for mode, filename in _CHAT_PROMPT_FILES.items():
+    path = os.path.join(_CHAT_PROMPTS_DIR, filename)
+    if os.path.exists(path):
+        with open(path) as f:
+            CHAT_PROMPTS[mode] = f.read()
+    else:
+        CHAT_PROMPTS[mode] = ""
+
+# Default to chat mode
+CHAT_SYSTEM_PROMPT = CHAT_PROMPTS.get("chat", "")
 
 # --- Tool definitions ---
 
@@ -4437,6 +4498,7 @@ class ChatRequest(BaseModel):
     temperature: float = 0.7
     tools_enabled: bool = True
     disabled_tools: list[str] = []
+    mode: str = "chat"  # "chat", "hebrew", "knowledge"
 
 
 @app.get("/api/v1/chat/instructions")
@@ -4468,12 +4530,18 @@ async def llm_chat(body: ChatRequest):
     from lib.api.staging import stage_connection, stage_study
     from lib.db import get_db
 
-    # Build messages with system prompt
+    # Build messages with system prompt (mode-specific)
     msgs = list(body.messages)
-    if CHAT_SYSTEM_PROMPT:
-        # Prepend system instruction if not already present
+    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
+    if prompt:
         if not any(m.get("role") == "system" for m in msgs):
-            msgs.insert(0, {"role": "system", "content": CHAT_SYSTEM_PROMPT})
+            msgs.insert(0, {"role": "system", "content": prompt})
+        else:
+            # Replace existing system prompt with mode-specific one
+            for i, m in enumerate(msgs):
+                if m.get("role") == "system":
+                    msgs[i] = {"role": "system", "content": prompt}
+                    break
 
     # Context budget management
     # Total budget: 300K tokens. max_tokens capped at 128K. Compaction trigger at 200K prompt tokens.

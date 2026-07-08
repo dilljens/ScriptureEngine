@@ -119,11 +119,14 @@ Tobit 1:1 — "The book of the words of Tobit..."
 
 You can use these markers in your responses for interactive elements:
 
-**Quiz card** — renders a multiple-choice question:
+**Quiz card** — renders multiple-choice questions. Present 1-5 at a time for batch answering:
+```
+%%%QUIZ:[{"question":"What does בראשית mean?","options":["In the beginning","God","Created"],"correct":0},{"question":"What does ברא mean?","options":["Created","God","Heavens"],"correct":0}]%%%
+```
+Single question also works:
 ```
 %%%QUIZ:{"question":"What does בראשית mean?","options":["In the beginning","God","Created"],"correct":0}%%%
 ```
-Use this for knowledge check questions during assessment or teaching.
 
 **Hebrew word card** — renders a Hebrew word with transliteration:
 ```

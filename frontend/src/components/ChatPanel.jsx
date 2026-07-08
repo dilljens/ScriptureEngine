@@ -884,7 +884,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // Returns an array of plain text and React elements.
   function renderWithMarkers(text) {
     if (!text) return text
-    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
+    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*})%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
     const elements = parts.map((part, i) => {
@@ -907,11 +907,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           </button>
         )
       }
-      const qm = part.match(/%%%QUIZ:({[^%]+})%%%/)
+      const qm = part.match(/%%%QUIZ:((?:\[[^%]*\]|{[^%]*}))%%%/)
       if (qm) {
         try {
           const quizData = JSON.parse(qm[1])
-          return <QuizCard key={`q${i}`} question={quizData.question} options={quizData.options} />
+          // Handle both single question and array of questions
+          const questions = Array.isArray(quizData) ? quizData : [quizData]
+          return <QuizCard key={`q${i}`} questions={questions} />
         } catch { return <span className="text-red-500 text-xs">[invalid quiz]</span> }
       }
       const hqm = part.match(/%%%HEBREW_QUIZ:({[^%]+})%%%/)
