@@ -18,9 +18,20 @@ function useChapterData(book, chapter) {
       if (cancel) return
       sl(true); se(null)
       fetch(`/api/v1/chapter/${key}`)
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`, { cause: { status: r.status } })
+          return r.json()
+        })
         .then(r => { if (!cancel) { cache[key] = r.data; sd(r.data); sl(false) } })
-        .catch(err => { if (cancel) return; att++; if (att < 5) setTimeout(tf, Math.min(1000 * 2 ** att, 8000)); else { se(err.message); sl(false) } })
+        .catch(err => {
+          if (cancel) return
+          // Don't retry on 4xx errors — they're permanent (book doesn't have that chapter)
+          const status = err.cause?.status || 0
+          if (status >= 400 && status < 500) {
+            se(err.message); sl(false); return
+          }
+          att++; if (att < 5) setTimeout(tf, Math.min(1000 * 2 ** att, 8000)); else { se(err.message); sl(false) }
+        })
     }
     tf()
     return () => { cancel = true }

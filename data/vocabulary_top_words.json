@@ -1,0 +1,2002 @@
+[
+  {
+    "Hebrew_Text": "את",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "את",
+    "Part_of_Speech": "particle",
+    "Occurrences": 6411,
+    "Frequency_Rank": 1,
+    "Notes": "Root: את | POS: particle"
+  },
+  {
+    "Hebrew_Text": "יהוה",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "יהוה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 4926,
+    "Frequency_Rank": 2,
+    "Notes": "Root: יהוה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אל",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "אל",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 4117,
+    "Frequency_Rank": 3,
+    "Notes": "Root: אל | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "על",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "על",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 4070,
+    "Frequency_Rank": 4,
+    "Notes": "Root: על | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "אשר",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "אשר",
+    "Part_of_Speech": "particle",
+    "Occurrences": 3984,
+    "Frequency_Rank": 5,
+    "Notes": "Root: אשר | POS: particle"
+  },
+  {
+    "Hebrew_Text": "כי",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "כי",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 3730,
+    "Frequency_Rank": 6,
+    "Notes": "Root: כי | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "בנים",
+    "Transliteration": "",
+    "Primary_Gloss": "Son",
+    "Root": "בנים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 3065,
+    "Frequency_Rank": 7,
+    "Notes": "Root: בנים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "כל",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "כל",
+    "Part_of_Speech": "noun",
+    "Occurrences": 2812,
+    "Frequency_Rank": 8,
+    "Notes": "Root: כל | POS: noun"
+  },
+  {
+    "Hebrew_Text": "לא",
+    "Transliteration": "",
+    "Primary_Gloss": "Neither",
+    "Root": "לא",
+    "Part_of_Speech": "particle",
+    "Occurrences": 2734,
+    "Frequency_Rank": 9,
+    "Notes": "Root: לא | POS: particle"
+  },
+  {
+    "Hebrew_Text": "ויאמר",
+    "Transliteration": "",
+    "Primary_Gloss": "Saith",
+    "Root": "יאמר",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 2690,
+    "Frequency_Rank": 10,
+    "Notes": "Root: יאמר | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "ישראל",
+    "Transliteration": "",
+    "Primary_Gloss": "Israel",
+    "Root": "שראל",
+    "Part_of_Speech": "noun",
+    "Occurrences": 2037,
+    "Frequency_Rank": 11,
+    "Notes": "Root: שראל | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אלהים",
+    "Transliteration": "",
+    "Primary_Gloss": "GOD",
+    "Root": "להים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 1763,
+    "Frequency_Rank": 12,
+    "Notes": "Root: להים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ויהי",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "ויהי",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 1668,
+    "Frequency_Rank": 13,
+    "Notes": "Root: ויהי | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "עשה",
+    "Transliteration": "",
+    "Primary_Gloss": "Done",
+    "Root": "עשה",
+    "Part_of_Speech": "verb",
+    "Occurrences": 1477,
+    "Frequency_Rank": 14,
+    "Notes": "Root: עשה | POS: verb"
+  },
+  {
+    "Hebrew_Text": "איש",
+    "Transliteration": "",
+    "Primary_Gloss": "Man",
+    "Root": "איש",
+    "Part_of_Speech": "noun",
+    "Occurrences": 1299,
+    "Frequency_Rank": 15,
+    "Notes": "Root: איש | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הביא",
+    "Transliteration": "",
+    "Primary_Gloss": "Bring",
+    "Root": "הביא",
+    "Part_of_Speech": "verb",
+    "Occurrences": 1178,
+    "Frequency_Rank": 16,
+    "Notes": "Root: הביא | POS: verb"
+  },
+  {
+    "Hebrew_Text": "הוא",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "הוא",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 1080,
+    "Frequency_Rank": 17,
+    "Notes": "Root: הוא | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "נתתי",
+    "Transliteration": "",
+    "Primary_Gloss": "Give",
+    "Root": "נתתי",
+    "Part_of_Speech": "verb",
+    "Occurrences": 1023,
+    "Frequency_Rank": 18,
+    "Notes": "Root: נתתי | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ביתך",
+    "Transliteration": "",
+    "Primary_Gloss": "House",
+    "Root": "ביתך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 997,
+    "Frequency_Rank": 19,
+    "Notes": "Root: ביתך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "מן",
+    "Transliteration": "",
+    "Primary_Gloss": "Too",
+    "Root": "מן",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 963,
+    "Frequency_Rank": 20,
+    "Notes": "Root: מן | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "עד",
+    "Transliteration": "",
+    "Primary_Gloss": "Until",
+    "Root": "עד",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 958,
+    "Frequency_Rank": 21,
+    "Notes": "Root: עד | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "לפני",
+    "Transliteration": "",
+    "Primary_Gloss": "Face",
+    "Root": "לפני",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 954,
+    "Frequency_Rank": 22,
+    "Notes": "Root: לפני | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "מלך",
+    "Transliteration": "",
+    "Primary_Gloss": "King",
+    "Root": "מלך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 914,
+    "Frequency_Rank": 23,
+    "Notes": "Root: מלך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הארץ",
+    "Transliteration": "",
+    "Primary_Gloss": "Land",
+    "Root": "הארץ",
+    "Part_of_Speech": "particle",
+    "Occurrences": 894,
+    "Frequency_Rank": 24,
+    "Notes": "Root: הארץ | POS: particle"
+  },
+  {
+    "Hebrew_Text": "אביו",
+    "Transliteration": "",
+    "Primary_Gloss": "Father",
+    "Root": "אביו",
+    "Part_of_Speech": "noun",
+    "Occurrences": 874,
+    "Frequency_Rank": 25,
+    "Notes": "Root: אביו | POS: noun"
+  },
+  {
+    "Hebrew_Text": "עמה",
+    "Transliteration": "",
+    "Primary_Gloss": "Slept",
+    "Root": "עמה",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 803,
+    "Frequency_Rank": 26,
+    "Notes": "Root: עמה | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "דבר",
+    "Transliteration": "",
+    "Primary_Gloss": "Word",
+    "Root": "דבר",
+    "Part_of_Speech": "noun",
+    "Occurrences": 783,
+    "Frequency_Rank": 27,
+    "Notes": "Root: דבר | POS: noun"
+  },
+  {
+    "Hebrew_Text": "שמעתי",
+    "Transliteration": "",
+    "Primary_Gloss": "Hear",
+    "Root": "מעתי",
+    "Part_of_Speech": "verb",
+    "Occurrences": 740,
+    "Frequency_Rank": 28,
+    "Notes": "Root: מעתי | POS: verb"
+  },
+  {
+    "Hebrew_Text": "דוד",
+    "Transliteration": "",
+    "Primary_Gloss": "David",
+    "Root": "דוד",
+    "Part_of_Speech": "noun",
+    "Occurrences": 729,
+    "Frequency_Rank": 29,
+    "Notes": "Root: דוד | POS: noun"
+  },
+  {
+    "Hebrew_Text": "העם",
+    "Transliteration": "",
+    "Primary_Gloss": "People",
+    "Root": "העם",
+    "Part_of_Speech": "particle",
+    "Occurrences": 728,
+    "Frequency_Rank": 30,
+    "Notes": "Root: העם | POS: particle"
+  },
+  {
+    "Hebrew_Text": "ידו",
+    "Transliteration": "",
+    "Primary_Gloss": "Hand",
+    "Root": "ידו",
+    "Part_of_Speech": "noun",
+    "Occurrences": 696,
+    "Frequency_Rank": 31,
+    "Notes": "Root: ידו | POS: noun"
+  },
+  {
+    "Hebrew_Text": "משה",
+    "Transliteration": "",
+    "Primary_Gloss": "Moses",
+    "Root": "משה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 672,
+    "Frequency_Rank": 32,
+    "Notes": "Root: משה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הזה",
+    "Transliteration": "",
+    "Primary_Gloss": "Five",
+    "Root": "הזה",
+    "Part_of_Speech": "particle",
+    "Occurrences": 658,
+    "Frequency_Rank": 33,
+    "Notes": "Root: הזה | POS: particle"
+  },
+  {
+    "Hebrew_Text": "דבר",
+    "Transliteration": "",
+    "Primary_Gloss": "Speak",
+    "Root": "דבר",
+    "Part_of_Speech": "verb",
+    "Occurrences": 651,
+    "Frequency_Rank": 34,
+    "Notes": "Root: דבר | POS: verb"
+  },
+  {
+    "Hebrew_Text": "אני",
+    "Transliteration": "",
+    "Primary_Gloss": "LORD",
+    "Root": "אני",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 650,
+    "Frequency_Rank": 35,
+    "Notes": "Root: אני | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "יום",
+    "Transliteration": "",
+    "Primary_Gloss": "Days",
+    "Root": "יום",
+    "Part_of_Speech": "noun",
+    "Occurrences": 647,
+    "Frequency_Rank": 36,
+    "Notes": "Root: יום | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ראיתי",
+    "Transliteration": "",
+    "Primary_Gloss": "See",
+    "Root": "איתי",
+    "Part_of_Speech": "verb",
+    "Occurrences": 635,
+    "Frequency_Rank": 37,
+    "Notes": "Root: איתי | POS: verb"
+  },
+  {
+    "Hebrew_Text": "יהודה",
+    "Transliteration": "",
+    "Primary_Gloss": "Judah",
+    "Root": "הודה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 631,
+    "Frequency_Rank": 38,
+    "Notes": "Root: הודה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "את",
+    "Transliteration": "",
+    "Primary_Gloss": "King",
+    "Root": "את",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 614,
+    "Frequency_Rank": 39,
+    "Notes": "Root: את | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "שם",
+    "Transliteration": "",
+    "Primary_Gloss": "Thither",
+    "Root": "שם",
+    "Part_of_Speech": "adverb",
+    "Occurrences": 608,
+    "Frequency_Rank": 40,
+    "Notes": "Root: שם | POS: adverb"
+  },
+  {
+    "Hebrew_Text": "אם",
+    "Transliteration": "",
+    "Primary_Gloss": "Whether",
+    "Root": "אם",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 602,
+    "Frequency_Rank": 41,
+    "Notes": "Root: אם | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "ידע",
+    "Transliteration": "",
+    "Primary_Gloss": "Know",
+    "Root": "ידע",
+    "Part_of_Speech": "verb",
+    "Occurrences": 586,
+    "Frequency_Rank": 42,
+    "Notes": "Root: ידע | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ישב",
+    "Transliteration": "",
+    "Primary_Gloss": "Inhabitants",
+    "Root": "ישב",
+    "Part_of_Speech": "verb",
+    "Occurrences": 558,
+    "Frequency_Rank": 43,
+    "Notes": "Root: ישב | POS: verb"
+  },
+  {
+    "Hebrew_Text": "עבד",
+    "Transliteration": "",
+    "Primary_Gloss": "Servants",
+    "Root": "עבד",
+    "Part_of_Speech": "noun",
+    "Occurrences": 548,
+    "Frequency_Rank": 44,
+    "Notes": "Root: עבד | POS: noun"
+  },
+  {
+    "Hebrew_Text": "נפש",
+    "Transliteration": "",
+    "Primary_Gloss": "Soul",
+    "Root": "נפש",
+    "Part_of_Speech": "noun",
+    "Occurrences": 543,
+    "Frequency_Rank": 45,
+    "Notes": "Root: נפש | POS: noun"
+  },
+  {
+    "Hebrew_Text": "כה",
+    "Transliteration": "",
+    "Primary_Gloss": "Thus",
+    "Root": "כה",
+    "Part_of_Speech": "adverb",
+    "Occurrences": 533,
+    "Frequency_Rank": 46,
+    "Notes": "Root: כה | POS: adverb"
+  },
+  {
+    "Hebrew_Text": "אחד",
+    "Transliteration": "",
+    "Primary_Gloss": "One",
+    "Root": "אחד",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 527,
+    "Frequency_Rank": 47,
+    "Notes": "Root: אחד | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "אחרי",
+    "Transliteration": "",
+    "Primary_Gloss": "Followed",
+    "Root": "אחרי",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 511,
+    "Frequency_Rank": 48,
+    "Notes": "Root: אחרי | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "שנה",
+    "Transliteration": "",
+    "Primary_Gloss": "Years",
+    "Root": "שנה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 500,
+    "Frequency_Rank": 49,
+    "Notes": "Root: שנה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אתה",
+    "Transliteration": "",
+    "Primary_Gloss": "Art",
+    "Root": "אתה",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 499,
+    "Frequency_Rank": 50,
+    "Notes": "Root: אתה | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "תוצא",
+    "Transliteration": "",
+    "Primary_Gloss": "Forth",
+    "Root": "תוצא",
+    "Part_of_Speech": "verb",
+    "Occurrences": 497,
+    "Frequency_Rank": 51,
+    "Notes": "Root: תוצא | POS: verb"
+  },
+  {
+    "Hebrew_Text": "אל",
+    "Transliteration": "",
+    "Primary_Gloss": "Fear",
+    "Root": "אל",
+    "Part_of_Speech": "particle",
+    "Occurrences": 496,
+    "Frequency_Rank": 52,
+    "Notes": "Root: אל | POS: particle"
+  },
+  {
+    "Hebrew_Text": "ויקח",
+    "Transliteration": "",
+    "Primary_Gloss": "Take",
+    "Root": "ויקח",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 495,
+    "Frequency_Rank": 53,
+    "Notes": "Root: ויקח | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "כן",
+    "Transliteration": "",
+    "Primary_Gloss": "Therefore",
+    "Root": "כן",
+    "Part_of_Speech": "adverb",
+    "Occurrences": 489,
+    "Frequency_Rank": 54,
+    "Notes": "Root: כן | POS: adverb"
+  },
+  {
+    "Hebrew_Text": "שובך",
+    "Transliteration": "",
+    "Primary_Gloss": "Return",
+    "Root": "שובך",
+    "Part_of_Speech": "verb",
+    "Occurrences": 488,
+    "Frequency_Rank": 55,
+    "Notes": "Root: שובך | POS: verb"
+  },
+  {
+    "Hebrew_Text": "שם",
+    "Transliteration": "",
+    "Primary_Gloss": "Name",
+    "Root": "שם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 485,
+    "Frequency_Rank": 56,
+    "Notes": "Root: שם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הכהנים",
+    "Transliteration": "",
+    "Primary_Gloss": "Priests",
+    "Root": "הנים",
+    "Part_of_Speech": "particle",
+    "Occurrences": 475,
+    "Frequency_Rank": 57,
+    "Notes": "Root: הנים | POS: particle"
+  },
+  {
+    "Hebrew_Text": "שני",
+    "Transliteration": "",
+    "Primary_Gloss": "Two",
+    "Root": "שני",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 473,
+    "Frequency_Rank": 58,
+    "Notes": "Root: שני | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "הנה",
+    "Transliteration": "",
+    "Primary_Gloss": "Behold",
+    "Root": "הנה",
+    "Part_of_Speech": "particle",
+    "Occurrences": 456,
+    "Frequency_Rank": 59,
+    "Notes": "Root: הנה | POS: particle"
+  },
+  {
+    "Hebrew_Text": "לבו",
+    "Transliteration": "",
+    "Primary_Gloss": "Heart",
+    "Root": "לבו",
+    "Part_of_Speech": "noun",
+    "Occurrences": 439,
+    "Frequency_Rank": 60,
+    "Notes": "Root: לבו | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ותלך",
+    "Transliteration": "",
+    "Primary_Gloss": "Walk",
+    "Root": "ותלך",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 437,
+    "Frequency_Rank": 61,
+    "Notes": "Root: ותלך | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "גם",
+    "Transliteration": "",
+    "Primary_Gloss": "Both",
+    "Root": "גם",
+    "Part_of_Speech": "particle",
+    "Occurrences": 433,
+    "Frequency_Rank": 62,
+    "Notes": "Root: גם | POS: particle"
+  },
+  {
+    "Hebrew_Text": "אין",
+    "Transliteration": "",
+    "Primary_Gloss": "None",
+    "Root": "אין",
+    "Part_of_Speech": "particle",
+    "Occurrences": 431,
+    "Frequency_Rank": 63,
+    "Notes": "Root: אין | POS: particle"
+  },
+  {
+    "Hebrew_Text": "אכל",
+    "Transliteration": "",
+    "Primary_Gloss": "Eat",
+    "Root": "אכל",
+    "Part_of_Speech": "verb",
+    "Occurrences": 427,
+    "Frequency_Rank": 64,
+    "Notes": "Root: אכל | POS: verb"
+  },
+  {
+    "Hebrew_Text": "יעלה",
+    "Transliteration": "",
+    "Primary_Gloss": "Cud",
+    "Root": "יעלה",
+    "Part_of_Speech": "verb",
+    "Occurrences": 426,
+    "Frequency_Rank": 65,
+    "Notes": "Root: יעלה | POS: verb"
+  },
+  {
+    "Hebrew_Text": "מצרימה",
+    "Transliteration": "",
+    "Primary_Gloss": "Egypt",
+    "Root": "רימה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 426,
+    "Frequency_Rank": 66,
+    "Notes": "Root: רימה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "מה",
+    "Transliteration": "",
+    "Primary_Gloss": "What",
+    "Root": "מה",
+    "Part_of_Speech": "particle",
+    "Occurrences": 418,
+    "Frequency_Rank": 67,
+    "Notes": "Root: מה | POS: particle"
+  },
+  {
+    "Hebrew_Text": "מאת",
+    "Transliteration": "",
+    "Primary_Gloss": "Hundred",
+    "Root": "מאת",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 417,
+    "Frequency_Rank": 68,
+    "Notes": "Root: מאת | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "אחיו",
+    "Transliteration": "",
+    "Primary_Gloss": "Brother",
+    "Root": "אחיו",
+    "Part_of_Speech": "noun",
+    "Occurrences": 413,
+    "Frequency_Rank": 69,
+    "Notes": "Root: אחיו | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אדני",
+    "Transliteration": "",
+    "Primary_Gloss": "Saith",
+    "Root": "אדני",
+    "Part_of_Speech": "noun",
+    "Occurrences": 410,
+    "Frequency_Rank": 70,
+    "Notes": "Root: אדני | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אשה",
+    "Transliteration": "",
+    "Primary_Gloss": "Wife",
+    "Root": "אשה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 405,
+    "Frequency_Rank": 71,
+    "Notes": "Root: אשה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "עוד",
+    "Transliteration": "",
+    "Primary_Gloss": "More",
+    "Root": "עוד",
+    "Part_of_Speech": "adverb",
+    "Occurrences": 402,
+    "Frequency_Rank": 72,
+    "Notes": "Root: עוד | POS: adverb"
+  },
+  {
+    "Hebrew_Text": "צויתיך",
+    "Transliteration": "",
+    "Primary_Gloss": "Commanded",
+    "Root": "יתיך",
+    "Part_of_Speech": "verb",
+    "Occurrences": 386,
+    "Frequency_Rank": 73,
+    "Notes": "Root: יתיך | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ישלח",
+    "Transliteration": "",
+    "Primary_Gloss": "Sent",
+    "Root": "ישלח",
+    "Part_of_Speech": "verb",
+    "Occurrences": 383,
+    "Frequency_Rank": 74,
+    "Notes": "Root: ישלח | POS: verb"
+  },
+  {
+    "Hebrew_Text": "תחתנה",
+    "Transliteration": "",
+    "Primary_Gloss": "Under",
+    "Root": "חתנה",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 382,
+    "Frequency_Rank": 75,
+    "Notes": "Root: חתנה | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "נא",
+    "Transliteration": "",
+    "Primary_Gloss": "Pray",
+    "Root": "נא",
+    "Part_of_Speech": "particle",
+    "Occurrences": 374,
+    "Frequency_Rank": 76,
+    "Notes": "Root: נא | POS: particle"
+  },
+  {
+    "Hebrew_Text": "מות",
+    "Transliteration": "",
+    "Primary_Gloss": "Die",
+    "Root": "מות",
+    "Part_of_Speech": "verb",
+    "Occurrences": 374,
+    "Frequency_Rank": 77,
+    "Notes": "Root: מות | POS: verb"
+  },
+  {
+    "Hebrew_Text": "הם",
+    "Transliteration": "",
+    "Primary_Gloss": "Chronicles",
+    "Root": "הם",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 373,
+    "Frequency_Rank": 78,
+    "Notes": "Root: הם | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "נשא",
+    "Transliteration": "",
+    "Primary_Gloss": "Lift",
+    "Root": "נשא",
+    "Part_of_Speech": "verb",
+    "Occurrences": 360,
+    "Frequency_Rank": 79,
+    "Notes": "Root: נשא | POS: verb"
+  },
+  {
+    "Hebrew_Text": "נאם",
+    "Transliteration": "",
+    "Primary_Gloss": "Saith",
+    "Root": "נאם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 358,
+    "Frequency_Rank": 80,
+    "Notes": "Root: נאם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ראשים",
+    "Transliteration": "",
+    "Primary_Gloss": "Head",
+    "Root": "אשים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 354,
+    "Frequency_Rank": 81,
+    "Notes": "Root: אשים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "העיר",
+    "Transliteration": "",
+    "Primary_Gloss": "Cities",
+    "Root": "העיר",
+    "Part_of_Speech": "particle",
+    "Occurrences": 349,
+    "Frequency_Rank": 82,
+    "Notes": "Root: העיר | POS: particle"
+  },
+  {
+    "Hebrew_Text": "רבה",
+    "Transliteration": "",
+    "Primary_Gloss": "Many",
+    "Root": "רבה",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 349,
+    "Frequency_Rank": 83,
+    "Notes": "Root: רבה | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "אלף",
+    "Transliteration": "",
+    "Primary_Gloss": "Thousand",
+    "Root": "אלף",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 346,
+    "Frequency_Rank": 84,
+    "Notes": "Root: אלף | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "ויקרא",
+    "Transliteration": "",
+    "Primary_Gloss": "Called",
+    "Root": "יקרא",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 343,
+    "Frequency_Rank": 85,
+    "Notes": "Root: יקרא | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "בנות",
+    "Transliteration": "",
+    "Primary_Gloss": "Daughter",
+    "Root": "בנות",
+    "Part_of_Speech": "noun",
+    "Occurrences": 341,
+    "Frequency_Rank": 86,
+    "Notes": "Root: בנות | POS: noun"
+  },
+  {
+    "Hebrew_Text": "מתהלך",
+    "Transliteration": "",
+    "Primary_Gloss": "Walked",
+    "Root": "תהלך",
+    "Part_of_Speech": "verb",
+    "Occurrences": 339,
+    "Frequency_Rank": 87,
+    "Notes": "Root: תהלך | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ירושלם",
+    "Transliteration": "",
+    "Primary_Gloss": "Jerusalem",
+    "Root": "ושלם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 337,
+    "Frequency_Rank": 88,
+    "Notes": "Root: ושלם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "דרך",
+    "Transliteration": "",
+    "Primary_Gloss": "Way",
+    "Root": "דרך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 337,
+    "Frequency_Rank": 89,
+    "Notes": "Root: דרך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אדם",
+    "Transliteration": "",
+    "Primary_Gloss": "Man",
+    "Root": "אדם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 335,
+    "Frequency_Rank": 90,
+    "Notes": "Root: אדם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "עיניכם",
+    "Transliteration": "",
+    "Primary_Gloss": "Eyes",
+    "Root": "ניכם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 334,
+    "Frequency_Rank": 91,
+    "Notes": "Root: ניכם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "גדול",
+    "Transliteration": "",
+    "Primary_Gloss": "Great",
+    "Root": "גדול",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 323,
+    "Frequency_Rank": 92,
+    "Notes": "Root: גדול | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "מקים",
+    "Transliteration": "",
+    "Primary_Gloss": "Arise",
+    "Root": "מקים",
+    "Part_of_Speech": "verb",
+    "Occurrences": 307,
+    "Frequency_Rank": 93,
+    "Notes": "Root: מקים | POS: verb"
+  },
+  {
+    "Hebrew_Text": "מים",
+    "Transliteration": "",
+    "Primary_Gloss": "Waters",
+    "Root": "מים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 307,
+    "Frequency_Rank": 94,
+    "Notes": "Root: מים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "שאול",
+    "Transliteration": "",
+    "Primary_Gloss": "Saul",
+    "Root": "שאול",
+    "Part_of_Speech": "noun",
+    "Occurrences": 304,
+    "Frequency_Rank": 95,
+    "Notes": "Root: שאול | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אלה",
+    "Transliteration": "",
+    "Primary_Gloss": "These",
+    "Root": "אלה",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 301,
+    "Frequency_Rank": 96,
+    "Notes": "Root: אלה | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "עבר",
+    "Transliteration": "",
+    "Primary_Gloss": "Passed",
+    "Root": "עבר",
+    "Part_of_Speech": "verb",
+    "Occurrences": 299,
+    "Frequency_Rank": 97,
+    "Notes": "Root: עבר | POS: verb"
+  },
+  {
+    "Hebrew_Text": "יהוה",
+    "Transliteration": "",
+    "Primary_Gloss": "Saith",
+    "Root": "יהוה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 295,
+    "Frequency_Rank": 98,
+    "Notes": "Root: יהוה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הן",
+    "Transliteration": "",
+    "Primary_Gloss": "Behold",
+    "Root": "הן",
+    "Part_of_Speech": "particle",
+    "Occurrences": 295,
+    "Frequency_Rank": 99,
+    "Notes": "Root: הן | POS: particle"
+  },
+  {
+    "Hebrew_Text": "מי",
+    "Transliteration": "",
+    "Primary_Gloss": "Rebellest",
+    "Root": "מי",
+    "Part_of_Speech": "particle",
+    "Occurrences": 292,
+    "Frequency_Rank": 100,
+    "Notes": "Root: מי | POS: particle"
+  },
+  {
+    "Hebrew_Text": "בתוך",
+    "Transliteration": "",
+    "Primary_Gloss": "Pare",
+    "Root": "בתוך",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 291,
+    "Frequency_Rank": 101,
+    "Notes": "Root: בתוך | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "עשרה",
+    "Transliteration": "",
+    "Primary_Gloss": "Twelve",
+    "Root": "עשרה",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 291,
+    "Frequency_Rank": 102,
+    "Notes": "Root: עשרה | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "שלש",
+    "Transliteration": "",
+    "Primary_Gloss": "Three",
+    "Root": "שלש",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 289,
+    "Frequency_Rank": 103,
+    "Notes": "Root: שלש | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "מצא",
+    "Transliteration": "",
+    "Primary_Gloss": "Found",
+    "Root": "מצא",
+    "Part_of_Speech": "verb",
+    "Occurrences": 287,
+    "Frequency_Rank": 104,
+    "Notes": "Root: מצא | POS: verb"
+  },
+  {
+    "Hebrew_Text": "מאד",
+    "Transliteration": "",
+    "Primary_Gloss": "Very",
+    "Root": "מאד",
+    "Part_of_Speech": "adverb",
+    "Occurrences": 277,
+    "Frequency_Rank": 105,
+    "Notes": "Root: מאד | POS: adverb"
+  },
+  {
+    "Hebrew_Text": "אנכי",
+    "Transliteration": "",
+    "Primary_Gloss": "Command",
+    "Root": "אנכי",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 276,
+    "Frequency_Rank": 106,
+    "Notes": "Root: אנכי | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "צבאות",
+    "Transliteration": "",
+    "Primary_Gloss": "Hosts",
+    "Root": "באות",
+    "Part_of_Speech": "noun",
+    "Occurrences": 270,
+    "Frequency_Rank": 107,
+    "Notes": "Root: באות | POS: noun"
+  },
+  {
+    "Hebrew_Text": "שבע",
+    "Transliteration": "",
+    "Primary_Gloss": "Seven",
+    "Root": "שבע",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 268,
+    "Frequency_Rank": 108,
+    "Notes": "Root: שבע | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "ועתה",
+    "Transliteration": "",
+    "Primary_Gloss": "Rebellest",
+    "Root": "ועתה",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 267,
+    "Frequency_Rank": 109,
+    "Notes": "Root: ועתה | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "תשמר",
+    "Transliteration": "",
+    "Primary_Gloss": "Keep",
+    "Root": "תשמר",
+    "Part_of_Speech": "verb",
+    "Occurrences": 266,
+    "Frequency_Rank": 110,
+    "Notes": "Root: תשמר | POS: verb"
+  },
+  {
+    "Hebrew_Text": "טוב",
+    "Transliteration": "",
+    "Primary_Gloss": "Good",
+    "Root": "טוב",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 266,
+    "Frequency_Rank": 111,
+    "Notes": "Root: טוב | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "וישם",
+    "Transliteration": "",
+    "Primary_Gloss": "Set",
+    "Root": "וישם",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 263,
+    "Frequency_Rank": 112,
+    "Notes": "Root: וישם | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "רוחי",
+    "Transliteration": "",
+    "Primary_Gloss": "Spirit",
+    "Root": "רוחי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 260,
+    "Frequency_Rank": 113,
+    "Notes": "Root: רוחי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הזאת",
+    "Transliteration": "",
+    "Primary_Gloss": "Procured",
+    "Root": "הזאת",
+    "Part_of_Speech": "particle",
+    "Occurrences": 257,
+    "Frequency_Rank": 114,
+    "Notes": "Root: הזאת | POS: particle"
+  },
+  {
+    "Hebrew_Text": "יעקב",
+    "Transliteration": "",
+    "Primary_Gloss": "Jacob",
+    "Root": "יעקב",
+    "Part_of_Speech": "noun",
+    "Occurrences": 255,
+    "Frequency_Rank": 115,
+    "Notes": "Root: יעקב | POS: noun"
+  },
+  {
+    "Hebrew_Text": "עמד",
+    "Transliteration": "",
+    "Primary_Gloss": "Stood",
+    "Root": "עמד",
+    "Part_of_Speech": "verb",
+    "Occurrences": 253,
+    "Frequency_Rank": 116,
+    "Notes": "Root: עמד | POS: verb"
+  },
+  {
+    "Hebrew_Text": "שרי",
+    "Transliteration": "",
+    "Primary_Gloss": "Princes",
+    "Root": "שרי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 252,
+    "Frequency_Rank": 117,
+    "Notes": "Root: שרי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "פיה",
+    "Transliteration": "",
+    "Primary_Gloss": "Mouth",
+    "Root": "פיה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 250,
+    "Frequency_Rank": 118,
+    "Notes": "Root: פיה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ויכו",
+    "Transliteration": "",
+    "Primary_Gloss": "Smite",
+    "Root": "ויכו",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 248,
+    "Frequency_Rank": 119,
+    "Notes": "Root: ויכו | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "אהרן",
+    "Transliteration": "",
+    "Primary_Gloss": "Aaron",
+    "Root": "אהרן",
+    "Part_of_Speech": "noun",
+    "Occurrences": 247,
+    "Frequency_Rank": 120,
+    "Notes": "Root: אהרן | POS: noun"
+  },
+  {
+    "Hebrew_Text": "תלדי",
+    "Transliteration": "",
+    "Primary_Gloss": "Begat",
+    "Root": "תלדי",
+    "Part_of_Speech": "verb",
+    "Occurrences": 246,
+    "Frequency_Rank": 121,
+    "Notes": "Root: תלדי | POS: verb"
+  },
+  {
+    "Hebrew_Text": "למען",
+    "Transliteration": "",
+    "Primary_Gloss": "Sake",
+    "Root": "למען",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 245,
+    "Frequency_Rank": 122,
+    "Notes": "Root: למען | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "אדני",
+    "Transliteration": "",
+    "Primary_Gloss": "Master",
+    "Root": "אדני",
+    "Part_of_Speech": "noun",
+    "Occurrences": 239,
+    "Frequency_Rank": 123,
+    "Notes": "Root: אדני | POS: noun"
+  },
+  {
+    "Hebrew_Text": "השמים",
+    "Transliteration": "",
+    "Primary_Gloss": "Heavens",
+    "Root": "שמים",
+    "Part_of_Speech": "particle",
+    "Occurrences": 233,
+    "Frequency_Rank": 124,
+    "Notes": "Root: שמים | POS: particle"
+  },
+  {
+    "Hebrew_Text": "קדש",
+    "Transliteration": "",
+    "Primary_Gloss": "Holy",
+    "Root": "קדש",
+    "Part_of_Speech": "noun",
+    "Occurrences": 232,
+    "Frequency_Rank": 125,
+    "Notes": "Root: קדש | POS: noun"
+  },
+  {
+    "Hebrew_Text": "סביב",
+    "Transliteration": "",
+    "Primary_Gloss": "Round",
+    "Root": "סביב",
+    "Part_of_Speech": "noun",
+    "Occurrences": 229,
+    "Frequency_Rank": 126,
+    "Notes": "Root: סביב | POS: noun"
+  },
+  {
+    "Hebrew_Text": "קול",
+    "Transliteration": "",
+    "Primary_Gloss": "Voice",
+    "Root": "קול",
+    "Part_of_Speech": "noun",
+    "Occurrences": 227,
+    "Frequency_Rank": 127,
+    "Notes": "Root: קול | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בין",
+    "Transliteration": "",
+    "Primary_Gloss": "Between",
+    "Root": "בין",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 224,
+    "Frequency_Rank": 128,
+    "Notes": "Root: בין | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "שלמה",
+    "Transliteration": "",
+    "Primary_Gloss": "Solomon",
+    "Root": "שלמה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 221,
+    "Frequency_Rank": 129,
+    "Notes": "Root: שלמה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "איביו",
+    "Transliteration": "",
+    "Primary_Gloss": "Enemies",
+    "Root": "יביו",
+    "Part_of_Speech": "verb",
+    "Occurrences": 221,
+    "Frequency_Rank": 130,
+    "Notes": "Root: יביו | POS: verb"
+  },
+  {
+    "Hebrew_Text": "נפלו",
+    "Transliteration": "",
+    "Primary_Gloss": "Fall",
+    "Root": "נפלו",
+    "Part_of_Speech": "verb",
+    "Occurrences": 217,
+    "Frequency_Rank": 131,
+    "Notes": "Root: נפלו | POS: verb"
+  },
+  {
+    "Hebrew_Text": "לחם",
+    "Transliteration": "",
+    "Primary_Gloss": "Bread",
+    "Root": "לחם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 217,
+    "Frequency_Rank": 132,
+    "Notes": "Root: לחם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "או",
+    "Transliteration": "",
+    "Primary_Gloss": "Woof",
+    "Root": "או",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 217,
+    "Frequency_Rank": 133,
+    "Notes": "Root: או | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "תירא",
+    "Transliteration": "",
+    "Primary_Gloss": "Fear",
+    "Root": "תירא",
+    "Part_of_Speech": "verb",
+    "Occurrences": 216,
+    "Frequency_Rank": 134,
+    "Notes": "Root: תירא | POS: verb"
+  },
+  {
+    "Hebrew_Text": "עולם",
+    "Transliteration": "",
+    "Primary_Gloss": "Ever",
+    "Root": "עולם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 213,
+    "Frequency_Rank": 135,
+    "Notes": "Root: עולם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "משפט",
+    "Transliteration": "",
+    "Primary_Gloss": "Judgment",
+    "Root": "משפט",
+    "Part_of_Speech": "noun",
+    "Occurrences": 213,
+    "Frequency_Rank": 136,
+    "Notes": "Root: משפט | POS: noun"
+  },
+  {
+    "Hebrew_Text": "זהב",
+    "Transliteration": "",
+    "Primary_Gloss": "Gold",
+    "Root": "זהב",
+    "Part_of_Speech": "noun",
+    "Occurrences": 210,
+    "Frequency_Rank": 137,
+    "Notes": "Root: זהב | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בבל",
+    "Transliteration": "",
+    "Primary_Gloss": "Babylon",
+    "Root": "בבל",
+    "Part_of_Speech": "noun",
+    "Occurrences": 208,
+    "Frequency_Rank": 138,
+    "Notes": "Root: בבל | POS: noun"
+  },
+  {
+    "Hebrew_Text": "כסף",
+    "Transliteration": "",
+    "Primary_Gloss": "Silver",
+    "Root": "כסף",
+    "Part_of_Speech": "noun",
+    "Occurrences": 202,
+    "Frequency_Rank": 139,
+    "Notes": "Root: כסף | POS: noun"
+  },
+  {
+    "Hebrew_Text": "פרעה",
+    "Transliteration": "",
+    "Primary_Gloss": "Pharaoh",
+    "Root": "פרעה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 201,
+    "Frequency_Rank": 140,
+    "Notes": "Root: פרעה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אפיך",
+    "Transliteration": "",
+    "Primary_Gloss": "Anger",
+    "Root": "אפיך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 198,
+    "Frequency_Rank": 141,
+    "Notes": "Root: אפיך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בריתי",
+    "Transliteration": "",
+    "Primary_Gloss": "Covenant",
+    "Root": "ריתי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 198,
+    "Frequency_Rank": 142,
+    "Notes": "Root: ריתי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הגוים",
+    "Transliteration": "",
+    "Primary_Gloss": "Nations",
+    "Root": "גוים",
+    "Part_of_Speech": "particle",
+    "Occurrences": 197,
+    "Frequency_Rank": 143,
+    "Notes": "Root: גוים | POS: particle"
+  },
+  {
+    "Hebrew_Text": "אתם",
+    "Transliteration": "",
+    "Primary_Gloss": "Possess",
+    "Root": "אתם",
+    "Part_of_Speech": "pronoun",
+    "Occurrences": 197,
+    "Frequency_Rank": 144,
+    "Notes": "Root: אתם | POS: pronoun"
+  },
+  {
+    "Hebrew_Text": "חרבך",
+    "Transliteration": "",
+    "Primary_Gloss": "Sword",
+    "Root": "חרבך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 196,
+    "Frequency_Rank": 145,
+    "Notes": "Root: חרבך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הרי",
+    "Transliteration": "",
+    "Primary_Gloss": "Mountains",
+    "Root": "הרי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 195,
+    "Frequency_Rank": 146,
+    "Notes": "Root: הרי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "רשע",
+    "Transliteration": "",
+    "Primary_Gloss": "Wicked",
+    "Root": "רשע",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 194,
+    "Frequency_Rank": 147,
+    "Notes": "Root: רשע | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "עשרים",
+    "Transliteration": "",
+    "Primary_Gloss": "Twenty",
+    "Root": "שרים",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 191,
+    "Frequency_Rank": 148,
+    "Notes": "Root: שרים | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "עץ",
+    "Transliteration": "",
+    "Primary_Gloss": "Wood",
+    "Root": "עץ",
+    "Part_of_Speech": "noun",
+    "Occurrences": 187,
+    "Frequency_Rank": 149,
+    "Notes": "Root: עץ | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ברוך",
+    "Transliteration": "",
+    "Primary_Gloss": "Bless",
+    "Root": "ברוך",
+    "Part_of_Speech": "verb",
+    "Occurrences": 187,
+    "Frequency_Rank": 150,
+    "Notes": "Root: ברוך | POS: verb"
+  },
+  {
+    "Hebrew_Text": "חסדך",
+    "Transliteration": "",
+    "Primary_Gloss": "Endureth",
+    "Root": "חסדך",
+    "Part_of_Speech": "noun",
+    "Occurrences": 185,
+    "Frequency_Rank": 151,
+    "Notes": "Root: חסדך | POS: noun"
+  },
+  {
+    "Hebrew_Text": "חיה",
+    "Transliteration": "",
+    "Primary_Gloss": "Liveth",
+    "Root": "חיה",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 185,
+    "Frequency_Rank": 152,
+    "Notes": "Root: חיה | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "דהוא",
+    "Transliteration": "",
+    "Primary_Gloss": "Daniel",
+    "Root": "דהוא",
+    "Part_of_Speech": "",
+    "Occurrences": 184,
+    "Frequency_Rank": 153,
+    "Notes": "Root: דהוא | POS: —"
+  },
+  {
+    "Hebrew_Text": "סורו",
+    "Transliteration": "",
+    "Primary_Gloss": "Aside",
+    "Root": "סורו",
+    "Part_of_Speech": "verb",
+    "Occurrences": 181,
+    "Frequency_Rank": 154,
+    "Notes": "Root: סורו | POS: verb"
+  },
+  {
+    "Hebrew_Text": "הנביא",
+    "Transliteration": "",
+    "Primary_Gloss": "Prophets",
+    "Root": "נביא",
+    "Part_of_Speech": "particle",
+    "Occurrences": 180,
+    "Frequency_Rank": 155,
+    "Notes": "Root: נביא | POS: particle"
+  },
+  {
+    "Hebrew_Text": "פלשתים",
+    "Transliteration": "",
+    "Primary_Gloss": "Philistines",
+    "Root": "שתים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 180,
+    "Frequency_Rank": 156,
+    "Notes": "Root: שתים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "כלי",
+    "Transliteration": "",
+    "Primary_Gloss": "Vessels",
+    "Root": "כלי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 179,
+    "Frequency_Rank": 157,
+    "Notes": "Root: כלי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "יהושע",
+    "Transliteration": "",
+    "Primary_Gloss": "Joshua",
+    "Root": "הושע",
+    "Part_of_Speech": "noun",
+    "Occurrences": 178,
+    "Frequency_Rank": 158,
+    "Notes": "Root: הושע | POS: noun"
+  },
+  {
+    "Hebrew_Text": "יוסף",
+    "Transliteration": "",
+    "Primary_Gloss": "Joseph",
+    "Root": "יוסף",
+    "Part_of_Speech": "noun",
+    "Occurrences": 177,
+    "Frequency_Rank": 159,
+    "Notes": "Root: יוסף | POS: noun"
+  },
+  {
+    "Hebrew_Text": "ויען",
+    "Transliteration": "",
+    "Primary_Gloss": "Answer",
+    "Root": "ויען",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 174,
+    "Frequency_Rank": 160,
+    "Notes": "Root: ויען | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "אל",
+    "Transliteration": "",
+    "Primary_Gloss": "GOD",
+    "Root": "אל",
+    "Part_of_Speech": "noun",
+    "Occurrences": 174,
+    "Frequency_Rank": 161,
+    "Notes": "Root: אל | POS: noun"
+  },
+  {
+    "Hebrew_Text": "לבבי",
+    "Transliteration": "",
+    "Primary_Gloss": "Heart",
+    "Root": "לבבי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 174,
+    "Frequency_Rank": 162,
+    "Notes": "Root: לבבי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "חטאתי",
+    "Transliteration": "",
+    "Primary_Gloss": "Sinned",
+    "Root": "טאתי",
+    "Part_of_Speech": "verb",
+    "Occurrences": 174,
+    "Frequency_Rank": 163,
+    "Notes": "Root: טאתי | POS: verb"
+  },
+  {
+    "Hebrew_Text": "יכלו",
+    "Transliteration": "",
+    "Primary_Gloss": "Able",
+    "Root": "יכלו",
+    "Part_of_Speech": "verb",
+    "Occurrences": 173,
+    "Frequency_Rank": 164,
+    "Notes": "Root: יכלו | POS: verb"
+  },
+  {
+    "Hebrew_Text": "נרדה",
+    "Transliteration": "",
+    "Primary_Gloss": "Down",
+    "Root": "נרדה",
+    "Part_of_Speech": "verb",
+    "Occurrences": 172,
+    "Frequency_Rank": 165,
+    "Notes": "Root: נרדה | POS: verb"
+  },
+  {
+    "Hebrew_Text": "המזבח",
+    "Transliteration": "",
+    "Primary_Gloss": "Altar",
+    "Root": "מזבח",
+    "Part_of_Speech": "particle",
+    "Occurrences": 171,
+    "Frequency_Rank": 166,
+    "Notes": "Root: מזבח | POS: particle"
+  },
+  {
+    "Hebrew_Text": "זכרתני",
+    "Transliteration": "",
+    "Primary_Gloss": "Remember",
+    "Root": "רתני",
+    "Part_of_Speech": "verb",
+    "Occurrences": 171,
+    "Frequency_Rank": 167,
+    "Notes": "Root: רתני | POS: verb"
+  },
+  {
+    "Hebrew_Text": "בשר",
+    "Transliteration": "",
+    "Primary_Gloss": "Flesh",
+    "Root": "בשר",
+    "Part_of_Speech": "noun",
+    "Occurrences": 169,
+    "Frequency_Rank": 168,
+    "Notes": "Root: בשר | POS: noun"
+  },
+  {
+    "Hebrew_Text": "מועד",
+    "Transliteration": "",
+    "Primary_Gloss": "Tabernacle",
+    "Root": "מועד",
+    "Part_of_Speech": "noun",
+    "Occurrences": 168,
+    "Frequency_Rank": 169,
+    "Notes": "Root: מועד | POS: noun"
+  },
+  {
+    "Hebrew_Text": "רגלה",
+    "Transliteration": "",
+    "Primary_Gloss": "Feet",
+    "Root": "רגלה",
+    "Part_of_Speech": "noun",
+    "Occurrences": 167,
+    "Frequency_Rank": 170,
+    "Notes": "Root: רגלה | POS: noun"
+  },
+  {
+    "Hebrew_Text": "חמש",
+    "Transliteration": "",
+    "Primary_Gloss": "Five",
+    "Root": "חמש",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 167,
+    "Frequency_Rank": 171,
+    "Notes": "Root: חמש | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "ויגד",
+    "Transliteration": "",
+    "Primary_Gloss": "Tell",
+    "Root": "ויגד",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 162,
+    "Frequency_Rank": 172,
+    "Notes": "Root: ויגד | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "אהל",
+    "Transliteration": "",
+    "Primary_Gloss": "Tabernacle",
+    "Root": "אהל",
+    "Part_of_Speech": "noun",
+    "Occurrences": 162,
+    "Frequency_Rank": 173,
+    "Notes": "Root: אהל | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בנה",
+    "Transliteration": "",
+    "Primary_Gloss": "Built",
+    "Root": "בנה",
+    "Part_of_Speech": "verb",
+    "Occurrences": 161,
+    "Frequency_Rank": 174,
+    "Notes": "Root: בנה | POS: verb"
+  },
+  {
+    "Hebrew_Text": "פקד",
+    "Transliteration": "",
+    "Primary_Gloss": "Numbered",
+    "Root": "פקד",
+    "Part_of_Speech": "verb",
+    "Occurrences": 159,
+    "Frequency_Rank": 175,
+    "Notes": "Root: פקד | POS: verb"
+  },
+  {
+    "Hebrew_Text": "מלאה",
+    "Transliteration": "",
+    "Primary_Gloss": "Filled",
+    "Root": "מלאה",
+    "Part_of_Speech": "verb",
+    "Occurrences": 159,
+    "Frequency_Rank": 176,
+    "Notes": "Root: מלאה | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ארבע",
+    "Transliteration": "",
+    "Primary_Gloss": "Four",
+    "Root": "ארבע",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 158,
+    "Frequency_Rank": 177,
+    "Notes": "Root: ארבע | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "צדיק",
+    "Transliteration": "",
+    "Primary_Gloss": "Righteous",
+    "Root": "צדיק",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 158,
+    "Frequency_Rank": 178,
+    "Notes": "Root: צדיק | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "חילם",
+    "Transliteration": "",
+    "Primary_Gloss": "Valour",
+    "Root": "חילם",
+    "Part_of_Speech": "noun",
+    "Occurrences": 157,
+    "Frequency_Rank": 179,
+    "Notes": "Root: חילם | POS: noun"
+  },
+  {
+    "Hebrew_Text": "רעת",
+    "Transliteration": "",
+    "Primary_Gloss": "Evil",
+    "Root": "רעת",
+    "Part_of_Speech": "noun",
+    "Occurrences": 156,
+    "Frequency_Rank": 180,
+    "Notes": "Root: רעת | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אמו",
+    "Transliteration": "",
+    "Primary_Gloss": "Mother's",
+    "Root": "אמו",
+    "Part_of_Speech": "noun",
+    "Occurrences": 156,
+    "Frequency_Rank": 181,
+    "Notes": "Root: אמו | POS: noun"
+  },
+  {
+    "Hebrew_Text": "הלוי",
+    "Transliteration": "",
+    "Primary_Gloss": "Zidkijah",
+    "Root": "הלוי",
+    "Part_of_Speech": "particle",
+    "Occurrences": 155,
+    "Frequency_Rank": 182,
+    "Notes": "Root: הלוי | POS: particle"
+  },
+  {
+    "Hebrew_Text": "חזק",
+    "Transliteration": "",
+    "Primary_Gloss": "Repaired",
+    "Root": "חזק",
+    "Part_of_Speech": "verb",
+    "Occurrences": 155,
+    "Frequency_Rank": 183,
+    "Notes": "Root: חזק | POS: verb"
+  },
+  {
+    "Hebrew_Text": "עוני",
+    "Transliteration": "",
+    "Primary_Gloss": "Iniquity",
+    "Root": "עוני",
+    "Part_of_Speech": "noun",
+    "Occurrences": 154,
+    "Frequency_Rank": 184,
+    "Notes": "Root: עוני | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אך",
+    "Transliteration": "",
+    "Primary_Gloss": "Only",
+    "Root": "אך",
+    "Part_of_Speech": "particle",
+    "Occurrences": 154,
+    "Frequency_Rank": 185,
+    "Notes": "Root: אך | POS: particle"
+  },
+  {
+    "Hebrew_Text": "מעשים",
+    "Transliteration": "",
+    "Primary_Gloss": "Work",
+    "Root": "עשים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 153,
+    "Frequency_Rank": 186,
+    "Notes": "Root: עשים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "נכון",
+    "Transliteration": "",
+    "Primary_Gloss": "Established",
+    "Root": "נכון",
+    "Part_of_Speech": "verb",
+    "Occurrences": 150,
+    "Frequency_Rank": 187,
+    "Notes": "Root: נכון | POS: verb"
+  },
+  {
+    "Hebrew_Text": "דמי",
+    "Transliteration": "",
+    "Primary_Gloss": "Blood",
+    "Root": "דמי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 150,
+    "Frequency_Rank": 188,
+    "Notes": "Root: דמי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בקרבה",
+    "Transliteration": "",
+    "Primary_Gloss": "Purtenance",
+    "Root": "קרבה",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 149,
+    "Frequency_Rank": 189,
+    "Notes": "Root: קרבה | POS: preposition"
+  },
+  {
+    "Hebrew_Text": "אם",
+    "Transliteration": "",
+    "Primary_Gloss": "Mahlah",
+    "Root": "אם",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 148,
+    "Frequency_Rank": 190,
+    "Notes": "Root: אם | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "כי",
+    "Transliteration": "",
+    "Primary_Gloss": "Mahlah",
+    "Root": "כי",
+    "Part_of_Speech": "conjunction",
+    "Occurrences": 148,
+    "Frequency_Rank": 191,
+    "Notes": "Root: כי | POS: conjunction"
+  },
+  {
+    "Hebrew_Text": "יעזב",
+    "Transliteration": "",
+    "Primary_Gloss": "Forsaken",
+    "Root": "יעזב",
+    "Part_of_Speech": "verb",
+    "Occurrences": 146,
+    "Frequency_Rank": 192,
+    "Notes": "Root: יעזב | POS: verb"
+  },
+  {
+    "Hebrew_Text": "ימים",
+    "Transliteration": "",
+    "Primary_Gloss": "Sea",
+    "Root": "ימים",
+    "Part_of_Speech": "noun",
+    "Occurrences": 146,
+    "Frequency_Rank": 193,
+    "Notes": "Root: ימים | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אש",
+    "Transliteration": "",
+    "Primary_Gloss": "Fire",
+    "Root": "אש",
+    "Part_of_Speech": "noun",
+    "Occurrences": 145,
+    "Frequency_Rank": 194,
+    "Notes": "Root: אש | POS: noun"
+  },
+  {
+    "Hebrew_Text": "בגדי",
+    "Transliteration": "",
+    "Primary_Gloss": "Clothes",
+    "Root": "בגדי",
+    "Part_of_Speech": "noun",
+    "Occurrences": 144,
+    "Frequency_Rank": 195,
+    "Notes": "Root: בגדי | POS: noun"
+  },
+  {
+    "Hebrew_Text": "מלכו",
+    "Transliteration": "",
+    "Primary_Gloss": "Reigned",
+    "Root": "מלכו",
+    "Part_of_Speech": "verb",
+    "Occurrences": 142,
+    "Frequency_Rank": 196,
+    "Notes": "Root: מלכו | POS: verb"
+  },
+  {
+    "Hebrew_Text": "מואב",
+    "Transliteration": "",
+    "Primary_Gloss": "Moab",
+    "Root": "מואב",
+    "Part_of_Speech": "noun",
+    "Occurrences": 142,
+    "Frequency_Rank": 197,
+    "Notes": "Root: מואב | POS: noun"
+  },
+  {
+    "Hebrew_Text": "אחר",
+    "Transliteration": "",
+    "Primary_Gloss": "Gods",
+    "Root": "אחר",
+    "Part_of_Speech": "adjective",
+    "Occurrences": 142,
+    "Frequency_Rank": 198,
+    "Notes": "Root: אחר | POS: adjective"
+  },
+  {
+    "Hebrew_Text": "ירב",
+    "Transliteration": "",
+    "Primary_Gloss": "Multiplied",
+    "Root": "ירב",
+    "Part_of_Speech": "verb",
+    "Occurrences": 139,
+    "Frequency_Rank": 199,
+    "Notes": "Root: ירב | POS: verb"
+  },
+  {
+    "Hebrew_Text": "במדבר",
+    "Transliteration": "",
+    "Primary_Gloss": "Wilderness",
+    "Root": "מדבר",
+    "Part_of_Speech": "preposition",
+    "Occurrences": 138,
+    "Frequency_Rank": 200,
+    "Notes": "Root: מדבר | POS: preposition"
+  }
+]

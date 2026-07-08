@@ -1435,6 +1435,80 @@ def call_tool_post(tool_name: str, body: dict):
         conn.close()
 
 
+# ─── Vocabulary (frequency-ranked for language learning) ───
+
+@app.get("/api/v1/vocabulary")
+def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
+    """Get Hebrew vocabulary ranked by frequency — for language learning.
+    
+    Returns words ordered by frequency (most common first), matching
+    the Schwartz-Groves WHV Anki deck structure.
+    
+    Query params:
+      top: int — number of words (default 100)
+      cutoff: int — minimum frequency (default 47, ~90% coverage)
+      by_root: bool — group by root (default false)
+    """
+    # Generate from the lexicon (live query)
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT DISTINCT
+            l.lemma, l.hebrew_plain as hebrew_word, l.transliteration,
+            l.part_of_speech, l.root_letters as root, l.definition,
+            l.morphology, l.frequency as lex_freq,
+            lg.english_gloss, lg.frequency as gloss_freq,
+            COALESCE(lg.english_gloss, l.lemma, '') as gloss
+        FROM lexicon l
+        LEFT JOIN lemma_gloss lg ON l.lemma = lg.lemma
+        WHERE l.lemma NOT IN ('b', 'c', 'd', 'H', 'G', 'l', 'm', 'k', 'H')
+          AND l.frequency > ?
+          AND l.hebrew_plain IS NOT NULL AND l.hebrew_plain != ''
+        ORDER BY l.frequency DESC
+        LIMIT ?
+    """, (cutoff, top * 3)).fetchall()
+    conn.close()
+    
+    words = []
+    rank = 0
+    for r in rows:
+        freq = r['lex_freq'] or 0
+        gloss = (r['gloss'] or '').strip()
+        word = (r['hebrew_word'] or '').strip()
+        if not word or not gloss or len(word) <= 1:
+            continue
+        # Skip if gloss looks like a Strong's number (bad mapping)
+        if gloss.replace(' ', '').isdigit():
+            continue
+            
+        rank += 1
+        words.append({
+            'rank': rank,
+            'hebrew': word,
+            'transliteration': (r['transliteration'] or '').strip(),
+            'gloss': gloss,
+            'root': (r['root'] or '').strip(),
+            'pos': (r['part_of_speech'] or '').strip(),
+            'frequency': freq,
+            'definition': (r['definition'] or '').strip()[:200],
+        })
+        if rank >= top:
+            break
+    
+    if by_root:
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for w in words:
+            r = w.get('root') or 'UNKNOWN'
+            groups[r].append(w)
+        result = [{'root': r, 'total_frequency': sum(w['frequency'] for w in g),
+                    'words': g} for r, g in sorted(groups.items(),
+                   key=lambda x: -sum(w['frequency'] for w in x[1]))]
+        return {"ok": True, "data": {"total": len(words), "groups": result}}
+    
+    return {"ok": True, "data": {"total": len(words), "words": words,
+                                  "cutoff": cutoff, "coverage": "~90% of OT text"}}
+
+
 # ─── List Available Tools ───
 
 @app.get("/api/v1/tools")
