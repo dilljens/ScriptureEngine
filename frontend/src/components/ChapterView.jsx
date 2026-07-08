@@ -224,8 +224,8 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         )}
       </div>
 
-      {/* Hebrew audio player (shown when Hebrew is selected and first verse has audio) */}
-      {displayLang === 'hebrew' && data.verses?.[0] && book && (
+      {/* Hebrew audio player — only when alignment data exists */}
+      {displayLang === 'hebrew' && book && chapter <= 1 && (
         <div className="mb-4">
           <VerseAudioPlayer
             verseId={`${book}.${chapter}.${data.verses[0].verse}`}

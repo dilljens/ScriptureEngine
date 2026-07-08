@@ -27,8 +27,7 @@ export default function MemorizeView() {
       .then(data => {
         if (cancelled) return
         setStats(data.stats || {})
-        // Direct-to-review: skip dashboard if cards due
-        if (data.stats?.DueCards > 0) {
+        if (data.stats?.due_cards > 0) {
           setView('review')
         } else {
           setView('dashboard')
@@ -168,14 +167,14 @@ export default function MemorizeView() {
         </button>
       )}
 
-      {/* Feature cards */}
-      {stats && <div className="grid gap-3">
+      {/* Feature cards — always visible */}
+      <div className="grid gap-3">
         <FeatureCard
           icon="📋"
           title="Review Queue"
           description="FSRS spaced repetition — review due cards"
-          badge={stats.due_cards > 0 ? `${stats.due_cards} due` : 'Up to date'}
-          ready={stats.due_cards > 0}
+          badge={stats?.due_cards > 0 ? `${stats.due_cards} due` : 'Up to date'}
+          ready={stats?.due_cards > 0}
         />
         <button onClick={() => setView('palaces')} className="w-full text-left">
           <FeatureCard
@@ -207,7 +206,7 @@ export default function MemorizeView() {
           badge="Phase 9"
           ready={false}
         />
-      </div>}
+      </div>
     </div>
     </>
   )
