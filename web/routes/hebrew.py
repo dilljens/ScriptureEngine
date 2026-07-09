@@ -407,9 +407,46 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
                 "days_since": round(days, 1), "stability": round(stab, 1),
                 "retrievability": round(ret, 3), "last_practiced": last_str,
             })
-    due.sort(key=lambda x: x['retrievability'])
+    # Systematic interleaving: sort due reviews for maximum category diversity
+    # 1. Group by category
+    from collections import defaultdict
+    by_cat = defaultdict(list)
+    for item in due:
+        by_cat[item['category']].append(item)
+    
+    # 2. Sort categories by their lowest retrievability (most urgent first)
+    cat_priority = sorted(by_cat.keys(), key=lambda c: min(i['retrievability'] for i in by_cat[c]))
+    
+    # 3. Round-robin: pick one from each category in priority order
+    interleaved = []
+    cat_iterators = {c: iter(sorted(by_cat[c], key=lambda x: x['retrievability'])) for c in cat_priority}
+    remaining = {c: len(by_cat[c]) for c in cat_priority}
+    
+    # Track last used categories to avoid consecutive same-category
+    last_cat = None
+    for _ in range(len(due)):
+        # Find the highest-priority category that's not the same as last
+        chosen_cat = None
+        for c in cat_priority:
+            if remaining.get(c, 0) > 0 and c != last_cat:
+                chosen_cat = c
+                break
+        if not chosen_cat:
+            # Fallback: pick from any remaining
+            for c in cat_priority:
+                if remaining.get(c, 0) > 0:
+                    chosen_cat = c
+                    break
+        if not chosen_cat:
+            break
+        
+        item = next(cat_iterators[chosen_cat])
+        interleaved.append(item)
+        remaining[chosen_cat] -= 1
+        last_cat = chosen_cat
+    
     conn.close()
-    return {"ok": True, "data": {"reviews": due[:limit], "due_count": len(due), "total_practiced": len(rows)}}
+    return {"ok": True, "data": {"reviews": interleaved[:limit], "due_count": len(due), "total_practiced": len(rows)}}
 
 
 @router.get("/api/v1/hebrew/verb-drill")
