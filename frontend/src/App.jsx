@@ -414,6 +414,7 @@ function AppInner() {
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
+  const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
   const [showGlobalKeyboard, setShowGlobalKeyboard] = useState(false)
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -817,6 +818,14 @@ function AppInner() {
   const highlightVerse = currentTab?.highlights?.[0] || null
 
   const renderMainContent = () => {
+    if (showHebrewDiagnostic) {
+      const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'))
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading diagnostic...</div>}>
+          <HebrewDiagnostic onComplete={() => { setShowHebrewDiagnostic(false); setShowHebrewLearn(true) }} />
+        </Suspense>
+      )
+    }
     if (hebrewLessonId !== null) {
       const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
       return (
@@ -1048,9 +1057,9 @@ function AppInner() {
             </button>
 
             {/* Learn (Hebrew) */}
-            <button onClick={() => { setShowHebrewLearn(true); setHebrewLessonId(null) }}
+            <button onClick={() => { setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
               className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0"
-              title="Learn Biblical Hebrew (102 lessons)">
+              title="Learn Biblical Hebrew (642 lessons)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
                 <path d="M3 4h10M3 8h10M3 12h8" />
                 <circle cx={12.5} cy={7.5} r={0.5} fill="currentColor" stroke="none" />
@@ -1385,7 +1394,7 @@ function AppInner() {
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
         onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
-        onHebrew={() => { setShowMobileMenu(false); setShowHebrewLearn(true); setHebrewLessonId(null) }}
+        onHebrew={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
         onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
         onKnowledge={() => { setShowMobileMenu(false); setChatInitialMsg('Run a scripture knowledge assessment to test what I know about connections between verses. Start with a diagnostic covering all layers.'); handleOpenChat() }}
         darkMode={darkMode}

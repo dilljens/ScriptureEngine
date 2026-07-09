@@ -100,6 +100,127 @@ def list_hebrew_lessons(category: str = ""):
                                   "categories": ["letter", "vowel", "word", "grammar", "phrase", "reading", "root_concept"]}}
 
 
+@router.get("/api/v1/hebrew/diagnostic")
+def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2):
+    """Generate a diagnostic pre-assessment covering all categories.
+    
+    Returns 2-3 sample questions per category to determine what
+    the learner already knows. Results can skip mastered categories.
+    """
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"questions": [], "categories": []}}
+    
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    random.seed()
+    
+    # Get all categories
+    cats = conn.execute("SELECT DISTINCT category FROM hebrew_nodes ORDER BY category").fetchall()
+    categories = [c['category'] for c in cats if c['category'] not in ('root_concept',)]
+    
+    # Check if user already has progress
+    existing_progress = conn.execute(
+        "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=?", (user_id,)).fetchone()[0]
+    has_progress = existing_progress > 0
+    
+    questions = []
+    cat_info = []
+    
+    for cat in categories:
+        # Get nodes in this category
+        nodes = conn.execute(
+            "SELECT n.id, n.title FROM hebrew_nodes n WHERE n.category=? ORDER BY RANDOM() LIMIT ?",
+            (cat, count_per_category)).fetchall()
+        
+        if not nodes:
+            continue
+        
+        cat_questions = []
+        for n in nodes:
+            # Get a practice item for this node
+            item = conn.execute(
+                "SELECT * FROM hebrew_practice_items WHERE node_id=? AND question_type IN ('multiple_choice','true_false') LIMIT 1",
+                (n['id'],)).fetchone()
+            if not item:
+                continue
+            
+            opts = json.loads(item['options_json']) if item['options_json'] else []
+            cat_questions.append({
+                "node_id": n['id'],
+                "node_title": n['title'],
+                "question": item['question_text'],
+                "options": opts,
+                "correct_answer": item['correct_answer'],
+                "question_type": item['question_type'],
+            })
+        
+        if cat_questions:
+            questions.extend(cat_questions)
+            cat_info.append({
+                "category": cat,
+                "count": len(cat_questions),
+                "nodes": len(nodes),
+                "node_ids": [n['id'] for n in nodes],
+            })
+    
+    conn.close()
+    
+    return {"ok": True, "data": {
+        "questions": questions,
+        "total": len(questions),
+        "categories": cat_info,
+        "has_progress": has_progress,
+        "message": "Answer these questions to determine your starting level. "
+                   "Categories where you score 100% will be skipped."
+    }}
+
+
+@router.post("/api/v1/hebrew/diagnostic/apply")
+def apply_diagnostic_results(body: dict):
+    """Apply diagnostic results — mark mastered categories as complete.
+    
+    Body: {
+        "user_id": "default",
+        "results": { "category_name": { "correct": N, "total": N }, ... }
+    }
+    """
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    
+    user_id = body.get("user_id", "default")
+    results = body.get("results", {})
+    
+    conn = sqlite3.connect(str(MEM_DB))
+    
+    for cat, stats in results.items():
+        correct = stats.get("correct", 0)
+        total = stats.get("total", 0)
+        if total == 0:
+            continue
+        pct = correct / total
+        
+        if pct >= 1.0:
+            # 100% → skip all nodes in this category
+            nodes = conn.execute("SELECT id FROM hebrew_nodes WHERE category=?", (cat,)).fetchall()
+            for n in nodes:
+                conn.execute(
+                    "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                    (user_id, n[0], 1.0, 1, 1))
+        elif pct >= 0.6:
+            # 60-80% → partial credit
+            nodes = conn.execute("SELECT id FROM hebrew_nodes WHERE category=?", (cat,)).fetchall()
+            for n in nodes:
+                conn.execute(
+                    "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                    (user_id, n[0], 0.7, 1, 1))
+        # Below 60% → no credit, full curriculum
+    
+    conn.commit()
+    conn.close()
+    
+    return {"ok": True, "data": {"message": "Diagnostic applied. Categories with 100% accuracy were skipped."}}
+
+
 @router.get("/api/v1/hebrew/curriculum")
 def get_hebrew_curriculum(user_id: str = "default"):
     if not MEM_DB.exists():
