@@ -2096,6 +2096,82 @@ def get_chapter(ref: str):
     }}
 
 
+@app.get("/api/v1/chapter/{ref:path}/entities")
+def get_chapter_entities(ref: str):
+    """Get all entities (people, places, concepts) for verses in a chapter.
+
+    /api/v1/chapter/isa.55/entities   → Entities in Isaiah 55
+    /api/v1/chapter/gen.1/entities    → Entities in Genesis 1
+    """
+    ref_clean = ref.strip("/")
+    parts = ref_clean.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
+    book_id = parts[0]
+    chapter_num = int(parts[1])
+
+    conn = get_db()
+
+    # Get all verse IDs for this chapter
+    verse_rows = conn.execute(
+        "SELECT id FROM verses WHERE book_id = ? AND chapter = ? ORDER BY verse",
+        (book_id, chapter_num)
+    ).fetchall()
+    if not verse_rows:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Chapter not found: {ref_clean}")
+
+    verse_ids = [r["id"] for r in verse_rows]
+    placeholders = ",".join("?" for _ in verse_ids)
+
+    # Get all entities for these verses
+    entity_rows = conn.execute(f"""
+        SELECT ve.verse_id, ve.entity_id, ve.relationship_type, ve.confidence,
+               el.english_name, el.hebrew_name, el.greek_name, el.entity_type,
+               el.notes
+        FROM verse_entities ve
+        JOIN entity_links el ON el.entity_id = ve.entity_id
+        WHERE ve.verse_id IN ({placeholders})
+          AND ve.confidence >= 0.3
+        ORDER BY el.entity_type, el.english_name
+    """, verse_ids).fetchall()
+
+    conn.close()
+
+    if not entity_rows:
+        return {"ok": True, "data": {"chapter": ref_clean, "entities": [], "total": 0}}
+
+    # Group by entity
+    seen = {}
+    for r in entity_rows:
+        eid = r["entity_id"]
+        if eid not in seen:
+            seen[eid] = {
+                "entity_id": eid,
+                "english_name": r["english_name"],
+                "hebrew_name": r["hebrew_name"],
+                "greek_name": r["greek_name"],
+                "entity_type": r["entity_type"],
+                "notes": r["notes"],
+                "verses": [],
+                "total_mentions": 0,
+            }
+        # Extract verse number from verse_id (format: book.chapter.verse)
+        vnum = r["verse_id"].split(".")[-1] if "." in r["verse_id"] else r["verse_id"]
+        seen[eid]["verses"].append({
+            "verse": vnum,
+            "relationship": r["relationship_type"],
+            "confidence": r["confidence"],
+        })
+        seen[eid]["total_mentions"] += 1
+
+    return {"ok": True, "data": {
+        "chapter": ref_clean,
+        "total_entities": len(seen),
+        "entities": list(seen.values()),
+    }}
+
+
 
 # ─── Study Guides moved to web/routes/studies.py ───
 

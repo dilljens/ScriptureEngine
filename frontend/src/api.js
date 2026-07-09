@@ -63,6 +63,10 @@ export function getChapterConnections(ref) {
   return fetchJSON(`/connections/chapter/${ref}`)
 }
 
+export function getChapterEntities(ref) {
+  return fetchJSON(`/chapter/${ref}/entities`)
+}
+
 export function searchVerses(query, opts = {}) {
   const { lang = 'english', limit = 10, offset = 0, book = '' } = opts
   const params = `q=${encodeURIComponent(query)}&lang=${lang}&limit=${limit}&offset=${offset}${book ? `&book=${encodeURIComponent(book)}` : ''}`

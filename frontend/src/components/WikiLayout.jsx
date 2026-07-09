@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { getChapterEntities } from '../api'
 
 /**
  * WikiLayout — Wikipedia-style two-column chapter view.
@@ -114,6 +115,22 @@ function ConnectionSection({ layer, connections, defaultOpen }) {
 export default function WikiLayout({ data, book, chapter, toggles, chapterConnections }) {
   const [graphOpen, setGraphOpen] = React.useState(false)
   const [browseLayer, setBrowseLayer] = React.useState(null)
+  const [entities, setEntities] = React.useState([])
+  const [entitiesLoading, setEntitiesLoading] = React.useState(false)
+
+  // Fetch real entities from the API
+  useEffect(() => {
+    const ref = `${book}.${chapter}`
+    setEntitiesLoading(true)
+    getChapterEntities(ref)
+      .then(res => {
+        if (res.ok && res.data?.entities) {
+          setEntities(res.data.entities)
+        }
+      })
+      .catch(() => {}) // ponytail: fail silently, entities stay empty
+      .finally(() => setEntitiesLoading(false))
+  }, [book, chapter])
 
   // Group connections by layer from chapterConnections data
   const connectionsByLayer = useMemo(() => {
@@ -146,22 +163,6 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
       Object.entries(grouped).sort((a, b) => b[1].length - a[1].length)
     )
   }, [browseLayer, connectionsByLayer])
-
-  // Collect entities from verse text
-  const entities = useMemo(() => {
-    const found = new Set()
-    data?.verses?.forEach(v => {
-      const text = v.text_english || ''
-      const patterns = [
-        'Lord', 'God', 'Jesus', 'Christ', 'Spirit', 'Abraham', 'Moses',
-        'David', 'Israel', 'Jerusalem', 'Zion', 'Egypt', 'Babylon',
-      ]
-      patterns.forEach(p => {
-        if (text.includes(p)) found.add(p)
-      })
-    })
-    return Array.from(found).sort()
-  }, [data])
 
   // Build graph elements for the simple chapter graph
   const graphElements = useMemo(() => {
@@ -376,17 +377,54 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
             </div>
           )}
 
-          {/* Entities sidebar */}
+          {/* Entities sidebar — real data from DB */}
           {entities.length > 0 && (
             <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 bg-white dark:bg-neutral-800/30">
-              <h3 className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Entities</h3>
-              <div className="flex flex-wrap gap-1.5">
+              <h3 className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                Entities
+                <span className="ml-1 text-[9px] font-normal opacity-60">({entities.length})</span>
+                {entitiesLoading && <span className="ml-1 text-[9px] animate-pulse">…</span>}
+              </h3>
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
                 {entities.map((entity, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-[10px] font-medium border border-amber-200 dark:border-amber-800">
-                    {entity}
-                  </span>
+                  <div key={i} className="group">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        entity.entity_type === 'person' ? 'bg-blue-400' :
+                        entity.entity_type === 'place' ? 'bg-green-400' :
+                        entity.entity_type === 'concept' ? 'bg-purple-400' :
+                        'bg-neutral-400'
+                      }`} />
+                      <span className="text-[11px] font-medium text-neutral-700 dark:text-neutral-300">
+                        {entity.english_name}
+                      </span>
+                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500 uppercase ml-auto">
+                        {entity.entity_type}
+                      </span>
+                    </div>
+                    {(entity.hebrew_name || entity.greek_name) && (
+                      <div className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-3">
+                        {entity.hebrew_name && <span className="font-mono" dir="rtl">{entity.hebrew_name}</span>}
+                        {entity.hebrew_name && entity.greek_name && <span className="mx-1">·</span>}
+                        {entity.greek_name && <span className="font-mono">{entity.greek_name}</span>}
+                      </div>
+                    )}
+                    <div className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-3 flex items-center gap-1">
+                      <span>{entity.total_mentions} mention{entity.total_mentions !== 1 ? 's' : ''}</span>
+                      <span className="opacity-50">·</span>
+                      <span className="truncate">
+                        v{entity.verses?.map(v => v.verse).filter(Boolean).join(', v')}
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
+            </div>
+          )}
+          {entities.length === 0 && !entitiesLoading && data?.verses && (
+            <div className="border border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg p-3 bg-white dark:bg-neutral-800/30">
+              <h3 className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-1">Entities</h3>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500">No entity data indexed for this chapter</p>
             </div>
           )}
         </aside>
