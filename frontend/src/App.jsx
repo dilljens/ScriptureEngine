@@ -829,6 +829,7 @@ function AppInner() {
   const [uiVisible, setUiVisible] = useState(true)
   const lastScrollY = useRef(0)
   const mainRef = useRef(null)
+  const lastTapRef = useRef(0)  // for double-tap detection
   const handleMainScroll = useCallback(() => {
     const el = mainRef.current
     if (!el) return
@@ -838,7 +839,14 @@ function AppInner() {
     lastScrollY.current = el.scrollTop
   }, [])
   const handleMainClick = useCallback(() => {
-    setUiVisible(v => !v)
+    // Double-tap to toggle UI visibility (bars hide/show)
+    const now = Date.now()
+    if (now - lastTapRef.current < 300) {
+      setUiVisible(v => !v)
+      lastTapRef.current = 0
+    } else {
+      lastTapRef.current = now
+    }
   }, [])
 
   // highlightVerse: from search results or tab highlights
@@ -1377,7 +1385,8 @@ function AppInner() {
         <PlusIcon />
       </button>
 
-      {/* Mobile: Bottom Navigation */}
+      {/* Mobile: Bottom Navigation — hidden when uiVisible is false (immersion mode) */}
+      <div className={`sm:hidden transition-transform duration-300 ${uiVisible ? 'translate-y-0' : 'translate-y-full'}`}>
       <MobileBottomNav activeTab={mobileActiveTab} onTab={(tab) => {
         switch (tab) {
           case 'read': {
@@ -1422,6 +1431,7 @@ function AppInner() {
             break
         }
       }} />
+      </div>
 
       {/* Mobile: Menu Drawer */}
       <MobileMenuDrawer
@@ -1441,8 +1451,8 @@ function AppInner() {
         onSettings={() => { setShowMobileMenu(false); setShowSettings(true) }}
       />
 
-      {/* Spacer to prevent content from being hidden behind bottom nav */}
-      <div className="sm:hidden h-24" />
+      {/* Spacer to prevent content from being hidden behind bottom nav — hidden when UI is hidden */}
+      <div className={`sm:hidden transition-all duration-300 ${uiVisible ? 'h-24' : 'h-0'}`} />
 
     </div>
   )
