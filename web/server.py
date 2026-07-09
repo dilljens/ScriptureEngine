@@ -48,7 +48,7 @@ from lib.patterns.intra_verse import detect_intra_verse
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
-    description="API for the scripture connection graph — 826K connections across 93 types in 10 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
+    description="API for the scripture connection graph — 1,028,083 connections across 131 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

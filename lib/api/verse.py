@@ -1,7 +1,7 @@
 """
-Shared tool: verse lookup and passage guide.
+Shared tool: verse lookup, passage guide, and comprehensive study verse.
 
-Used by MCP (scripture_verse, scripture_passage_guide),
+Used by MCP (scripture_verse, scripture_passage_guide, scripture_study_verse),
 HTTP API (/api/v1/verses/{ref}, /api/v1/verses/{ref}/guide),
 and CLI (tools/verse.py).
 """
@@ -239,6 +239,77 @@ def lookup_verse(conn, book, chapter, verse, version=None):
         # Consensus data
         "consensus": consensus,
     }
+
+
+def study_verse(conn, verse, max_reachable=10):
+    """Complete verse study package — replaces 6+ separate tool calls.
+
+    Returns verse text + all connections + gematria + entities + quality + sources
+    + 1-hop reachable verses in ONE response.
+
+    Args:
+        verse: Verse ID (gen.1.1)
+        max_reachable: Max 1-hop neighbors to include (default 10)
+
+    Returns: dict with everything an LLM needs for deep verse analysis
+    """
+    parts = verse.split(".")
+    if len(parts) < 3:
+        return {"error": f"Invalid verse ID: {verse}. Use format: book.chapter.verse (e.g., gen.1.1)"}
+
+    book, chapter, vnum = parts[0], int(parts[1]), int(parts[2])
+    base = lookup_verse(conn, book, chapter, vnum)
+    if "error" in base:
+        return base
+
+    from lib.api.graph import graph_entities, graph_reachable
+    from lib.api.sources import get_sources_for_verse
+    from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
+
+    # Add entities
+    entities = graph_entities(conn, verse, min_confidence=0.3)
+    base["entities"] = entities.get("entities", [])
+
+    # Add sources/provenance
+    sources = get_sources_for_verse(conn, verse)
+    base["sources"] = sources.get("scholars", [])
+
+    # Add 1-hop reachable verses with text
+    reachable = graph_reachable(conn, verse, max_depth=1, limit=max_reachable)
+    base["reachable"] = reachable.get("by_depth", {}).get(1, [])
+
+    # Add PaRDeS-level-sorted connections
+    if base.get("connections"):
+        pardes_grouped = defaultdict(list)
+        for layer, data in base["connections"].items():
+            pl = get_pardes_level(layer)
+            pardes_grouped[pl].append({
+                "layer": layer,
+                "count": data["count"],
+                "types": data["types"],
+            })
+        base["connections_by_pardes"] = {
+            level: pardes_grouped[level]
+            for level in ["p'shat", "remez", "drash", "sod"]
+            if pardes_grouped[level]
+        }
+
+    # Add quality summary as star ratings
+    if base.get("connections"):
+        total = base.get("total_connections", 0)
+        # Count by quality level across all connection types
+        quality_counts = defaultdict(int)
+        for layer_data in base["connections"].values():
+            for type_name, type_conns in layer_data.get("types", {}).items():
+                for c in type_conns:
+                    q = c.get("quality", {}).get("level", "suggested")
+                    quality_counts[q] += 1
+        base["quality_summary"] = {
+            "total_connections": total,
+            "by_level": dict(quality_counts),
+        }
+
+    return base
 
 
 def passage_guide(conn, verse, guide_cache=None):

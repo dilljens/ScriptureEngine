@@ -488,3 +488,209 @@ def graph_stats(conn):
     from lib.connections.graph import network_stats
 
     return network_stats(conn)
+
+
+def graph_context(conn, verse, depth=2, layers=None, limit=20):
+    """N-hop neighborhood formatted as structured text for LLM consumption.
+
+    Returns verse text + typed relationships as readable text (not JSON),
+    optimized for LLMs to reason over.
+
+    Args:
+        verse: Starting verse ID
+        depth: How many hops to traverse (default 2)
+        layers: Optional list of layer names to restrict
+        limit: Max verses to include (default 20)
+
+    Returns: dict with structured context
+    """
+    parts = verse.split(".")
+    context = {
+        "verse": verse,
+        "depth": depth,
+        "layers": layers,
+        "focal_verse": {},
+        "neighborhood": [],
+    }
+
+    # Get verse info
+    info = _get_verse_info(conn, verse)
+    if info:
+        context["focal_verse"] = {
+            "verse": verse,
+            "text": info.get("text", ""),
+            "book": info.get("book", ""),
+        }
+
+    # Get 1-hop neighbors
+    layer_filter = ""
+    params = [verse, depth]
+    if layers:
+        placeholders = ",".join(f"'{l}'" for l in layers)
+        layer_filter = f" AND c.layer IN ({placeholders})"
+
+    rows = conn.execute(
+        f"""
+        SELECT c.target_verse, c.layer, c.type, c.subtype, c.strength, c.confidence,
+               c.discovered_by, v.text_english as target_text, b.title as target_book
+        FROM connections c
+        JOIN verses v ON v.id = c.target_verse
+        JOIN books b ON b.id = v.book_id
+        WHERE c.source_verse = ? {layer_filter}
+        ORDER BY c.strength DESC
+        LIMIT ?
+    """,
+        params + [limit],
+    ).fetchall()
+
+    # Group by layer and format as structured text
+    by_layer = defaultdict(list)
+    for r in rows:
+        by_layer[r["layer"]].append({
+            "target": r["target_verse"],
+            "type": r["type"],
+            "subtype": r["subtype"],
+            "strength": r["strength"],
+            "confidence": r["confidence"],
+            "discovered_by": r["discovered_by"],
+            "target_text": (r["target_text"] or "")[:150],
+            "target_book": r["target_book"],
+        })
+
+    context["neighborhood"] = [
+        {
+            "layer": layer,
+            "count": len(conns),
+            "connections": conns,
+        }
+        for layer, conns in by_layer.items()
+    ]
+
+    # Build structured text representation
+    text_parts = [f"=== Verse {verse} ==="]
+    if info:
+        text_parts.append(f"{info.get('book', '')}:")
+        text_parts.append(f"\"{info.get('text', '')}\"")
+    text_parts.append("")
+
+    for layer_group in context["neighborhood"]:
+        text_parts.append(f"--- {layer_group['layer']} ({layer_group['count']} connections) ---")
+        for c in layer_group["connections"][:8]:
+            strength_str = f" [strength={c['strength']:.1f}, conf={c['confidence']:.0%}]" if c.get("strength") else ""
+            text_parts.append(f"  {c['type']} → {c['target']}{strength_str}")
+            if c.get("target_text"):
+                text_parts.append(f"    \"{c['target_text'][:100]}\"")
+        if layer_group["count"] > 8:
+            text_parts.append(f"  ... and {layer_group['count'] - 8} more")
+
+    context["structured_text"] = "\n".join(text_parts)
+    return context
+
+
+def entity_deep(conn, entity, min_confidence=0.3, limit=100):
+    """Deep dive on a biblical entity — all verses, connections, and related entities.
+
+    Args:
+        entity: Entity ID (e.g., 'person.abraham', 'place.zion')
+        min_confidence: Minimum entity link confidence
+        limit: Max verses to return
+
+    Returns: dict with entity info, all verses, connections involving entity, related entities
+    """
+    # Get entity info
+    entity_row = conn.execute(
+        "SELECT * FROM entity_links WHERE entity_id = ?", (entity,)
+    ).fetchone()
+    if not entity_row:
+        return {"error": f"Entity not found: {entity}"}
+
+    entity_info = {
+        "id": entity_row["entity_id"],
+        "type": entity_row["entity_type"],
+        "english_name": entity_row["english_name"],
+        "hebrew_name": entity_row["hebrew_name"],
+        "greek_name": entity_row["greek_name"],
+        "strongs": entity_row.get("strongs", ""),
+        "notes": entity_row.get("notes", ""),
+    }
+
+    # Get all verses linked to this entity
+    verse_rows = conn.execute(
+        """
+        SELECT ve.verse_id, ve.relationship_type, ve.confidence,
+               v.text_english, b.title as book_title, b.id as book_id,
+               v.chapter, v.verse
+        FROM verse_entities ve
+        JOIN verses v ON v.id = ve.verse_id
+        JOIN books b ON b.id = v.book_id
+        WHERE ve.entity_id = ? AND ve.confidence >= ?
+        ORDER BY b.position, v.chapter, v.verse
+        LIMIT ?
+    """,
+        (entity, min_confidence, limit),
+    ).fetchall()
+
+    verses = []
+    verse_ids = []
+    for r in verse_rows:
+        verses.append({
+            "verse": r["verse_id"],
+            "text": (r["text_english"] or "")[:200],
+            "book": r["book_title"],
+            "chapter": r["chapter"],
+            "verse_num": r["verse"],
+            "relationship": r["relationship_type"],
+            "confidence": r["confidence"],
+        })
+        verse_ids.append(r["verse_id"])
+
+    # Get connections involving this entity (connections where either end is in the verse list)
+    # This finds connections BETWEEN verses that mention the entity
+    entity_connections = []
+    if verse_ids:
+        placeholders = ",".join("?" for _ in verse_ids[:50])  # cap at 50
+        conn_rows = conn.execute(
+            f"""
+            SELECT c.source_verse, c.target_verse, c.layer, c.type, c.strength
+            FROM connections c
+            WHERE c.source_verse IN ({placeholders})
+            AND c.target_verse IN ({placeholders})
+            AND c.source_verse != c.target_verse
+            LIMIT 100
+        """,
+            verse_ids[:50] + verse_ids[:50],
+        ).fetchall()
+        entity_connections = [dict(r) for r in conn_rows]
+
+    # Find related entities (other entities that appear in the same verses)
+    related = []
+    if verse_ids:
+        related_rows = conn.execute(
+            f"""
+            SELECT el.entity_id, el.english_name, el.entity_type, COUNT(*) as co_occurrences
+            FROM verse_entities ve
+            JOIN entity_links el ON el.entity_id = ve.entity_id
+            WHERE ve.verse_id IN ({",".join("?" for _ in verse_ids[:50])})
+            AND ve.entity_id != ?
+            AND ve.confidence >= ?
+            GROUP BY el.entity_id
+            ORDER BY co_occurrences DESC
+            LIMIT 20
+        """,
+            verse_ids[:50] + [entity, min_confidence],
+        ).fetchall()
+        related = [dict(r) for r in related_rows]
+
+    return {
+        "entity": entity_info,
+        "total_verses": len(verses),
+        "verses": verses,
+        "entity_connections": {
+            "total": len(entity_connections),
+            "connections": entity_connections[:50],
+        },
+        "related_entities": {
+            "total": len(related),
+            "entities": related,
+        },
+    }

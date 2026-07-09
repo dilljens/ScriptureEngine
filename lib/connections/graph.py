@@ -1,7 +1,7 @@
 """
 Connection graph engine — query and analyze the typed connection graph.
 
-Provides high-level queries across all 9 connection layers.
+Provides high-level queries across all 11 connection layers.
 """
 
 import json

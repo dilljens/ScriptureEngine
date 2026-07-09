@@ -11,7 +11,7 @@
 
 ### Research workflow
 - Start with Hebrew when analyzing OT passages
-- Check all 9 connection layers for a complete picture
+- Check all 11 connection layers for a complete picture
 - Cross-reference findings with `scripture_intertext` to trace influence
 - Note confidence levels on detected patterns
 

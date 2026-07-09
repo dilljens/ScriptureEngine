@@ -5,6 +5,9 @@ import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections
 import ChiasmPanel from './ChiasmPanel'
 import VerseBlock from './VerseBlock'
 import VerseAudioPlayer from './VerseAudioPlayer'
+import WikiLayout from './WikiLayout'
+
+const LS_WIKI_KEY = 'scriptureengine.wikiMode'
 
 function useChapterData(book, chapter) {
   const cache = {}
@@ -49,6 +52,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const { isReviewed, toggleReviewed, markReviewed } = useProgress()
   const [verseJump, setVerseJump] = useState('')
   const verseInputRef = useRef(null)
+  const [wikiMode, setWikiMode] = useState(() => localStorage.getItem(LS_WIKI_KEY) === 'true')
 
   useEffect(() => {
     const handler = (e) => {
@@ -159,6 +163,38 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
     return result
   }, [chapterConnections, toggles])
 
+  // Wiki mode: render Wikipedia-style layout instead of normal chapter view
+  if (wikiMode) {
+    return (
+      <div className="max-w-6xl mx-auto px-3 py-2">
+        <div className="mb-1 flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500 flex-wrap">
+          <button onClick={() => {
+              const next = false
+              setWikiMode(next)
+              localStorage.setItem(LS_WIKI_KEY, String(next))
+            }}
+            className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 cursor-pointer transition-colors">
+            Simple
+          </button>
+          <span className="text-neutral-300 dark:text-neutral-600">|</span>
+          {companionLabel && <span className="text-neutral-400">{companionLabel}</span>}
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 text-sm">
+            <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            Loading chapter…
+          </div>
+        ) : error ? (
+          <div className="mx-4 mt-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
+            {error}
+          </div>
+        ) : (
+          <WikiLayout data={data} book={book} chapter={chapter} toggles={toggles} chapterConnections={chapterConnections} />
+        )}
+      </div>
+    )
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 text-sm">
       <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
@@ -207,6 +243,20 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         {/* Stats */}
         {footnotes?.length > 0 && <span className="shrink-0">· {footnotes.length} fn</span>}
         {tskRefs?.length > 0 && <span className="shrink-0">· {tskRefs.length} tsk</span>}
+        {/* Wiki mode toggle */}
+        <button onClick={() => {
+            const next = !wikiMode
+            setWikiMode(next)
+            localStorage.setItem(LS_WIKI_KEY, String(next))
+          }}
+          className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
+            wikiMode
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700'
+              : 'text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-transparent'
+          }`}
+          title={wikiMode ? 'Switch to Simple view' : 'Switch to Wikipedia-style view'}>
+          {wikiMode ? 'Simple' : 'Wiki'}
+        </button>
         {/* Split-pane controls */}
         {onCloseCompanion ? (
           <div className="shrink-0 flex items-center gap-1 ml-auto">

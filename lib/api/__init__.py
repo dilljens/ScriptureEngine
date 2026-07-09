@@ -16,12 +16,12 @@ Adding a new tool:
   3. It's immediately available as MCP tool + HTTP API endpoint
 """
 
-from lib.api.verse import lookup_verse, passage_guide
+from lib.api.verse import lookup_verse, passage_guide, study_verse
 from lib.api.versions import list_versions, get_verse_text
 from lib.api.interlinear import get_interlinear
 from lib.api.search import search_text, search_xlingual
 from lib.api.gematria import gematria_lookup
-from lib.api.connections import get_connections, get_intertext, get_pardes
+from lib.api.connections import get_connections, get_intertext, get_pardes, compare_verses, research_topic
 from lib.api.sod import hidden_patterns
 from lib.api.graph import (
     graph_path,
@@ -32,6 +32,8 @@ from lib.api.graph import (
     graph_entity_network,
     graph_centrality,
     graph_stats,
+    graph_context,
+    entity_deep,
 )
 from lib.api.info import get_stats
 from lib.api.study import (
@@ -97,6 +99,20 @@ register(
         "required": ["verse"],
     },
     "Get pre-computed passage guide for a verse — instant access to all connections, gematria, and quality distribution",
+)
+
+register(
+    "scripture_study_verse",
+    study_verse,
+    {
+        "type": "object",
+        "properties": {
+            "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+            "max_reachable": {"type": "integer", "default": 10, "description": "Max 1-hop neighbor verses to include"},
+        },
+        "required": ["verse"],
+    },
+    "Complete verse study package — verse text + all connections + gematria + entities + sources + quality + 1-hop reachable verses in ONE call. Replaces scripture_verse + scripture_connections + scripture_gematria + scripture_graph_entities + scripture_sources + scripture_graph_reachable.",
 )
 
 register(
@@ -234,6 +250,21 @@ register(
         "required": ["verse"],
     },
     "Get intertextual connections for a verse — quotations, allusions, echoes",
+)
+
+register(
+    "scripture_compare",
+    compare_verses,
+    {
+        "type": "object",
+        "properties": {
+            "verse_a": {"type": "string", "description": "First verse ID (gen.1.1)"},
+            "verse_b": {"type": "string", "description": "Second verse ID (john.1.1)"},
+            "max_path_depth": {"type": "integer", "default": 4, "description": "Max path length in hops"},
+        },
+        "required": ["verse_a", "verse_b"],
+    },
+    "Compare two verses — shortest connection path, shared entities, overlapping connection types, side-by-side text, and PaRDeS level summary in ONE call",
 )
 
 register(
@@ -384,6 +415,37 @@ register(
     graph_stats,
     {"type": "object", "properties": {}},
     "Get overall connection graph statistics — total connections, unique verses, hub count",
+)
+
+register(
+    "scripture_graph_context",
+    graph_context,
+    {
+        "type": "object",
+        "properties": {
+            "verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+            "depth": {"type": "integer", "default": 2, "description": "How many hops to traverse"},
+            "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
+            "limit": {"type": "integer", "default": 20, "description": "Max verses to include"},
+        },
+        "required": ["verse"],
+    },
+    "Get N-hop neighborhood as structured text for LLM reasoning — verse text + typed relationships with strength/confidence in readable format",
+)
+
+register(
+    "scripture_entity_deep",
+    entity_deep,
+    {
+        "type": "object",
+        "properties": {
+            "entity": {"type": "string", "description": "Entity ID (person.abraham, place.zion, concept.covenant)"},
+            "min_confidence": {"type": "number", "default": 0.3},
+            "limit": {"type": "integer", "default": 100},
+        },
+        "required": ["entity"],
+    },
+    "Deep dive on a biblical entity — all verses mentioning it, all connections between those verses, and related entities that co-occur",
 )
 
 # ─── Info ───
@@ -643,6 +705,23 @@ register(
     "Get ecumenical consensus data for a verse — which traditions engage with it",
 )
 
+register(
+    "scripture_research",
+    research_topic,
+    {
+        "type": "object",
+        "properties": {
+            "seed_verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+            "theme": {"type": "string", "description": "Optional theme description"},
+            "max_depth": {"type": "integer", "default": 3, "description": "Max hops to traverse"},
+            "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
+            "max_verses": {"type": "integer", "default": 30, "description": "Max verses to collect"},
+        },
+        "required": ["seed_verse"],
+    },
+    "Multi-hop thematic research — walk the connection graph from a seed verse, collect all connected verses with texts and paths, return structured research brief. Essential for tracing themes across the canon.",
+)
+
 # ─── Adaptive Assessment Tools ───
 
 register(
@@ -725,7 +804,7 @@ register(
 # ─── Conversation Tools ───
 
 register(
-    "conversation_create",
+    "scripture_conversation_create",
     create_session,
     {
         "type": "object",
@@ -740,7 +819,7 @@ register(
 )
 
 register(
-    "conversation_add_message",
+    "scripture_conversation_add_message",
     add_message,
     {
         "type": "object",
@@ -756,7 +835,7 @@ register(
 )
 
 register(
-    "conversation_list",
+    "scripture_conversation_list",
     list_sessions,
     {
         "type": "object",
@@ -772,7 +851,7 @@ register(
 )
 
 register(
-    "conversation_get",
+    "scripture_conversation_get",
     get_session,
     {
         "type": "object",
@@ -785,7 +864,7 @@ register(
 )
 
 register(
-    "conversation_delete",
+    "scripture_conversation_delete",
     delete_session,
     {
         "type": "object",
@@ -798,7 +877,7 @@ register(
 )
 
 register(
-    "conversation_list_connections",
+    "scripture_conversation_list_connections",
     list_connections,
     {
         "type": "object",
@@ -812,7 +891,7 @@ register(
 )
 
 register(
-    "conversation_promote_connection",
+    "scripture_conversation_promote_connection",
     promote_connection,
     {
         "type": "object",

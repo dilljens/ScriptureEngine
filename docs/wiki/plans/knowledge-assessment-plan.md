@@ -60,7 +60,7 @@ This plan addresses three strategic improvements in parallel:
 
 ### Current State
 
-- 9 connection layers (linguistic separated from interpretive)
+- 11 connection layers
 - PaRDeS level mapping (P'shat = text, Drash = interpretation)
 - 5-signal quality calibration
 - Statistical controls: Monte Carlo p-value, Bonferroni, FDR

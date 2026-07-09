@@ -1,7 +1,7 @@
 # Scripture Knowledge Engine — Architecture Overview
 
 **Build**: `python3 scripts/ingest.py`  **Serve**: `./run.sh web`  **API**: `http://localhost:8000/docs`
-**Database**: `data/processed/scripture.db` (218,292 connections, 41,126 passage guides, 42,054 vector embeddings)
+**Database**: `data/processed/scripture.db` (1,028,083 connections, 41,126 passage guides, 42,054 vector embeddings)
 
 ## Quick Reference
 
@@ -9,17 +9,17 @@
 | Purpose | File |
 |---------|------|
 | HTTP API server (FastAPI) | `web/server.py` |
-| MCP server (local AI, project-scoped) | `mcp_server.py` |
+| MCP server (project-scoped, stdio JSON-RPC) | `mcp_server.py` |
 | Pre-computed passage guides | `scripts/precompute_guides.py` |
 | Vector embeddings (semantic search) | `scripts/embed_verses.py` |
 | Connection graph cleanup (AI review) | `scripts/cleanup_connections.py` |
 | Database schema & operations | `lib/db.py` |
 | Gematria calculator | `lib/gematria.py` |
-| Connection types (10 layers) | `lib/connections/types.py` |
+| Connection types (11 layers) | `lib/connections/types.py` |
 | PaRDeS levels | `lib/connections/pardes.py` |
 | Hidden patterns (Sod engine) | `lib/sod/` |
 | Anti-hallucination quality controls | `lib/controls/` |
-| Connection generators (6 automated) | `generators/` |
+| Connection generators (47 automated) | `generators/` |
 | Project-scoped MCP config | `.opencode/opencode.jsonc` |
 | External data sources | `data/raw/` (scriptures-json, morphhb, sblgnt, etc.) |
 
@@ -37,28 +37,24 @@
 | POST | `/api/v1/tabs` | Create/manage UI tab state |
 | GET | `/api/v1/info` | Database statistics |
 
-### MCP Tools (10, project-scoped)
-`scripture_verse`, `scripture_search`, `scripture_gematria`, `scripture_connections`,
-`scripture_intertext`, `scripture_search_xlingual`, `scripture_sod`,
-`scripture_passage_guide`, `scripture_pardes`, `scripture_info`
+See `README.md` for the full list of 102 HTTP API endpoints and 56 MCP tools.
 
 ## System State
-- **42,054 verses** across OT, NT, BoM, D&C, PGP
+- **42,054 verses** across 8 works: OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha
 - **23,213 OT verses with Hebrew** (WLC 4.20 + morphology)
 - **7,925 NT verses with Greek** (SBLGNT + isopsephy)
 - **305,507 Hebrew gematria** entries
 - **137,536 Greek isopsephy** entries
 - **42,054 vector embeddings** (semantic search via sqlite-vec)
-- **218,292 connections** across all 10 layers
+- **1,028,083 connections** across all 11 layers
 - **41,126 pre-computed passage guides** (RAM-cached at startup)
-- **10 connection layers** — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic
-- **4 PaRDeS levels** — P'shat (122K), Remez (44K), Drash (16K), Sod (2.5K)
-- **Quality calibration** — probable (124K), suggested (61K)
+- **131 connection types** in 11 layers — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, sod
+- **4 PaRDeS levels** — P'shat, Remez, Drash, Sod
+- **Quality calibration** — 5-star rating system with p-values, Bonferroni, FDR
 - **87 entity links** — Hebrew ↔ Greek ↔ English name alignment
-- **27 known chiasms** — Gileadi, Welch, and classic patterns
-- **15 parallelism types** — synonymous, antithetic, synthetic, emblematic, step, numerical, merismus, rhetorical, linked-words, keyword-linking, chiasms, acrostic, inclusio, etc.
-- **3 guided studies** — Torah in All Scripture, Covenants and Their Fulfillments, The Angel of the Lord
-- **8 data sources integrated** — WLC, SBLGNT, LXX, STEPBible, JST, Gileadi's patterns, Barker's Temple Theology, Pickering's Daniel numbers
+- **47 generators** for automated connection discovery
+- **56 MCP tools** — shared by MCP server and HTTP API
+- **102 HTTP API endpoints** — FastAPI + 6 route modules
 
 ## Quick Commands
 ```bash
@@ -82,8 +78,10 @@
 | STEPBible (TAGNT + TAHOT) | NT/OT manuscript variants | ✅ |
 | JST (joseph-smith-translation) | 403 textual changes | ✅ |
 | Gileadi (IsaiahExplained.com) | 70+ pseudonyms, 7-part structure, 30 domino events | ✅ |
-| Margaret Barker | Temple theology — 25 interpretive connections | ✅ |
+| Margaret Barker | Temple theology — interpretive connections | ✅ |
 | Pickering (propheticappointments.com) | Daniel numbers, moedim timeline | ✅ |
+| DSS Textual Archive | Dead Sea Scrolls biblical variants and sectarian texts | ✅ |
+| R.H. Charles | Apocrypha and Pseudepigrapha texts | ✅ |
 | Ethiopian Bible (Ge'ez) | 83-book canon, text available at tau.ac.il | 📦 Deferred |
 
 ## Name Brainstorm: "Feasting Upon the Word"
