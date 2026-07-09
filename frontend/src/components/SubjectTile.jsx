@@ -15,7 +15,7 @@ export default function SubjectTile({ workspace, activeTab, onSelectTab, onClose
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
       {/* Subject header */}
       <div
-        onClick={() => { setExpanded(!expanded); onSelectWorkspace?.(workspace.id) }}
+        onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
       >
         <span className="text-lg">{expanded ? '▾' : '▸'}</span>

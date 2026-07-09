@@ -416,6 +416,7 @@ function AppInner() {
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
   const [showAssessment, setShowAssessment] = useState(false)
+  const [showTabs, setShowTabs] = useState(true)
   const [showGlobalKeyboard, setShowGlobalKeyboard] = useState(false)
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -1181,8 +1182,14 @@ function AppInner() {
         />
       </div>
 
-      {/* Tab strip */}
-      <div className={`bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 flex items-center min-h-[30px] transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
+      {/* Tab strip — collapsible with ▲/▼ toggle */}
+      <div className={`bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 transition-all duration-200 overflow-hidden ${showTabs ? 'max-h-12' : 'max-h-0'} ${uiVisible ? 'opacity-100' : 'opacity-0 sm:opacity-100'}`}>
+        <div className="flex items-center min-h-[30px]">
+          <button onClick={() => setShowTabs(!showTabs)}
+            className="hidden sm:flex items-center justify-center w-5 h-full shrink-0 text-[9px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+            title={showTabs ? 'Hide tabs' : 'Show tabs'}>
+            {showTabs ? '▲' : '▼'}
+          </button>
         {/* Workspace selector (mobile only) */}
         <div className="flex sm:hidden items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">WS</span>
@@ -1218,6 +1225,7 @@ function AppInner() {
               className="px-1.5 py-0.5 rounded text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm shrink-0 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
               title="New tab (Ctrl+T)">+</button>
           </div>
+        </div>
       </div>
 
       {/* Main */}
