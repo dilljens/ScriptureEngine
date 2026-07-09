@@ -159,12 +159,19 @@ def start_assessment(conn, user_id="default", target_layer=None, max_items=20):
     }
 
 
-def submit_answer(conn, user_id="default", correct=False):
+def submit_answer(conn, user_id="default", correct=False, correctness=None):
     """Submit an answer and get the next question.
+
+    Supports partial credit via `correctness` parameter.
+    For simple True/False: just pass `correct=True/False`.
+    For multiple choice with weighted options: pass `correctness=0.0–1.0`
+    reflecting how correct the selected answer is (1.0 = fully correct,
+    0.5 = partially right, 0.0 = completely wrong).
 
     Args:
         user_id: User identifier
-        correct: Whether the answer was correct (True/False)
+        correct: Whether the answer was correct (simple True/False)
+        correctness: Optional float 0.0–1.0 for partial credit (defaults to 1.0 or 0.0)
 
     Returns:
         Dict with updated state and next question (or completion)
@@ -180,18 +187,25 @@ def submit_answer(conn, user_id="default", correct=False):
     if item_id is None:
         return {"error": "No current item to assess"}
 
-    # Record response
-    session["engine"].assess_response(session["state"], item_id, correct)
-    session["history"].append({"item_id": item_id, "correct": correct})
+    # Default correctness: 1.0 for correct, 0.0 for wrong
+    if correctness is None:
+        correctness = 1.0 if correct else 0.0
+
+    # Record response with partial credit support
+    session["engine"].assess_response(session["state"], item_id, correct, correctness)
+    session["history"].append({"item_id": item_id, "correct": correct, "correctness": correctness})
 
     # If correct, give FIRe credit via the Go memorization service
     if correct:
         _fire_credit_for_item(conn, item_id)
 
-    # If wrong, suggest wiki articles to review
-    wrong_suggestions = []
-    if not correct:
-        wrong_suggestions = _get_wiki_links(conn, item_id)
+    # Suggest wiki articles for review — on ALL answers
+    wiki_suggestions = _get_wiki_links(conn, item_id)
+    if wiki_suggestions:
+        wiki_suggestions = [
+            {**link, "reason": "review" if not correct else "explore"}
+            for link in wiki_suggestions
+        ]
 
     # Check termination
     should_stop, reason = session["engine"].should_terminate(
@@ -217,8 +231,8 @@ def submit_answer(conn, user_id="default", correct=False):
             "outer_fringe": outer_fringe,
             "history": session["history"][-5:],
         }
-        if wrong_suggestions:
-            result["learn_more"] = wrong_suggestions
+        if wiki_suggestions:
+            result["learn_more"] = wiki_suggestions
         return result
 
     # Select next item
@@ -253,8 +267,8 @@ def submit_answer(conn, user_id="default", correct=False):
             "by_layer": session["state"].mastery_by_layer(conn),
         },
     }
-    if wrong_suggestions:
-        result["learn_more"] = wrong_suggestions
+    if wiki_suggestions:
+        result["learn_more"] = wiki_suggestions
     return result
 
 
@@ -291,12 +305,32 @@ def _get_question(conn, item_id):
     ).fetchone()
 
     if row:
-        opts = json.loads(row[3]) if row[3] else []
+        opts_raw = row[3]
+        opts = json.loads(opts_raw) if opts_raw else []
+
+        # Normalize options: ensure each has a correctness_weight
+        # Options may be simple strings or {label, correctness_weight} objects
+        normalized_opts = []
+        for i, opt in enumerate(opts):
+            if isinstance(opt, str):
+                # Simple string — assign 1.0 to correct, 0.0 to others
+                is_correct = (i == row[4]) if isinstance(row[4], int) else (opt == row[4])
+                normalized_opts.append({
+                    "label": opt,
+                    "correctness_weight": 1.0 if is_correct else 0.0,
+                })
+            elif isinstance(opt, dict):
+                # Already has structure — ensure correctness_weight exists
+                if "correctness_weight" not in opt:
+                    opt["correctness_weight"] = 1.0 if opt.get("correct", False) else 0.0
+                normalized_opts.append(opt)
+
         result = {
             "item_id": row[0],
             "type": row[1],
             "question": row[2],
-            "options": opts,
+            "options": normalized_opts if normalized_opts else opts,
+            "correct_answer": row[4],
             "layer": row[5],
             "bloom_level": row[6],
         }
@@ -318,8 +352,11 @@ def _get_question(conn, item_id):
         "item_id": item_id,
         "type": "true_false",
         "question": f"Is there a {ki[2]} connection between {ki[1]} and {ki[3]}?",
-        "options": ["True", "False"],
-        "correct_answer": "True" if ki else "False",
+        "options": [
+            {"label": "True", "correctness_weight": 1.0},
+            {"label": "False", "correctness_weight": 0.0},
+        ],
+        "correct_answer": "True",
         "layer": ki[4],
         "bloom_level": "remember",
     }
@@ -456,9 +493,10 @@ def start_diagnostic(conn, user_id="default", max_items=30):
     }
 
 
-def submit_diagnostic_answer(conn, user_id="default", correct=False):
+def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness=None):
     """Submit a diagnostic answer with conditional completion.
     
+    Supports partial credit via `correctness` parameter (0.0–1.0).
     Implements conditional completion from Math Academy Way (Ch 30):
     When mastery probability for a connection type + layer combination
     crosses 0.8, the system stops asking about that combination.
@@ -475,9 +513,13 @@ def submit_diagnostic_answer(conn, user_id="default", correct=False):
     if item_id is None:
         return {"error": "No current item"}
 
-    # Record response
-    session["engine"].assess_response(session["state"], item_id, correct)
-    session["history"].append({"item_id": item_id, "correct": correct})
+    # Default correctness: 1.0 for correct, 0.0 for wrong
+    if correctness is None:
+        correctness = 1.0 if correct else 0.0
+
+    # Record response with partial credit support
+    session["engine"].assess_response(session["state"], item_id, correct, correctness)
+    session["history"].append({"item_id": item_id, "correct": correct, "correctness": correctness})
 
     # FIRe credit for correct answers
     if correct:

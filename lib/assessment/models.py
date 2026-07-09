@@ -22,11 +22,24 @@ class KnowledgeState:
     def set_mastery(self, item_id, prob):
         self.mastery_prob[item_id] = max(0.0, min(1.0, prob))
 
-    def record_response(self, item_id, correct):
+    def record_response(self, item_id, correct, correctness=1.0):
+        """Record a response with optional partial credit.
+
+        Args:
+            item_id: The item answered
+            correct: Boolean True/False for simple scoring
+            correctness: Float 0.0–1.0 for partial credit (default: 1.0 if correct, 0.0 if not)
+        """
         if correct:
             self.times_correct[item_id] = self.times_correct.get(item_id, 0) + 1
         else:
-            self.times_wrong[item_id] = self.times_wrong.get(item_id, 0) + 1
+            # For partial credit, record fractional correctness
+            if correctness < 0.5:
+                self.times_wrong[item_id] = self.times_wrong.get(item_id, 0) + 1
+            # Between 0.5 and 1.0, it's partially correct — count in both
+            if correctness > 0.0 and correctness < 1.0:
+                self.times_correct[item_id] = self.times_correct.get(item_id, 0) + correctness
+                self.times_wrong[item_id] = self.times_wrong.get(item_id, 0) + (1.0 - correctness)
 
     def overall_mastery(self):
         if not self.mastery_prob:
@@ -88,12 +101,17 @@ class BLIM:
         info = (dp ** 2) / (p * q)
         return info
 
-    def update_bayesian(self, prior_mastery, response_correct):
+    def update_bayesian(self, prior_mastery, response_correct, correctness=1.0):
         """Bayesian update of mastery probability given item response.
+
+        Supports partial credit via `correctness` (0.0–1.0).
+        For correctness = 0.0, acts as pure wrong. For correctness = 1.0, acts as pure correct.
+        For intermediate values, interpolates between the two posteriors.
 
         Args:
             prior_mastery: P(mastered) before this response
-            response_correct: True if user answered correctly
+            response_correct: Boolean True/False for simple scoring
+            correctness: Float 0.0–1.0 for partial credit weighting (default 1.0)
 
         Returns:
             posterior_mastery: P(mastered | response)
@@ -103,19 +121,23 @@ class BLIM:
         # P(correct | not mastered) = guess
         p_correct_given_not = self.guess
 
-        if response_correct:
-            # P(mastered | correct) = P(correct|mastered)*P(mastered) / P(correct)
-            p_correct = (p_correct_given_mastery * prior_mastery +
-                         p_correct_given_not * (1.0 - prior_mastery))
-            if p_correct == 0:
-                return prior_mastery
-            posterior = (p_correct_given_mastery * prior_mastery) / p_correct
+        # Compute posterior for CORRECT response
+        p_correct = (p_correct_given_mastery * prior_mastery +
+                     p_correct_given_not * (1.0 - prior_mastery))
+        if p_correct == 0:
+            posterior_correct = prior_mastery
         else:
-            # P(mastered | wrong) = P(wrong|mastered)*P(mastered) / P(wrong)
-            p_wrong = (self.slip * prior_mastery +
-                       (1.0 - self.guess) * (1.0 - prior_mastery))
-            if p_wrong == 0:
-                return prior_mastery
-            posterior = (self.slip * prior_mastery) / p_wrong
+            posterior_correct = (p_correct_given_mastery * prior_mastery) / p_correct
+
+        # Compute posterior for WRONG response
+        p_wrong = (self.slip * prior_mastery +
+                   (1.0 - self.guess) * (1.0 - prior_mastery))
+        if p_wrong == 0:
+            posterior_wrong = prior_mastery
+        else:
+            posterior_wrong = (self.slip * prior_mastery) / p_wrong
+
+        # Interpolate between correct and wrong based on correctness weight
+        posterior = posterior_correct * correctness + posterior_wrong * (1.0 - correctness)
 
         return max(0.01, min(0.99, posterior))

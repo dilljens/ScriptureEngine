@@ -109,22 +109,27 @@ class AssessmentEngine:
 
         return best_item
 
-    def assess_response(self, state, item_id, correct):
+    def assess_response(self, state, item_id, correct, correctness=1.0):
         """Update knowledge state after a response.
+
+        Supports partial credit via `correctness` (0.0–1.0).
+        For multiple-choice questions with weighted options,
+        pass correctness as the weight of the selected option.
 
         Args:
             state: KnowledgeState (mutated in place)
             item_id: The item that was answered
-            correct: True if correct, False if wrong
+            correct: True if correct, False if wrong (simple scoring)
+            correctness: Float 0.0–1.0 for partial credit (default 1.0)
         """
         blim = self._get_blim(item_id)
         if not blim:
             return
 
         prior = state.get_mastery(item_id)
-        posterior = blim.update_bayesian(prior, correct)
+        posterior = blim.update_bayesian(prior, correct, correctness)
         state.set_mastery(item_id, posterior)
-        state.record_response(item_id, correct)
+        state.record_response(item_id, correct, correctness)
 
         # Propagate to prerequisites and postrequisites
         self._propagate(state, item_id, posterior)
