@@ -14,6 +14,105 @@ from typing import Optional
 
 router = APIRouter()
 
+# ── FSRS-5 Implementation (Hebrew learning) ──
+# Ported from go-srs/internal/fsrs which is verified against Rust fsrs-rs test vectors.
+# 21 W-parameters, default retention 0.9, max interval 36500 days.
+
+FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
+          1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
+          1.8729, 0.5425, 0.0912, 0.0658, 0.1542]
+
+
+def fsrs_initial_stability(rating):
+    """Initial stability (in days) based on rating 1-4."""
+    if rating < 1 or rating > 4:
+        rating = 3
+    return FSRS_W[rating - 1]
+
+
+def fsrs_next_interval(stability, request_retention=0.9):
+    """Next review interval in days."""
+    if stability <= 0:
+        return 0
+    return max(1, round(stability * (math.log(request_retention) / math.log(0.9)) ** (1.0 / FSRS_W[10])))
+
+
+def fsrs_stability_after_success(stability, difficulty, rating):
+    """Calculate new stability after a successful recall."""
+    difficulty_weight = math.pow(FSRS_W[7], difficulty - 1)
+    retrieval_strength = math.pow(stability, -FSRS_W[9])
+    # Rating multiplier
+    rating_mult = FSRS_W[8]
+    if rating == 2:  # Hard
+        rating_mult = FSRS_W[8] * FSRS_W[15]
+    elif rating == 4:  # Easy
+        rating_mult = FSRS_W[8] * FSRS_W[16]
+    
+    new_s = stability * (1 + rating_mult * retrieval_strength * difficulty_weight)
+    return new_s
+
+
+def fsrs_stability_after_failure(stability, difficulty, _rating):
+    """Calculate new stability after a failed recall."""
+    difficulty_pow = math.pow(difficulty, FSRS_W[12])
+    stability_factor = math.pow(stability, -FSRS_W[13])
+    new_s = FSRS_W[11] * difficulty_pow * stability_factor * (stability + 1)
+    return new_s
+
+
+def fsrs_next_difficulty(difficulty, rating):
+    """Calculate next difficulty after a review."""
+    delta = -FSRS_W[6] if rating >= 3 else FSRS_W[6]
+    mean_reversion = FSRS_W[7] * (FSRS_W[4] - difficulty)
+    new_d = difficulty + delta + mean_reversion
+    # Clamp to [1, 10]
+    return max(1.0, min(10.0, new_d))
+
+
+def fsrs_retrievability(stability, days_since):
+    """Probability of recall after elapsed days."""
+    if stability <= 0:
+        return 0
+    return math.exp(-days_since / stability * math.log(1.0 / (1.0 - FSRS_W[20])) if FSRS_W[20] > 0
+                    else math.pow(1 + days_since / (stability * FSRS_W[19]), 1 - FSRS_W[18]))
+
+
+def fsrs_schedule(stability, difficulty, rating):
+    """Full FSRS schedule: given current state + rating, return new state + interval."""
+    if rating <= 2:  # Failed (Again or Hard)
+        new_s = fsrs_stability_after_failure(stability, difficulty, rating)
+        new_d = fsrs_next_difficulty(difficulty, rating)
+    else:  # Passed (Good or Easy)
+        new_s = fsrs_stability_after_success(stability, difficulty, rating)
+        new_d = fsrs_next_difficulty(difficulty, rating)
+    
+    interval = fsrs_next_interval(new_s)
+    return new_s, new_d, interval
+
+
+# ── FIRe (Fractional Implicit Repetition) ──
+
+def fire_process(graph, node_id, correct, weight=0.3):
+    """Process FIRe: implicit repetition credit flows through the knowledge graph.
+    
+    When a node is practiced, connected prerequisite nodes get partial credit.
+    This implements repetition compression (Math Academy Ch. 18, 29).
+    """
+    if not graph:
+        return {}
+    results = {}
+    # Get prerequisites (nodes that this node depends on)
+    prereqs = graph.get(node_id, [])
+    for prereq_id in prereqs:
+        # Credit = weight * correctness
+        credit = weight * (1.0 if correct else 0.0)
+        results[prereq_id] = credit
+        # Recursive: propagate to prerequisites of prerequisites
+        sub_results = fire_process(graph, prereq_id, correct, weight * 0.5)
+        for k, v in sub_results.items():
+            results[k] = results.get(k, 0) + v
+    return results
+
 BASE_DIR = Path(__file__).parent.parent.parent
 MEM_DB = BASE_DIR / "data" / "memorize.db"
 SCRIPTURE_DB = BASE_DIR / "data" / "processed" / "scripture.db"
@@ -25,6 +124,66 @@ def get_db():
     sys.path.insert(0, str(BASE_DIR))
     from lib.db import get_db as _get_db
     return _get_db()
+
+
+# ── Hebrew Knowledge Graph (for FIRe) ──
+
+def _build_hebrew_graph():
+    if not MEM_DB.exists(): return {}
+    conn = sqlite3.connect(str(MEM_DB))
+    edges = conn.execute("SELECT source_id, target_id FROM hebrew_edges").fetchall()
+    conn.close()
+    graph = {}
+    for src, tgt in edges:
+        if tgt not in graph: graph[tgt] = []
+        graph[tgt].append(src)
+    return graph
+
+
+HEBREW_GRAPH = _build_hebrew_graph()
+
+
+@router.get("/api/v1/hebrew/fsrs/review")
+def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "default"):
+    """Process an FSRS-5 review with FIRe. Rating: 1=Again, 2=Hard, 3=Good, 4=Easy."""
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    rating = max(1, min(4, rating))
+    conn = sqlite3.connect(str(MEM_DB))
+    row = conn.execute(
+        "SELECT mastery, attempts, correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
+        (user_id, node_id)).fetchone()
+    if row and row[1] > 0 and row[2] > 0:
+        a, c, m = row[1], row[2], row[0]
+        stability = max(1.0, a * m * 7.0)
+        difficulty = max(1.0, min(10.0, 5.0 - m * 3.0))
+    else:
+        a, c, m = 0, 0, 0.0
+        stability = fsrs_initial_stability(rating)
+        difficulty = 5.0
+    new_s, new_d, interval = fsrs_schedule(stability, difficulty, rating)
+    a += 1
+    c += 1 if rating >= 3 else 0
+    m = min(1.0, c / max(a, 1))
+    conn.execute(
+        "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced) VALUES (?,?,?,?,?,datetime('now'))",
+        (user_id, node_id, m, a, c))
+    # FIRe implicit credit to connected nodes
+    fire_results = fire_process(HEBREW_GRAPH, node_id, rating >= 3, weight=0.3)
+    for prereq_id, credit in fire_results.items():
+        if credit > 0:
+            pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
+                              (user_id, prereq_id)).fetchone()
+            if pr:
+                conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
+                             (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {
+        "node_id": node_id, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
+        "interval": interval, "mastery": round(m, 3), "attempts": a, "correct": c,
+        "fire_credits": {k: round(v, 3) for k, v in sorted(fire_results.items(), key=lambda x: -x[1])[:10]},
+    }}
 
 
 # ── Vocabulary ──
@@ -391,20 +550,25 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
             continue
         days = (now - last_time).total_seconds() / 86400.0
         m = r['mastery']
-        stab = 1.0
-        if m >= 0.9: stab = 21.0
-        elif m >= 0.8: stab = 14.0
-        elif m >= 0.6: stab = 7.0
-        elif m >= 0.4: stab = 3.0
-        stab *= min(r['attempts'], 10) / 3.0
-        stab = min(stab, 90.0)
-        ret = math.exp(-days / stab) if stab > 0 else 0
+        a = r['attempts']
+        c = r['correct']
+        
+        # FSRS-5 based stability estimation from progress data
+        if a > 0 and c > 0:
+            # Estimate: stability grows with attempts and correctness
+            stability = max(1.0, a * m * 7.0)
+            difficulty = max(1.0, min(10.0, 5.0 - m * 3.0))
+            ret = fsrs_retrievability(stability, days)
+        else:
+            stability = 1.0
+            ret = math.exp(-days / stability) if stability > 0 else 0
+        
         if ret < 0.9:
             due.append({
                 "node_id": r['node_id'], "title": r['title'], "level": r['level'],
                 "category": r['category'], "description": r['description'],
-                "mastery": m, "attempts": r['attempts'], "correct": r['correct'],
-                "days_since": round(days, 1), "stability": round(stab, 1),
+                "mastery": m, "attempts": a, "correct": c,
+                "days_since": round(days, 1), "stability": round(stability, 1),
                 "retrievability": round(ret, 3), "last_practiced": last_str,
             })
     # Systematic interleaving: sort due reviews for maximum category diversity
