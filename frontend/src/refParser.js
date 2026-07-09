@@ -196,39 +196,77 @@ export function parseAndFuzzy(input, allBooks) {
   const isNewTab = text.endsWith('+')
   const clean = text.replace(/\+$/, '').trim()
 
+  // ── COMMAND LIST for autocomplete ──
+  const COMMANDS = [
+    { cmd: 'chat', icon: '💬', label: 'Chat', desc: 'Open chat with a message', type: 'chat' },
+    { cmd: 'search', icon: '🔍', label: 'Search', desc: 'Search scriptures', type: 'search' },
+    { cmd: 'find', icon: '🔍', label: 'Find', desc: 'Search scriptures (alias)', type: 'search' },
+    { cmd: 'dark', icon: '🌙', label: 'Dark mode', desc: 'Toggle dark mode', type: 'command' },
+    { cmd: 'theme', icon: '🌙', label: 'Theme', desc: 'Toggle dark mode (alias)', type: 'command' },
+    { cmd: 'font', icon: '🔤', label: 'Font size', desc: '/font up, /font down, /font 120', type: 'command' },
+    { cmd: 'toggle', icon: '🔘', label: 'Toggle feature', desc: 'Toggle footnotes, gematria, etc.', type: 'toggle' },
+    { cmd: 'history', icon: '🕐', label: 'History', desc: 'Conversation history', type: 'history' },
+    { cmd: 'structure', icon: '⟷', label: 'Isaiah structure', desc: 'Open Isaiah structure viewer', type: 'structure' },
+    { cmd: 'help', icon: '❓', label: 'Help', desc: 'Show this help', type: 'help' },
+  ]
+
   // ── / commands (universal command palette) ──
   if (clean.startsWith('/') && clean !== '/?') {
     const parts = clean.slice(1).split(/\s+/)
     const cmd = parts[0].toLowerCase()
     const args = parts.slice(1).join(' ').trim()
+
+    // If empty after / or only partial command, show autocomplete suggestions
+    if (cmd === '' || COMMANDS.some(c => c.cmd.startsWith(cmd) && c.cmd !== cmd)) {
+      const suggestions = COMMANDS
+        .filter(c => c.cmd.startsWith(cmd))
+        .map(c => ({
+          type: c.type,
+          label: `${c.icon} /${c.cmd} — ${c.desc}`,
+          cmd: c.cmd,
+          explanation: c.desc,
+          matchIdxs: [],
+        }))
+      if (suggestions.length > 0) {
+        // Add a "Type a book to navigate" option at the top
+        const navHint = { type: 'navigate', label: '📖 Type a book name or reference to navigate', explanation: 'e.g., "isa 55:6" or "genesis"', matchIdxs: [] }
+        return { type: 'autocomplete', results: [navHint, ...suggestions] }
+      }
+    }
+
     switch (cmd) {
+      case '':
+        return { type: 'autocomplete', results: [] }
       case 'chat':
-        return { type: 'chat', message: args, results: [{ type: 'chat', message: args, matchIdxs: [], label: args ? `💬 Chat: ${args}` : '💬 New chat' }] }
+        return { type: 'chat', message: args, results: [{ type: 'chat', icon: '💬', message: args, matchIdxs: [], label: args ? `💬 Chat: ${args}` : '💬 New chat' }] }
       case 'search':
       case 'find':
-        return { type: 'search', query: args, results: [{ type: 'search', query: args, label: args ? `🔍 Search: ${args}` : '🔍 Search scriptures' }] }
+        return { type: 'search', query: args, results: [{ type: 'search', icon: '🔍', query: args, label: args ? `🔍 Search: ${args}` : '🔍 Search scriptures', explanation: 'Press Enter to search' }] }
       case 'dark':
       case 'theme':
-        return { type: 'dark', results: [{ type: 'dark', label: '🌙 Toggle dark mode' }] }
+        return { type: 'command', results: [{ type: 'command', icon: '🌙', label: '🌙 Toggle dark mode', explanation: 'Toggle between light and dark theme' }] }
       case 'font':
-        if (args === 'up' || args === '+') return { type: 'font', direction: 'up', results: [{ type: 'font', label: '🔤 Increase font size' }] }
-        if (args === 'down' || args === '-') return { type: 'font', direction: 'down', results: [{ type: 'font', label: '🔤 Decrease font size' }] }
-        if (/^\d+$/.test(args)) return { type: 'font', size: parseInt(args), results: [{ type: 'font', label: `🔤 Set font size to ${args}%` }] }
-        return { type: 'navigate', results: [{ type: 'navigate', label: 'Font: use /font up, /font down, or /font 120' }] }
+        if (args === 'up' || args === '+') return { type: 'command', results: [{ type: 'command', icon: '🔤', label: '🔤 Increase font size', explanation: 'Make text larger' }] }
+        if (args === 'down' || args === '-') return { type: 'command', results: [{ type: 'command', icon: '🔤', label: '🔤 Decrease font size', explanation: 'Make text smaller' }] }
+        if (/^\d+$/.test(args)) return { type: 'command', results: [{ type: 'command', icon: '🔤', label: `🔤 Set font size to ${args}%`, explanation: `Font will be ${args}%` }] }
+        return { type: 'autocomplete', results: [
+          { type: 'command', icon: '🔤', label: '🔤 /font up — Larger text', explanation: 'Increase font size', matchIdxs: [] },
+          { type: 'command', icon: '🔤', label: '🔤 /font down — Smaller text', explanation: 'Decrease font size', matchIdxs: [] },
+          { type: 'command', icon: '🔤', label: '🔤 /font 120 — Set to 120%', explanation: 'Specific percentage', matchIdxs: [] },
+        ]}
       case 'toggle':
-        return { type: 'toggle', toggle: args, results: [{ type: 'toggle', toggle: args, label: args ? `🔘 Toggle: ${args}` : '🔘 Toggle a feature (footnotes, gematria, lemma, chiasmus, etc.)' }] }
+        return { type: 'toggle', toggle: args, results: [{ type: 'toggle', icon: '🔘', toggle: args, label: args ? `🔘 Toggle: ${args}` : '🔘 Toggle a feature', explanation: args ? `Toggle ${args} on/off` : 'footnotes, gematria, lemma, chiasmus, etc.' }] }
       case 'history':
-        return { type: 'history', results: [{ type: 'history', label: '🕐 Open conversation history' }] }
+        return { type: 'history', results: [{ type: 'history', icon: '🕐', label: '🕐 Open conversation history', explanation: 'View past conversations' }] }
       case 'structure':
-        return { type: 'structure', results: [{ type: 'structure', label: '⟷ Open Isaiah structure' }] }
+        return { type: 'structure', results: [{ type: 'structure', icon: '⟷', label: '⟷ Open Isaiah structure', explanation: 'View Isaiah parallelism' }] }
       case 'help':
       case '?':
         return {
           type: 'help',
-          results: [{ type: 'help', label: 'Commands', text: `References: type a book or ref like "isa 55:6", "isa:34", "isa/34", or fuzzy like "isah"\nPaths: "/ot/isa/55", "/dc/76"\n\n/chat [message] — Open chat\n/search [query] — Search verses\n/dark — Toggle dark mode\n/font (up|down|120) — Font size\n/toggle [feature] — Toggle footnotes, gematria, lemma, etc.\n/history — Conversation history\n/structure — Isaiah structure\n/help — This help\n\nAdd + for new tab: "isa 55:6 +"` }],
+          results: [{ type: 'help', label: 'Commands', text: `References: type a book or ref like "isa 55:6", "isa:34", "isa/34"\nPaths: "/ot/isa/55", "/dc/76"\n\n${COMMANDS.map(c => `${c.icon} /${c.cmd} — ${c.desc}`).join('\n')}\n\nAdd + for new tab: "isa 55:6 +"` }],
         }
       default:
-        // Not a known / command — fall through to path/fuzzy parsing below
         break
     }
   }
