@@ -20,23 +20,23 @@ class AssessmentEngine:
                 (item_id,)
             ).fetchone()
             if row:
-                diff = row["difficulty"]
+                diff = row[3]  # difficulty
                 # Convert difficulty (1-quality) to IRT scale
                 difficulty = (diff - 0.5) * 4  # spread to [-2, 2]
                 discrimination = 1.0
-                if row["pa_r_de_s_level"] == "remez":
+                if row[2] == "remez":  # pa_r_de_s_level
                     discrimination = 1.2
-                elif row["pa_r_de_s_level"] == "drash":
+                elif row[2] == "drash":
                     discrimination = 1.5
-                elif row["pa_r_de_s_level"] == "sod":
+                elif row[2] == "sod":
                     discrimination = 2.0
                 self.items_cache[item_id] = {
                     "difficulty": difficulty,
                     "discrimination": discrimination,
                     "guess": 0.15,
                     "slip": 0.10,
-                    "layer": row["pa_r_de_s_level"],
-                    "type": row["connection_type"],
+                    "layer": row[2],  # pa_r_de_s_level
+                    "type": row[1],  # connection_type
                 }
         return self.items_cache.get(item_id)
 
@@ -87,7 +87,7 @@ class AssessmentEngine:
         best_info = -1
 
         for row in candidates:
-            item_id = row["id"]
+            item_id = row[0]  # row is a tuple (id,)
             blim = self._get_blim(item_id)
             if not blim:
                 continue
@@ -209,10 +209,10 @@ class AssessmentEngine:
                     fringe.append({
                         "item_id": item_id,
                         "mastery": prob,
-                        "type": row["connection_type"],
-                        "layer": row["pa_r_de_s_level"],
-                        "verse": row["verse_id"],
-                        "target": row["target_verse"],
+                        "type": row[0],  # connection_type
+                        "layer": row[1],  # pa_r_de_s_level
+                        "verse": row[2],  # verse_id
+                        "target": row[3],  # target_verse
                     })
         fringe.sort(key=lambda x: abs(x["mastery"] - 0.5))
         return fringe[:limit]

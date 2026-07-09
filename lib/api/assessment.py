@@ -280,14 +280,15 @@ def _get_question(conn, item_id):
     ).fetchone()
 
     if row:
-        opts = json.loads(row["options_json"]) if row["options_json"] else []
+        # row: (id, question_type, question_text, options_json, correct_answer, layer, bloom_level)
+        opts = json.loads(row[3]) if row[3] else []
         return {
-            "item_id": row["id"],
-            "type": row["question_type"],
-            "question": row["question_text"],
+            "item_id": row[0],
+            "type": row[1],
+            "question": row[2],
             "options": opts,
-            "layer": row["layer"],
-            "bloom_level": row["bloom_level"],
+            "layer": row[5],
+            "bloom_level": row[6],
         }
 
     # Fallback: create question on the fly from knowledge_items
@@ -303,10 +304,10 @@ def _get_question(conn, item_id):
     return {
         "item_id": item_id,
         "type": "true_false",
-        "question": f"Is there a {ki['connection_type']} connection between {ki['verse_id']} and {ki['target_verse']}?",
+        "question": f"Is there a {ki[2]} connection between {ki[1]} and {ki[3]}?",
         "options": ["True", "False"],
         "correct_answer": "True" if ki else "False",
-        "layer": ki["pa_r_de_s_level"],
+        "layer": ki[4],
         "bloom_level": "remember",
     }
 
@@ -323,8 +324,8 @@ def _fire_credit_for_item(conn, item_id):
     if not ki:
         return
 
-    verse_id = ki["verse_id"]
-    target = ki["target_verse"]
+    verse_id = ki[0]
+    target = ki[1]
     if not verse_id or not target:
         return
 

@@ -415,6 +415,7 @@ function AppInner() {
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
+  const [showAssessment, setShowAssessment] = useState(false)
   const [showGlobalKeyboard, setShowGlobalKeyboard] = useState(false)
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -818,6 +819,14 @@ function AppInner() {
   const highlightVerse = currentTab?.highlights?.[0] || null
 
   const renderMainContent = () => {
+    if (showAssessment) {
+      const AssessmentView = React.lazy(() => import('./components/AssessmentView'))
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading assessment...</div>}>
+          <AssessmentView onBack={() => setShowAssessment(false)} />
+        </Suspense>
+      )
+    }
     if (showHebrewDiagnostic) {
       const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'))
       return (
@@ -1032,22 +1041,8 @@ function AppInner() {
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
             </button>
 
-            {/* Knowledge (Assessment) */}
-            <button onClick={async () => {
-                // Start assessment via API, then open chat with results
-                try {
-                  const r = await fetch('/api/v1/tools/scripture_assess_start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})});
-                  const d = await r.json();
-                  if (d.ok && d.data?.question) {
-                    setChatInitialMsg(`📝 Knowledge Assessment started!\n\nQuestion: ${d.data.question}\n\nType your answer, then I'll tell you if it's correct and give you the next question.`);
-                  } else {
-                    setChatInitialMsg('📝 Knowledge Assessment — ready when you are. Ask me to start!');
-                  }
-                } catch {
-                  setChatInitialMsg('Run a scripture knowledge assessment. Start with a diagnostic covering all layers.');
-                }
-                handleOpenChat();
-              }}
+            {/* Knowledge (Assessment) — DEDICATED UI, no LLM dependency */}
+            <button onClick={() => setShowAssessment(true)}
               className="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer shrink-0"
               title="Knowledge Assessment (test your understanding of scripture connections)">
               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -1396,7 +1391,7 @@ function AppInner() {
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
         onHebrew={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
         onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
-        onKnowledge={() => { setShowMobileMenu(false); setChatInitialMsg('Run a scripture knowledge assessment to test what I know about connections between verses. Start with a diagnostic covering all layers.'); handleOpenChat() }}
+        onKnowledge={() => { setShowMobileMenu(false); setShowAssessment(true) }}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         fontSize={fontSize}
