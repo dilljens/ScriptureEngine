@@ -75,5 +75,58 @@ _Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, 
 - • **Fire** (element) — co-occurs in 3 verses
 - 💡 **Word** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **2,821** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 95 | 3.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,726 | 96.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 463 | Remember |
+| **Remez** | 1,254 | Understand |
+| **Drash** | 1,041 | Analyze |
+| **Sod** | 63 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.28.11](verse://gen.28.11) → [gen.28.18](verse://gen.28.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he lighted upon a certain place, and tarried there all night, because the su"
+- **same_lemma**: [exo.20.18](verse://exo.20.18) → [isa.7.4](verse://isa.7.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And all the people saw the thunderings, and the lightnings, and the noise of the"
+- **same_lemma**: [exo.27.20](verse://exo.27.20) → [exo.29.40](verse://exo.29.40)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt command the children of Israel, that they bring thee pure oil oli"
+- **same_lemma**: [exo.27.20](verse://exo.27.20) → [lev.24.2](verse://lev.24.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt command the children of Israel, that they bring thee pure oil oli"
+- **same_lemma**: [exo.27.20](verse://exo.27.20) → [num.28.5](verse://num.28.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt command the children of Israel, that they bring thee pure oil oli"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

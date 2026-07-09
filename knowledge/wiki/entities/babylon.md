@@ -65,5 +65,58 @@ _Geographical and spatial connections — same location, journey paths, wilderne
 - • **Israel** (nation) — co-occurs in 2 verses
 - 👤 **Isaiah** (person) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,193** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 52 | 4.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,141 | 95.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 475 | Remember |
+| **Remez** | 557 | Understand |
+| **Drash** | 143 | Analyze |
+| **Sod** | 18 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.37 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [josh.7.21](verse://josh.7.21) → [zech.5.11](verse://zech.5.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "When I saw among the spoils a goodly Babylonish garment, and two hundred shekels"
+- **same_lemma**: [2kgs.17.24](verse://2kgs.17.24) → [2kgs.17.30](verse://2kgs.17.30)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the king of Assyria brought men from Babylon, and from Cuthah, and from Ava,"
+- **same_lemma**: [2kgs.17.24](verse://2kgs.17.24) → [2kgs.17.31](verse://2kgs.17.31)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the king of Assyria brought men from Babylon, and from Cuthah, and from Ava,"
+- **same_lemma**: [2kgs.17.24](verse://2kgs.17.24) → [2kgs.18.34](verse://2kgs.18.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the king of Assyria brought men from Babylon, and from Cuthah, and from Ava,"
+- **same_lemma**: [2kgs.17.24](verse://2kgs.17.24) → [2kgs.19.13](verse://2kgs.19.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the king of Assyria brought men from Babylon, and from Cuthah, and from Ava,"
+
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

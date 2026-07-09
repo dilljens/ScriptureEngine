@@ -80,5 +80,58 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 💡 **Kingdom** (concept) — co-occurs in 2 verses
 - 💡 **Heaven** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **373** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 95 | 25.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 278 | 74.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 167 | Remember |
+| **Remez** | 133 | Understand |
+| **Drash** | 66 | Analyze |
+| **Sod** | 7 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.32 |
+| Minimum | 0.07 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [1sam.14.50](verse://1sam.14.50)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+- **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [1sam.25.43](verse://1sam.25.43)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+- **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [1sam.27.3](verse://1sam.27.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+- **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [1sam.30.5](verse://1sam.30.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+- **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [2sam.2.2](verse://2sam.2.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

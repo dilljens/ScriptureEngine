@@ -73,5 +73,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - • **Israel** (nation) — co-occurs in 3 verses
 - 💡 **Earth** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **5,484** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 209 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 5,275 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,167 | Remember |
+| **Remez** | 3,432 | Understand |
+| **Drash** | 555 | Analyze |
+| **Sod** | 330 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.39 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.4.7](verse://gen.4.7) → [song.7.11](verse://song.7.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "If thou doest well, shalt thou not be accepted? and if thou doest not well, sin "
+- **same_lemma**: [gen.20.9](verse://gen.20.9) → [psa.109.7](verse://psa.109.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Abimelech called Abraham, and said unto him, What hast thou done unto us? a"
+- **same_lemma**: [gen.20.9](verse://gen.20.9) → [psa.32.1](verse://psa.32.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Abimelech called Abraham, and said unto him, What hast thou done unto us? a"
+- **same_lemma**: [gen.20.9](verse://gen.20.9) → [psa.40.7](verse://psa.40.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Abimelech called Abraham, and said unto him, What hast thou done unto us? a"
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [gen.27.22](verse://gen.27.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

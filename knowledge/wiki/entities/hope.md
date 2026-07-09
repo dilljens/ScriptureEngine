@@ -72,5 +72,58 @@ _Sod (Hidden/Temple) — deep mystical, temple-theology, ascent, and hidden conn
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 - 👑 **Prophet** (title) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **497** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 19 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 478 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 82 | Remember |
+| **Remez** | 376 | Understand |
+| **Drash** | 33 | Analyze |
+| **Sod** | 6 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.33 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [gen.1.10](verse://gen.1.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+- **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [jer.14.8](verse://jer.14.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+- **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [jer.17.13](verse://jer.17.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+- **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [jer.50.7](verse://jer.50.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+- **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [lev.11.36](verse://lev.11.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

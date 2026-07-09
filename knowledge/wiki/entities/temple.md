@@ -64,5 +64,58 @@ _Geographical and spatial connections — same location, journey paths, wilderne
 - 💡 **Spirit** (concept) — co-occurs in 2 verses
 - 💡 **Righteousness** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **821** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 30 | 3.7% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 791 | 96.3% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 274 | Remember |
+| **Remez** | 500 | Understand |
+| **Drash** | 17 | Analyze |
+| **Sod** | 30 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.38 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **heavenly_council**: [isa.6.1](verse://isa.6.1) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "In the year that king Uzziah died I saw also the Lord sitting upon a throne, hig"
+- **same_lemma**: [judg.4.21](verse://judg.4.21) → [judg.5.24](verse://judg.5.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Jael Heber's wife took a nail of the tent, and took an hammer in her hand, "
+- **same_lemma**: [judg.4.21](verse://judg.4.21) → [num.26.45](verse://num.26.45)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Jael Heber's wife took a nail of the tent, and took an hammer in her hand, "
+- **same_lemma**: [judg.4.21](verse://judg.4.21) → [judg.4.22](verse://judg.4.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Jael Heber's wife took a nail of the tent, and took an hammer in her hand, "
+- **same_lemma**: [judg.4.21](verse://judg.4.21) → [judg.5.6](verse://judg.5.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then Jael Heber's wife took a nail of the tent, and took an hammer in her hand, "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -78,5 +78,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Blessing** (concept) — co-occurs in 4 verses
 - 👤 **Moses** (person) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **3,295** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 247 | 7.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 3,048 | 92.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 863 | Remember |
+| **Remez** | 1,964 | Understand |
+| **Drash** | 383 | Analyze |
+| **Sod** | 85 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.14.18](verse://gen.14.18) → [psa.110.4](verse://psa.110.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Melchizedek king of Salem brought forth bread and wine: and he was the pries"
+- **same_lemma**: [gen.14.18](verse://gen.14.18) → [psa.76.3](verse://psa.76.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Melchizedek king of Salem brought forth bread and wine: and he was the pries"
+- **same_lemma**: [gen.41.45](verse://gen.41.45) → [gen.41.50](verse://gen.41.50)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Pharaoh called Joseph's name Zaphnath-paaneah; and he gave him to wife Asena"
+- **same_lemma**: [gen.41.45](verse://gen.41.45) → [gen.46.20](verse://gen.46.20)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Pharaoh called Joseph's name Zaphnath-paaneah; and he gave him to wife Asena"
+- **same_lemma**: [gen.41.50](verse://gen.41.50) → [gen.46.20](verse://gen.46.20)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And unto Joseph were born two sons before the years of famine came, which Asenat"
+
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

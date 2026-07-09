@@ -52,5 +52,36 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👤 **Eve** (person) — co-occurs in 1 verses
 - 💡 **Earth** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **20** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 20 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 7 | Remember |
+| **Remez** | 13 | Understand |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.30 |
+| Minimum | 0.10 |
+| Maximum | 0.58 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

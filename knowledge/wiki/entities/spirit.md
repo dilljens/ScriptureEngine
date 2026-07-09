@@ -84,5 +84,58 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 💡 **Darkness** (concept) — co-occurs in 4 verses
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **2,876** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 49 | 1.7% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,827 | 98.3% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 633 | Remember |
+| **Remez** | 1,838 | Understand |
+| **Drash** | 250 | Analyze |
+| **Sod** | 155 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.23.9](verse://jer.23.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [isa.34.11](verse://isa.34.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.4.23](verse://jer.4.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.41.8](verse://gen.41.8) → [judg.13.25](verse://judg.13.25)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass in the morning that his spirit was troubled; and he sent and"
+- **same_lemma**: [gen.41.8](verse://gen.41.8) → [psa.77.5](verse://psa.77.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass in the morning that his spirit was troubled; and he sent and"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

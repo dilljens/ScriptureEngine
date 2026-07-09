@@ -80,5 +80,58 @@ _Word-level language connections — same Hebrew/Greek lemma, root, morphology, 
 - 💡 **Power** (concept) — co-occurs in 3 verses
 - • **Israel** (nation) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,652** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 22 | 1.3% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,630 | 98.7% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 350 | Remember |
+| **Remez** | 1,135 | Understand |
+| **Drash** | 153 | Analyze |
+| **Sod** | 14 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.34.5](verse://gen.34.5) → [gen.46.15](verse://gen.46.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob heard that he had defiled Dinah his daughter: now his sons were with h"
+- **same_lemma**: [gen.43.23](verse://gen.43.23) → [isa.45.3](verse://isa.45.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, Peace be to you, fear not: your God, and the God of your father, ha"
+- **same_lemma**: [gen.43.23](verse://gen.43.23) → [jer.41.8](verse://jer.41.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, Peace be to you, fear not: your God, and the God of your father, ha"
+- **same_lemma**: [gen.43.23](verse://gen.43.23) → [job.3.21](verse://job.3.21)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, Peace be to you, fear not: your God, and the God of your father, ha"
+- **same_lemma**: [gen.43.23](verse://gen.43.23) → [prov.2.4](verse://prov.2.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, Peace be to you, fear not: your God, and the God of your father, ha"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

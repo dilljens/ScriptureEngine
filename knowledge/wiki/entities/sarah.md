@@ -75,5 +75,57 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 💡 **Word** (concept) — co-occurs in 1 verses
 - 👑 **Servant** (title) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **164** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 2 | 1.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 162 | 98.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 40 | Remember |
+| **Remez** | 91 | Understand |
+| **Drash** | 33 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.10 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [hos.7.4](verse://hos.7.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [jer.7.18](verse://jer.7.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [hos.7.8](verse://hos.7.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [num.11.8](verse://num.11.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.12](verse://gen.18.12) → [jer.51.34](verse://jer.51.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Therefore Sarah laughed within herself, saying, After I am waxed old shall I hav"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

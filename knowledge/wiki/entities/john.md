@@ -67,5 +67,37 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 📍 **Galilee** (place) — co-occurs in 4 verses
 - 👑 **Prophet** (title) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **438** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 438 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 181 | Remember |
+| **Remez** | 241 | Understand |
+| **Sod** | 16 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

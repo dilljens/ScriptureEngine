@@ -82,5 +82,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - ✨ **Satan** (being) — co-occurs in 5 verses
 - 💡 **Darkness** (concept) — co-occurs in 5 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **27,820** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1,044 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 26,776 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 5,843 | Remember |
+| **Remez** | 15,338 | Understand |
+| **Drash** | 3,505 | Analyze |
+| **Sod** | 3,134 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.43 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **heavenly_ascent**: [gen.5.24](verse://gen.5.24) → [heb.11.5](verse://heb.11.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And Enoch walked with God: and he was not; for God took him."
+- **merkabah**: [ezek.1.1](verse://ezek.1.1) → [rev.4.1](verse://rev.4.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [song.1.1](verse://song.1.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [isa.6.1](verse://isa.6.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [ezek.1.1](verse://ezek.1.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
 ---
 *Article type: **Deity** | Generated from the Scripture Knowledge Engine*

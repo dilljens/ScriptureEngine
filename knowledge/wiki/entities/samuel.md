@@ -75,5 +75,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - • **Water** (element) — co-occurs in 1 verses
 - 💡 **Temple** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **246** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 6 | 2.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 240 | 97.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 111 | Remember |
+| **Remez** | 128 | Understand |
+| **Drash** | 2 | Analyze |
+| **Sod** | 5 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.37 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [1sam.1.20](verse://1sam.1.20) → [2chr.24.23](verse://2chr.24.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore it came to pass, when the time was come about after Hannah had conceiv"
+- **same_lemma**: [1sam.1.20](verse://1sam.1.20) → [exo.34.22](verse://exo.34.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore it came to pass, when the time was come about after Hannah had conceiv"
+- **same_lemma**: [1sam.1.20](verse://1sam.1.20) → [psa.19.7](verse://psa.19.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore it came to pass, when the time was come about after Hannah had conceiv"
+- **same_lemma**: [1sam.2.26](verse://1sam.2.26) → [2chr.17.12](verse://2chr.17.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the child Samuel grew on, and was in favour both with the LORD, and also wit"
+- **same_lemma**: [1sam.2.26](verse://1sam.2.26) → [ezek.16.26](verse://ezek.16.26)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the child Samuel grew on, and was in favour both with the LORD, and also wit"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

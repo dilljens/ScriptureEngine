@@ -66,5 +66,38 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 👤 **Jesus** (person) — co-occurs in 3 verses
 - 💡 **Spirit** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **230** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 230 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 70 | Remember |
+| **Remez** | 154 | Understand |
+| **Drash** | 1 | Analyze |
+| **Sod** | 5 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.38 |
+| Minimum | 0.10 |
+| Maximum | 0.60 |
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

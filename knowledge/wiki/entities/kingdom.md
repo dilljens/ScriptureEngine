@@ -78,5 +78,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Glory** (concept) — co-occurs in 4 verses
 - 💡 **Earth** (concept) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,670** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 109 | 6.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,561 | 93.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 687 | Remember |
+| **Remez** | 863 | Understand |
+| **Drash** | 106 | Analyze |
+| **Sod** | 14 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [isa.10.9](verse://isa.10.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.11.2](verse://gen.11.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.14.1](verse://gen.14.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.14.9](verse://gen.14.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [isa.11.11](verse://isa.11.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

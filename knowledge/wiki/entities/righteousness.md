@@ -56,5 +56,58 @@ _Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, 
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 - 💡 **Power** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,770** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 5 | 0.3% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,765 | 99.7% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 250 | Remember |
+| **Remez** | 954 | Understand |
+| **Drash** | 550 | Analyze |
+| **Sod** | 16 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.30.33](verse://gen.30.33) → [gen.30.35](verse://gen.30.35)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "So shall my righteousness answer for me in time to come, when it shall come for "
+- **same_lemma**: [gen.30.33](verse://gen.30.33) → [gen.30.40](verse://gen.30.40)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "So shall my righteousness answer for me in time to come, when it shall come for "
+- **same_lemma**: [gen.30.33](verse://gen.30.33) → [gen.30.39](verse://gen.30.39)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "So shall my righteousness answer for me in time to come, when it shall come for "
+- **same_lemma**: [gen.30.33](verse://gen.30.33) → [josh.9.5](verse://josh.9.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "So shall my righteousness answer for me in time to come, when it shall come for "
+- **same_lemma**: [gen.30.33](verse://gen.30.33) → [gen.31.10](verse://gen.31.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "So shall my righteousness answer for me in time to come, when it shall come for "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

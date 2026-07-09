@@ -52,5 +52,37 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Love** (concept) — co-occurs in 1 verses
 - 💡 **Faith** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **18** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 18 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 2 | Remember |
+| **Remez** | 1 | Understand |
+| **Sod** | 15 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.46 |
+| Minimum | 0.10 |
+| Maximum | 0.50 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

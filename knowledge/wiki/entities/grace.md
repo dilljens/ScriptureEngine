@@ -81,5 +81,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👑 **Priest** (title) — co-occurs in 3 verses
 - 👤 **Moses** (person) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **669** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 2 | 0.3% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 667 | 99.7% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 168 | Remember |
+| **Remez** | 481 | Understand |
+| **Drash** | 17 | Analyze |
+| **Sod** | 3 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.33.16](verse://exo.33.16) → [exo.8.18](verse://exo.8.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "For wherein shall it be known here that I and thy people have found grace in thy"
+- **same_lemma**: [exo.33.16](verse://exo.33.16) → [exo.9.4](verse://exo.9.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "For wherein shall it be known here that I and thy people have found grace in thy"
+- **same_lemma**: [exo.33.16](verse://exo.33.16) → [psa.139.14](verse://psa.139.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "For wherein shall it be known here that I and thy people have found grace in thy"
+- **same_lemma**: [exo.33.16](verse://exo.33.16) → [psa.17.7](verse://psa.17.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "For wherein shall it be known here that I and thy people have found grace in thy"
+- **same_lemma**: [exo.33.16](verse://exo.33.16) → [psa.4.4](verse://psa.4.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "For wherein shall it be known here that I and thy people have found grace in thy"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

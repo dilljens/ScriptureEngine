@@ -82,5 +82,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Heaven** (concept) — co-occurs in 3 verses
 - • **Water** (element) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **247** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1 | 0.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 246 | 99.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 44 | Remember |
+| **Remez** | 178 | Understand |
+| **Drash** | 23 | Analyze |
+| **Sod** | 2 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.43 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [gen.27.22](verse://gen.27.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [gen.31.34](verse://gen.31.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [gen.31.37](verse://gen.31.37)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [job.12.25](verse://job.12.25)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+- **same_lemma**: [gen.27.12](verse://gen.27.12) → [job.5.14](verse://job.5.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

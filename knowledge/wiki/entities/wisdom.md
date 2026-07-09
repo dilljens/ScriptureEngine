@@ -83,5 +83,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 - 💡 **Salvation** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **5,689** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 66 | 1.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 5,623 | 98.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 189 | Remember |
+| **Remez** | 468 | Understand |
+| **Drash** | 46 | Analyze |
+| **Sod** | 4,986 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.57 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.31.6](verse://exo.31.6) → [exo.35.34](verse://exo.35.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I, behold, I have given with him Aholiab, the son of Ahisamach, of the tribe"
+- **same_lemma**: [exo.31.6](verse://exo.31.6) → [exo.36.1](verse://exo.36.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I, behold, I have given with him Aholiab, the son of Ahisamach, of the tribe"
+- **same_lemma**: [exo.31.6](verse://exo.31.6) → [exo.36.2](verse://exo.36.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I, behold, I have given with him Aholiab, the son of Ahisamach, of the tribe"
+- **same_lemma**: [exo.31.6](verse://exo.31.6) → [exo.38.23](verse://exo.38.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I, behold, I have given with him Aholiab, the son of Ahisamach, of the tribe"
+- **same_lemma**: [exo.35.35](verse://exo.35.35) → [exo.36.37](verse://exo.36.37)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Them hath he filled with wisdom of heart, to work all manner of work, of the eng"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

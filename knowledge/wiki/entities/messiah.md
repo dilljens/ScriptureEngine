@@ -68,5 +68,57 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 💡 **Spirit** (concept) — co-occurs in 4 verses
 - 👤 **Joshua** (person) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **29** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 29 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 16 | Remember |
+| **Remez** | 11 | Understand |
+| **Drash** | 2 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.28 |
+| Minimum | 0.10 |
+| Maximum | 0.60 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [dan.9.25](verse://dan.9.25) → [isa.30.6](verse://isa.30.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Know therefore and understand, that from the going forth of the commandment to r"
+- **same_lemma**: [dan.9.25](verse://dan.9.25) → [isa.8.22](verse://isa.8.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Know therefore and understand, that from the going forth of the commandment to r"
+- **same_lemma**: [dan.9.25](verse://dan.9.25) → [prov.1.27](verse://prov.1.27)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Know therefore and understand, that from the going forth of the commandment to r"
+- **same_lemma**: [dan.9.26](verse://dan.9.26) → [job.38.25](verse://job.38.25)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And after threescore and two weeks shall Messiah be cut off, but not for himself"
+- **same_lemma**: [dan.9.26](verse://dan.9.26) → [nah.1.8](verse://nah.1.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And after threescore and two weeks shall Messiah be cut off, but not for himself"
+
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

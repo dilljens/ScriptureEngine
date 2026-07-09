@@ -46,5 +46,55 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - • **Fire** (element) — co-occurs in 1 verses
 - 💡 **Earth** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1 | 100.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 0 | 0.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1 | Remember |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.30 |
+| Minimum | 0.30 |
+| Maximum | 0.30 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.24.24](verse://ezek.24.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+- **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.10.15](verse://ezek.10.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+- **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.10.20](verse://ezek.10.20)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+- **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.10.22](verse://ezek.10.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+- **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.3.15](verse://ezek.3.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

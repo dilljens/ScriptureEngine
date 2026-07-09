@@ -84,5 +84,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 📍 **Jerusalem** (place) — co-occurs in 3 verses
 - 👤 **Eve** (person) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,595** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 22 | 1.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,573 | 98.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 458 | Remember |
+| **Remez** | 900 | Understand |
+| **Drash** | 213 | Analyze |
+| **Sod** | 24 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.45 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.6.6](verse://exo.6.6) → [exo.6.7](verse://exo.6.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore say unto the children of Israel, I am the LORD, and I will bring you o"
+- **same_lemma**: [exo.21.31](verse://exo.21.31) → [exo.21.32](verse://exo.21.32)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Whether he have gored a son, or have gored a daughter, according to this judgmen"
+- **same_lemma**: [exo.21.31](verse://exo.21.31) → [ezek.34.21](verse://ezek.34.21)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Whether he have gored a son, or have gored a daughter, according to this judgmen"
+- **same_lemma**: [exo.21.31](verse://exo.21.31) → [psa.44.6](verse://psa.44.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Whether he have gored a son, or have gored a daughter, according to this judgmen"
+- **same_lemma**: [exo.28.30](verse://exo.28.30) → [ezra.2.63](verse://ezra.2.63)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt put in the breastplate of judgment the Urim and the Thummim; and "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

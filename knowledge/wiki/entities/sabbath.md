@@ -75,5 +75,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Heaven** (concept) — co-occurs in 2 verses
 - • **Fire** (element) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **915** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 41 | 4.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 874 | 95.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 160 | Remember |
+| **Remez** | 704 | Understand |
+| **Drash** | 49 | Analyze |
+| **Sod** | 2 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.42 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.16.23](verse://exo.16.23) → [exo.26.12](verse://exo.26.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+- **same_lemma**: [exo.16.23](verse://exo.16.23) → [exo.26.13](verse://exo.26.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+- **same_lemma**: [exo.16.23](verse://exo.16.23) → [lev.25.27](verse://lev.25.27)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+- **same_lemma**: [exo.16.23](verse://exo.16.23) → [num.3.46](verse://num.3.46)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+- **same_lemma**: [exo.16.23](verse://exo.16.23) → [num.3.48](verse://num.3.48)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -85,5 +85,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 👤 **Isaac** (person) — co-occurs in 4 verses
 - • **Fire** (element) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **923** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 23 | 2.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 900 | 97.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 263 | Remember |
+| **Remez** | 523 | Understand |
+| **Drash** | 105 | Analyze |
+| **Sod** | 32 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.33 |
+| Minimum | 0.05 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.27.7](verse://gen.27.7) → [gen.27.9](verse://gen.27.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Bring me venison, and make me savoury meat, that I may eat, and bless thee befor"
+- **same_lemma**: [gen.27.7](verse://gen.27.7) → [prov.23.3](verse://prov.23.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Bring me venison, and make me savoury meat, that I may eat, and bless thee befor"
+- **same_lemma**: [gen.27.7](verse://gen.27.7) → [prov.23.6](verse://prov.23.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Bring me venison, and make me savoury meat, that I may eat, and bless thee befor"
+- **same_lemma**: [exo.19.12](verse://exo.19.12) → [exo.19.23](verse://exo.19.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt set bounds unto the people round about, saying, Take heed to your"
+- **same_lemma**: [exo.19.12](verse://exo.19.12) → [josh.18.20](verse://josh.18.20)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thou shalt set bounds unto the people round about, saying, Take heed to your"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -80,5 +80,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - • **Water** (element) — co-occurs in 2 verses
 - 💡 **Sin** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,355** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 64 | 4.7% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,291 | 95.3% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 282 | Remember |
+| **Remez** | 818 | Understand |
+| **Drash** | 134 | Analyze |
+| **Sod** | 121 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.44 |
+| Minimum | 0.10 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.12.8](verse://gen.12.8) → [gen.26.22](verse://gen.26.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+- **same_lemma**: [gen.12.8](verse://gen.12.8) → [job.14.18](verse://job.14.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+- **same_lemma**: [gen.12.8](verse://gen.12.8) → [job.18.4](verse://job.18.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+- **same_lemma**: [gen.12.8](verse://gen.12.8) → [job.21.7](verse://job.21.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+- **same_lemma**: [gen.12.8](verse://gen.12.8) → [job.32.15](verse://job.32.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+
 ---
 *Article type: **Object** | Generated from the Scripture Knowledge Engine*

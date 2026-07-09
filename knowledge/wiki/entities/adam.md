@@ -89,5 +89,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Sacrifice** (concept) — co-occurs in 1 verses
 - 👤 **Moses** (person) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **247** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 37 | 15.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 210 | 85.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 66 | Remember |
+| **Remez** | 152 | Understand |
+| **Drash** | 20 | Analyze |
+| **Sod** | 9 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.42 |
+| Minimum | 0.10 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **divine_mediator**: [jude.1.14](verse://jude.1.14) → [dan.7.13](verse://dan.7.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And Enoch also, the seventh from Adam, prophesied of these, saying, Behold, the "
+- **same_lemma**: [gen.2.21](verse://gen.2.21) → [isa.29.10](verse://isa.29.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he too"
+- **same_lemma**: [gen.2.21](verse://gen.2.21) → [job.33.15](verse://job.33.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he too"
+- **same_lemma**: [gen.2.21](verse://gen.2.21) → [job.4.13](verse://job.4.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he too"
+- **same_lemma**: [gen.2.21](verse://gen.2.21) → [prov.19.15](verse://prov.19.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he too"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

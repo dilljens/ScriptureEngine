@@ -86,5 +86,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 - 💡 **Heaven** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,037** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 9 | 0.9% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,028 | 99.1% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 260 | Remember |
+| **Remez** | 693 | Understand |
+| **Drash** | 56 | Analyze |
+| **Sod** | 28 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.39.21](verse://gen.39.21) → [gen.39.22](verse://gen.39.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But the LORD was with Joseph, and shewed him mercy, and gave him favour in the s"
+- **same_lemma**: [gen.39.21](verse://gen.39.21) → [gen.39.23](verse://gen.39.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But the LORD was with Joseph, and shewed him mercy, and gave him favour in the s"
+- **same_lemma**: [gen.39.21](verse://gen.39.21) → [gen.40.3](verse://gen.40.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But the LORD was with Joseph, and shewed him mercy, and gave him favour in the s"
+- **same_lemma**: [gen.39.21](verse://gen.39.21) → [gen.40.5](verse://gen.40.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But the LORD was with Joseph, and shewed him mercy, and gave him favour in the s"
+- **same_lemma**: [exo.15.13](verse://exo.15.13) → [gen.33.14](verse://gen.33.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Thou in thy mercy hast led forth the people which thou hast redeemed: thou hast "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

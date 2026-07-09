@@ -87,5 +87,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Death** (concept) — co-occurs in 4 verses
 - • **Fire** (element) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **664** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 21 | 3.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 643 | 96.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 104 | Remember |
+| **Remez** | 433 | Understand |
+| **Drash** | 125 | Analyze |
+| **Sod** | 2 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.47 |
+| Minimum | 0.07 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.22.6](verse://gen.22.6) → [judg.19.29](verse://judg.19.29)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham took the wood of the burnt offering, and laid it upon Isaac his son;"
+- **same_lemma**: [gen.22.6](verse://gen.22.6) → [prov.30.14](verse://prov.30.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham took the wood of the burnt offering, and laid it upon Isaac his son;"
+- **same_lemma**: [gen.24.62](verse://gen.24.62) → [gen.25.11](verse://gen.25.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Isaac came from the way of the well Lahai-roi; for he dwelt in the south cou"
+- **same_lemma**: [gen.25.9](verse://gen.25.9) → [gen.35.27](verse://gen.35.27)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And his sons Isaac and Ishmael buried him in the cave of Machpelah, in the field"
+- **same_lemma**: [gen.25.9](verse://gen.25.9) → [gen.49.30](verse://gen.49.30)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And his sons Isaac and Ishmael buried him in the cave of Machpelah, in the field"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

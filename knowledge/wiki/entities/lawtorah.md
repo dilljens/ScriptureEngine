@@ -55,5 +55,37 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Spirit** (concept) — co-occurs in 2 verses
 - 👑 **Servant** (title) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **67** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 67 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 39 | Remember |
+| **Remez** | 27 | Understand |
+| **Drash** | 1 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.24 |
+| Minimum | 0.07 |
+| Maximum | 0.60 |
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

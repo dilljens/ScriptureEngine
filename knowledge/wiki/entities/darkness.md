@@ -85,5 +85,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Power** (concept) — co-occurs in 4 verses
 - 📍 **Egypt** (place) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **852** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 73 | 8.6% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 779 | 91.4% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 195 | Remember |
+| **Remez** | 529 | Understand |
+| **Drash** | 117 | Analyze |
+| **Sod** | 11 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.37 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.23.9](verse://jer.23.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [isa.34.11](verse://isa.34.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.4.23](verse://jer.4.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.15.12](verse://gen.15.12) → [isa.50.10](verse://isa.50.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when the sun was going down, a deep sleep fell upon Abram; and, lo, an horro"
+- **same_lemma**: [gen.15.12](verse://gen.15.12) → [isa.8.22](verse://isa.8.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when the sun was going down, a deep sleep fell upon Abram; and, lo, an horro"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

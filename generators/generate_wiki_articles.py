@@ -51,6 +51,184 @@ ENTITY_ICONS = {
     "object": "📜",
 }
 
+# ── Educational Explainers ──
+
+STAR_RATING_EXPLAINER = """The Scripture Knowledge Engine rates every connection on a **1–5 star scale**:
+
+| Stars | Level | Meaning | Example Sources |
+|-------|-------|---------|-----------------|
+| ★★★★★ | `verified` / `scholarly` | Text-explicit — the connection is directly stated in the text or confirmed by scholarly consensus | Direct quotations, TSK cross-references, scholar-identified patterns |
+| ★★★★☆ | `strong` | Well-established — strong evidence from multiple signals | AI-reviewed connections with high confidence |
+| ★★★☆☆ | `probable` | Likely but not certain — good evidence but room for debate | Algorithmic patterns confirmed by context |
+| ★★☆☆☆ | `suggested` | Suggested — algorithmically detected with moderate confidence | Most gematria matches, frequency patterns |
+| ★☆☆☆☆ | `pattern` | Pattern only — statistically significant but may be coincidental | Rare word co-occurrences, weak numerical matches |
+
+Higher-star connections are more reliable for study and teaching."""
+
+PARDES_EXPLAINER = """**PaRDeS** (פַּרְדֵּס, meaning "orchard/garden") is a four-level framework for scriptural interpretation:
+
+| Level | Hebrew | Meaning | Bloom's Equivalent | What It Asks |
+|-------|--------|---------|-------------------|--------------|
+| **P'shat** | פְּשָׁט | Simple / literal | Remember | What does the text plainly say? |
+| **Remez** | רֶמֶז | Hint / allegorical | Understand | What does the text allude to? |
+| **Drash** | דְּרַשׁ | Comparative / searching | Analyze | How does this connect across the canon? |
+| **Sod** | סוֹד | Hidden / mystical | Evaluate | What is the deeper meaning? |
+
+Each connection in the engine is assigned a PaRDeS level. P'shat connections are literal (same lemma, direct quotation). Remez connections are allusive (echoes, semantic domains). Drash connections are comparative (cross-canon links, typology). Sod connections are hidden (temple theology, divine council, ascent motifs)."""
+
+BLOOM_EXPLAINER = """**Bloom's Taxonomy** classifies learning objectives by cognitive depth:
+
+| Level | Cognitive Skill | In Scripture Study |
+|-------|----------------|-------------------|
+| **Remember** | Recall facts | Know the verse text, definition, location |
+| **Understand** | Explain concepts | Grasp the meaning of a connection between verses |
+| **Analyze** | Compare and contrast | See how different passages relate across the canon |
+| **Evaluate** | Judge and justify | Assess the strength and significance of connections |
+
+The engine maps PaRDeS levels to Bloom levels: P'shat→Remember, Remez→Understand, Drash→Analyze, Sod→Evaluate. This means connections at deeper PaRDeS levels test higher-order thinking skills."""
+
+DIFFICULTY_EXPLAINER = """**Difficulty** (0.0–1.0) measures how challenging a connection is to recognize and understand:
+
+| Range | Level | What It Means |
+|-------|-------|---------------|
+| 0.0–0.3 | Easy | The connection is obvious or well-known — direct quotations, famous parallels |
+| 0.3–0.6 | Medium | Requires some study or cross-referencing to recognize |
+| 0.6–1.0 | Hard | Subtle connections that require deep knowledge or multiple hops |
+
+Difficulty is derived from connection confidence: `difficulty = 1.0 - confidence`. High-confidence connections (direct quotations) are easy; low-confidence connections (subtle echoes, rare gematria matches) are harder."""
+
+
+def get_knowledge_stats(conn, entity_id=None, book_id=None, layer=None):
+    """Get knowledge item statistics for entities, books, or layers.
+    
+    Uses efficient JOIN-based queries instead of IN-subqueries.
+    """
+    from_clause = "FROM knowledge_items ki"
+    where_clause = ""
+    params = []
+
+    if entity_id:
+        # Use JOIN for faster filtering
+        from_clause = """
+            FROM knowledge_items ki
+            JOIN verse_entities ve1 ON ve1.verse_id = ki.verse_id AND ve1.entity_id = ?
+            JOIN verse_entities ve2 ON ve2.verse_id = ki.target_verse AND ve2.entity_id = ?
+        """
+        params = [entity_id, entity_id]
+    elif book_id:
+        where_clause = "WHERE ki.verse_id LIKE ?"
+        params = [f"{book_id}.%"]
+    if layer:
+        if where_clause:
+            where_clause += f" AND ki.layer = '{layer}'"
+        else:
+            where_clause = f"WHERE ki.layer = '{layer}'"
+
+    stats = {}
+
+    # Total items
+    if entity_id:
+        # For entity stats, use a single optimized query
+        rows = conn.execute(f"""
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN ki.star_rating = 5 THEN 1 ELSE 0 END) as star_5,
+                SUM(CASE WHEN ki.star_rating = 4 THEN 1 ELSE 0 END) as star_4,
+                SUM(CASE WHEN ki.star_rating = 3 THEN 1 ELSE 0 END) as star_3,
+                SUM(CASE WHEN ki.star_rating = 2 THEN 1 ELSE 0 END) as star_2,
+                SUM(CASE WHEN ki.star_rating = 1 THEN 1 ELSE 0 END) as star_1,
+                SUM(CASE WHEN ki.pa_r_de_s_level = 'p''shat' THEN 1 ELSE 0 END) as pardes_pshat,
+                SUM(CASE WHEN ki.pa_r_de_s_level = 'remez' THEN 1 ELSE 0 END) as pardes_remez,
+                SUM(CASE WHEN ki.pa_r_de_s_level = 'drash' THEN 1 ELSE 0 END) as pardes_drash,
+                SUM(CASE WHEN ki.pa_r_de_s_level = 'sod' THEN 1 ELSE 0 END) as pardes_sod,
+                ROUND(AVG(ki.difficulty), 2) as diff_avg,
+                ROUND(MIN(ki.difficulty), 2) as diff_min,
+                ROUND(MAX(ki.difficulty), 2) as diff_max
+            {from_clause}
+        """, params).fetchone()
+
+        stats["total"] = rows["total"] or 0
+        if stats["total"] == 0:
+            return stats
+
+        stats["by_star"] = {}
+        for s in [5, 4, 3, 2, 1]:
+            val = rows[f"star_{s}"] or 0
+            if val:
+                stats["by_star"][s] = val
+
+        stats["by_pardes"] = {}
+        for p, label in [("pshat", "p'shat"), ("remez", "remez"), ("drash", "drash"), ("sod", "sod")]:
+            val = rows[f"pardes_{p}"] or 0
+            if val:
+                stats["by_pardes"][label] = val
+
+        stats["difficulty"] = {
+            "avg": rows["diff_avg"] or 0,
+            "min": rows["diff_min"] or 0,
+            "max": rows["diff_max"] or 0,
+        }
+
+        # Top 5-star items — dedicated query
+        top = conn.execute("""
+            SELECT ki.verse_id, ki.target_verse, ki.connection_type, ki.star_rating,
+                   ki.pa_r_de_s_level, ki.difficulty, ki.bloom_level,
+                   v1.text_english as source_text, v2.text_english as target_text
+            FROM knowledge_items ki
+            JOIN verse_entities ve ON ve.verse_id = ki.verse_id AND ve.entity_id = ?
+            JOIN verses v1 ON v1.id = ki.verse_id
+            JOIN verses v2 ON v2.id = ki.target_verse
+            WHERE ki.star_rating >= 4
+            ORDER BY ki.difficulty ASC
+            LIMIT 5
+        """, [entity_id]).fetchall()
+        stats["top_items"] = [dict(r) for r in top]
+
+    else:
+        # For book/layer stats, use simpler queries
+        stats["total"] = conn.execute(
+            f"SELECT COUNT(*) as c {from_clause} {where_clause}", params
+        ).fetchone()["c"]
+        if stats["total"] == 0:
+            return stats
+        
+        by_star_rows = conn.execute(
+            f"SELECT star_rating, COUNT(*) as c {from_clause} {where_clause} GROUP BY star_rating ORDER BY star_rating DESC", params
+        ).fetchall()
+        stats["by_star"] = {r["star_rating"]: r["c"] for r in by_star_rows}
+        
+        by_pardes_rows = conn.execute(
+            f"SELECT pa_r_de_s_level, COUNT(*) as c {from_clause} {where_clause} GROUP BY pa_r_de_s_level", params
+        ).fetchall()
+        stats["by_pardes"] = {r["pa_r_de_s_level"]: r["c"] for r in by_pardes_rows}
+        
+        diff = conn.execute(
+            f"SELECT MIN(difficulty) as mn, MAX(difficulty) as mx, AVG(difficulty) as av {from_clause} {where_clause}", params
+        ).fetchone()
+        stats["difficulty"] = {
+            "min": round(diff["mn"], 2) if diff["mn"] else 0,
+            "max": round(diff["mx"], 2) if diff["mx"] else 0,
+            "avg": round(diff["av"], 2) if diff["av"] else 0,
+        }
+        
+        top = conn.execute(
+            f"""
+            SELECT ki.verse_id, ki.target_verse, ki.connection_type, ki.star_rating,
+                   ki.pa_r_de_s_level, ki.difficulty, ki.bloom_level,
+                   v1.text_english as source_text, v2.text_english as target_text
+            {from_clause}
+            JOIN verses v1 ON v1.id = ki.verse_id
+            JOIN verses v2 ON v2.id = ki.target_verse
+            {where_clause} AND ki.star_rating >= 4
+            ORDER BY ki.difficulty ASC
+            LIMIT 5
+        """, params
+        ).fetchall()
+        stats["top_items"] = [dict(r) for r in top]
+
+    return stats
+
+
 LAYER_DESCRIPTIONS = {
     "linguistic": "Word-level language connections — same Hebrew/Greek lemma, root, morphology, wordplay, or cognate across passages",
     "numerical": "Gematria and isopsephy connections — verses linked by matching numerical values of their words",
@@ -425,6 +603,63 @@ def generate_entity_article(conn, entity_id, enrich=False):
             lines.append(f"- {icon_r} **{r['english_name']}** ({r['entity_type']}) — co-occurs in {r['co_count']} verses")
         lines.append("")
 
+    # ── Knowledge Assessment Stats ──
+    kstats = get_knowledge_stats(conn, entity_id=entity_id)
+    if kstats["total"] > 0:
+        lines.append("## Knowledge Assessment\n")
+        
+        # Star distribution
+        lines.append("### Quality Distribution\n")
+        lines.append(f"This entity appears in **{kstats['total']:,}** knowledge items (assessment-quality connections).\n")
+        by_star = kstats.get("by_star", {})
+        if by_star:
+            lines.append("| Stars | Count | Percentage |")
+            lines.append("|-------|-------|------------|")
+            for star in [5, 4, 3, 2, 1]:
+                cnt = by_star.get(star, 0)
+                pct = cnt / kstats["total"] * 100 if kstats["total"] else 0
+                lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} | {pct:.1f}% |")
+            lines.append("")
+        
+        # PaRDeS distribution
+        by_pardes = kstats.get("by_pardes", {})
+        if by_pardes:
+            lines.append("### PaRDeS Depth\n")
+            lines.append("*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*\n")
+            lines.append("| Level | Count | Bloom Level |")
+            lines.append("|-------|-------|-------------|")
+            bloom_map = {"p'shat": "Remember", "remez": "Understand", "drash": "Analyze", "sod": "Evaluate"}
+            for level in ["p'shat", "remez", "drash", "sod"]:
+                cnt = by_pardes.get(level, 0)
+                if cnt:
+                    lines.append(f"| **{level.title()}** | {cnt:,} | {bloom_map.get(level, '')} |")
+            lines.append("")
+        
+        # Difficulty range
+        diff = kstats.get("difficulty", {})
+        if diff.get("avg"):
+            lines.append("### Difficulty Range\n")
+            lines.append(f"| Measure | Value |")
+            lines.append(f"|---------|-------|")
+            lines.append(f"| Average | {diff['avg']:.2f} |")
+            lines.append(f"| Minimum | {diff['min']:.2f} |")
+            lines.append(f"| Maximum | {diff['max']:.2f} |")
+            lines.append("")
+        
+        # Featured top items
+        top_items = kstats.get("top_items", [])
+        if top_items:
+            lines.append("### Featured Connections ★★★★★\n")
+            lines.append("The highest-quality connections involving this entity:\n")
+            for item in top_items[:5]:
+                src = item["source_text"][:80] if item["source_text"] else ""
+                tgt = item["target_text"][:80] if item["target_text"] else ""
+                lines.append(f"- **{item['connection_type']}**: [{item['verse_id']}](verse://{item['verse_id']}) → [{item['target_verse']}](verse://{item['target_verse']})")
+                lines.append(f"  {'★' * item['star_rating']} | {item['pa_r_de_s_level'].title()} | Bloom: {item['bloom_level'].title()} | Difficulty: {item['difficulty']:.2f}")
+                if src:
+                    lines.append(f"  > \"{src}\"")
+            lines.append("")
+
     # Type tag
     lines.append(f"---\n*Article type: **{ent_type.capitalize()}** | Generated from the Scripture Knowledge Engine*")
 
@@ -533,6 +768,30 @@ def generate_book_article(conn, book_id):
             lines.append(f"- **{ref}** — {r['c']} connections")
         lines.append("")
 
+    # ── Knowledge Assessment Stats ──
+    kstats = get_knowledge_stats(conn, book_id=book_id)
+    if kstats["total"] > 0:
+        lines.append("## Knowledge Assessment\n")
+        lines.append(f"This book has **{kstats['total']:,}** knowledge items (assessment-quality connections).\n")
+        
+        by_star = kstats.get("by_star", {})
+        if by_star:
+            lines.append("| Stars | Count |")
+            lines.append("|-------|-------|")
+            for star in [5, 4, 3, 2, 1]:
+                cnt = by_star.get(star, 0)
+                if cnt:
+                    lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} |")
+            lines.append("")
+        
+        top_items = kstats.get("top_items", [])
+        if top_items:
+            lines.append("### Featured Connections\n")
+            for item in top_items[:3]:
+                lines.append(f"- **{item['connection_type']}**: [{item['verse_id']}](verse://{item['verse_id']}) → [{item['target_verse']}](verse://{item['target_verse']})")
+                lines.append(f"  {'★' * item['star_rating']} | {item['pa_r_de_s_level'].title()} | Difficulty: {item['difficulty']:.2f}")
+            lines.append("")
+
     lines.append(f"---\n*Generated from the Scripture Knowledge Engine — {verse_count:,} verses indexed*")
 
     return {
@@ -618,7 +877,7 @@ def generate_work_article(conn, work_id):
     }
 
 
-def generate_layer_article(layer_name):
+def generate_layer_article(conn, layer_name):
     """Generate a wiki article for a connection layer."""
     desc = LAYER_DESCRIPTIONS.get(layer_name, "")
     example = LAYER_EXAMPLES.get(layer_name, "")
@@ -649,12 +908,64 @@ def generate_layer_article(layer_name):
         from lib.connections.types import LAYERS
         if layer_name in LAYERS:
             types = LAYERS[layer_name]["types"]
-            lines.append(f"## Types ({len(types)})\n")
+            lines.append(f"## Connection Types ({len(types)})\n")
             for t in types:
                 lines.append(f"- `{t}`")
             lines.append("")
     except ImportError:
         pass
+
+    # Knowledge items by PaRDeS for this layer
+    kstats = get_knowledge_stats(conn, layer=layer_name)
+    if kstats["total"] > 0:
+        lines.append("## Knowledge Assessment\n")
+        lines.append(f"There are **{kstats['total']:,}** knowledge items in this layer.\n")
+        
+        by_star = kstats.get("by_star", {})
+        if by_star:
+            lines.append("### Quality Distribution\n")
+            lines.append("| Stars | Count |")
+            lines.append("|-------|-------|")
+            for star in [5, 4, 3, 2, 1]:
+                cnt = by_star.get(star, 0)
+                if cnt:
+                    lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} |")
+            lines.append("")
+        
+        by_pardes = kstats.get("by_pardes", {})
+        if by_pardes:
+            lines.append("### PaRDeS Distribution\n")
+            lines.append("| Level | Count | Bloom Level |")
+            lines.append("|-------|-------|-------------|")
+            bloom_map2 = {"p'shat": "Remember", "remez": "Understand", "drash": "Analyze", "sod": "Evaluate"}
+            for level in ["p'shat", "remez", "drash", "sod"]:
+                cnt = by_pardes.get(level, 0)
+                if cnt:
+                    lines.append(f"| {level.title()} | {cnt:,} | {bloom_map2.get(level, '')} |")
+            lines.append("")
+        
+        diff = kstats.get("difficulty", {})
+        if diff.get("avg"):
+            lines.append("### Difficulty\n")
+            lines.append(f"Average difficulty: **{diff['avg']:.2f}** (range: {diff['min']:.2f}–{diff['max']:.2f})\n")
+
+    # Educational explainers
+    lines.append("---")
+    lines.append("## Understanding Connection Quality\n")
+    lines.append(STAR_RATING_EXPLAINER)
+    lines.append("")
+
+    lines.append("## Understanding PaRDeS\n")
+    lines.append(PARDES_EXPLAINER)
+    lines.append("")
+
+    lines.append("## Understanding Bloom's Taxonomy\n")
+    lines.append(BLOOM_EXPLAINER)
+    lines.append("")
+
+    lines.append("## Understanding Difficulty\n")
+    lines.append(DIFFICULTY_EXPLAINER)
+    lines.append("")
 
     lines.append("---\n*One of 11 connection layers in the Scripture Knowledge Engine*")
     return {
@@ -763,7 +1074,7 @@ def main():
     if args.all_layers or args.all:
         print(f"Generating {len(LAYER_DESCRIPTIONS)} layer explainer pages...\n")
         for layer_name in sorted(LAYER_DESCRIPTIONS.keys()):
-            article = generate_layer_article(layer_name)
+            article = generate_layer_article(conn, layer_name)
             if article:
                 write_article({"id": layer_name, **article}, LAYERS_DIR)
                 print(f"  ✓ Layer: {layer_name}")

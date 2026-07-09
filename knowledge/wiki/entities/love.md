@@ -81,5 +81,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Salvation** (concept) — co-occurs in 3 verses
 - 💡 **Life** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **2,362** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 110 | 4.7% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,252 | 95.3% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 502 | Remember |
+| **Remez** | 1,693 | Understand |
+| **Drash** | 97 | Analyze |
+| **Sod** | 70 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.33 |
+| Minimum | 0.05 |
+| Maximum | 0.67 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.27.4](verse://gen.27.4) → [gen.27.7](verse://gen.27.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And make me savoury meat, such as I love, and bring it to me, that I may eat; th"
+- **same_lemma**: [gen.27.4](verse://gen.27.4) → [gen.27.9](verse://gen.27.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And make me savoury meat, such as I love, and bring it to me, that I may eat; th"
+- **same_lemma**: [gen.27.4](verse://gen.27.4) → [prov.23.3](verse://prov.23.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And make me savoury meat, such as I love, and bring it to me, that I may eat; th"
+- **same_lemma**: [gen.27.4](verse://gen.27.4) → [prov.23.6](verse://prov.23.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And make me savoury meat, such as I love, and bring it to me, that I may eat; th"
+- **same_lemma**: [gen.27.9](verse://gen.27.9) → [prov.23.3](verse://prov.23.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Go now to the flock, and fetch me from thence two good kids of the goats; and I "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

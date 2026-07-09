@@ -62,5 +62,55 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Glory** (concept) — co-occurs in 3 verses
 - 💡 **Covenant** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **201** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 201 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 51 | Remember |
+| **Remez** | 132 | Understand |
+| **Drash** | 11 | Analyze |
+| **Sod** | 7 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.10 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [job.2.3](verse://job.2.3) → [job.2.9](verse://job.2.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD said unto Satan, Hast thou considered my servant Job, that there is"
+- **same_lemma**: [job.2.3](verse://job.2.3) → [job.27.5](verse://job.27.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD said unto Satan, Hast thou considered my servant Job, that there is"
+- **same_lemma**: [job.2.3](verse://job.2.3) → [job.31.6](verse://job.31.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD said unto Satan, Hast thou considered my servant Job, that there is"
+- **same_lemma**: [job.2.3](verse://job.2.3) → [prov.11.3](verse://prov.11.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD said unto Satan, Hast thou considered my servant Job, that there is"
+
 ---
 *Article type: **Being** | Generated from the Scripture Knowledge Engine*

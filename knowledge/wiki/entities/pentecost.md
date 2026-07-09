@@ -48,5 +48,36 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - • **Fire** (element) — co-occurs in 1 verses
 - 👤 **Eve** (person) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **14** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 14 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 4 | Remember |
+| **Remez** | 10 | Understand |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.32 |
+| Minimum | 0.20 |
+| Maximum | 0.38 |
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

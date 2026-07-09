@@ -2,6 +2,8 @@
 
 **Hebrew**: מלך | **Strong's**: H4428 | **Greek**: βασιλεύς | **Strong's**: G0935
 
+> King is a royal title given to a male monarch. A king is an absolute monarch if he holds unrestricted governmental power or exercises full sovereignty over a nation. In a modern context, the title may refer to the ruler of one of a number of modern monarchies. The title of king is used alongside other titles for monarchs: in the West, emperor, grand prince, prince, archduke, duke or grand duke, and in the Islamic world, malik, sultan, emir or hakim, among others.
+
 ## Appears In
 
 - **Old Testament**: 2400 verses
@@ -81,6 +83,59 @@ _Geographical and spatial connections — same location, journey paths, wilderne
 - 👤 **Adam** (person) — co-occurs in 5 verses
 - 📍 **Zion** (place) — co-occurs in 3 verses
 - • **Water** (element) — co-occurs in 3 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **14,741** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1,816 | 12.3% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 12,925 | 87.7% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 5,865 | Remember |
+| **Remez** | 7,053 | Understand |
+| **Drash** | 1,065 | Analyze |
+| **Sod** | 758 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.43 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **heavenly_council**: [isa.6.1](verse://isa.6.1) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "In the year that king Uzziah died I saw also the Lord sitting upon a throne, hig"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [isa.10.9](verse://isa.10.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.11.2](verse://gen.11.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.14.1](verse://gen.14.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+- **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.14.9](verse://gen.14.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

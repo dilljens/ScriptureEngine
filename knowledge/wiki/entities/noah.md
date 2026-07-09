@@ -76,5 +76,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Grace** (concept) — co-occurs in 2 verses
 - 💡 **Covenant** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **421** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 17 | 4.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 404 | 96.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 89 | Remember |
+| **Remez** | 273 | Understand |
+| **Drash** | 43 | Analyze |
+| **Sod** | 16 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.05 |
+| Maximum | 0.68 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.5.30](verse://gen.5.30) → [gen.5.31](verse://gen.5.31)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lamech lived after he begat Noah five hundred ninety and five years, and beg"
+- **same_lemma**: [gen.7.11](verse://gen.7.11) → [gen.8.2](verse://gen.8.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "In the six hundredth year of Noah's life, in the second month, the seventeenth d"
+- **same_lemma**: [gen.7.11](verse://gen.7.11) → [hos.13.3](verse://hos.13.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "In the six hundredth year of Noah's life, in the second month, the seventeenth d"
+- **same_lemma**: [gen.7.11](verse://gen.7.11) → [isa.24.18](verse://isa.24.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "In the six hundredth year of Noah's life, in the second month, the seventeenth d"
+- **same_lemma**: [gen.7.11](verse://gen.7.11) → [isa.60.8](verse://isa.60.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "In the six hundredth year of Noah's life, in the second month, the seventeenth d"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

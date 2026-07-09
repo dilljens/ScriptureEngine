@@ -53,5 +53,58 @@ _Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, 
 - 💡 **Earth** (concept) — co-occurs in 4 verses
 - 💡 **Love** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,479** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 6 | 0.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,473 | 99.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 338 | Remember |
+| **Remez** | 1,026 | Understand |
+| **Drash** | 63 | Analyze |
+| **Sod** | 52 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.05 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [deu.32.20](verse://deu.32.20) → [isa.26.2](verse://isa.26.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, I will hide my face from them, I will see what their end shall be: "
+- **same_lemma**: [deu.32.20](verse://deu.32.20) → [prov.13.17](verse://prov.13.17)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, I will hide my face from them, I will see what their end shall be: "
+- **same_lemma**: [deu.32.20](verse://deu.32.20) → [prov.14.5](verse://prov.14.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, I will hide my face from them, I will see what their end shall be: "
+- **same_lemma**: [deu.32.20](verse://deu.32.20) → [prov.20.6](verse://prov.20.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, I will hide my face from them, I will see what their end shall be: "
+- **same_lemma**: [deu.32.20](verse://deu.32.20) → [prov.10.31](verse://prov.10.31)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he said, I will hide my face from them, I will see what their end shall be: "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

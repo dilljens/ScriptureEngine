@@ -66,5 +66,49 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Hope** (concept) — co-occurs in 5 verses
 - 💡 **Earth** (concept) — co-occurs in 5 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **2,885** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,885 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 621 | Remember |
+| **Remez** | 2,105 | Understand |
+| **Drash** | 37 | Analyze |
+| **Sod** | 122 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [ezek.1.1](verse://ezek.1.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

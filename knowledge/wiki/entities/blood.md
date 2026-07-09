@@ -83,5 +83,58 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - 💡 **Sin** (concept) — co-occurs in 4 verses
 - 💡 **Life** (concept) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,748** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 53 | 3.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,695 | 97.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 340 | Remember |
+| **Remez** | 1,170 | Understand |
+| **Drash** | 149 | Analyze |
+| **Sod** | 89 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.49.11](verse://gen.49.11) → [isa.30.24](verse://isa.30.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+- **same_lemma**: [gen.49.11](verse://gen.49.11) → [isa.30.6](verse://isa.30.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+- **same_lemma**: [gen.49.11](verse://gen.49.11) → [job.11.12](verse://job.11.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+- **same_lemma**: [gen.49.11](verse://gen.49.11) → [judg.10.4](verse://judg.10.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+- **same_lemma**: [gen.49.11](verse://gen.49.11) → [judg.12.14](verse://judg.12.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+
 ---
 *Article type: **Element** | Generated from the Scripture Knowledge Engine*

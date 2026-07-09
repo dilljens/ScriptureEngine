@@ -66,5 +66,58 @@ _Word-level language connections — same Hebrew/Greek lemma, root, morphology, 
 - • **Israel** (nation) — co-occurs in 4 verses
 - 💡 **Faith** (concept) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **991** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 6 | 0.6% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 985 | 99.4% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 129 | Remember |
+| **Remez** | 508 | Understand |
+| **Drash** | 351 | Analyze |
+| **Sod** | 3 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.15.2](verse://exo.15.2) → [hab.2.5](verse://hab.2.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The LORD is my strength and song, and he is become my salvation: he is my God, a"
+- **same_lemma**: [exo.15.2](verse://exo.15.2) → [isa.12.2](verse://isa.12.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The LORD is my strength and song, and he is become my salvation: he is my God, a"
+- **same_lemma**: [exo.15.2](verse://exo.15.2) → [psa.118.14](verse://psa.118.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "The LORD is my strength and song, and he is become my salvation: he is my God, a"
+- **same_lemma**: [deu.32.15](verse://deu.32.15) → [deu.33.26](verse://deu.33.26)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But Jeshurun waxed fat, and kicked: thou art waxen fat, thou art grown thick, th"
+- **same_lemma**: [deu.32.15](verse://deu.32.15) → [deu.33.5](verse://deu.33.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "But Jeshurun waxed fat, and kicked: thou art waxen fat, thou art grown thick, th"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

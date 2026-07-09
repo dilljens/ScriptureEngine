@@ -72,5 +72,58 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - ✨ **Angel** (being) — co-occurs in 5 verses
 - 👑 **Servant** (title) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **8,877** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 423 | 4.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 8,454 | 95.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 2,168 | Remember |
+| **Remez** | 4,222 | Understand |
+| **Drash** | 1,558 | Analyze |
+| **Sod** | 929 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.44 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **two_powers**: [exo.24.1](verse://exo.24.1) → [deu.4.36](verse://deu.4.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And he said unto Moses, Come up unto the LORD, thou, and Aaron, Nadab, and Abihu"
+- **theosis**: [exo.24.9](verse://exo.24.9) → [exo.33.20](verse://exo.33.20)
+  ★★★★★ | Sod | Bloom: Evaluate | Difficulty: 0.20
+  > "Then went up Moses, and Aaron, Nadab, and Abihu, and seventy of the elders of Is"
+- **same_lemma**: [gen.32.32](verse://gen.32.32) → [judg.8.17](verse://judg.8.17)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Therefore the children of Israel eat not of the sinew which shrank, which is upo"
+- **same_lemma**: [gen.32.32](verse://gen.32.32) → [judg.8.8](verse://judg.8.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Therefore the children of Israel eat not of the sinew which shrank, which is upo"
+- **same_lemma**: [gen.32.32](verse://gen.32.32) → [judg.8.9](verse://judg.8.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Therefore the children of Israel eat not of the sinew which shrank, which is upo"
+
 ---
 *Article type: **Nation** | Generated from the Scripture Knowledge Engine*

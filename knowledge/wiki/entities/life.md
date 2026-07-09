@@ -86,5 +86,58 @@ _Sod (Hidden/Temple) — deep mystical, temple-theology, ascent, and hidden conn
 - • **Blood** (element) — co-occurs in 4 verses
 - 👤 **Adam** (person) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,625** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 9 | 0.6% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,616 | 99.4% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 421 | Remember |
+| **Remez** | 1,001 | Understand |
+| **Drash** | 127 | Analyze |
+| **Sod** | 76 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [gen.9.3](verse://gen.9.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [isa.15.6](verse://isa.15.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [num.22.4](verse://num.22.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [psa.37.2](verse://psa.37.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+- **same_lemma**: [gen.3.14](verse://gen.3.14) → [lev.11.42](verse://lev.11.42)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD God said unto the serpent, Because thou hast done this, thou art cu"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

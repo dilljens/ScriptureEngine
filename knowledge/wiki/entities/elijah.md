@@ -68,5 +68,58 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 👤 **Elisha** (person) — co-occurs in 3 verses
 - 👑 **Servant** (title) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **154** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 18 | 11.7% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 136 | 88.3% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 61 | Remember |
+| **Remez** | 85 | Understand |
+| **Drash** | 2 | Analyze |
+| **Sod** | 6 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.38 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.21.17](verse://1kgs.21.17)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+- **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.21.28](verse://1kgs.21.28)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+- **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [2kgs.1.3](verse://2kgs.1.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+- **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [2kgs.1.8](verse://2kgs.1.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+- **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [2kgs.9.36](verse://2kgs.9.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

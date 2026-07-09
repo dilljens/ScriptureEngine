@@ -88,5 +88,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Light** (concept) — co-occurs in 3 verses
 - ✨ **Satan** (being) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **23,220** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1,070 | 4.6% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 22,150 | 95.4% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 6,991 | Remember |
+| **Remez** | 11,795 | Understand |
+| **Drash** | 1,660 | Analyze |
+| **Sod** | 2,774 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **two_powers**: [exo.24.1](verse://exo.24.1) → [deu.4.36](verse://deu.4.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And he said unto Moses, Come up unto the LORD, thou, and Aaron, Nadab, and Abihu"
+- **theosis**: [exo.24.9](verse://exo.24.9) → [exo.33.20](verse://exo.33.20)
+  ★★★★★ | Sod | Bloom: Evaluate | Difficulty: 0.20
+  > "Then went up Moses, and Aaron, Nadab, and Abihu, and seventy of the elders of Is"
+- **divine_mediator**: [jude.1.14](verse://jude.1.14) → [dan.7.13](verse://dan.7.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And Enoch also, the seventh from Adam, prophesied of these, saying, Behold, the "
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [gen.9.3](verse://gen.9.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+- **same_lemma**: [gen.1.30](verse://gen.1.30) → [isa.15.6](verse://isa.15.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

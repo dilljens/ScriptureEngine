@@ -58,5 +58,36 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 👤 **Herod** (person) — co-occurs in 1 verses
 - • **God** (deity) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **29** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 29 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 15 | Remember |
+| **Remez** | 14 | Understand |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.29 |
+| Minimum | 0.10 |
+| Maximum | 0.60 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

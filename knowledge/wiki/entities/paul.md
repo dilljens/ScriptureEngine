@@ -66,5 +66,58 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 👤 **Jesus** (person) — co-occurs in 2 verses
 - 📍 **Jerusalem** (place) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **425** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 425 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 166 | Remember |
+| **Remez** | 247 | Understand |
+| **Drash** | 3 | Analyze |
+| **Sod** | 9 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.37 |
+| Minimum | 0.05 |
+| Maximum | 0.60 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [2chr.10.18](verse://2chr.10.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+- **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [gen.10.27](verse://gen.10.27)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+- **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [1chr.18.9](verse://1chr.18.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+- **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [2sam.8.10](verse://2sam.8.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+- **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [2sam.8.9](verse://2sam.8.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

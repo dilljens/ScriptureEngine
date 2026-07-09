@@ -68,5 +68,37 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 📍 **Galilee** (place) — co-occurs in 2 verses
 - 👤 **Eve** (person) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **151** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 151 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 70 | Remember |
+| **Remez** | 80 | Understand |
+| **Sod** | 1 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.60 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

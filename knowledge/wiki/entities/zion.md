@@ -2,6 +2,8 @@
 
 **Hebrew**: ציון | **Strong's**: H6726 | **Greek**: Σιών | **Strong's**: G4622
 
+> Zion is a placename in the Tanakh, often used as a synonym for Jerusalem as well as for the Land of Israel as a whole.
+
 ## Appears In
 
 - **Doctrine and Covenants**: 185 verses
@@ -72,6 +74,59 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Peace** (concept) — co-occurs in 3 verses
 - • **Israel** (nation) — co-occurs in 3 verses
 - 💡 **Word** (concept) — co-occurs in 2 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,345** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 19 | 1.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,326 | 98.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 259 | Remember |
+| **Remez** | 476 | Understand |
+| **Drash** | 512 | Analyze |
+| **Sod** | 98 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.47 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [num.33.35](verse://num.33.35) → [num.33.36](verse://num.33.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they departed from Ebronah, and encamped at Ezion-gaber."
+- **same_lemma**: [num.33.36](verse://num.33.36) → [num.34.3](verse://num.34.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they removed from Ezion-gaber, and pitched in the wilderness of Zin, which i"
+- **same_lemma**: [num.33.36](verse://num.33.36) → [num.34.4](verse://num.34.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they removed from Ezion-gaber, and pitched in the wilderness of Zin, which i"
+- **same_lemma**: [deu.2.8](verse://deu.2.8) → [num.33.35](verse://num.33.35)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when we passed by from our brethren the children of Esau, which dwelt in Sei"
+- **same_lemma**: [deu.2.8](verse://deu.2.8) → [num.33.36](verse://num.33.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when we passed by from our brethren the children of Esau, which dwelt in Sei"
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

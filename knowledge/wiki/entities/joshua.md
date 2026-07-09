@@ -94,5 +94,58 @@ _Textual variants and manuscript traditions — differences between the MT, LXX,
 - 💡 **Word** (concept) — co-occurs in 2 verses
 - 💡 **Spirit** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,695** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 33 | 1.9% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,662 | 98.1% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 716 | Remember |
+| **Remez** | 826 | Understand |
+| **Drash** | 32 | Analyze |
+| **Sod** | 121 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.17.13](verse://exo.17.13) → [isa.14.12](verse://isa.14.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joshua discomfited Amalek and his people with the edge of the sword."
+- **same_lemma**: [exo.17.13](verse://exo.17.13) → [job.14.10](verse://job.14.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joshua discomfited Amalek and his people with the edge of the sword."
+- **same_lemma**: [exo.32.17](verse://exo.32.17) → [job.36.33](verse://job.36.33)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when Joshua heard the noise of the people as they shouted, he said unto Mose"
+- **same_lemma**: [exo.32.17](verse://exo.32.17) → [mic.4.9](verse://mic.4.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And when Joshua heard the noise of the people as they shouted, he said unto Mose"
+- **same_lemma**: [josh.2.1](verse://josh.2.1) → [neh.11.35](verse://neh.11.35)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joshua the son of Nun sent out of Shittim two men to spy secretly, saying, G"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

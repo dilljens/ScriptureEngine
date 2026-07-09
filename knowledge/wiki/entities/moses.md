@@ -79,5 +79,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👑 **Prophet** (title) — co-occurs in 3 verses
 - 👑 **Pharaoh** (title) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,681** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 68 | 4.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,613 | 96.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 500 | Remember |
+| **Remez** | 732 | Understand |
+| **Drash** | 331 | Analyze |
+| **Sod** | 118 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **two_powers**: [exo.24.1](verse://exo.24.1) → [deu.4.36](verse://deu.4.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And he said unto Moses, Come up unto the LORD, thou, and Aaron, Nadab, and Abihu"
+- **theosis**: [exo.24.9](verse://exo.24.9) → [exo.33.20](verse://exo.33.20)
+  ★★★★★ | Sod | Bloom: Evaluate | Difficulty: 0.20
+  > "Then went up Moses, and Aaron, Nadab, and Abihu, and seventy of the elders of Is"
+- **same_lemma**: [exo.2.10](verse://exo.2.10) → [psa.18.17](verse://psa.18.17)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the child grew, and she brought him unto Pharaoh's daughter, and he became h"
+- **same_lemma**: [exo.2.11](verse://exo.2.11) → [exo.5.4](verse://exo.5.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass in those days, when Moses was grown, that he went out unto h"
+- **same_lemma**: [exo.2.11](verse://exo.2.11) → [exo.5.5](verse://exo.5.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass in those days, when Moses was grown, that he went out unto h"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

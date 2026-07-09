@@ -80,5 +80,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Peace** (concept) — co-occurs in 1 verses
 - 💡 **Mercy** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **685** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 27 | 3.9% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 658 | 96.1% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 223 | Remember |
+| **Remez** | 302 | Understand |
+| **Drash** | 152 | Analyze |
+| **Sod** | 8 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.37.2](verse://gen.37.2) → [jer.20.10](verse://jer.20.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+- **same_lemma**: [gen.37.2](verse://gen.37.2) → [num.13.32](verse://num.13.32)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+- **same_lemma**: [gen.37.2](verse://gen.37.2) → [num.14.36](verse://num.14.36)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+- **same_lemma**: [gen.37.2](verse://gen.37.2) → [num.14.37](verse://num.14.37)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+- **same_lemma**: [gen.37.2](verse://gen.37.2) → [prov.10.18](verse://prov.10.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

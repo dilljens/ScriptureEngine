@@ -91,5 +91,58 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - 👤 **Moses** (person) — co-occurs in 4 verses
 - 📍 **Zion** (place) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **4,070** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 131 | 3.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 3,939 | 96.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,071 | Remember |
+| **Remez** | 2,104 | Understand |
+| **Drash** | 245 | Analyze |
+| **Sod** | 650 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.80 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **merkabah**: [ezek.1.1](verse://ezek.1.1) → [rev.4.1](verse://rev.4.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [song.1.1](verse://song.1.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [isa.6.1](verse://isa.6.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "Now it came to pass in the thirtieth year, in the fourth month, in the fifth day"
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [ezek.1.1](verse://ezek.1.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

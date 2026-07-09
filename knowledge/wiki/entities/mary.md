@@ -2,8 +2,6 @@
 
 **Hebrew**: מרים | **Strong's**: H4813 | **Greek**: Μαρία | **Strong's**: G3137
 
-> Mary may refer to:
-
 ## Appears In
 
 - **New Testament**: 46 verses
@@ -60,6 +58,38 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 👑 **Christ** (title) — co-occurs in 3 verses
 - 💡 **Word** (concept) — co-occurs in 2 verses
 - 💡 **Sabbath** (concept) — co-occurs in 2 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **128** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 128 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 52 | Remember |
+| **Remez** | 71 | Understand |
+| **Sod** | 5 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.10 |
+| Maximum | 0.60 |
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

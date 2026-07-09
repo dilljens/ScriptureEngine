@@ -96,5 +96,58 @@ _Textual variants and manuscript traditions — differences between the MT, LXX,
 - 💡 **Judgment** (concept) — co-occurs in 2 verses
 - 💡 **Heaven** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **64** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 2 | 3.1% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 62 | 96.9% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 18 | Remember |
+| **Remez** | 28 | Understand |
+| **Drash** | 17 | Analyze |
+| **Sod** | 1 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.10 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.16.1](verse://exo.16.1) → [num.33.10](verse://num.33.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they took their journey from Elim, and all the congregation of the children "
+- **same_lemma**: [exo.16.1](verse://exo.16.1) → [num.33.9](verse://num.33.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they took their journey from Elim, and all the congregation of the children "
+- **same_lemma**: [exo.16.1](verse://exo.16.1) → [exo.17.1](verse://exo.17.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they took their journey from Elim, and all the congregation of the children "
+- **same_lemma**: [exo.16.1](verse://exo.16.1) → [ezek.30.15](verse://ezek.30.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they took their journey from Elim, and all the congregation of the children "
+- **same_lemma**: [exo.16.1](verse://exo.16.1) → [ezek.30.16](verse://ezek.30.16)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they took their journey from Elim, and all the congregation of the children "
+
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

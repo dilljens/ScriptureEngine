@@ -74,5 +74,46 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - • **Israel** (nation) — co-occurs in 2 verses
 - 💡 **Heaven** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **289** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 289 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 174 | Remember |
+| **Remez** | 108 | Understand |
+| **Drash** | 3 | Analyze |
+| **Sod** | 4 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.29 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **divine_mediator**: [jude.1.14](verse://jude.1.14) → [dan.7.13](verse://dan.7.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And Enoch also, the seventh from Adam, prophesied of these, saying, Behold, the "
+
 ---
 *Article type: **Divine_name** | Generated from the Scripture Knowledge Engine*

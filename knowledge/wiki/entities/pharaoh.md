@@ -89,5 +89,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Life** (concept) — co-occurs in 2 verses
 - • **Water** (element) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **489** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 25 | 5.1% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 464 | 94.9% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 162 | Remember |
+| **Remez** | 230 | Understand |
+| **Drash** | 90 | Analyze |
+| **Sod** | 7 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.37.36](verse://gen.37.36) → [gen.39.1](verse://gen.39.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the Midianites sold him into Egypt unto Potiphar, an officer of Pharaoh's, a"
+- **same_lemma**: [gen.39.1](verse://gen.39.1) → [judg.8.24](verse://judg.8.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joseph was brought down to Egypt; and Potiphar, an officer of Pharaoh, capta"
+- **same_lemma**: [gen.39.1](verse://gen.39.1) → [psa.83.7](verse://psa.83.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joseph was brought down to Egypt; and Potiphar, an officer of Pharaoh, capta"
+- **same_lemma**: [gen.41.4](verse://gen.41.4) → [gen.41.7](verse://gen.41.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the ill favoured and leanfleshed kine did eat up the seven well favoured and"
+- **same_lemma**: [gen.41.4](verse://gen.41.4) → [gen.9.24](verse://gen.9.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the ill favoured and leanfleshed kine did eat up the seven well favoured and"
+
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

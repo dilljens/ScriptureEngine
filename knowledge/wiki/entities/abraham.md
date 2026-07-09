@@ -82,5 +82,58 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - 📍 **Egypt** (place) — co-occurs in 3 verses
 - 💡 **Earth** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **955** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 24 | 2.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 931 | 97.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 241 | Remember |
+| **Remez** | 523 | Understand |
+| **Drash** | 180 | Analyze |
+| **Sod** | 11 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.37 |
+| Minimum | 0.07 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [hos.7.4](verse://hos.7.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [jer.7.18](verse://jer.7.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [hos.7.8](verse://hos.7.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.6](verse://gen.18.6) → [num.11.8](verse://num.11.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham hastened into the tent unto Sarah, and said, Make ready quickly thre"
+- **same_lemma**: [gen.18.13](verse://gen.18.13) → [num.22.37](verse://num.22.37)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the LORD said unto Abraham, Wherefore did Sarah laugh, saying, Shall I of a "
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

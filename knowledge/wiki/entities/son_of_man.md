@@ -2,6 +2,8 @@
 
 **Hebrew**: בן אדם | **Strong's**: H0112 | **Greek**: υἱὸς ἀνθρώπου | **Strong's**: G5207
 
+> "Son of man", "son of Adam", or "as a man", are phrases used in the Hebrew Bible, various apocalyptic works of the intertestamental period, and in the Greek New Testament. In the indefinite form used in the Hebrew Bible, it is a form of address; or it contrasts humans with God and the angels; or it contrasts foreign nations, which are often represented as animals in apocalyptic writings, with Israel which is represented as human ; or it signifies an eschatological human figure.
+
 ## Appears In
 
 - **Old Testament**: 121 verses
@@ -77,6 +79,59 @@ _Geographical and spatial connections — same location, journey paths, wilderne
 - ✨ **Satan** (being) — co-occurs in 2 verses
 - 💡 **Righteousness** (concept) — co-occurs in 2 verses
 - 👤 **Noah** (person) — co-occurs in 2 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,009** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 12 | 1.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 997 | 98.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 222 | Remember |
+| **Remez** | 387 | Understand |
+| **Drash** | 23 | Analyze |
+| **Sod** | 377 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.46 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.50.23](verse://gen.50.23) → [num.14.18](verse://num.14.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Joseph saw Ephraim's children of the third generation: the children also of "
+- **same_lemma**: [num.27.1](verse://num.27.1) → [num.36.11](verse://num.36.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then came the daughters of Zelophehad, the son of Hepher, the son of Gilead, the"
+- **same_lemma**: [num.27.1](verse://num.27.1) → [num.27.7](verse://num.27.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then came the daughters of Zelophehad, the son of Hepher, the son of Gilead, the"
+- **same_lemma**: [num.27.1](verse://num.27.1) → [num.36.10](verse://num.36.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then came the daughters of Zelophehad, the son of Hepher, the son of Gilead, the"
+- **same_lemma**: [num.27.1](verse://num.27.1) → [num.36.2](verse://num.36.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Then came the daughters of Zelophehad, the son of Hepher, the son of Gilead, the"
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

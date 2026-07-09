@@ -70,5 +70,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Light** (concept) — co-occurs in 3 verses
 - 👑 **King** (title) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **710** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 3 | 0.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 707 | 99.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 168 | Remember |
+| **Remez** | 491 | Understand |
+| **Drash** | 49 | Analyze |
+| **Sod** | 2 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [judg.9.15](verse://judg.9.15) → [psa.58.10](verse://psa.58.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the bramble said unto the trees, If in truth ye anoint me king over you, the"
+- **same_lemma**: [1sam.21.5](verse://1sam.21.5) → [1sam.21.6](verse://1sam.21.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And David answered the priest, and said unto him, Of a truth women have been kep"
+- **same_lemma**: [1sam.21.5](verse://1sam.21.5) → [ezek.22.26](verse://ezek.22.26)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And David answered the priest, and said unto him, Of a truth women have been kep"
+- **same_lemma**: [1sam.21.5](verse://1sam.21.5) → [ezek.42.20](verse://ezek.42.20)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And David answered the priest, and said unto him, Of a truth women have been kep"
+- **same_lemma**: [1sam.21.5](verse://1sam.21.5) → [ezek.44.23](verse://ezek.44.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And David answered the priest, and said unto him, Of a truth women have been kep"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

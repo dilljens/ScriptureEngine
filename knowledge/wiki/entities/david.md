@@ -70,5 +70,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Spirit** (concept) — co-occurs in 2 verses
 - 💡 **Sin** (concept) — co-occurs in 1 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **3,177** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 249 | 7.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,928 | 92.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,289 | Remember |
+| **Remez** | 1,758 | Understand |
+| **Drash** | 63 | Analyze |
+| **Sod** | 67 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.42 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [ruth.4.17](verse://ruth.4.17) → [ruth.4.21](verse://ruth.4.21)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the women her neighbours gave it a name, saying, There is a son born to Naom"
+- **same_lemma**: [ruth.4.17](verse://ruth.4.17) → [ruth.4.22](verse://ruth.4.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the women her neighbours gave it a name, saying, There is a son born to Naom"
+- **same_lemma**: [1sam.16.20](verse://1sam.16.20) → [josh.9.13](verse://josh.9.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jesse took an ass laden with bread, and a bottle of wine, and a kid, and sen"
+- **same_lemma**: [1sam.16.20](verse://1sam.16.20) → [josh.9.4](verse://josh.9.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jesse took an ass laden with bread, and a bottle of wine, and a kid, and sen"
+- **same_lemma**: [1sam.16.20](verse://1sam.16.20) → [judg.4.19](verse://judg.4.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jesse took an ass laden with bread, and a bottle of wine, and a kid, and sen"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

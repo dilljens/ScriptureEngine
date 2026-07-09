@@ -54,5 +54,58 @@ _Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, 
 - 💡 **Glory** (concept) — co-occurs in 4 verses
 - ✨ **Angel** (being) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **981** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 4 | 0.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 977 | 99.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 306 | Remember |
+| **Remez** | 476 | Understand |
+| **Drash** | 76 | Analyze |
+| **Sod** | 123 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.33 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.31.29](verse://gen.31.29) → [gen.31.42](verse://gen.31.42)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "It is in the power of my hand to do you hurt: but the God of your father spake u"
+- **same_lemma**: [gen.31.29](verse://gen.31.29) → [job.30.3](verse://job.30.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "It is in the power of my hand to do you hurt: but the God of your father spake u"
+- **same_lemma**: [exo.15.6](verse://exo.15.6) → [isa.42.21](verse://isa.42.21)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Thy right hand, O LORD, is become glorious in power: thy right hand, O LORD, hat"
+- **same_lemma**: [exo.15.6](verse://exo.15.6) → [judg.10.8](verse://judg.10.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Thy right hand, O LORD, is become glorious in power: thy right hand, O LORD, hat"
+- **same_lemma**: [lev.26.19](verse://lev.26.19) → [mic.4.13](verse://mic.4.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I will break the pride of your power; and I will make your heaven as iron, a"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

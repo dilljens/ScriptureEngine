@@ -64,5 +64,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Heaven** (concept) — co-occurs in 4 verses
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **5,295** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 200 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 5,095 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,467 | Remember |
+| **Remez** | 2,983 | Understand |
+| **Drash** | 529 | Analyze |
+| **Sod** | 316 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.38 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.15.1](verse://gen.15.1) → [num.24.16](verse://num.24.16)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "After these things the word of the LORD came unto Abram in a vision, saying, Fea"
+- **same_lemma**: [gen.15.1](verse://gen.15.1) → [num.24.4](verse://num.24.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "After these things the word of the LORD came unto Abram in a vision, saying, Fea"
+- **same_lemma**: [gen.24.30](verse://gen.24.30) → [gen.24.47](verse://gen.24.47)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass, when he saw the earring and bracelets upon his sister's han"
+- **same_lemma**: [gen.24.30](verse://gen.24.30) → [num.19.15](verse://num.19.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass, when he saw the earring and bracelets upon his sister's han"
+- **same_lemma**: [gen.24.30](verse://gen.24.30) → [num.31.50](verse://num.31.50)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And it came to pass, when he saw the earring and bracelets upon his sister's han"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -71,5 +71,58 @@ _Sod (Hidden/Temple) — deep mystical, temple-theology, ascent, and hidden conn
 - 💡 **Spirit** (concept) — co-occurs in 3 verses
 - • **Water** (element) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **6,425** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 3 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 6,422 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 413 | Remember |
+| **Remez** | 743 | Understand |
+| **Drash** | 36 | Analyze |
+| **Sod** | 5,233 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.56 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.16.7](verse://gen.16.7) → [gen.20.1](verse://gen.20.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the angel of the LORD found her by a fountain of water in the wilderness, by"
+- **same_lemma**: [gen.16.7](verse://gen.16.7) → [gen.25.18](verse://gen.25.18)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the angel of the LORD found her by a fountain of water in the wilderness, by"
+- **same_lemma**: [gen.16.9](verse://gen.16.9) → [isa.24.2](verse://isa.24.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the angel of the LORD said unto her, Return to thy mistress, and submit thys"
+- **same_lemma**: [gen.16.9](verse://gen.16.9) → [isa.47.5](verse://isa.47.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the angel of the LORD said unto her, Return to thy mistress, and submit thys"
+- **same_lemma**: [gen.16.9](verse://gen.16.9) → [isa.47.7](verse://isa.47.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the angel of the LORD said unto her, Return to thy mistress, and submit thys"
+
 ---
 *Article type: **Being** | Generated from the Scripture Knowledge Engine*

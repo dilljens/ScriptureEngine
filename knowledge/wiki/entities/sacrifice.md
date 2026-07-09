@@ -79,5 +79,58 @@ _Word-level language connections — same Hebrew/Greek lemma, root, morphology, 
 - 📍 **Egypt** (place) — co-occurs in 5 verses
 - 💡 **Sin** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,006** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 11 | 1.1% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 995 | 98.9% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 228 | Remember |
+| **Remez** | 653 | Understand |
+| **Drash** | 115 | Analyze |
+| **Sod** | 10 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.5.8](verse://exo.5.8) → [ezek.4.1](verse://ezek.4.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+- **same_lemma**: [exo.5.8](verse://exo.5.8) → [gen.11.3](verse://gen.11.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+- **same_lemma**: [exo.5.8](verse://exo.5.8) → [isa.65.3](verse://isa.65.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+- **same_lemma**: [exo.5.8](verse://exo.5.8) → [isa.9.9](verse://isa.9.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+- **same_lemma**: [exo.5.8](verse://exo.5.8) → [ezek.45.11](verse://ezek.45.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

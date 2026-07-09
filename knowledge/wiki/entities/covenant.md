@@ -79,5 +79,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👤 **Joseph** (person) — co-occurs in 3 verses
 - 📍 **Egypt** (place) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,798** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 8 | 0.4% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,790 | 99.6% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 448 | Remember |
+| **Remez** | 742 | Understand |
+| **Drash** | 595 | Analyze |
+| **Sod** | 13 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.47 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.17.11](verse://gen.17.11) → [job.14.2](verse://job.14.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And ye shall circumcise the flesh of your foreskin; and it shall be a token of t"
+- **same_lemma**: [gen.17.11](verse://gen.17.11) → [job.18.16](verse://job.18.16)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And ye shall circumcise the flesh of your foreskin; and it shall be a token of t"
+- **same_lemma**: [gen.17.11](verse://gen.17.11) → [job.24.24](verse://job.24.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And ye shall circumcise the flesh of your foreskin; and it shall be a token of t"
+- **same_lemma**: [gen.17.11](verse://gen.17.11) → [psa.37.2](verse://psa.37.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And ye shall circumcise the flesh of your foreskin; and it shall be a token of t"
+- **same_lemma**: [gen.21.32](verse://gen.21.32) → [gen.26.26](verse://gen.26.26)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Thus they made a covenant at Beer-sheba: then Abimelech rose up, and Phichol the"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

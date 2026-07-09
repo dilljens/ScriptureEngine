@@ -78,5 +78,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👑 **Priest** (title) — co-occurs in 3 verses
 - • **God** (deity) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **413** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 1 | 0.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 412 | 99.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 198 | Remember |
+| **Remez** | 210 | Understand |
+| **Drash** | 1 | Analyze |
+| **Sod** | 4 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.34 |
+| Minimum | 0.07 |
+| Maximum | 0.66 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [2chr.5.13](verse://2chr.5.13) → [2chr.7.6](verse://2chr.7.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "It came even to pass, as the trumpeters and singers were as one, to make one sou"
+- **same_lemma**: [2chr.29.28](verse://2chr.29.28) → [2chr.5.12](verse://2chr.5.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And all the congregation worshipped, and the singers sang, and the trumpeters so"
+- **same_lemma**: [2chr.29.28](verse://2chr.29.28) → [2chr.5.13](verse://2chr.5.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And all the congregation worshipped, and the singers sang, and the trumpeters so"
+- **same_lemma**: [2chr.29.28](verse://2chr.29.28) → [2chr.7.6](verse://2chr.7.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And all the congregation worshipped, and the singers sang, and the trumpeters so"
+- **same_morphology**: [2chr.29.28](verse://2chr.29.28) → [ezek.8.16](verse://ezek.8.16)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.40
+  > "And all the congregation worshipped, and the singers sang, and the trumpeters so"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

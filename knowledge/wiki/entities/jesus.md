@@ -63,5 +63,38 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Spirit** (concept) — co-occurs in 6 verses
 - 💡 **Power** (concept) — co-occurs in 6 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **3,863** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 3,863 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,208 | Remember |
+| **Remez** | 2,353 | Understand |
+| **Drash** | 28 | Analyze |
+| **Sod** | 274 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.35 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

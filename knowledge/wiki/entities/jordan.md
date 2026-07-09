@@ -92,5 +92,58 @@ _Textual variants and manuscript traditions — differences between the MT, LXX,
 - • **Water** (element) — co-occurs in 2 verses
 - 👑 **Servant** (title) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **518** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 21 | 4.1% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 497 | 95.9% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 289 | Remember |
+| **Remez** | 185 | Understand |
+| **Drash** | 33 | Analyze |
+| **Sod** | 11 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.10 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.14.2](verse://gen.14.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+- **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.14.8](verse://gen.14.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+- **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.19.22](verse://gen.19.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+- **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.19.23](verse://gen.19.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+- **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.19.30](verse://gen.19.30)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

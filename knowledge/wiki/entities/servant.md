@@ -2,6 +2,8 @@
 
 **Hebrew**: עבד | **Strong's**: H5650 | **Greek**: δοῦλος | **Strong's**: G1401
 
+> A domestic worker or domestic servant is a person who works within a residence and performs a variety of household services for an individual, from providing cleaning and household maintenance, or cooking, laundry and ironing, or care for children and elderly dependents, and other household errands. The term "domestic service" applies to the equivalent occupational category. In traditional English contexts, such a person was said to be "in service".
+
 ## Appears In
 
 - **Old Testament**: 771 verses
@@ -72,6 +74,59 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👤 **Isaac** (person) — co-occurs in 3 verses
 - 💡 **Salvation** (concept) — co-occurs in 2 verses
 - 👤 **Moses** (person) — co-occurs in 2 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **2,808** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 107 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,701 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,204 | Remember |
+| **Remez** | 1,224 | Understand |
+| **Drash** | 315 | Analyze |
+| **Sod** | 65 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.42 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.21.25](verse://gen.21.25) → [gen.26.32](verse://gen.26.32)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
+- **same_lemma**: [gen.21.25](verse://gen.21.25) → [jer.3.8](verse://jer.3.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
+- **same_lemma**: [gen.21.25](verse://gen.21.25) → [josh.14.6](verse://josh.14.6)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
+- **same_lemma**: [gen.21.25](verse://gen.21.25) → [judg.6.7](verse://judg.6.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
+- **same_lemma**: [gen.21.25](verse://gen.21.25) → [num.12.1](verse://num.12.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

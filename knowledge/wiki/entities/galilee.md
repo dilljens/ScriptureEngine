@@ -76,5 +76,58 @@ _Geographical and spatial connections — same location, journey paths, wilderne
 - 👤 **Peter** (person) — co-occurs in 3 verses
 - 👤 **Herod** (person) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **277** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 6 | 2.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 271 | 97.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 164 | Remember |
+| **Remez** | 111 | Understand |
+| **Drash** | 1 | Analyze |
+| **Sod** | 1 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.31 |
+| Minimum | 0.10 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [josh.20.7](verse://josh.20.7) → [josh.21.32](verse://josh.21.32)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they appointed Kedesh in Galilee in mount Naphtali, and Shechem in mount Eph"
+- **same_lemma**: [josh.20.7](verse://josh.20.7) → [josh.21.11](verse://josh.21.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they appointed Kedesh in Galilee in mount Naphtali, and Shechem in mount Eph"
+- **same_lemma**: [josh.20.7](verse://josh.20.7) → [judg.1.10](verse://judg.1.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they appointed Kedesh in Galilee in mount Naphtali, and Shechem in mount Eph"
+- **same_lemma**: [josh.20.7](verse://josh.20.7) → [neh.11.25](verse://neh.11.25)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they appointed Kedesh in Galilee in mount Naphtali, and Shechem in mount Eph"
+- **same_lemma**: [1kgs.9.11](verse://1kgs.9.11) → [2kgs.15.29](verse://2kgs.15.29)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "(Now Hiram the king of Tyre had furnished Solomon with cedar trees and fir trees"
+
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

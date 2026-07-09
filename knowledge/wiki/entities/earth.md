@@ -95,5 +95,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Life** (concept) — co-occurs in 4 verses
 - ✨ **Satan** (being) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **5,200** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 115 | 2.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 5,085 | 97.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,099 | Remember |
+| **Remez** | 2,751 | Understand |
+| **Drash** | 455 | Analyze |
+| **Sod** | 895 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.41 |
+| Minimum | 0.05 |
+| Maximum | 0.80 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.23.9](verse://jer.23.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [isa.34.11](verse://isa.34.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.2](verse://gen.1.2) → [jer.4.23](verse://jer.4.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the earth was without form, and void; and darkness was upon the face of the "
+- **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.14.8](verse://jer.14.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And God called the dry land Earth; and the gathering together of the waters call"
+- **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.17.13](verse://jer.17.13)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And God called the dry land Earth; and the gathering together of the waters call"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

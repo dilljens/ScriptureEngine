@@ -69,5 +69,57 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - • **Water** (element) — co-occurs in 4 verses
 - 💡 **Peace** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **158** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 30 | 19.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 128 | 81.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 53 | Remember |
+| **Remez** | 89 | Understand |
+| **Drash** | 16 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.10 |
+| Maximum | 0.69 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.10.4](verse://gen.10.4) → [isa.23.1](verse://isa.23.1)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim."
+- **same_lemma**: [gen.10.4](verse://gen.10.4) → [isa.23.12](verse://isa.23.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim."
+- **same_lemma**: [gen.10.4](verse://gen.10.4) → [jer.2.10](verse://jer.2.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim."
+- **same_lemma**: [gen.10.4](verse://gen.10.4) → [num.24.24](verse://num.24.24)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And the sons of Javan; Elishah, and Tarshish, Kittim, and Dodanim."
+- **same_lemma**: [num.1.10](verse://num.1.10) → [num.10.23](verse://num.10.23)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Of the children of Joseph: of Ephraim; Elishama the son of Ammihud: of Manasseh;"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

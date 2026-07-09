@@ -78,5 +78,58 @@ _Textual variants and manuscript traditions — differences between the MT, LXX,
 - 💡 **Power** (concept) — co-occurs in 3 verses
 - 💡 **Light** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **4,775** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 404 | 8.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 4,371 | 91.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,347 | Remember |
+| **Remez** | 2,596 | Understand |
+| **Drash** | 518 | Analyze |
+| **Sod** | 314 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **merkabah**: [ezek.1.26](verse://ezek.1.26) → [dan.7.9](verse://dan.7.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And above the firmament that was over their heads was the likeness of a throne, "
+- **angelomorphic**: [ezek.1.26](verse://ezek.1.26) → [dan.7.9](verse://dan.7.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And above the firmament that was over their heads was the likeness of a throne, "
+- **angelomorphic**: [ezek.1.26](verse://ezek.1.26) → [phil.2.5](verse://phil.2.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "And above the firmament that was over their heads was the likeness of a throne, "
+- **theophany**: [dan.7.9](verse://dan.7.9) → [rev.4.2](verse://rev.4.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
+  > "I beheld till the thrones were cast down, and the Ancient of days did sit, whose"
+- **same_lemma**: [gen.3.15](verse://gen.3.15) → [num.35.21](verse://num.35.21)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And I will put enmity between thee and the woman, and between thy seed and her s"
+
 ---
 *Article type: **Element** | Generated from the Scripture Knowledge Engine*

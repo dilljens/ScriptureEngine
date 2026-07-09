@@ -64,5 +64,57 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 💡 **Salvation** (concept) — co-occurs in 4 verses
 - 💡 **Life** (concept) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **71** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 2 | 2.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 69 | 97.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 19 | Remember |
+| **Remez** | 46 | Understand |
+| **Drash** | 6 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.30 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [num.3.49](verse://num.3.49) → [num.3.51](verse://num.3.51)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Moses took the redemption money of them that were over and above them that w"
+- **same_lemma**: [num.3.49](verse://num.3.49) → [psa.49.9](verse://psa.49.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Moses took the redemption money of them that were over and above them that w"
+- **same_lemma**: [psa.111.9](verse://psa.111.9) → [psa.130.7](verse://psa.130.7)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "He sent redemption unto his people: he hath commanded his covenant for ever: hol"
+- **same_lemma**: [jer.32.7](verse://jer.32.7) → [jer.32.8](verse://jer.32.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Behold, Hanameel the son of Shallum thine uncle shall come unto thee, saying, Bu"
+- **same_lemma**: [jer.32.7](verse://jer.32.7) → [jer.32.9](verse://jer.32.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Behold, Hanameel the son of Shallum thine uncle shall come unto thee, saying, Bu"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

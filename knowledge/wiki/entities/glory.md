@@ -56,5 +56,58 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - • **Israel** (nation) — co-occurs in 4 verses
 - 💡 **Heaven** (concept) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,866** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 19 | 1.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,847 | 99.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 396 | Remember |
+| **Remez** | 1,294 | Understand |
+| **Drash** | 101 | Analyze |
+| **Sod** | 75 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.16.7](verse://exo.16.7) → [exo.16.8](verse://exo.16.8)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+- **same_lemma**: [exo.16.7](verse://exo.16.7) → [gen.42.11](verse://gen.42.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+- **same_lemma**: [exo.16.7](verse://exo.16.7) → [lam.3.42](verse://lam.3.42)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+- **same_lemma**: [exo.16.7](verse://exo.16.7) → [num.32.32](verse://num.32.32)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+- **same_lemma**: [exo.16.7](verse://exo.16.7) → [exo.16.9](verse://exo.16.9)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

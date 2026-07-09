@@ -88,5 +88,58 @@ _Shared symbols, apocalyptic vocabulary, and typology — conceptual connections
 - 📍 **Egypt** (place) — co-occurs in 3 verses
 - 💡 **Blessing** (concept) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,271** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 75 | 5.9% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,196 | 94.1% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 364 | Remember |
+| **Remez** | 578 | Understand |
+| **Drash** | 313 | Analyze |
+| **Sod** | 16 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [gen.25.29](verse://gen.25.29) → [jer.50.29](verse://jer.50.29)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+- **same_lemma**: [gen.25.29](verse://gen.25.29) → [neh.9.10](verse://neh.9.10)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+- **same_lemma**: [gen.25.29](verse://gen.25.29) → [neh.9.16](verse://neh.9.16)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+- **same_lemma**: [gen.25.29](verse://gen.25.29) → [neh.9.29](verse://neh.9.29)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+- **same_lemma**: [gen.25.29](verse://gen.25.29) → [gen.25.34](verse://gen.25.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

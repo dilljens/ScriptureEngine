@@ -71,5 +71,57 @@ _How texts quote, allude to, or echo other texts — direct quotations, allusion
 - 👑 **Priest** (title) — co-occurs in 5 verses
 - 📍 **Egypt** (place) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **256** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 256 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 40 | Remember |
+| **Remez** | 205 | Understand |
+| **Drash** | 11 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.44 |
+| Minimum | 0.05 |
+| Maximum | 0.70 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.12.11](verse://exo.12.11) → [isa.52.12](verse://isa.52.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And thus shall ye eat it; with your loins girded, your shoes on your feet, and y"
+- **same_lemma**: [exo.12.27](verse://exo.12.27) → [isa.31.5](verse://isa.31.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "That ye shall say, It is the sacrifice of the LORD's passover, who passed over t"
+- **same_lemma**: [num.33.3](verse://num.33.3) → [num.33.5](verse://num.33.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And they departed from Rameses in the first month, on the fifteenth day of the f"
+- **same_lemma**: [deu.16.1](verse://deu.16.1) → [exo.13.4](verse://exo.13.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Observe the month of Abib, and keep the passover unto the LORD thy God: for in t"
+- **same_lemma**: [deu.16.1](verse://deu.16.1) → [exo.23.15](verse://exo.23.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Observe the month of Abib, and keep the passover unto the LORD thy God: for in t"
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -72,5 +72,58 @@ _Temporal connections — same time period, genealogical links, prophetic timeli
 - 💡 **Light** (concept) — co-occurs in 3 verses
 - 📍 **Babylon** (place) — co-occurs in 3 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **110** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 5 | 4.5% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 105 | 95.5% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 45 | Remember |
+| **Remez** | 46 | Understand |
+| **Drash** | 18 | Analyze |
+| **Sod** | 1 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.65 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.22.15](verse://isa.22.15)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+- **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.36.11](verse://isa.36.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+- **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.36.22](verse://isa.36.22)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+- **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.36.3](verse://isa.36.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+- **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.37.2](verse://isa.37.2)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

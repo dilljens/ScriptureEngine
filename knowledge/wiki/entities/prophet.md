@@ -2,6 +2,8 @@
 
 **Hebrew**: נביא | **Strong's**: H5030 | **Greek**: προφήτης | **Strong's**: G4396
 
+> In religion, a prophet or prophetess is an individual who is regarded as being in contact with a divine being and is said to be a conduit for that being, serving as an intermediary with humanity by delivering messages or teachings from the supernatural source to other people. The message that the prophet conveys is called a prophecy.
+
 ## Appears In
 
 - **Old Testament**: 298 verses
@@ -57,6 +59,59 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Earth** (concept) — co-occurs in 6 verses
 - 💡 **Spirit** (concept) — co-occurs in 5 verses
 - 👤 **Moses** (person) — co-occurs in 4 verses
+
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **1,792** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 68 | 3.8% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 1,724 | 96.2% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 426 | Remember |
+| **Remez** | 1,203 | Understand |
+| **Drash** | 146 | Analyze |
+| **Sod** | 17 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.40 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [exo.15.20](verse://exo.15.20) → [isa.8.3](verse://isa.8.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
+- **same_lemma**: [exo.15.20](verse://exo.15.20) → [judg.4.4](verse://judg.4.4)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
+- **same_lemma**: [exo.15.20](verse://exo.15.20) → [neh.6.14](verse://neh.6.14)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
+- **same_lemma**: [exo.15.20](verse://exo.15.20) → [exo.32.19](verse://exo.32.19)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
+- **same_lemma**: [exo.15.20](verse://exo.15.20) → [judg.11.34](verse://judg.11.34)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

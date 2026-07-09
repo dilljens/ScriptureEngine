@@ -70,5 +70,37 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 💡 **Covenant** (concept) — co-occurs in 4 verses
 - 👑 **Christ** (title) — co-occurs in 4 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **20** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 0 | 0.0% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 20 | 100.0% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 6 | Remember |
+| **Remez** | 11 | Understand |
+| **Drash** | 3 | Analyze |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.28 |
+| Minimum | 0.05 |
+| Maximum | 0.60 |
+
 ---
 *Article type: **Divine_name** | Generated from the Scripture Knowledge Engine*

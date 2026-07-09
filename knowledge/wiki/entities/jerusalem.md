@@ -58,5 +58,58 @@ _Word occurrence patterns — distribution counts, hapax legomenon, repeated for
 - 👑 **Servant** (title) — co-occurs in 2 verses
 - 💡 **Life** (concept) — co-occurs in 2 verses
 
+## Knowledge Assessment
+
+### Quality Distribution
+
+This entity appears in **3,071** knowledge items (assessment-quality connections).
+
+| Stars | Count | Percentage |
+|-------|-------|------------|
+| ★★★★★ | 159 | 5.2% |
+| ★★★★☆ | 0 | 0.0% |
+| ★★★☆☆ | 0 | 0.0% |
+| ★★☆☆☆ | 2,912 | 94.8% |
+| ★☆☆☆☆ | 0 | 0.0% |
+
+### PaRDeS Depth
+
+*Connections by interpretation level — see [PaRDeS explainer](#pardes-explainer) below*
+
+| Level | Count | Bloom Level |
+|-------|-------|-------------|
+| **P'Shat** | 1,647 | Remember |
+| **Remez** | 1,110 | Understand |
+| **Drash** | 219 | Analyze |
+| **Sod** | 95 | Evaluate |
+
+### Difficulty Range
+
+| Measure | Value |
+|---------|-------|
+| Average | 0.36 |
+| Minimum | 0.05 |
+| Maximum | 0.75 |
+
+### Featured Connections ★★★★★
+
+The highest-quality connections involving this entity:
+
+- **same_lemma**: [josh.10.1](verse://josh.10.1) → [josh.10.3](verse://josh.10.3)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Now it came to pass, when Adoni-zedek king of Jerusalem had heard how Joshua had"
+- **same_lemma**: [josh.10.3](verse://josh.10.3) → [josh.19.12](verse://josh.19.12)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore Adoni-zedek king of Jerusalem sent unto Hoham king of Hebron, and unto"
+- **same_lemma**: [josh.10.3](verse://josh.10.3) → [josh.10.5](verse://josh.10.5)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore Adoni-zedek king of Jerusalem sent unto Hoham king of Hebron, and unto"
+- **same_lemma**: [josh.10.3](verse://josh.10.3) → [josh.12.11](verse://josh.12.11)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore Adoni-zedek king of Jerusalem sent unto Hoham king of Hebron, and unto"
+- **same_lemma**: [josh.10.3](verse://josh.10.3) → [josh.15.35](verse://josh.15.35)
+  ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
+  > "Wherefore Adoni-zedek king of Jerusalem sent unto Hoham king of Hebron, and unto"
+
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*
