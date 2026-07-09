@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
 
 /**
- * HebrewLessonView — timed drills + targeted remediation.
+ * HebrewLessonView — timed drills + targeted remediation + micro-scaffolding.
+ *
+ * Micro-scaffolding (Math Academy Ch. 14): 3 Knowledge Points per lesson.
+ * KP1: Recognition (MC/TF) → worked example → practice
+ * KP2: Recall (transliteration/cloze) → worked example → practice
+ * KP3: Production (typing/recall) → worked example → practice
+ * Must pass each KP before advancing to the next.
  *
  * Automaticity: each question has a time limit per type.
  * Timed out = incorrect (builds speed, not just accuracy).
@@ -71,6 +77,8 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
   const [results, setResults] = useState({ correct: 0, total: 0, streak: 0, bestStreak: 0, totalTime: 0 })
   const [completed, setCompleted] = useState(false)
   const [remediation, setRemediation] = useState(null) // { node_id, title }[] for wrong answers
+  const [kpState, setKpState] = useState({ kp1: null, kp2: null, kp3: null }) // which KPs passed
+  const [currentKP, setCurrentKP] = useState(1) // 1,2,3
   const [audioPlaying, setAudioPlaying] = useState(null)
   const audioRef = useRef(null)
   const timersRef = useRef({})
@@ -243,6 +251,29 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
 
   const hebrewWord = node?.hebrew || node?.title?.split('—')[0]?.trim() || ''
 
+  // Micro-scaffolding: classify questions into 3 Knowledge Points
+  const kpQuestions = useMemo(() => {
+    const kp1 = practice.filter(q => ['multiple_choice', 'true_false'].includes(q.question_type))
+    const kp2 = practice.filter(q => ['transliteration', 'cloze'].includes(q.question_type))
+    const kp3 = practice.filter(q => ['recall', 'typing'].includes(q.question_type))
+    // Shuffle within each KP for variety
+    const shuffle = (arr) => {
+      const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a
+    }
+    return { kp1: shuffle(kp1), kp2: shuffle(kp2), kp3: shuffle(kp3) }
+  }, [practice])
+
+  const currentKPQuestions = currentKP === 1 ? kpQuestions.kp1 : currentKP === 2 ? kpQuestions.kp2 : kpQuestions.kp3
+
+  // Determine which KP a question index belongs to
+  const getKPForIndex = (idx) => {
+    const kp1Count = kpQuestions.kp1.length
+    const kp2Count = kpQuestions.kp2.length
+    if (idx < kp1Count) return 1
+    if (idx < kp1Count + kp2Count) return 2
+    return 3
+  }
+
   const getTimeRemaining = (idx) => {
     if (submitted[idx] || timedOut[idx]) return 0
     if (!startTimes[idx]) return 0
@@ -284,9 +315,20 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
               <span>{audioPlaying === hebrewWord ? 'Playing...' : 'Play'}</span>
             </button>
           )}
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500">
-            Batch {batch + 1}/{totalBatches}
-          </span>
+          {/* KP indicator */}
+          <div className="flex items-center gap-1.5">
+            {[1,2,3].map(kp => (
+              <span key={kp} className={`text-[9px] px-2 py-0.5 rounded-full font-medium transition-colors ${
+                currentKP === kp
+                  ? 'bg-indigo-600 text-white'
+                  : kpState[`kp${kp}`]
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
+              }`}>
+                KP{kp}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 

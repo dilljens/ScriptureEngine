@@ -416,6 +416,49 @@ def get_hebrew_curriculum(user_id: str = "default"):
             "prerequisites": prereq_list, "unlocked": all_mastered, "has_content": bool(n['has_content']),
         })
     conn.close()
+    
+    # ── Non-Interference: reorder to separate confusable pairs ──
+    # Load confusability pairs from DB
+    try:
+        conn2 = sqlite3.connect(str(MEM_DB))
+        confusable = conn2.execute(
+            "SELECT node_a, node_b FROM hebrew_confusability").fetchall()
+        conn2.close()
+    except:
+        confusable = []
+    
+    if confusable:
+        # Build a set of confusable pairs for O(1) lookup
+        conf_set = set()
+        for a, b in confusable:
+            conf_set.add((a, b))
+            conf_set.add((b, a))
+        
+        # Reorder: scan through nodes, if adjacent pair is confusable,
+        # swap the second node with the next non-confusable node
+        ordered = list(result_nodes)
+        i = 0
+        max_attempts = len(ordered) * 3  # prevent infinite loops
+        attempts = 0
+        while i < len(ordered) - 1 and attempts < max_attempts:
+            attempts += 1
+            current_id = ordered[i]['id']
+            next_id = ordered[i + 1]['id']
+            if (current_id, next_id) in conf_set:
+                # Swap i+1 with the first non-confusable node later in the list
+                swapped = False
+                for j in range(i + 2, len(ordered)):
+                    candidate_id = ordered[j]['id']
+                    if (current_id, candidate_id) not in conf_set:
+                        ordered[i + 1], ordered[j] = ordered[j], ordered[i + 1]
+                        swapped = True
+                        break
+                if not swapped:
+                    # Can't avoid — confusable pair is unavoidable
+                    pass
+            i += 1
+        result_nodes = ordered
+    
     total = len(result_nodes)
     mastered = sum(1 for n in result_nodes if n['mastery'] >= 0.8)
     in_progress = sum(1 for n in result_nodes if 0 < n['mastery'] < 0.8)
