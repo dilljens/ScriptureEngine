@@ -49,5 +49,13 @@
 - **Luke 7:24** — 99 connections
 - **Luke 1:21** — 97 connections
 
+## Knowledge Assessment
+
+This book has **14,284** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 14,284 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,151 verses indexed*

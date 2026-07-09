@@ -115,5 +115,13 @@ The highest-quality connections involving this entity:
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
   > "And Enoch also, the seventh from Adam, prophesied of these, saying, Behold, the "
 
+## Test Yourself
+
+Test your knowledge of **LORD/YHWH** with 289 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/yhwh)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
+
 ---
 *Article type: **Divine_name** | Generated from the Scripture Knowledge Engine*

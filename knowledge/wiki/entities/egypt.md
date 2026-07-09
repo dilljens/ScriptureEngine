@@ -2,10 +2,6 @@
 
 **Hebrew**: מצרים | **Strong's**: H4714 | **Greek**: Αἴγυπτος | **Strong's**: G0125
 
-_country in Northeast Africa and Southwest Asia_
-
-![Egypt](http://commons.wikimedia.org/wiki/Special:FilePath/All%20Gizah%20Pyramids.jpg)
-
 ## Appears In
 
 - **Old Testament**: 619 verses
@@ -131,6 +127,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.19.30](verse://gen.19.30)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+
+## Test Yourself
+
+Test your knowledge of **Egypt** with 2,554 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/egypt)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

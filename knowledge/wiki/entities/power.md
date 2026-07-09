@@ -2,8 +2,6 @@
 
 **Hebrew**: כוח | **Strong's**: H3581 | **Greek**: δύναμις | **Strong's**: G1411
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Book of Mormon**: 401 verses
@@ -106,6 +104,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [lev.26.19](verse://lev.26.19) → [mic.4.13](verse://mic.4.13)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And I will break the pride of your power; and I will make your heaven as iron, a"
+
+## Test Yourself
+
+Test your knowledge of **Power** with 981 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/power)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

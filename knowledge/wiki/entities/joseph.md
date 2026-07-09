@@ -2,10 +2,6 @@
 
 **Hebrew**: יוסף | **Strong's**: H3130 | **Greek**: Ἰωσήφ | **Strong's**: G2501
 
-_Italian comune_
-
-![Joseph](http://commons.wikimedia.org/wiki/Special:FilePath/Cozzo%20castello2.jpg)
-
 ## Appears In
 
 - **Old Testament**: 196 verses
@@ -132,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.37.2](verse://gen.37.2) → [prov.10.18](verse://prov.10.18)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "These are the generations of Jacob. Joseph, being seventeen years old, was feedi"
+
+## Test Yourself
+
+Test your knowledge of **Joseph** with 685 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/joseph)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

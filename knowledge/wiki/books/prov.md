@@ -47,5 +47,23 @@
 - **Proverbs 5:14** — 81 connections
 - **Proverbs 30:3** — 76 connections
 
+## Knowledge Assessment
+
+This book has **11,542** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 740 |
+| ★★☆☆☆ | 10,802 |
+
+### Featured Connections
+
+- **same_lemma**: [prov.1.14](verse://prov.1.14) → [prov.16.11](verse://prov.16.11)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [prov.1.14](verse://prov.1.14) → [prov.23.31](verse://prov.23.31)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [prov.1.20](verse://prov.1.20) → [prov.14.1](verse://prov.14.1)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 915 verses indexed*

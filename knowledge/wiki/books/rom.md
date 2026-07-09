@@ -47,5 +47,13 @@
 - **Romans 8:32** — 56 connections
 - **Romans 8:19** — 50 connections
 
+## Knowledge Assessment
+
+This book has **6,373** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 6,373 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 433 verses indexed*

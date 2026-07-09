@@ -2,8 +2,6 @@
 
 **Hebrew**: פילטוס | **Greek**: Πιλᾶτος | **Strong's**: G4091
 
-> Pontius Pilate was the fifth governor of the Roman province of Judaea, serving under Emperor Tiberius from 26/27 to 36/37 AD. He is best known for being the official who presided over the trial of Jesus and ultimately ordered his crucifixion. Pilate's importance in Christianity is underscored by his prominent place in both the Apostles' and Nicene Creeds. Because the gospels portray Pilate as reluctant to execute Jesus, the Ethiopian Orthodox Tewahedo Church believes that Pilate became a Christi
-
 ## Appears In
 
 - **New Testament**: 54 verses
@@ -99,6 +97,14 @@ This entity appears in **151** knowledge items (assessment-quality connections).
 | Average | 0.35 |
 | Minimum | 0.05 |
 | Maximum | 0.60 |
+
+## Test Yourself
+
+Test your knowledge of **Pilate** with 151 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/pilate)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

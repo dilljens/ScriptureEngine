@@ -2,10 +2,6 @@
 
 **Hebrew**: יהושע | **Strong's**: H3091 | **Greek**: Ἰησοῦς | **Strong's**: G2424
 
-_Danish record producer_
-
-**Born**: 1971
-
 ## Appears In
 
 - **New Testament**: 450 verses
@@ -146,6 +142,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [josh.2.1](verse://josh.2.1) → [neh.11.35](verse://neh.11.35)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Joshua the son of Nun sent out of Shittim two men to spy secretly, saying, G"
+
+## Test Yourself
+
+Test your knowledge of **Joshua** with 1,695 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/joshua)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

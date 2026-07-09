@@ -2,8 +2,6 @@
 
 **Hebrew**: חשך | **Strong's**: H2822 | **Greek**: σκοτία | **Strong's**: G4653
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 97 verses
@@ -137,6 +135,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.15.12](verse://gen.15.12) → [isa.8.22](verse://isa.8.22)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And when the sun was going down, a deep sleep fell upon Abram; and, lo, an horro"
+
+## Test Yourself
+
+Test your knowledge of **Darkness** with 852 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/darkness)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

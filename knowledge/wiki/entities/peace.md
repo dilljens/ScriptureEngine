@@ -2,8 +2,6 @@
 
 **Hebrew**: שלום | **Strong's**: H7965 | **Greek**: εἰρήνη | **Strong's**: G1515
 
-_Ghanaian literary work_
-
 ## Appears In
 
 - **Old Testament**: 311 verses
@@ -132,6 +130,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.43.23](verse://gen.43.23) → [prov.2.4](verse://prov.2.4)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And he said, Peace be to you, fear not: your God, and the God of your father, ha"
+
+## Test Yourself
+
+Test your knowledge of **Peace** with 1,652 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/peace)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

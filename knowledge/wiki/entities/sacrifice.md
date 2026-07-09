@@ -2,8 +2,6 @@
 
 **Hebrew**: זבח | **Strong's**: H2077 | **Greek**: θυσία | **Strong's**: G2378
 
-_1995 studio album by Motörhead_
-
 ## Appears In
 
 - **Old Testament**: 272 verses
@@ -131,6 +129,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.5.8](verse://exo.5.8) → [ezek.45.11](verse://ezek.45.11)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the tale of the bricks, which they did make heretofore, ye shall lay upon th"
+
+## Test Yourself
+
+Test your knowledge of **Sacrifice** with 1,006 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/sacrifice)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

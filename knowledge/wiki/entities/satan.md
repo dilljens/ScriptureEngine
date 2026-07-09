@@ -2,8 +2,6 @@
 
 **Hebrew**: שטן | **Strong's**: H7854 | **Greek**: σατανᾶς | **Strong's**: G4567
 
-> Satan, also known as the Devil, is an entity in Abrahamic religions who entices humans into sin or falsehood. In Judaism, Satan is seen as an agent subservient to God, typically regarded as a metaphor for the yetzer hara, or 'evil inclination'. In Christianity and Islam, he is usually seen as a fallen angel or jinn who has rebelled against God, who nevertheless allows him temporary power over the fallen world and a host of demons.
-
 ## Appears In
 
 - **New Testament**: 34 verses
@@ -111,6 +109,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [job.2.3](verse://job.2.3) → [prov.11.3](verse://prov.11.3)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the LORD said unto Satan, Hast thou considered my servant Job, that there is"
+
+## Test Yourself
+
+Test your knowledge of **Satan** with 201 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/satan)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Being** | Generated from the Scripture Knowledge Engine*

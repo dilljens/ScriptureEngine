@@ -45,5 +45,13 @@
 - **Abraham 1:2** — 19 connections
 - **Abraham 1:24** — 19 connections
 
+## Knowledge Assessment
+
+This book has **470** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 470 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 136 verses indexed*

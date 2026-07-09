@@ -2,8 +2,6 @@
 
 **Hebrew**: אלישע | **Strong's**: H0477 | **Greek**: Ἐλισσαῖος | **Strong's**: G1666
 
-_Nestorian patriarch_
-
 ## Appears In
 
 - **Old Testament**: 73 verses
@@ -120,6 +118,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [num.1.10](verse://num.1.10) → [num.10.23](verse://num.10.23)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Of the children of Joseph: of Ephraim; Elishama the son of Ammihud: of Manasseh;"
+
+## Test Yourself
+
+Test your knowledge of **Elisha** with 158 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/elisha)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

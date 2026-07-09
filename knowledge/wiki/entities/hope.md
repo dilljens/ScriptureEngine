@@ -2,10 +2,6 @@
 
 **Hebrew**: תקוה | **Strong's**: H8615 | **Greek**: ἐλπίς | **Strong's**: G1680
 
-_city in Hempstead County, Arkansas, United States_
-
-![Hope](http://commons.wikimedia.org/wiki/Special:FilePath/Downtown%20Hope%2C%20AR%20IMG%206459.jpg)
-
 ## Appears In
 
 - **Old Testament**: 75 verses
@@ -124,6 +120,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [ezra.10.2](verse://ezra.10.2) → [lev.11.36](verse://lev.11.36)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Shechaniah the son of Jehiel, one of the sons of Elam, answered and said unt"
+
+## Test Yourself
+
+Test your knowledge of **Hope** with 497 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/hope)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

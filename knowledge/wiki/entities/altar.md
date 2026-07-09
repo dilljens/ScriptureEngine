@@ -2,8 +2,6 @@
 
 **Hebrew**: מזבח | **Strong's**: H4196 | **Greek**: θυσιαστήριον | **Strong's**: G2379
 
-_collaborative album by Sunn O))) and Boris_
-
 ## Appears In
 
 - **Old Testament**: 342 verses
@@ -132,6 +130,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.12.8](verse://gen.12.8) → [job.32.15](verse://job.32.15)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And he removed from thence unto a mountain on the east of Beth-el, and pitched h"
+
+## Test Yourself
+
+Test your knowledge of **Altar** with 1,355 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/altar)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Object** | Generated from the Scripture Knowledge Engine*

@@ -49,5 +49,23 @@
 - **Deuteronomy 4:32** — 103 connections
 - **Deuteronomy 10:6** — 101 connections
 
+## Knowledge Assessment
+
+This book has **9,252** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2,077 |
+| ★★☆☆☆ | 7,175 |
+
+### Featured Connections
+
+- **same_lemma**: [deu.1.1](verse://deu.1.1) → [num.11.35](verse://num.11.35)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [deu.1.1](verse://deu.1.1) → [num.12.16](verse://num.12.16)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [deu.1.1](verse://deu.1.1) → [num.33.17](verse://num.33.17)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 962 verses indexed*

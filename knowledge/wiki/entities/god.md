@@ -2,10 +2,6 @@
 
 **Hebrew**: אלהים | **Strong's**: H0430 | **Greek**: θεός | **Strong's**: G2316
 
-_principal object of faith in monotheistic religions, a divine entity that created and typically supervises all existence_
-
-![God](http://commons.wikimedia.org/wiki/Special:FilePath/Schnorr%20von%20Carolsfeld%20Bibel%20in%20Bildern%201860%20001.png)
-
 ## Appears In
 
 - **Old Testament**: 2878 verses
@@ -134,6 +130,14 @@ The highest-quality connections involving this entity:
 - **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [ezek.1.1](verse://ezek.1.1)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
   > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
+## Test Yourself
+
+Test your knowledge of **God** with 27,820 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/god)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Deity** | Generated from the Scripture Knowledge Engine*

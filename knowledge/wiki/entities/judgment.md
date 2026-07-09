@@ -2,8 +2,6 @@
 
 **Hebrew**: משפט | **Strong's**: H4941 | **Greek**: κρίσις | **Strong's**: G2920
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 330 verses
@@ -136,6 +134,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.28.30](verse://exo.28.30) → [ezra.2.63](verse://ezra.2.63)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And thou shalt put in the breastplate of judgment the Urim and the Thummim; and "
+
+## Test Yourself
+
+Test your knowledge of **Judgment** with 1,595 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/judgment)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

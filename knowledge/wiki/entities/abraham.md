@@ -2,12 +2,6 @@
 
 **Hebrew**: אברהם | **Strong's**: H0085 | **Greek**: Ἀβραάμ | **Strong's**: G0011
 
-_foundational legendary figure among adherents of the eponymous Abrahamic religions._
-
-**Born**: http | **Died**: http
-
-![Abraham](http://commons.wikimedia.org/wiki/Special:FilePath/PikiWiki%20Israel%2047514%20Samaritan%20museum%20on%20mount%20Grizim%20-%20Left.jpg)
-
 ## Appears In
 
 - **Old Testament**: 160 verses
@@ -134,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.18.13](verse://gen.18.13) → [num.22.37](verse://num.22.37)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the LORD said unto Abraham, Wherefore did Sarah laugh, saying, Shall I of a "
+
+## Test Yourself
+
+Test your knowledge of **Abraham** with 955 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/abraham)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

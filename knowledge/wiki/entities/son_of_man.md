@@ -2,8 +2,6 @@
 
 **Hebrew**: בן אדם | **Strong's**: H0112 | **Greek**: υἱὸς ἀνθρώπου | **Strong's**: G5207
 
-> "Son of man", "son of Adam", or "as a man", are phrases used in the Hebrew Bible, various apocalyptic works of the intertestamental period, and in the Greek New Testament. In the indefinite form used in the Hebrew Bible, it is a form of address; or it contrasts humans with God and the angels; or it contrasts foreign nations, which are often represented as animals in apocalyptic writings, with Israel which is represented as human ; or it signifies an eschatological human figure.
-
 ## Appears In
 
 - **Old Testament**: 121 verses
@@ -132,6 +130,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [num.27.1](verse://num.27.1) → [num.36.2](verse://num.36.2)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Then came the daughters of Zelophehad, the son of Hepher, the son of Gilead, the"
+
+## Test Yourself
+
+Test your knowledge of **Son of Man** with 1,009 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/son_of_man)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

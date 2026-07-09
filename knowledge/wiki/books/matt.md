@@ -49,5 +49,13 @@
 - **Matthew 25:34** — 106 connections
 - **Matthew 23:35** — 104 connections
 
+## Knowledge Assessment
+
+This book has **15,889** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 15,889 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,071 verses indexed*

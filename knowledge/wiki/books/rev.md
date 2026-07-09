@@ -48,5 +48,13 @@
 - **Revelation 21:22** — 292 connections
 - **Revelation 11:19** — 290 connections
 
+## Knowledge Assessment
+
+This book has **14,625** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 14,625 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 404 verses indexed*

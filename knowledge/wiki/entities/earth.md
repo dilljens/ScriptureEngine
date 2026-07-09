@@ -2,10 +2,6 @@
 
 **Hebrew**: ארץ | **Strong's**: H0776 | **Greek**: γῆ | **Strong's**: G1093
 
-_third planet from the Sun in the Solar System_
-
-![Earth](http://commons.wikimedia.org/wiki/Special:FilePath/Meteosat-12-fci-march-equinox-2025-noon.jpg)
-
 ## Appears In
 
 - **Old Testament**: 761 verses
@@ -147,6 +143,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.17.13](verse://jer.17.13)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And God called the dry land Earth; and the gathering together of the waters call"
+
+## Test Yourself
+
+Test your knowledge of **Earth** with 5,200 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/earth)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

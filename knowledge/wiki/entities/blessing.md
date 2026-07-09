@@ -2,8 +2,6 @@
 
 **Hebrew**: ברכה | **Strong's**: H1293 | **Greek**: εὐλογία | **Strong's**: G2129
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Doctrine and Covenants**: 80 verses
@@ -134,6 +132,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.27.12](verse://gen.27.12) → [job.5.14](verse://job.5.14)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+
+## Test Yourself
+
+Test your knowledge of **Blessing** with 247 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/blessing)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -49,5 +49,23 @@
 - **Numbers 32:36** — 73 connections
 - **Numbers 19:20** — 71 connections
 
+## Knowledge Assessment
+
+This book has **14,862** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 760 |
+| ★★☆☆☆ | 14,102 |
+
+### Featured Connections
+
+- **same_lemma**: [num.1.10](verse://num.1.10) → [num.10.23](verse://num.10.23)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [num.1.10](verse://num.1.10) → [num.2.20](verse://num.2.20)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [num.1.10](verse://num.1.10) → [num.7.54](verse://num.7.54)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,305 verses indexed*

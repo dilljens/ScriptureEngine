@@ -2,10 +2,6 @@
 
 **Hebrew**: יחזקאל | **Strong's**: H3168 | **Greek**: Ἰεζεκιήλ | **Strong's**: G2383
 
-_Portuguese writer_
-
-**Born**: 1961 | **Died**: 2013
-
 ## Appears In
 
 - **Old Testament**: 2 verses
@@ -95,6 +91,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [ezek.1.3](verse://ezek.1.3) → [ezek.3.15](verse://ezek.3.15)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "The word of the LORD came expressly unto Ezekiel the priest, the son of Buzi, in"
+
+## Test Yourself
+
+Test your knowledge of **Ezekiel** with 1 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/ezekiel)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

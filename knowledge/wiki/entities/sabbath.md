@@ -2,8 +2,6 @@
 
 **Hebrew**: שבת | **Strong's**: H7676 | **Greek**: σάββατον | **Strong's**: G4521
 
-_day set aside for rest and worship_
-
 ## Appears In
 
 - **Old Testament**: 95 verses
@@ -127,6 +125,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.16.23](verse://exo.16.23) → [num.3.48](verse://num.3.48)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And he said unto them, This is that which the LORD hath said, To morrow is the r"
+
+## Test Yourself
+
+Test your knowledge of **Sabbath** with 915 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/sabbath)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

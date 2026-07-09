@@ -2,12 +2,6 @@
 
 **Hebrew**: שמואל | **Strong's**: H8050 | **Greek**: Σαμουήλ | **Strong's**: G4545
 
-**Born**: 1962
-
-![Samuel](http://commons.wikimedia.org/wiki/Special:FilePath/With%20Archbishop%20Abune%20Samuel%20-%20The%20Head%20of%20Developmental%20Commission%20of%20the%20Ethiopian%20Orthodox%20Church.jpg)
-
-> Samuel is a figure who, in the narratives of the Hebrew Bible, plays a key role in the transition from the biblical judges to the United Kingdom of Israel under Saul, and again in the monarchy's transition from Saul to David. He is venerated as a prophet in Judaism, Christianity, and Islam. In addition to his role in the Jewish Bible/Old Testament, Samuel is mentioned in Jewish rabbinical literature, in the Christian New Testament, and in the second chapter of the Quran. He is also treated in th
-
 ## Appears In
 
 - **Old Testament**: 118 verses
@@ -127,6 +121,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1sam.2.26](verse://1sam.2.26) → [ezek.16.26](verse://ezek.16.26)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the child Samuel grew on, and was in favour both with the LORD, and also wit"
+
+## Test Yourself
+
+Test your knowledge of **Samuel** with 246 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/samuel)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

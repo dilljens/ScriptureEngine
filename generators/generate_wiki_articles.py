@@ -660,6 +660,13 @@ def generate_entity_article(conn, entity_id, enrich=False):
                     lines.append(f"  > \"{src}\"")
             lines.append("")
 
+    # ── Test Yourself ── (reuses kstats from Knowledge Assessment above)
+    if kstats["total"] > 0:
+        lines.append("## Test Yourself\n")
+        lines.append(f"Test your knowledge of **{name}** with {kstats['total']:,} assessment-quality connections.\n")
+        lines.append(f"[Start Assessment →](/api/v1/assess/entity/{entity_id})\n")
+        lines.append("When you get a question wrong, the system will suggest relevant wiki articles to review.\n")
+
     # Type tag
     lines.append(f"---\n*Article type: **{ent_type.capitalize()}** | Generated from the Scripture Knowledge Engine*")
 

@@ -2,8 +2,6 @@
 
 **Hebrew**: עבד | **Strong's**: H5650 | **Greek**: δοῦλος | **Strong's**: G1401
 
-> A domestic worker or domestic servant is a person who works within a residence and performs a variety of household services for an individual, from providing cleaning and household maintenance, or cooking, laundry and ironing, or care for children and elderly dependents, and other household errands. The term "domestic service" applies to the equivalent occupational category. In traditional English contexts, such a person was said to be "in service".
-
 ## Appears In
 
 - **Old Testament**: 771 verses
@@ -127,6 +125,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.21.25](verse://gen.21.25) → [num.12.1](verse://num.12.1)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Abraham reproved Abimelech because of a well of water, which Abimelech's ser"
+
+## Test Yourself
+
+Test your knowledge of **Servant** with 2,808 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/servant)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

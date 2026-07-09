@@ -49,5 +49,23 @@
 - **Isaiah 10:20** — 239 connections
 - **Isaiah 10:24** — 190 connections
 
+## Knowledge Assessment
+
+This book has **44,263** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 3,362 |
+| ★★☆☆☆ | 40,901 |
+
+### Featured Connections
+
+- **heavenly_council**: [isa.6.1](verse://isa.6.1) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **same_lemma**: [isa.1.11](verse://isa.1.11) → [isa.11.6](verse://isa.11.6)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [isa.1.16](verse://isa.1.16) → [job.15.14](verse://job.15.14)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,293 verses indexed*

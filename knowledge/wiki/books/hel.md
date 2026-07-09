@@ -45,5 +45,13 @@
 - **Helaman 1:18** — 19 connections
 - **Helaman 7:4** — 19 connections
 
+## Knowledge Assessment
+
+This book has **1,045** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 1,045 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 497 verses indexed*

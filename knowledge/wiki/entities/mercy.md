@@ -2,10 +2,6 @@
 
 **Hebrew**: חסד | **Strong's**: H2617 | **Greek**: ἔλεος | **Strong's**: G1656
 
-_commune in Yonne, France_
-
-![Mercy](http://commons.wikimedia.org/wiki/Special:FilePath/89249%20MERCY%201%20%283%29.jpg)
-
 ## Appears In
 
 - **Old Testament**: 212 verses
@@ -138,6 +134,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.15.13](verse://exo.15.13) → [gen.33.14](verse://gen.33.14)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Thou in thy mercy hast led forth the people which thou hast redeemed: thou hast "
+
+## Test Yourself
+
+Test your knowledge of **Mercy** with 1,037 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/mercy)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

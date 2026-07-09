@@ -48,5 +48,23 @@
 - **Psalms 90:12** — 89 connections
 - **Psalms 102:26** — 80 connections
 
+## Knowledge Assessment
+
+This book has **32,595** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 990 |
+| ★★☆☆☆ | 31,605 |
+
+### Featured Connections
+
+- **two_powers**: [psa.110.1](verse://psa.110.1) → [heb.1.13](verse://heb.1.13)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **two_powers**: [psa.110.1](verse://psa.110.1) → [acts.7.55](verse://acts.7.55)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **same_lemma**: [psa.1.3](verse://psa.1.3) → [psa.119.136](verse://psa.119.136)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 2,527 verses indexed*

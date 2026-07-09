@@ -2,12 +2,6 @@
 
 **Hebrew**: אדם | **Strong's**: H0120 | **Greek**: Ἀδάμ | **Strong's**: G0076
 
-_first man according to the Abrahamic creation and religions such as Judaism, Christianity and Islam_
-
-**Born**: http | **Died**: http
-
-![Adam](http://commons.wikimedia.org/wiki/Special:FilePath/Michelangelo%2C%20Creation%20of%20Adam%2003.jpg)
-
 ## Appears In
 
 - **Pearl of Great Price**: 50 verses
@@ -141,6 +135,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.2.21](verse://gen.2.21) → [prov.19.15](verse://prov.19.15)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the LORD God caused a deep sleep to fall upon Adam, and he slept: and he too"
+
+## Test Yourself
+
+Test your knowledge of **Adam** with 247 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/adam)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

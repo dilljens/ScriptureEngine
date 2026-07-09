@@ -2,10 +2,6 @@
 
 **Hebrew**: חטאת | **Strong's**: H2403 | **Greek**: ἁμαρτία | **Strong's**: G0266
 
-_Mesopotamian lunar god_
-
-![Sin](http://commons.wikimedia.org/wiki/Special:FilePath/Khashkhamer%20seal%20moon%20worship.jpg)
-
 ## Appears In
 
 - **Old Testament**: 960 verses
@@ -125,6 +121,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.27.12](verse://gen.27.12) → [gen.27.22](verse://gen.27.22)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "My father peradventure will feel me, and I shall seem to him as a deceiver; and "
+
+## Test Yourself
+
+Test your knowledge of **Sin** with 5,484 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/sin)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

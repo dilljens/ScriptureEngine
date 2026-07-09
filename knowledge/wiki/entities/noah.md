@@ -2,10 +2,6 @@
 
 **Hebrew**: נח | **Strong's**: H5146 | **Greek**: Νῶε | **Strong's**: G3575
 
-_genus of reptiles (fossil)_
-
-![Noah](http://commons.wikimedia.org/wiki/Special:FilePath/Haplocheirus.jpg)
-
 ## Appears In
 
 - **Old Testament**: 64 verses
@@ -128,6 +124,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.7.11](verse://gen.7.11) → [isa.60.8](verse://isa.60.8)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "In the six hundredth year of Noah's life, in the second month, the seventeenth d"
+
+## Test Yourself
+
+Test your knowledge of **Noah** with 421 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/noah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

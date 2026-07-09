@@ -2,10 +2,6 @@
 
 **Hebrew**: ישראל | **Strong's**: H3478 | **Greek**: Ἰσραήλ | **Strong's**: G2474
 
-_country in West Asia_
-
-![Israel](http://commons.wikimedia.org/wiki/Special:FilePath/%D0%A7%D0%B0%D1%81%D0%BE%D0%B2%D0%B0%D1%8F%20%D0%B1%D0%B0%D1%88%D0%BD%D1%8F%20%D1%81%D1%83%D0%BB%D1%82%D0%B0%D0%BD%D0%B0%20%D0%90%D0%B1%D0%B4%D1%83%D0%BB%20%D0%A5%D0%B0%D0%BC%D0%B8%D0%B4%D0%B0%20II%20-%20panoramio.jpg)
-
 ## Appears In
 
 - **Old Testament**: 2242 verses
@@ -124,6 +120,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.32.32](verse://gen.32.32) → [judg.8.9](verse://judg.8.9)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Therefore the children of Israel eat not of the sinew which shrank, which is upo"
+
+## Test Yourself
+
+Test your knowledge of **Israel** with 8,877 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/israel)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Nation** | Generated from the Scripture Knowledge Engine*

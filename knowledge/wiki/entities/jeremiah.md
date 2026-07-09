@@ -2,8 +2,6 @@
 
 **Hebrew**: ירמיהו | **Strong's**: H3414 | **Greek**: Ἱερεμίας | **Strong's**: G2408
 
-_American hip hop group_
-
 ## Appears In
 
 - **Old Testament**: 133 verses
@@ -116,6 +114,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1chr.5.24](verse://1chr.5.24) → [ezra.2.40](verse://ezra.2.40)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And these were the heads of the house of their fathers, even Epher, and Ishi, an"
+
+## Test Yourself
+
+Test your knowledge of **Jeremiah** with 331 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/jeremiah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

@@ -2,8 +2,6 @@
 
 **Hebrew**: שמים | **Strong's**: H8064 | **Greek**: οὐρανός | **Strong's**: G3772
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 414 verses
@@ -143,6 +141,14 @@ The highest-quality connections involving this entity:
 - **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [1kgs.22.19](verse://1kgs.22.19)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
   > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
+## Test Yourself
+
+Test your knowledge of **Heaven** with 4,070 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/heaven)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

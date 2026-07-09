@@ -2,14 +2,6 @@
 
 **Hebrew**: פרעה | **Strong's**: H6547 | **Greek**: Φαραώ | **Strong's**: G5328
 
-_Russian rapper_
-
-**Born**: 1996
-
-**Father**: Gennady Golubin
-
-![Pharaoh](http://commons.wikimedia.org/wiki/Special:FilePath/Pharaoh%20%D0%BD%D0%B0%20%D1%84%D0%B5%D1%81%D1%82%D0%B8%D0%B2%D0%B0%D0%BB%D0%B5%20%D0%9C%D0%B0%D1%8F%D1%82%D0%BD%D0%B8%D0%BA%20%D0%A4%D1%83%D0%BA%D0%BE%20%D0%B2%20%D0%A1%D0%9F%D0%B1%20%2807.09.2019%29%20%283%29%20%28cropped%29.jpg)
-
 ## Appears In
 
 - **Old Testament**: 235 verses
@@ -141,6 +133,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.41.4](verse://gen.41.4) → [gen.9.24](verse://gen.9.24)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the ill favoured and leanfleshed kine did eat up the seven well favoured and"
+
+## Test Yourself
+
+Test your knowledge of **Pharaoh** with 489 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/pharaoh)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

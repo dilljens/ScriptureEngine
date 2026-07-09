@@ -2,8 +2,6 @@
 
 **Hebrew**: ישעיהו | **Strong's**: H3470 | **Greek**: Ἠσαΐας | **Strong's**: G2268
 
-> Isaiah was the 8th-century BC Israelite prophet after whom the Book of Isaiah is named.
-
 ## Appears In
 
 - **Old Testament**: 32 verses
@@ -124,6 +122,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [2kgs.19.2](verse://2kgs.19.2) → [isa.37.2](verse://isa.37.2)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And he sent Eliakim, which was over the household, and Shebna the scribe, and th"
+
+## Test Yourself
+
+Test your knowledge of **Isaiah** with 110 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/isaiah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

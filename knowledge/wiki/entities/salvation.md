@@ -2,8 +2,6 @@
 
 **Hebrew**: ישועה | **Strong's**: H3444 | **Greek**: σωτηρία | **Strong's**: G4991
 
-_1997 studio album by Alphaville_
-
 ## Appears In
 
 - **Old Testament**: 115 verses
@@ -118,6 +116,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [deu.32.15](verse://deu.32.15) → [deu.33.5](verse://deu.33.5)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "But Jeshurun waxed fat, and kicked: thou art waxen fat, thou art grown thick, th"
+
+## Test Yourself
+
+Test your knowledge of **Salvation** with 991 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/salvation)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

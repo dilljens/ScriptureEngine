@@ -2,10 +2,6 @@
 
 **Hebrew**: מות | **Strong's**: H4194 | **Greek**: θάνατος | **Strong's**: G2288
 
-_personification of death_
-
-![Death](http://commons.wikimedia.org/wiki/Special:FilePath/S%C3%A9pultureCathelineau.JPG)
-
 ## Appears In
 
 - **Old Testament**: 232 verses
@@ -137,6 +133,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.19.12](verse://exo.19.12) → [josh.18.20](verse://josh.18.20)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And thou shalt set bounds unto the people round about, saying, Take heed to your"
+
+## Test Yourself
+
+Test your knowledge of **Death** with 923 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/death)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

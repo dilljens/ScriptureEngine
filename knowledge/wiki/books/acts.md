@@ -48,5 +48,13 @@
 - **Acts 7:56** — 107 connections
 - **Acts 7:30** — 105 connections
 
+## Knowledge Assessment
+
+This book has **14,568** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 14,568 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,007 verses indexed*

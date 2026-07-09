@@ -2,10 +2,6 @@
 
 **Hebrew**: אליהו | **Strong's**: H0452 | **Greek**: Ἠλίας | **Strong's**: G2243
 
-**Born**: 1943
-
-> Elijah was a prophet and miracle worker who lived in the northern kingdom of Israel during the reign of King Ahab, according to the Books of Kings in the Hebrew Bible.
-
 ## Appears In
 
 - **Old Testament**: 63 verses
@@ -120,6 +116,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1kgs.17.1](verse://1kgs.17.1) → [2kgs.9.36](verse://2kgs.9.36)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Elijah the Tishbite, who was of the inhabitants of Gilead, said unto Ahab, A"
+
+## Test Yourself
+
+Test your knowledge of **Elijah** with 154 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/elijah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

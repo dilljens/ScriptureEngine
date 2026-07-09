@@ -2,8 +2,6 @@
 
 **Hebrew**: חן | **Strong's**: H2580 | **Greek**: χάρις | **Strong's**: G5485
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **New Testament**: 133 verses
@@ -133,6 +131,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.33.16](verse://exo.33.16) → [psa.4.4](verse://psa.4.4)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "For wherein shall it be known here that I and thy people have found grace in thy"
+
+## Test Yourself
+
+Test your knowledge of **Grace** with 669 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/grace)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

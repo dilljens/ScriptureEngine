@@ -47,5 +47,13 @@
 - **Hebrews 12:7** — 97 connections
 - **Hebrews 2:2** — 91 connections
 
+## Knowledge Assessment
+
+This book has **5,812** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 5,812 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 303 verses indexed*

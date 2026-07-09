@@ -2,8 +2,6 @@
 
 **Hebrew**: כהן | **Strong's**: H3548 | **Greek**: ἱερεύς | **Strong's**: G2409
 
-_18th-century English professional cricketer of Sussex_
-
 ## Appears In
 
 - **Old Testament**: 689 verses
@@ -130,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.41.50](verse://gen.41.50) → [gen.46.20](verse://gen.46.20)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And unto Joseph were born two sons before the years of famine came, which Asenat"
+
+## Test Yourself
+
+Test your knowledge of **Priest** with 3,295 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/priest)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

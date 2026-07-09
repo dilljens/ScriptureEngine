@@ -2,8 +2,6 @@
 
 **Hebrew**: גאולה | **Strong's**: H1353 | **Greek**: ἀπολύτρωσις | **Strong's**: G0629
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Book of Mormon**: 48 verses
@@ -115,6 +113,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [jer.32.7](verse://jer.32.7) → [jer.32.9](verse://jer.32.9)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Behold, Hanameel the son of Shallum thine uncle shall come unto thee, saying, Bu"
+
+## Test Yourself
+
+Test your knowledge of **Redemption** with 71 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/redemption)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

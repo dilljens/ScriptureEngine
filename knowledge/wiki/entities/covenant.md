@@ -2,8 +2,6 @@
 
 **Hebrew**: ברית | **Strong's**: H1285 | **Greek**: διαθήκη | **Strong's**: G1242
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 256 verses
@@ -131,6 +129,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.21.32](verse://gen.21.32) → [gen.26.26](verse://gen.26.26)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Thus they made a covenant at Beer-sheba: then Abimelech rose up, and Phichol the"
+
+## Test Yourself
+
+Test your knowledge of **Covenant** with 1,798 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/covenant)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -47,5 +47,13 @@
 - **Ephesians 3:3** — 57 connections
 - **Ephesians 2:2** — 55 connections
 
+## Knowledge Assessment
+
+This book has **3,209** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 3,209 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 155 verses indexed*

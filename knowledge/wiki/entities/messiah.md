@@ -2,10 +2,6 @@
 
 **Hebrew**: משיח | **Strong's**: H4899 | **Greek**: Χριστός | **Strong's**: G5547
 
-_Dominican Latin trap artist_
-
-**Born**: 1990
-
 ## Appears In
 
 - **Book of Mormon**: 26 verses
@@ -119,6 +115,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [dan.9.26](verse://dan.9.26) → [nah.1.8](verse://nah.1.8)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And after threescore and two weeks shall Messiah be cut off, but not for himself"
+
+## Test Yourself
+
+Test your knowledge of **Messiah** with 29 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/messiah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

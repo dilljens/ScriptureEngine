@@ -2,8 +2,6 @@
 
 **Hebrew**: דוד | **Strong's**: H1732 | **Greek**: Δαυίδ | **Strong's**: G1138
 
-> David was, originally, leader of the Tribe of Judah who became the second king of the united Kingdom of Israel, according to the Hebrew Bible and Old Testament.
-
 ## Appears In
 
 - **Old Testament**: 842 verses
@@ -122,6 +120,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1sam.16.20](verse://1sam.16.20) → [judg.4.19](verse://judg.4.19)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Jesse took an ass laden with bread, and a bottle of wine, and a kid, and sen"
+
+## Test Yourself
+
+Test your knowledge of **David** with 3,177 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/david)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

@@ -2,8 +2,6 @@
 
 **Hebrew**: נביא | **Strong's**: H5030 | **Greek**: προφήτης | **Strong's**: G4396
 
-> In religion, a prophet or prophetess is an individual who is regarded as being in contact with a divine being and is said to be a conduit for that being, serving as an intermediary with humanity by delivering messages or teachings from the supernatural source to other people. The message that the prophet conveys is called a prophecy.
-
 ## Appears In
 
 - **Old Testament**: 298 verses
@@ -112,6 +110,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.15.20](verse://exo.15.20) → [judg.11.34](verse://judg.11.34)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Miriam the prophetess, the sister of Aaron, took a timbrel in her hand; and "
+
+## Test Yourself
+
+Test your knowledge of **Prophet** with 1,792 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/prophet)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

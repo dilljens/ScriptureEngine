@@ -49,5 +49,23 @@
 - **Genesis 2:9** — 116 connections
 - **Genesis 5:1** — 116 connections
 
+## Knowledge Assessment
+
+This book has **29,216** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2,657 |
+| ★★☆☆☆ | 26,559 |
+
+### Featured Connections
+
+- **heavenly_ascent**: [gen.5.24](verse://gen.5.24) → [heb.11.5](verse://heb.11.5)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.14.8](verse://jer.14.8)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.17.13](verse://jer.17.13)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,534 verses indexed*

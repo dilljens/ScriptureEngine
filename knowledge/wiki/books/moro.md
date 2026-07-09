@@ -43,5 +43,13 @@
 - **Moroni 8:26** — 7 connections
 - **Moroni 10:3** — 6 connections
 
+## Knowledge Assessment
+
+This book has **355** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 355 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 163 verses indexed*

@@ -2,10 +2,6 @@
 
 **Hebrew**: שאול | **Strong's**: H7586 | **Greek**: Παῦλος | **Strong's**: G3972
 
-_language spoken in Tajikistan_
-
-![Paul](http://commons.wikimedia.org/wiki/Special:FilePath/%22Tajik%22%2C%20written%20in%20Cyrillic%20%28T%D0%BE%D2%B7%D0%B8%D0%BA%D3%A3%29%20and%20Nastaliq%20%28%D8%AA%D8%A7%D8%AC%DB%8C%DA%A9%DB%8C%29.svg)
-
 ## Appears In
 
 - **New Testament**: 160 verses
@@ -118,6 +114,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1chr.18.10](verse://1chr.18.10) → [2sam.8.9](verse://2sam.8.9)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "He sent Hadoram his son to king David, to inquire of his welfare, and to congrat"
+
+## Test Yourself
+
+Test your knowledge of **Paul** with 425 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/paul)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

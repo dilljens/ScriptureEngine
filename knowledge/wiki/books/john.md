@@ -49,5 +49,13 @@
 - **John 4:46** — 94 connections
 - **John 2:20** — 90 connections
 
+## Knowledge Assessment
+
+This book has **12,398** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 12,398 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 879 verses indexed*

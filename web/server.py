@@ -1555,6 +1555,167 @@ def wiki_concordance(entity_id: str):
     return {"ok": True, "data": {"entity": eid, "verses": verses, "total": len(verses)}}
 
 
+# ─── Assessment ↔ Wiki Bridges ───
+
+@app.get("/api/v1/learn/{knowledge_item_id:path}")
+def learn_about_knowledge_item(knowledge_item_id: str):
+    """Get wiki articles related to a knowledge item — 'learn more' links.
+
+    Given a knowledge_item_id, finds entities associated with both
+    the source and target verses, then returns matching wiki articles.
+
+    Used by the assessment system to show 'Learn more about [Entity]'
+    when a user gets a question wrong.
+
+    /api/v1/learn/12345  → wiki articles for entities in both verses
+    """
+    import re
+    kid = knowledge_item_id.strip("/")
+    conn = get_db()
+
+    # Get the knowledge item
+    item = conn.execute(
+        "SELECT ki.verse_id, ki.target_verse, ki.connection_type, ki.layer "
+        "FROM knowledge_items ki WHERE ki.id = ?", (int(kid) if kid.isdigit() else 0,)
+    ).fetchone()
+
+    if not item:
+        conn.close()
+        # Fallback: try looking up by verse pair
+        parts = kid.split("__")
+        if len(parts) == 2:
+            item = conn.execute(
+                "SELECT verse_id, target_verse, connection_type, layer FROM knowledge_items WHERE verse_id=? AND target_verse=? LIMIT 1",
+                (parts[0], parts[1])
+            ).fetchone()
+    if not item:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Knowledge item not found: {kid}")
+
+    # Find entities for both verses
+    verse_ids = [item["verse_id"], item["target_verse"]]
+    entities = conn.execute(
+        """
+        SELECT DISTINCT el.entity_id, el.english_name, el.entity_type
+        FROM verse_entities ve
+        JOIN entity_links el ON el.entity_id = ve.entity_id
+        WHERE ve.verse_id IN (?, ?) AND ve.confidence >= 0.3
+        ORDER BY el.entity_type
+    """,
+        (item["verse_id"], item["target_verse"]),
+    ).fetchall()
+
+    # Match to wiki articles (WIKI_CACHE has article data)
+    articles = []
+    for e in entities:
+        eid = e["entity_id"]
+        # Try direct match
+        slug = eid.lower().replace(" ", "_")
+        article = WIKI_CACHE.get(slug) or WIKI_CACHE.get(eid)
+        if article:
+            articles.append({
+                "entity_id": eid,
+                "title": article["title"],
+                "summary": (article.get("summary") or "")[:150],
+                "article_type": article["article_type"],
+            })
+        else:
+            # Entity exists but no wiki article
+            articles.append({
+                "entity_id": eid,
+                "title": e["english_name"],
+                "summary": "",
+                "article_type": e["entity_type"],
+                "has_article": False,
+            })
+
+    conn.close()
+    return {"ok": True, "data": {
+        "knowledge_item": {
+            "id": kid,
+            "verse_id": item["verse_id"],
+            "target_verse": item["target_verse"],
+            "connection_type": item["connection_type"],
+            "layer": item["layer"],
+        },
+        "articles": articles,
+        "total_articles": len(articles),
+    }}
+
+
+@app.get("/api/v1/assess/entity/{entity_id:path}")
+def start_entity_assessment(entity_id: str):
+    """Start an assessment filtered to a specific entity's verses.
+
+    Returns assessment items where both the source and target verse
+    mention the given entity. Links from wiki entity pages.
+
+    /api/v1/assess/entity/covenant  → assessment on covenant connections
+    """
+    eid = entity_id.strip("/").lower()
+    conn = get_db()
+
+    # Verify entity exists
+    entity = conn.execute(
+        "SELECT * FROM entity_links WHERE entity_id = ?", (eid,)
+    ).fetchone()
+    if not entity:
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Entity not found: {eid}")
+
+    # Count available items
+    count = conn.execute(
+        """
+        SELECT COUNT(*) as c
+        FROM knowledge_items ki
+        JOIN verse_entities ve1 ON ve1.verse_id = ki.verse_id AND ve1.entity_id = ?
+        JOIN verse_entities ve2 ON ve2.verse_id = ki.target_verse AND ve2.entity_id = ?
+    """,
+        (eid, eid),
+    ).fetchone()["c"]
+
+    # Get a random sample of items for review
+    items = conn.execute(
+        """
+        SELECT ki.id, ki.verse_id, ki.target_verse, ki.connection_type,
+               ki.star_rating, ki.difficulty, ki.pa_r_de_s_level, ki.bloom_level,
+               v1.text_english as source_text, v2.text_english as target_text
+        FROM knowledge_items ki
+        JOIN verse_entities ve1 ON ve1.verse_id = ki.verse_id AND ve1.entity_id = ?
+        JOIN verse_entities ve2 ON ve2.verse_id = ki.target_verse AND ve2.entity_id = ?
+        JOIN verses v1 ON v1.id = ki.verse_id
+        JOIN verses v2 ON v2.id = ki.target_verse
+        ORDER BY ki.star_rating DESC, RANDOM()
+        LIMIT 20
+    """,
+        (eid, eid),
+    ).fetchall()
+
+    conn.close()
+
+    return {"ok": True, "data": {
+        "entity": {
+            "entity_id": eid,
+            "english_name": entity["english_name"],
+            "entity_type": entity["entity_type"],
+        },
+        "total_items": count,
+        "star_distribution": {
+            "5": count_where(items, "star_rating", 5),
+            "4": count_where(items, "star_rating", 4),
+            "3": count_where(items, "star_rating", 3),
+            "2": count_where(items, "star_rating", 2),
+            "1": count_where(items, "star_rating", 1),
+        },
+        "sample_items": [dict(r) for r in items[:10]],
+    }}
+
+
+def count_where(rows, field, value):
+    """Count items in a list of Row objects where field == value."""
+    return sum(1 for r in rows if r[field] == value)
+
+
 # ─── Isaiah Parallel Reader ───
 
 # Chapter mapping: Isaiah N -> 2 Nephi N+10 for chapters 2-14

@@ -46,5 +46,13 @@
 - **Ether 12:4** — 56 connections
 - **Ether 2:24** — 54 connections
 
+## Knowledge Assessment
+
+This book has **1,697** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 1,697 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 433 verses indexed*

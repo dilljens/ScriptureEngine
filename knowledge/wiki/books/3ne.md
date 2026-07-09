@@ -46,5 +46,13 @@
 - **3 Nephi 19:19** — 45 connections
 - **3 Nephi 12:34** — 44 connections
 
+## Knowledge Assessment
+
+This book has **2,294** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 2,294 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 785 verses indexed*

@@ -91,5 +91,13 @@ This entity appears in **128** knowledge items (assessment-quality connections).
 | Minimum | 0.10 |
 | Maximum | 0.60 |
 
+## Test Yourself
+
+Test your knowledge of **Mary** with 128 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/mary)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
+
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

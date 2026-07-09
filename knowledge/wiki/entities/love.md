@@ -2,8 +2,6 @@
 
 **Hebrew**: אהבה | **Strong's**: H0160 | **Greek**: ἀγάπη | **Strong's**: G0026
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **New Testament**: 284 verses
@@ -133,6 +131,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.27.9](verse://gen.27.9) → [prov.23.3](verse://prov.23.3)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Go now to the flock, and fetch me from thence two good kids of the goats; and I "
+
+## Test Yourself
+
+Test your knowledge of **Love** with 2,362 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/love)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

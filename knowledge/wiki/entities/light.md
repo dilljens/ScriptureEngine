@@ -2,8 +2,6 @@
 
 **Hebrew**: אור | **Strong's**: H0216 | **Greek**: φῶς | **Strong's**: G5457
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 315 verses
@@ -127,6 +125,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.27.20](verse://exo.27.20) → [num.28.5](verse://num.28.5)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And thou shalt command the children of Israel, that they bring thee pure oil oli"
+
+## Test Yourself
+
+Test your knowledge of **Light** with 2,821 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/light)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

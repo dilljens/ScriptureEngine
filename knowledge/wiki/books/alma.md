@@ -47,5 +47,13 @@
 - **Alma 60:11** — 43 connections
 - **Alma 47:4** — 41 connections
 
+## Knowledge Assessment
+
+This book has **4,972** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 4,972 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,975 verses indexed*

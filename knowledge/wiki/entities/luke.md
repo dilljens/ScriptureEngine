@@ -2,10 +2,6 @@
 
 **Greek**: Λουκᾶς | **Strong's**: G3065
 
-_Japanese model_
-
-**Born**: 1984
-
 ## Appears In
 
 - **New Testament**: 4 verses
@@ -83,6 +79,14 @@ This entity appears in **18** knowledge items (assessment-quality connections).
 | Average | 0.46 |
 | Minimum | 0.10 |
 | Maximum | 0.50 |
+
+## Test Yourself
+
+Test your knowledge of **Luke** with 18 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/luke)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

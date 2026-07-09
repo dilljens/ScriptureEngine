@@ -2,10 +2,6 @@
 
 **Hebrew**: מלאך | **Strong's**: H4397 | **Greek**: ἄγγελος | **Strong's**: G0032
 
-_actor_
-
-**Born**: 1987
-
 ## Appears In
 
 - **New Testament**: 181 verses
@@ -123,6 +119,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.16.9](verse://gen.16.9) → [isa.47.7](verse://isa.47.7)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the angel of the LORD said unto her, Return to thy mistress, and submit thys"
+
+## Test Yourself
+
+Test your knowledge of **Angel** with 6,425 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/angel)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Being** | Generated from the Scripture Knowledge Engine*

@@ -2,10 +2,6 @@
 
 **Hebrew**: כנסת | **Greek**: συναγωγή | **Strong's**: G4864
 
-_museum in Germany_
-
-![Synagogue](http://commons.wikimedia.org/wiki/Special:FilePath/Deutsches%20Kartoffelmuseum%2001.JPG)
-
 ## Appears In
 
 - **New Testament**: 67 verses
@@ -98,6 +94,14 @@ This entity appears in **230** knowledge items (assessment-quality connections).
 | Average | 0.38 |
 | Minimum | 0.10 |
 | Maximum | 0.60 |
+
+## Test Yourself
+
+Test your knowledge of **Synagogue** with 230 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/synagogue)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -45,5 +45,13 @@
 - **Galatians 1:12** — 49 connections
 - **Galatians 3:13** — 43 connections
 
+## Knowledge Assessment
+
+This book has **2,468** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 2,468 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 149 verses indexed*

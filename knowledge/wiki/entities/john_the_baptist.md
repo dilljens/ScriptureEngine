@@ -2,12 +2,6 @@
 
 **Hebrew**: יוחנן | **Greek**: Ἰωάννης βαπτιστής | **Strong's**: G0910
 
-_1st-century Jewish itinerant preacher (Bible)_
-
-**Born**: -000 | **Died**: 0030
-
-![John the Baptist](http://commons.wikimedia.org/wiki/Special:FilePath/Accademia%20-%20St%20John%20the%20Baptist%20by%20Titian%20Cat314.jpg)
-
 ## Appears In
 
 - **New Testament**: 13 verses
@@ -88,6 +82,14 @@ This entity appears in **29** knowledge items (assessment-quality connections).
 | Average | 0.29 |
 | Minimum | 0.10 |
 | Maximum | 0.60 |
+
+## Test Yourself
+
+Test your knowledge of **John the Baptist** with 29 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/john_baptist)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

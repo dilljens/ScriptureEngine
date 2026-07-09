@@ -2,10 +2,6 @@
 
 **Hebrew**: אש | **Strong's**: H0784 | **Greek**: πῦρ | **Strong's**: G4442
 
-_instant messaging client_
-
-![Fire](http://commons.wikimedia.org/wiki/Special:FilePath/Fire-im.jpg)
-
 ## Appears In
 
 - **Old Testament**: 1280 verses
@@ -130,6 +126,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.3.15](verse://gen.3.15) → [num.35.21](verse://num.35.21)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And I will put enmity between thee and the woman, and between thy seed and her s"
+
+## Test Yourself
+
+Test your knowledge of **Fire** with 4,775 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/fire)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Element** | Generated from the Scripture Knowledge Engine*

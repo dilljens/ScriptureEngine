@@ -2,8 +2,6 @@
 
 **Hebrew**: מלכות | **Strong's**: H4438 | **Greek**: βασιλεία | **Strong's**: G0932
 
-_2007 single by Dave Gahan_
-
 ## Appears In
 
 - **Old Testament**: 215 verses
@@ -130,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.10.10](verse://gen.10.10) → [isa.11.11](verse://isa.11.11)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+
+## Test Yourself
+
+Test your knowledge of **Kingdom** with 1,670 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/kingdom)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

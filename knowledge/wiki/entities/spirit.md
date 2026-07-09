@@ -2,10 +2,6 @@
 
 **Hebrew**: רוח | **Strong's**: H7307 | **Greek**: πνεῦμα | **Strong's**: G4151
 
-_fictional character_
-
-![Spirit](http://commons.wikimedia.org/wiki/Special:FilePath/TheSpirit11March1951.jpg)
-
 ## Appears In
 
 - **New Testament**: 318 verses
@@ -136,6 +132,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.41.8](verse://gen.41.8) → [psa.77.5](verse://psa.77.5)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And it came to pass in the morning that his spirit was troubled; and he sent and"
+
+## Test Yourself
+
+Test your knowledge of **Spirit** with 2,876 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/spirit)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

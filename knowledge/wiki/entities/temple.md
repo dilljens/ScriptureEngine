@@ -2,8 +2,6 @@
 
 **Hebrew**: היכל | **Strong's**: H1964 | **Greek**: ναός | **Strong's**: G3485
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **New Testament**: 108 verses
@@ -116,6 +114,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [judg.4.21](verse://judg.4.21) → [judg.5.6](verse://judg.5.6)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Then Jael Heber's wife took a nail of the tent, and took an hammer in her hand, "
+
+## Test Yourself
+
+Test your knowledge of **Temple** with 821 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/temple)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

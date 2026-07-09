@@ -2,8 +2,6 @@
 
 **Hebrew**: אמונה | **Strong's**: H0530 | **Greek**: πίστις | **Strong's**: G4102
 
-_2012 South Korean television series_
-
 ## Appears In
 
 - **New Testament**: 280 verses
@@ -105,6 +103,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [deu.32.20](verse://deu.32.20) → [prov.10.31](verse://prov.10.31)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And he said, I will hide my face from them, I will see what their end shall be: "
+
+## Test Yourself
+
+Test your knowledge of **Faith** with 1,479 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/faith)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

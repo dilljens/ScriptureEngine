@@ -2,12 +2,6 @@
 
 **Hebrew**: משיח | **Strong's**: H4899 | **Greek**: Χριστός | **Strong's**: G5547
 
-_central figure of Christianity (c. 6 or 4 BC – AD 30 or 33)_
-
-**Born**: -000 | **Died**: 0030
-
-![Christ](http://commons.wikimedia.org/wiki/Special:FilePath/Spas%20vsederzhitel%20sinay%20%28cropped1%29.jpg)
-
 ## Appears In
 
 - **New Testament**: 538 verses
@@ -109,6 +103,14 @@ The highest-quality connections involving this entity:
 - **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [1kgs.22.19](verse://1kgs.22.19)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.20
   > "I knew a man in Christ above fourteen years ago, (whether in the body, I cannot "
+
+## Test Yourself
+
+Test your knowledge of **Christ** with 2,885 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/christ)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

@@ -49,5 +49,13 @@
 - **1 Corinthians 9:19** — 113 connections
 - **1 Corinthians 1:24** — 111 connections
 
+## Knowledge Assessment
+
+This book has **7,389** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 7,389 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 437 verses indexed*

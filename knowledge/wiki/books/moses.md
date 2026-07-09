@@ -45,5 +45,13 @@
 - **Moses 4:19** — 43 connections
 - **Moses 7:27** — 43 connections
 
+## Knowledge Assessment
+
+This book has **1,096** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 1,096 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 356 verses indexed*

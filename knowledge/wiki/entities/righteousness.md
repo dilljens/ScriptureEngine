@@ -2,8 +2,6 @@
 
 **Hebrew**: צדק | **Strong's**: H6664 | **Greek**: δικαιοσύνη | **Strong's**: G1343
 
-> Righteousness is the quality or state of being morally right or justifiable. The concept is rooted in religious or divine law and broadly encompasses moral correctness, justice, and virtuous living as dictated by a higher authority or set of spiritual beliefs. It is found in many religions and traditions, including Buddhism, Christianity, Confucianism, Hinduism, Islam, Jainism, Judaism, Taoism, and Zoroastrianism. It is an attribute that implies that a person's actions are justified and can have
-
 ## Appears In
 
 - **Old Testament**: 203 verses
@@ -108,6 +106,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.30.33](verse://gen.30.33) → [gen.31.10](verse://gen.31.10)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "So shall my righteousness answer for me in time to come, when it shall come for "
+
+## Test Yourself
+
+Test your knowledge of **Righteousness** with 1,770 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/righteousness)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

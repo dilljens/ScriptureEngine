@@ -2,8 +2,6 @@
 
 **Hebrew**: חוה | **Strong's**: H2332 | **Greek**: Εὔα | **Strong's**: G2096
 
-> Eve is a figure from the Book of Genesis in the Old Testament. According to the origin story of the Abrahamic religions, she was the first woman to be created by God. Eve is known also as Adam's wife.
-
 ## Appears In
 
 - **Old Testament**: 3139 verses
@@ -140,6 +138,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.1.30](verse://gen.1.30) → [isa.15.6](verse://isa.15.6)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And to every beast of the earth, and to every fowl of the air, and to every thin"
+
+## Test Yourself
+
+Test your knowledge of **Eve** with 23,220 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/eve)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

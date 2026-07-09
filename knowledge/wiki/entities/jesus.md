@@ -2,12 +2,6 @@
 
 **Hebrew**: יהושע | **Strong's**: H3091 | **Greek**: Ἰησοῦς | **Strong's**: G2424
 
-_central figure of Christianity (c. 6 or 4 BC – AD 30 or 33)_
-
-**Born**: -000 | **Died**: 0030
-
-![Jesus](http://commons.wikimedia.org/wiki/Special:FilePath/Spas%20vsederzhitel%20sinay%20%28cropped1%29.jpg)
-
 ## Appears In
 
 - **New Testament**: 947 verses
@@ -95,6 +89,14 @@ This entity appears in **3,863** knowledge items (assessment-quality connections
 | Average | 0.35 |
 | Minimum | 0.05 |
 | Maximum | 0.70 |
+
+## Test Yourself
+
+Test your knowledge of **Jesus** with 3,863 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/jesus)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

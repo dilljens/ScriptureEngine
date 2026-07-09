@@ -2,8 +2,6 @@
 
 **Hebrew**: דם | **Strong's**: H1818 | **Greek**: αἷμα | **Strong's**: G0129
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 299 verses
@@ -135,6 +133,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.49.11](verse://gen.49.11) → [judg.12.14](verse://judg.12.14)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Binding his foal unto the vine, and his ass's colt unto the choice vine; he wash"
+
+## Test Yourself
+
+Test your knowledge of **Blood** with 1,748 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/blood)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Element** | Generated from the Scripture Knowledge Engine*

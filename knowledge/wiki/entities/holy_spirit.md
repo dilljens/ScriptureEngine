@@ -2,10 +2,6 @@
 
 **Hebrew**: רוח הקודש | **Strong's**: H7307 | **Greek**: πνεῦμα ἅγιον | **Strong's**: G4151
 
-_conception of God, or an attribute thereof, in various religions_
-
-![Holy Spirit](http://commons.wikimedia.org/wiki/Special:FilePath/Rom%2C%20Vatikan%2C%20Basilika%20St.%20Peter%2C%20Die%20Taube%20des%20Heiligen%20Geistes%20%28Cathedra%20Petri%2C%20Bernini%29.jpg)
-
 ## Appears In
 
 - **Doctrine and Covenants**: 21 verses
@@ -101,6 +97,14 @@ This entity appears in **20** knowledge items (assessment-quality connections).
 | Average | 0.28 |
 | Minimum | 0.05 |
 | Maximum | 0.60 |
+
+## Test Yourself
+
+Test your knowledge of **Holy Spirit** with 20 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/holy_ghost)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Divine_name** | Generated from the Scripture Knowledge Engine*

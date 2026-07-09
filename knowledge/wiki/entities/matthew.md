@@ -2,10 +2,6 @@
 
 **Hebrew**: מתתיהו | **Strong's**: G4991 | **Greek**: Ματθαῖος | **Strong's**: G3156
 
-_bishop of the Roman Catholic Church_
-
-**Died**: 1322
-
 ## Appears In
 
 - **New Testament**: 5 verses
@@ -82,6 +78,14 @@ This entity appears in **20** knowledge items (assessment-quality connections).
 | Average | 0.30 |
 | Minimum | 0.10 |
 | Maximum | 0.58 |
+
+## Test Yourself
+
+Test your knowledge of **Matthew** with 20 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/matt)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

@@ -2,10 +2,6 @@
 
 **Hebrew**: שרה | **Strong's**: H8283 | **Greek**: Σάρρα | **Strong's**: G4564
 
-_(1660-1716)_
-
-**Born**: 1660 | **Died**: 1716
-
 ## Appears In
 
 - **Old Testament**: 34 verses
@@ -126,6 +122,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.18.12](verse://gen.18.12) → [jer.51.34](verse://jer.51.34)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Therefore Sarah laughed within herself, saying, After I am waxed old shall I hav"
+
+## Test Yourself
+
+Test your knowledge of **Sarah** with 164 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/sarah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

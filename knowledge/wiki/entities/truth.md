@@ -2,8 +2,6 @@
 
 **Hebrew**: אמת | **Strong's**: H0571 | **Greek**: ἀλήθεια | **Strong's**: G0225
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 115 verses
@@ -122,6 +120,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1sam.21.5](verse://1sam.21.5) → [ezek.44.23](verse://ezek.44.23)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And David answered the priest, and said unto him, Of a truth women have been kep"
+
+## Test Yourself
+
+Test your knowledge of **Truth** with 710 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/truth)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

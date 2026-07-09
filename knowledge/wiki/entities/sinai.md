@@ -2,10 +2,6 @@
 
 **Hebrew**: סיני | **Strong's**: H5514 | **Greek**: Σινά | **Strong's**: G4614
 
-_waterfall in Odisha, India_
-
-![Sinai](http://commons.wikimedia.org/wiki/Special:FilePath/Barehipani%20Falls.jpg)
-
 ## Appears In
 
 - **Old Testament**: 34 verses
@@ -148,6 +144,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.16.1](verse://exo.16.1) → [ezek.30.16](verse://ezek.30.16)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And they took their journey from Elim, and all the congregation of the children "
+
+## Test Yourself
+
+Test your knowledge of **Sinai** with 64 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/sinai)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

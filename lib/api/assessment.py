@@ -188,6 +188,11 @@ def submit_answer(conn, user_id="default", correct=False):
     if correct:
         _fire_credit_for_item(conn, item_id)
 
+    # If wrong, suggest wiki articles to review
+    wrong_suggestions = []
+    if not correct:
+        wrong_suggestions = _get_wiki_links(conn, item_id)
+
     # Check termination
     should_stop, reason = session["engine"].should_terminate(
         session["state"],
@@ -200,7 +205,7 @@ def submit_answer(conn, user_id="default", correct=False):
         mastery_by_layer = session["state"].mastery_by_layer(conn)
         outer_fringe = session["engine"].get_outer_fringe(session["state"], limit=10)
         _save_session(user_id)
-        return {
+        result = {
             "ok": True,
             "session_status": "completed",
             "reason": reason,
@@ -212,6 +217,9 @@ def submit_answer(conn, user_id="default", correct=False):
             "outer_fringe": outer_fringe,
             "history": session["history"][-5:],
         }
+        if wrong_suggestions:
+            result["learn_more"] = wrong_suggestions
+        return result
 
     # Select next item
     next_item = session["engine"].select_item(
@@ -234,7 +242,7 @@ def submit_answer(conn, user_id="default", correct=False):
 
     _save_session(user_id)
 
-    return {
+    result = {
         "ok": True,
         "user_id": user_id,
         "session_status": "active",
@@ -245,6 +253,9 @@ def submit_answer(conn, user_id="default", correct=False):
             "by_layer": session["state"].mastery_by_layer(conn),
         },
     }
+    if wrong_suggestions:
+        result["learn_more"] = wrong_suggestions
+    return result
 
 
 def get_progress(conn, user_id="default"):
@@ -280,9 +291,8 @@ def _get_question(conn, item_id):
     ).fetchone()
 
     if row:
-        # row: (id, question_type, question_text, options_json, correct_answer, layer, bloom_level)
         opts = json.loads(row[3]) if row[3] else []
-        return {
+        result = {
             "item_id": row[0],
             "type": row[1],
             "question": row[2],
@@ -290,6 +300,9 @@ def _get_question(conn, item_id):
             "layer": row[5],
             "bloom_level": row[6],
         }
+        # Add wiki article suggestions
+        result["learn_more"] = _get_wiki_links(conn, item_id)
+        return result
 
     # Fallback: create question on the fly from knowledge_items
     ki = conn.execute(
@@ -301,7 +314,7 @@ def _get_question(conn, item_id):
     if not ki:
         return None
 
-    return {
+    result = {
         "item_id": item_id,
         "type": "true_false",
         "question": f"Is there a {ki[2]} connection between {ki[1]} and {ki[3]}?",
@@ -310,6 +323,52 @@ def _get_question(conn, item_id):
         "layer": ki[4],
         "bloom_level": "remember",
     }
+    # Add wiki article suggestions
+    result["learn_more"] = _get_wiki_links(conn, item_id)
+    return result
+
+
+def _get_wiki_links(conn, item_id):
+    """Find wiki article links for a knowledge item — used for 'learn more' suggestions.
+    
+    Returns a list of entities with wiki articles related to both verses
+    in the knowledge item.
+    """
+    import json
+
+    ki = conn.execute(
+        "SELECT verse_id, target_verse FROM knowledge_items WHERE id = ?",
+        (item_id,)
+    ).fetchone()
+    if not ki:
+        return []
+
+    # Find entities for both verses
+    entities = conn.execute(
+        """
+        SELECT DISTINCT el.entity_id, el.english_name, el.entity_type
+        FROM verse_entities ve
+        JOIN entity_links el ON el.entity_id = ve.entity_id
+        WHERE ve.verse_id IN (?, ?) AND ve.confidence >= 0.3
+        ORDER BY el.entity_type
+    """,
+        (ki["verse_id"], ki["target_verse"]),
+    ).fetchall()
+
+    links = []
+    seen = set()
+    for e in entities:
+        eid = e["entity_id"]
+        if eid not in seen:
+            seen.add(eid)
+            links.append({
+                "entity_id": eid,
+                "title": e["english_name"],
+                "entity_type": e["entity_type"],
+                "wiki_url": f"/api/v1/wiki/{eid}",
+                "assess_url": f"/api/v1/assess/entity/{eid}",
+            })
+    return links
 
 
 def _fire_credit_for_item(conn, item_id):

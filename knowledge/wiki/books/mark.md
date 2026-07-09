@@ -48,5 +48,13 @@
 - **Mark 1:8** — 86 connections
 - **Mark 9:41** — 83 connections
 
+## Knowledge Assessment
+
+This book has **7,824** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 7,824 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 678 verses indexed*

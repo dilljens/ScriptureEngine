@@ -2,10 +2,6 @@
 
 **Hebrew**: יעקב | **Strong's**: H3290 | **Greek**: Ἰακώβ | **Strong's**: G2384
 
-_Italian comune_
-
-![Jacob](http://commons.wikimedia.org/wiki/Special:FilePath/Cozzo%20castello2.jpg)
-
 ## Appears In
 
 - **Old Testament**: 320 verses
@@ -140,6 +136,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.25.29](verse://gen.25.29) → [gen.25.34](verse://gen.25.34)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Jacob sod pottage: and Esau came from the field, and he was faint:"
+
+## Test Yourself
+
+Test your knowledge of **Jacob** with 1,271 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/jacob)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

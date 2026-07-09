@@ -87,5 +87,13 @@ This entity appears in **67** knowledge items (assessment-quality connections).
 | Minimum | 0.07 |
 | Maximum | 0.60 |
 
+## Test Yourself
+
+Test your knowledge of **Law/Torah** with 67 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/torah)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
+
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

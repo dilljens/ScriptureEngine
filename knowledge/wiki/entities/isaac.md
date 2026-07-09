@@ -2,10 +2,6 @@
 
 **Hebrew**: יצחק | **Strong's**: H3327 | **Greek**: Ἰσαάκ | **Strong's**: G2464
 
-_commune in Meuse, France_
-
-![Isaac](http://commons.wikimedia.org/wiki/Special:FilePath/France%2C%20Meuse%2C%20Waly%20%281%29.jpg)
-
 ## Appears In
 
 - **Old Testament**: 105 verses
@@ -139,6 +135,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.25.9](verse://gen.25.9) → [gen.49.30](verse://gen.49.30)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And his sons Isaac and Ishmael buried him in the cave of Machpelah, in the field"
+
+## Test Yourself
+
+Test your knowledge of **Isaac** with 664 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/isaac)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

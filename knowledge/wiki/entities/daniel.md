@@ -2,10 +2,6 @@
 
 **Hebrew**: דניאל | **Strong's**: H1840 | **Greek**: Δανιήλ | **Strong's**: G1158
 
-_closable pore in the surface of a plant's leaf or other aerial organ allowing the exchange of gases between tissues and the atmosphere_
-
-![Daniel](http://commons.wikimedia.org/wiki/Special:FilePath/Lilium%20stoma%20L.jpg)
-
 ## Appears In
 
 - **Old Testament**: 71 verses
@@ -132,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1chr.3.1](verse://1chr.3.1) → [2sam.2.2](verse://2sam.2.2)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Now these were the sons of David, which were born unto him in Hebron; the firstb"
+
+## Test Yourself
+
+Test your knowledge of **Daniel** with 373 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/daniel)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

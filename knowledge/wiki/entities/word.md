@@ -2,8 +2,6 @@
 
 **Hebrew**: דבר | **Strong's**: H1697 | **Greek**: λόγος | **Strong's**: G3056
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 1267 verses
@@ -116,6 +114,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.24.30](verse://gen.24.30) → [num.31.50](verse://num.31.50)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And it came to pass, when he saw the earring and bracelets upon his sister's han"
+
+## Test Yourself
+
+Test your knowledge of **Word** with 5,295 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/word)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

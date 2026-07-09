@@ -2,10 +2,6 @@
 
 **Hebrew**: פסח | **Strong's**: H6453 | **Greek**: πάσχα | **Strong's**: G3957
 
-_Jewish holiday celebrating the Israelites' liberation from slavery in Egypt_
-
-![Passover](http://commons.wikimedia.org/wiki/Special:FilePath/Pessach%20Pesach%20Pascha%20Judentum%20Ungesaeuert%20Seder%20datafox.jpg)
-
 ## Appears In
 
 - **Old Testament**: 46 verses
@@ -122,6 +118,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [deu.16.1](verse://deu.16.1) → [exo.23.15](verse://exo.23.15)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Observe the month of Abib, and keep the passover unto the LORD thy God: for in t"
+
+## Test Yourself
+
+Test your knowledge of **Passover** with 256 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/passover)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

@@ -2,8 +2,6 @@
 
 **Hebrew**: כבוד | **Strong's**: H3519 | **Greek**: δόξα | **Strong's**: G1391
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 214 verses
@@ -108,6 +106,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.16.7](verse://exo.16.7) → [exo.16.9](verse://exo.16.9)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And in the morning, then ye shall see the glory of the LORD; for that he heareth"
+
+## Test Yourself
+
+Test your knowledge of **Glory** with 1,866 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/glory)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

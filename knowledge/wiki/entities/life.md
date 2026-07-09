@@ -2,8 +2,6 @@
 
 **Hebrew**: חיים | **Strong's**: H2416 | **Greek**: ζωή | **Strong's**: G2222
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 242 verses
@@ -138,6 +136,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.3.14](verse://gen.3.14) → [lev.11.42](verse://lev.11.42)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the LORD God said unto the serpent, Because thou hast done this, thou art cu"
+
+## Test Yourself
+
+Test your knowledge of **Life** with 1,625 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/life)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

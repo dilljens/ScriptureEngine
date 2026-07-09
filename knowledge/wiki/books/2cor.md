@@ -48,5 +48,21 @@
 - **2 Corinthians 4:16** — 68 connections
 - **2 Corinthians 13:5** — 65 connections
 
+## Knowledge Assessment
+
+This book has **4,358** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2 |
+| ★★☆☆☆ | 4,356 |
+
+### Featured Connections
+
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [ezek.1.1](verse://ezek.1.1)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **heavenly_ascent**: [2cor.12.2](verse://2cor.12.2) → [1kgs.22.19](verse://1kgs.22.19)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+
 ---
 *Generated from the Scripture Knowledge Engine — 257 verses indexed*

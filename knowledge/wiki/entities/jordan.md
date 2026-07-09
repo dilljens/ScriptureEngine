@@ -2,8 +2,6 @@
 
 **Hebrew**: ירדן | **Strong's**: H3383 | **Greek**: Ἰορδάνης | **Strong's**: G2446
 
-> Jordan, officially the Hashemite Kingdom of Jordan, is a country in the Southern Levant region of West Asia. Jordan is bordered by Syria to the north, Iraq to the east, Saudi Arabia to the south, and both Israel and Palestine to the west. The Jordan River, flowing into the Dead Sea, is located along the country's western border within the Jordan Rift Valley. Jordan has a small coastline along the Red Sea in its southwest, separated by the Gulf of Aqaba from Egypt. Amman is the country's capital 
-
 ## Appears In
 
 - **Old Testament**: 165 verses
@@ -144,6 +142,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.13.10](verse://gen.13.10) → [gen.19.30](verse://gen.19.30)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And Lot lifted up his eyes, and beheld all the plain of Jordan, that it was well"
+
+## Test Yourself
+
+Test your knowledge of **Jordan** with 518 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/jordan)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

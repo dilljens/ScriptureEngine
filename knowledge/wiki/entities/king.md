@@ -2,8 +2,6 @@
 
 **Hebrew**: מלך | **Strong's**: H4428 | **Greek**: βασιλεύς | **Strong's**: G0935
 
-> King is a royal title given to a male monarch. A king is an absolute monarch if he holds unrestricted governmental power or exercises full sovereignty over a nation. In a modern context, the title may refer to the ruler of one of a number of modern monarchies. The title of king is used alongside other titles for monarchs: in the West, emperor, grand prince, prince, archduke, duke or grand duke, and in the Islamic world, malik, sultan, emir or hakim, among others.
-
 ## Appears In
 
 - **Old Testament**: 2400 verses
@@ -136,6 +134,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.10.10](verse://gen.10.10) → [gen.14.9](verse://gen.14.9)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the beginning of his kingdom was Babel, and Erech, and Accad, and Calneh, in"
+
+## Test Yourself
+
+Test your knowledge of **King** with 14,741 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/king)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Title** | Generated from the Scripture Knowledge Engine*

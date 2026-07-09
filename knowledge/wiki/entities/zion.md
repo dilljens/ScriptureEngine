@@ -2,8 +2,6 @@
 
 **Hebrew**: ציון | **Strong's**: H6726 | **Greek**: Σιών | **Strong's**: G4622
 
-> Zion is a placename in the Tanakh, often used as a synonym for Jerusalem as well as for the Land of Israel as a whole.
-
 ## Appears In
 
 - **Doctrine and Covenants**: 185 verses
@@ -127,6 +125,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [deu.2.8](verse://deu.2.8) → [num.33.36](verse://num.33.36)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And when we passed by from our brethren the children of Esau, which dwelt in Sei"
+
+## Test Yourself
+
+Test your knowledge of **Zion** with 1,345 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/zion)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

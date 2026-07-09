@@ -49,5 +49,23 @@
 - **Jeremiah 15:20** — 86 connections
 - **Jeremiah 17:12** — 86 connections
 
+## Knowledge Assessment
+
+This book has **23,481** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 1,793 |
+| ★★☆☆☆ | 21,688 |
+
+### Featured Connections
+
+- **same_lemma**: [jer.1.11](verse://jer.1.11) → [num.17.23](verse://num.17.23)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [jer.10.15](verse://jer.10.15) → [jer.51.18](verse://jer.51.18)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [jer.10.18](verse://jer.10.18) → [judg.20.16](verse://judg.20.16)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,365 verses indexed*

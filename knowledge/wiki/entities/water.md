@@ -2,8 +2,6 @@
 
 **Hebrew**: מים | **Strong's**: H4325 | **Greek**: ὕδωρ | **Strong's**: G5204
 
-> Water is an inorganic compound with the chemical formula H2O. It is a transparent, tasteless, odorless, and nearly colorless chemical substance. It is the main constituent of Earth's streams, lakes, and oceans. Water is also the fluid of all known living organisms, in which it acts as a solvent. Water, being a polar molecule, undergoes strong intermolecular hydrogen bonding which is a large contributor to its physical and chemical properties. It is vital for all known forms of life, despite not 
-
 ## Appears In
 
 - **Old Testament**: 555 verses
@@ -136,6 +134,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [gen.1.10](verse://gen.1.10) → [jer.17.13](verse://jer.17.13)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And God called the dry land Earth; and the gathering together of the waters call"
+
+## Test Yourself
+
+Test your knowledge of **Water** with 7,259 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/water)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Element** | Generated from the Scripture Knowledge Engine*

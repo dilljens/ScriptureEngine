@@ -2,8 +2,6 @@
 
 **Hebrew**: בבל | **Strong's**: H0894 | **Greek**: Βαβυλών | **Strong's**: G0897
 
-_list of demolished churches_
-
 ## Appears In
 
 - **Old Testament**: 254 verses
@@ -117,6 +115,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [2kgs.17.24](verse://2kgs.17.24) → [2kgs.19.13](verse://2kgs.19.13)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And the king of Assyria brought men from Babylon, and from Cuthah, and from Ava,"
+
+## Test Yourself
+
+Test your knowledge of **Babylon** with 1,193 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/babylon)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

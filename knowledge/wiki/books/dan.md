@@ -49,5 +49,23 @@
 - **Daniel 3:25** — 144 connections
 - **Daniel 9:24** — 140 connections
 
+## Knowledge Assessment
+
+This book has **10,110** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2,739 |
+| ★★☆☆☆ | 7,371 |
+
+### Featured Connections
+
+- **angelophany**: [dan.10.5](verse://dan.10.5) → [rev.1.13](verse://rev.1.13)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **theophany**: [dan.7.9](verse://dan.7.9) → [rev.4.2](verse://rev.4.2)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **same_lemma**: [dan.1.10](verse://dan.1.10) → [hos.9.1](verse://hos.9.1)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 361 verses indexed*

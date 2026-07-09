@@ -2,12 +2,6 @@
 
 **Hebrew**: הורדוס | **Greek**: Ἡρῴδης | **Strong's**: G2264
 
-_son of Phasael II and Salampsio_
-
-**Born**: http | **Died**: http
-
-**Father**: Phasael II | **Mother**: Salampsio
-
 ## Appears In
 
 - **New Testament**: 46 verses
@@ -101,6 +95,14 @@ This entity appears in **132** knowledge items (assessment-quality connections).
 | Average | 0.32 |
 | Minimum | 0.10 |
 | Maximum | 0.60 |
+
+## Test Yourself
+
+Test your knowledge of **Herod** with 132 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/herod)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

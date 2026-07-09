@@ -2,8 +2,6 @@
 
 **Hebrew**: כיפא | **Greek**: Πέτρος | **Strong's**: G4074
 
-> Peter may refer to:
-
 ## Appears In
 
 - **New Testament**: 158 verses
@@ -130,6 +128,14 @@ The highest-quality connections involving this entity:
 - **same_morphology**: [2chr.29.28](verse://2chr.29.28) → [ezek.8.16](verse://ezek.8.16)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.40
   > "And all the congregation worshipped, and the singers sang, and the trumpeters so"
+
+## Test Yourself
+
+Test your knowledge of **Peter** with 413 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/peter)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

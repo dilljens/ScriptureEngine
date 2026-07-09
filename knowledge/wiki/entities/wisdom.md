@@ -2,8 +2,6 @@
 
 **Hebrew**: חכמה | **Strong's**: H2451 | **Greek**: σοφία | **Strong's**: G4678
 
-_Wikimedia disambiguation page_
-
 ## Appears In
 
 - **Old Testament**: 172 verses
@@ -135,6 +133,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.35.35](verse://exo.35.35) → [exo.36.37](verse://exo.36.37)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Them hath he filled with wisdom of heart, to work all manner of work, of the eng"
+
+## Test Yourself
+
+Test your knowledge of **Wisdom** with 5,689 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/wisdom)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

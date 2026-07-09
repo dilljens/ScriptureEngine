@@ -48,5 +48,23 @@
 - **Leviticus 14:52** — 92 connections
 - **Leviticus 16:12** — 92 connections
 
+## Knowledge Assessment
+
+This book has **13,226** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 775 |
+| ★★☆☆☆ | 12,451 |
+
+### Featured Connections
+
+- **same_lemma**: [lev.1.12](verse://lev.1.12) → [lev.1.6](verse://lev.1.6)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [lev.1.12](verse://lev.1.12) → [lev.8.20](verse://lev.8.20)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+- **same_lemma**: [lev.1.12](verse://lev.1.12) → [lev.1.8](verse://lev.1.8)
+  ★★★★★ | P'Shat | Difficulty: 0.30
+
 ---
 *Generated from the Scripture Knowledge Engine — 866 verses indexed*

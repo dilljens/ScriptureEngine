@@ -47,5 +47,13 @@
 - **2 Nephi 2:30** — 49 connections
 - **2 Nephi 24:9** — 49 connections
 
+## Knowledge Assessment
+
+This book has **4,083** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 4,083 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 779 verses indexed*

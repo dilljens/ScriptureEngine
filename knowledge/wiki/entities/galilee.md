@@ -2,8 +2,6 @@
 
 **Hebrew**: גליל | **Strong's**: H1551 | **Greek**: Γαλιλαία | **Strong's**: G1056
 
-> Galilee is a region located in northern Israel and southern Lebanon consisting of two parts: the Upper Galilee and the Lower Galilee. Other sub-regions are the Western Galilee and the Galilee Panhandle.
-
 ## Appears In
 
 - **New Testament**: 65 verses
@@ -128,6 +126,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [1kgs.9.11](verse://1kgs.9.11) → [2kgs.15.29](verse://2kgs.15.29)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "(Now Hiram the king of Tyre had furnished Solomon with cedar trees and fir trees"
+
+## Test Yourself
+
+Test your knowledge of **Galilee** with 277 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/galilee)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

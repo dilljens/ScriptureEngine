@@ -49,5 +49,23 @@
 - **Ezekiel 27:34** — 120 connections
 - **Ezekiel 23:47** — 117 connections
 
+## Knowledge Assessment
+
+This book has **21,812** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2,838 |
+| ★★☆☆☆ | 18,974 |
+
+### Featured Connections
+
+- **merkabah**: [ezek.1.1](verse://ezek.1.1) → [rev.4.1](verse://rev.4.1)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [song.1.1](verse://song.1.1)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **hekhalot**: [ezek.1.1](verse://ezek.1.1) → [isa.6.1](verse://isa.6.1)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,278 verses indexed*

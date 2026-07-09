@@ -2,10 +2,6 @@
 
 **Hebrew**: יוחנן | **Greek**: Ἰωάννης | **Strong's**: G2491
 
-_Bishop of Saint Asaph_
-
-**Died**: 1186
-
 ## Appears In
 
 - **New Testament**: 130 verses
@@ -98,6 +94,14 @@ This entity appears in **438** knowledge items (assessment-quality connections).
 | Average | 0.35 |
 | Minimum | 0.05 |
 | Maximum | 0.65 |
+
+## Test Yourself
+
+Test your knowledge of **John** with 438 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/john_apostle)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

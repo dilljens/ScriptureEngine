@@ -46,5 +46,13 @@
 - **1 Nephi 1:8** — 80 connections
 - **1 Nephi 10:8** — 77 connections
 
+## Knowledge Assessment
+
+This book has **4,033** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 4,033 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 618 verses indexed*

@@ -2,12 +2,6 @@
 
 **Hebrew**: משה | **Strong's**: H4872 | **Greek**: Μωυσῆς | **Strong's**: G3475
 
-_Abrahamic prophet said to have led the Israelites out of Egypt_
-
-**Born**: -200 | **Died**: -150
-
-![Moses](http://commons.wikimedia.org/wiki/Special:FilePath/Philippe%20de%20Champaigne%20-%20Moses%20Presenting%20the%20Tablets%20of%20the%20Law%20-%20c.%201648.jpg)
-
 ## Appears In
 
 - **Old Testament**: 704 verses
@@ -131,6 +125,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [exo.2.11](verse://exo.2.11) → [exo.5.5](verse://exo.5.5)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "And it came to pass in those days, when Moses was grown, that he went out unto h"
+
+## Test Yourself
+
+Test your knowledge of **Moses** with 1,681 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/moses)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Person** | Generated from the Scripture Knowledge Engine*

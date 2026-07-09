@@ -46,5 +46,13 @@
 - **Mosiah 4:14** — 11 connections
 - **Mosiah 14:10** — 10 connections
 
+## Knowledge Assessment
+
+This book has **1,276** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★☆☆☆ | 1,276 |
+
 ---
 *Generated from the Scripture Knowledge Engine — 785 verses indexed*

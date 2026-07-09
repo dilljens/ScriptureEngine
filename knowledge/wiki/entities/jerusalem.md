@@ -2,8 +2,6 @@
 
 **Hebrew**: ירושלים | **Strong's**: H3389 | **Greek**: Ἱερουσαλήμ | **Strong's**: G2419
 
-_Wikimedia list article_
-
 ## Appears In
 
 - **Old Testament**: 626 verses
@@ -110,6 +108,14 @@ The highest-quality connections involving this entity:
 - **same_lemma**: [josh.10.3](verse://josh.10.3) → [josh.15.35](verse://josh.15.35)
   ★★★★★ | P'Shat | Bloom: Remember | Difficulty: 0.30
   > "Wherefore Adoni-zedek king of Jerusalem sent unto Hoham king of Hebron, and unto"
+
+## Test Yourself
+
+Test your knowledge of **Jerusalem** with 3,071 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/jerusalem)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Place** | Generated from the Scripture Knowledge Engine*

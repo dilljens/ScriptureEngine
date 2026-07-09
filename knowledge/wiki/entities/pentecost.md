@@ -2,10 +2,6 @@
 
 **Hebrew**: שבועות | **Strong's**: H7620 | **Greek**: πεντηκοστή | **Strong's**: G4005
 
-_Christian holiday commemorating the New Testament stories of the Holy Spirit descenting upon the Apostles of Jesus_
-
-![Pentecost](http://commons.wikimedia.org/wiki/Special:FilePath/Ingeborg%20Psalter%2002f%201200%20%28cropped%29.jpg)
-
 ## Appears In
 
 - **New Testament**: 3 verses
@@ -78,6 +74,14 @@ This entity appears in **14** knowledge items (assessment-quality connections).
 | Average | 0.32 |
 | Minimum | 0.20 |
 | Maximum | 0.38 |
+
+## Test Yourself
+
+Test your knowledge of **Pentecost** with 14 assessment-quality connections.
+
+[Start Assessment →](/api/v1/assess/entity/pentecost)
+
+When you get a question wrong, the system will suggest relevant wiki articles to review.
 
 ---
 *Article type: **Concept** | Generated from the Scripture Knowledge Engine*

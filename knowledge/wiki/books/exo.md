@@ -49,5 +49,23 @@
 - **Exodus 35:17** — 103 connections
 - **Exodus 26:35** — 101 connections
 
+## Knowledge Assessment
+
+This book has **16,624** knowledge items (assessment-quality connections).
+
+| Stars | Count |
+|-------|-------|
+| ★★★★★ | 2,121 |
+| ★★☆☆☆ | 14,503 |
+
+### Featured Connections
+
+- **two_powers**: [exo.23.21](verse://exo.23.21) → [exo.24.1](verse://exo.24.1)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **two_powers**: [exo.24.1](verse://exo.24.1) → [deu.4.36](verse://deu.4.36)
+  ★★★★★ | P'Shat | Difficulty: 0.20
+- **theosis**: [exo.24.9](verse://exo.24.9) → [exo.33.20](verse://exo.33.20)
+  ★★★★★ | Sod | Difficulty: 0.20
+
 ---
 *Generated from the Scripture Knowledge Engine — 1,218 verses indexed*
