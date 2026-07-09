@@ -17,14 +17,41 @@ const TYPE_COLORS = {
   transliteration: 'border-cyan-200 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-900/20',
 }
 
-// Time limits per question type (seconds) — Math Academy: quick + accurate = automaticity
-const TIME_LIMITS = {
-  multiple_choice: 6,
-  true_false: 5,
-  transliteration: 12,
-  cloze: 18,
-  recall: 15,
-  typing: 30,
+// Dynamic time limit: scales with content difficulty.
+// Base limits per type + extra time for longer text/answers.
+function getTimeLimit(q) {
+  if (!q) return 15
+  const text = q.question_text || ''
+  const wordCount = text.split(/\s+/).filter(Boolean).length
+  const readingBonus = Math.max(0, Math.floor((wordCount - 10) / 5)) * 2  // +2s per 5 extra words
+
+  let base = 15
+  switch (q.question_type) {
+    case 'multiple_choice': base = 6; break
+    case 'true_false': base = 5; break
+    case 'transliteration': base = 12; break
+    case 'cloze': base = 18; break
+    case 'recall': base = 15; break
+    case 'typing': base = 30; break
+  }
+
+  // For questions with options, extra options = extra reading
+  let optionBonus = 0
+  if (q.options_json) {
+    try {
+      const opts = JSON.parse(q.options_json)
+      optionBonus = Math.max(0, opts.length - 2) * 1.5  // +1.5s per extra option
+    } catch {}
+  }
+
+  // For typing/cloze, longer expected answer = more time
+  let answerBonus = 0
+  if (['typing', 'cloze', 'recall'].includes(q.question_type)) {
+    const ansWords = (q.correct_answer || '').split(/\s+/).filter(Boolean).length
+    answerBonus = Math.max(0, ansWords - 1) * 3  // +3s per extra word in answer
+  }
+
+  return Math.round(base + readingBonus + optionBonus + answerBonus)
 }
 
 export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
@@ -85,7 +112,7 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
     // Start per-question timers
     batchQuestions.forEach((q, i) => {
       const idx = startIdx + i
-      const limit = TIME_LIMITS[q.question_type] || 15
+      const limit = getTimeLimit(q) || 15
       timersRef.current[idx] = setTimeout(() => {
         setTimedOut(prev => ({ ...prev, [idx]: true }))
         // Auto-submit on timeout: mark unanswered as incorrect
@@ -216,13 +243,16 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
 
   const hebrewWord = node?.hebrew || node?.title?.split('—')[0]?.trim() || ''
 
-  const getTimeLimit = (qType) => TIME_LIMITS[qType] || 15
-
   const getTimeRemaining = (idx) => {
     if (submitted[idx] || timedOut[idx]) return 0
-    if (!startTimes[idx]) return getTimeLimit('')
+    if (!startTimes[idx]) return 0
+    // Find the question for this index
+    const relIdx = idx - startIdx
+    const q = batchQuestions[relIdx]
+    if (!q) return 0
+    const limit = getTimeLimit(q) || 15
     const elapsed = (Date.now() - startTimes[idx]) / 1000
-    return Math.max(0, getTimeLimit('') - elapsed)
+    return Math.max(0, limit - elapsed)
   }
 
   if (loading) return (
@@ -327,7 +357,7 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
             const isSubmitted = idx in submitted
             const isCorrect = submitted[idx]
             const answer = answers[idx]
-            const limit = getTimeLimit(q.question_type)
+            const limit = getTimeLimit(q)
             const remaining = isSubmitted ? 0 : Math.max(0, limit - ((Date.now() - (startTimes[idx] || Date.now())) / 1000))
             const pct = isSubmitted ? 0 : (remaining / limit) * 100
             const isUrgent = remaining < 3 && !isSubmitted
