@@ -198,6 +198,20 @@ export function getInfo() {
   return fetchJSON('/info')
 }
 
+// ─── Wiki API ───
+
+export function getWikiArticle(entityId) {
+  return fetchJSON(`/wiki/${encodeURIComponent(entityId)}`)
+}
+
+export function getWikiBrowse(type = 'entity') {
+  return fetchJSON(`/wiki/browse/${encodeURIComponent(type)}`)
+}
+
+export function getWikiSearch(query) {
+  return fetchJSON(`/wiki/search?q=${encodeURIComponent(query)}`)
+}
+
 export function chat(messages, opts = {}) {
   const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, signal } = opts
   // LLM calls need longer timeout — DeepSeek thinking mode can take 8+ min

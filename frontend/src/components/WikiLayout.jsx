@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { getChapterEntities } from '../api'
 
 /**
@@ -112,7 +112,7 @@ function ConnectionSection({ layer, connections, defaultOpen }) {
   )
 }
 
-export default function WikiLayout({ data, book, chapter, toggles, chapterConnections }) {
+export default function WikiLayout({ data, book, chapter, toggles, chapterConnections, onOpenWiki }) {
   const [graphOpen, setGraphOpen] = React.useState(false)
   const [browseLayer, setBrowseLayer] = React.useState(null)
   const [entities, setEntities] = React.useState([])
@@ -388,20 +388,21 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
               <div className="space-y-1.5 max-h-60 overflow-y-auto">
                 {entities.map((entity, i) => (
                   <div key={i} className="group">
-                    <div className="flex items-center gap-1.5">
+                    <button onClick={() => onOpenWiki?.(entity.entity_id, entity.english_name)}
+                      className="w-full flex items-center gap-1.5 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded px-1 py-0.5 transition-colors text-left">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         entity.entity_type === 'person' ? 'bg-blue-400' :
                         entity.entity_type === 'place' ? 'bg-green-400' :
                         entity.entity_type === 'concept' ? 'bg-purple-400' :
                         'bg-neutral-400'
                       }`} />
-                      <span className="text-[11px] font-medium text-neutral-700 dark:text-neutral-300">
+                      <span className="text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400">
                         {entity.english_name}
                       </span>
                       <span className="text-[8px] text-neutral-400 dark:text-neutral-500 uppercase ml-auto">
                         {entity.entity_type}
                       </span>
-                    </div>
+                    </button>
                     {(entity.hebrew_name || entity.greek_name) && (
                       <div className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-3">
                         {entity.hebrew_name && <span className="font-mono" dir="rtl">{entity.hebrew_name}</span>}

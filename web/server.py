@@ -1528,6 +1528,32 @@ def get_wiki_article(entity_id: str):
     return {"ok": True, "data": result}
 
 
+@app.get("/api/v1/wiki/search")
+def search_wiki(q: str = ""):
+    """Search wiki articles by title or summary."""
+    query = q.strip().lower()
+    if not query or not WIKI_CACHE:
+        return {"ok": True, "data": {"results": [], "total": 0}}
+
+    results = []
+    for article in WIKI_CACHE.values():
+        title = (article.get("title") or "").lower()
+        summary = (article.get("summary") or "").lower()
+        # Simple substring + word boundary match
+        if query in title or query in summary:
+            score = 2 if query in title else 1
+            results.append({
+                "id": article["id"],
+                "title": article["title"],
+                "summary": (article.get("summary") or "")[:200],
+                "article_type": article.get("article_type", ""),
+                "score": score,
+            })
+
+    results.sort(key=lambda r: -r["score"])
+    return {"ok": True, "data": {"results": results[:20], "total": len(results)}}
+
+
 @app.get("/api/v1/wiki/browse/{type_name:path}")
 def browse_wiki(type_name: str = "entity"):
     """Browse wiki articles by type (entity, concept, etc.)."""

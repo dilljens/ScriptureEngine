@@ -282,6 +282,26 @@ export function TabProvider({ children }) {
     }, []),
 
     // Open (or focus) a memorize tab — creates view: 'memorize'
+    openWikiTab: useCallback((entityId, label) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'wiki')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+        if (entityId) {
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: entityId, label: label || `Wiki: ${entityId}` } })
+        }
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || (entityId ? `Wiki: ${entityId}` : 'Wiki'),
+          view: 'wiki',
+          viewRef: entityId || null,
+        })
+      }
+    }, [state]),
+
     openMemorizeTab: useCallback((label) => {
       const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
       const existing = ws?.tabs.find(t => t.view === 'memorize')

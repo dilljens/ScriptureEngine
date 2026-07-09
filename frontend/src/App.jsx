@@ -398,7 +398,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
-    moveTab, openMemorizeTab,
+    moveTab, openMemorizeTab, openWikiTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, persist } = useSettings()
@@ -941,6 +941,20 @@ function AppInner() {
         />
       )
     }
+    // Wiki view — render WikiArticleViewer
+    if (viewLevel === 'wiki') {
+      const WikiArticleViewer = React.lazy(() => import('./components/WikiArticleViewer'))
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading wiki...</div>}>
+          <WikiArticleViewer
+            entityId={viewRef}
+            onNavigate={(eid) => updateTab(currentTab?.id, { view: 'wiki', viewRef: eid, label: `Wiki: ${eid}` })}
+            onOpenTab={(b, ch, opts) => openTab(b, ch, opts)}
+          />
+        </Suspense>
+      )
+    }
+
     // Study view — render StudyViewer
     if (viewLevel === 'study' && viewRef) {
       // Load study from API using the slug
@@ -1071,9 +1085,14 @@ function AppInner() {
             </button>
 
             {/* Memorize */}
-            <button onClick={() => openMemorizeTab()} className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
-              <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
-            </button>
+             {/* Wiki — browse entity articles */}
+             <button onClick={() => openWikiTab()} className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0" title="Wiki (browse entity articles)">
+               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M4 5.5h8M4 8h6M4 10.5h4" /></svg>
+             </button>
+
+             <button onClick={() => openMemorizeTab()} className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
+               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
+             </button>
 
             {/* Knowledge (Assessment) — DEDICATED UI, no LLM dependency */}
             <button onClick={() => setShowAssessment(true)}

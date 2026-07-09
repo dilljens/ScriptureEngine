@@ -6,6 +6,7 @@ import ChiasmPanel from './ChiasmPanel'
 import VerseBlock from './VerseBlock'
 import VerseAudioPlayer from './VerseAudioPlayer'
 import WikiLayout from './WikiLayout'
+import { useTabs } from '../tabContext'
 
 const LS_WIKI_KEY = 'scriptureengine.wikiMode'
 
@@ -53,6 +54,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const [verseJump, setVerseJump] = useState('')
   const verseInputRef = useRef(null)
   const [wikiMode, setWikiMode] = useState(() => localStorage.getItem(LS_WIKI_KEY) === 'true')
+  const { openWikiTab } = useTabs()
 
   useEffect(() => {
     const handler = (e) => {
@@ -189,7 +191,8 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
             {error}
           </div>
         ) : (
-          <WikiLayout data={data} book={book} chapter={chapter} toggles={toggles} chapterConnections={chapterConnections} />
+          <WikiLayout data={data} book={book} chapter={chapter} toggles={toggles} chapterConnections={chapterConnections}
+            onOpenWiki={(entityId, name) => openWikiTab(entityId, `Wiki: ${name}`)} />
         )}
       </div>
     )
