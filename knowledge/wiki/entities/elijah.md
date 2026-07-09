@@ -1,0 +1,72 @@
+# 👤 Elijah
+
+**Hebrew**: אליהו | **Strong's**: H0452 | **Greek**: Ἠλίας | **Strong's**: G2243
+
+**Born**: 1943
+
+> Elijah was a prophet and miracle worker who lived in the northern kingdom of Israel during the reign of King Ahab, according to the Books of Kings in the Hebrew Bible.
+
+## Appears In
+
+- **Old Testament**: 63 verses
+- **New Testament**: 16 verses
+- **Doctrine and Covenants**: 9 verses
+- **Book of Mormon**: 1 verses
+
+## Key Verses (89 total)
+
+- **Matthew 11:14** (mentions): _And if ye will receive it, this is Elias, which was for to come._
+- **Matthew 17:3** (mentions): _And, behold, there appeared unto them Moses and Elias talking with him._
+- **Matthew 17:11** (mentions): _And Jesus answered and said unto them, Elias truly shall first come, and restore all things._
+- **Matthew 17:12** (mentions): _But I say unto you, That Elias is come already, and they knew him not, but have done unto him whatsoever they listed. Likewise shall also the Son of m_
+- **Matthew 27:49** (mentions): _The rest said, Let be, let us see whether Elias will come to save him._
+- **Mark 6:15** (mentions): _Others said, That it is Elias. And others said, That it is a prophet, or as one of the prophets._
+- **Mark 9:4** (mentions): _And there appeared unto them Elias with Moses: and they were talking with Jesus._
+- **Mark 9:12** (mentions): _And he answered and told them, Elias verily cometh first, and restoreth all things; and how it is written of the Son of man, that he must suffer many _
+- **Mark 9:13** (mentions): _But I say unto you, That Elias is indeed come, and they have done unto him whatsoever they listed, as it is written of him._
+- **Mark 15:36** (mentions): _And one ran and filled a sponge full of vinegar, and put it on a reed, and gave him to drink, saying, Let alone; let us see whether Elias will come to_
+
+*... and 79 more verses*
+
+## Connections
+
+### Structural
+_Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, and formula markers_
+
+- **parallel_antithetic**: [2kgs.1.3](verse://2kgs.1.3) → [2kgs.1.4](verse://2kgs.1.4)
+- **parallel_antithetic**: [1kgs.18.21](verse://1kgs.18.21) → [1kgs.18.22](verse://1kgs.18.22)
+- **parallel_antithetic**: [1kgs.17.15](verse://1kgs.17.15) → [1kgs.17.16](verse://1kgs.17.16)
+### Linguistic
+_Word-level language connections — same Hebrew/Greek lemma, root, morphology, wordplay, or cognate across passages_
+
+- **same_morphology**: [2kgs.1.10](verse://2kgs.1.10) → [2kgs.1.12](verse://2kgs.1.12)
+- **same_morphology**: [2kgs.1.10](verse://2kgs.1.10) → [2kgs.1.12](verse://2kgs.1.12)
+### Chronological
+_Temporal connections — same time period, genealogical links, prophetic timelines, feast cycles, dispensations_
+
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.13](verse://1kgs.17.13)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.15](verse://1kgs.17.15)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.16](verse://1kgs.17.16)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.18](verse://1kgs.17.18)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.22](verse://1kgs.17.22)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.23](verse://1kgs.17.23)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.17.24](verse://1kgs.17.24)
+- **genealogical**: [1kgs.17.1](verse://1kgs.17.1) → [1kgs.18.1](verse://1kgs.18.1)
+  *... and 17 more*
+
+
+## Related Entities
+
+- 💡 **Word** (concept) — co-occurs in 12 verses
+- • **God** (deity) — co-occurs in 12 verses
+- 👑 **Prophet** (title) — co-occurs in 7 verses
+- • **Israel** (nation) — co-occurs in 5 verses
+- • **Fire** (element) — co-occurs in 5 verses
+- 👑 **King** (title) — co-occurs in 4 verses
+- 💡 **Heaven** (concept) — co-occurs in 3 verses
+- 👤 **Eve** (person) — co-occurs in 3 verses
+- 👤 **Elisha** (person) — co-occurs in 3 verses
+- 👑 **Servant** (title) — co-occurs in 2 verses
+
+---
+*Article type: **Person** | Generated from the Scripture Knowledge Engine*

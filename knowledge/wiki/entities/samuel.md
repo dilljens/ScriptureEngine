@@ -1,0 +1,79 @@
+# 👤 Samuel
+
+**Hebrew**: שמואל | **Strong's**: H8050 | **Greek**: Σαμουήλ | **Strong's**: G4545
+
+**Born**: 1962
+
+![Samuel](http://commons.wikimedia.org/wiki/Special:FilePath/With%20Archbishop%20Abune%20Samuel%20-%20The%20Head%20of%20Developmental%20Commission%20of%20the%20Ethiopian%20Orthodox%20Church.jpg)
+
+> Samuel is a figure who, in the narratives of the Hebrew Bible, plays a key role in the transition from the biblical judges to the United Kingdom of Israel under Saul, and again in the monarchy's transition from Saul to David. He is venerated as a prophet in Judaism, Christianity, and Islam. In addition to his role in the Jewish Bible/Old Testament, Samuel is mentioned in Jewish rabbinical literature, in the Christian New Testament, and in the second chapter of the Quran. He is also treated in th
+
+## Appears In
+
+- **Old Testament**: 118 verses
+- **Book of Mormon**: 16 verses
+- **Doctrine and Covenants**: 11 verses
+- **New Testament**: 3 verses
+
+## Key Verses (148 total)
+
+- **1 Samuel 1:20** (mentions): _Wherefore it came to pass, when the time was come about after Hannah had conceived, that she bare a son, and called his name Samuel, saying, Because I_
+- **1 Samuel 2:18** (mentions): _But Samuel ministered before the LORD, being a child, girded with a linen ephod._
+- **1 Samuel 2:21** (mentions): _And the LORD visited Hannah, so that she conceived, and bare three sons and two daughters. And the child Samuel grew before the LORD._
+- **1 Samuel 2:26** (mentions): _And the child Samuel grew on, and was in favour both with the LORD, and also with men._
+- **1 Samuel 3:1** (mentions): _And the child Samuel ministered unto the LORD before Eli. And the word of the LORD was precious in those days; there was no open vision._
+- **1 Samuel 3:3** (mentions): _And ere the lamp of God went out in the temple of the LORD, where the ark of God was, and Samuel was laid down to sleep;_
+- **1 Samuel 3:4** (mentions): _That the LORD called Samuel: and he answered, Here am I._
+- **1 Samuel 3:6** (mentions): _And the LORD called yet again, Samuel. And Samuel arose and went to Eli, and said, Here am I; for thou didst call me. And he answered, I called not, m_
+- **1 Samuel 3:7** (mentions): _Now Samuel did not yet know the LORD, neither was the word of the LORD yet revealed unto him._
+- **1 Samuel 3:8** (mentions): _And the LORD called Samuel again the third time. And he arose and went to Eli, and said, Here am I; for thou didst call me. And Eli perceived that the_
+
+*... and 138 more verses*
+
+## Connections
+
+### Structural
+_Literary structures — chiasms, parallelisms, inclusios, refrains, acrostics, and formula markers_
+
+- **parallel_antithetic**: [1sam.3.6](verse://1sam.3.6) → [1sam.3.7](verse://1sam.3.7)
+- **parallel_antithetic**: [1sam.8.6](verse://1sam.8.6) → [1sam.8.7](verse://1sam.8.7)
+- **parallel_antithetic**: [1sam.3.7](verse://1sam.3.7) → [1sam.3.8](verse://1sam.3.8)
+- **parallel_antithetic**: [1sam.9.27](verse://1sam.9.27) → [1sam.10.1](verse://1sam.10.1)
+- **parallel_antithetic**: [1sam.7.9](verse://1sam.7.9) → [1sam.7.10](verse://1sam.7.10)
+- **parallel_antithetic**: [1sam.9.26](verse://1sam.9.26) → [1sam.9.27](verse://1sam.9.27)
+- **parallel_synthetic**: [1sam.9.14](verse://1sam.9.14) → [1sam.9.15](verse://1sam.9.15)
+- **parallel_synthetic**: [1sam.9.18](verse://1sam.9.18) → [1sam.9.19](verse://1sam.9.19)
+  *... and 12 more*
+
+### Linguistic
+_Word-level language connections — same Hebrew/Greek lemma, root, morphology, wordplay, or cognate across passages_
+
+- **same_lemma**: [1sam.4.1](verse://1sam.4.1) → [1sam.7.12](verse://1sam.7.12)
+- **same_lemma**: [1sam.4.1](verse://1sam.4.1) → [1sam.7.12](verse://1sam.7.12)
+- **same_lemma**: [1sam.9.18](verse://1sam.9.18) → [1sam.9.19](verse://1sam.9.19)
+### Intertextual
+_How texts quote, allude to, or echo other texts — direct quotations, allusions, type-antitype patterns_
+
+- **direct_quotation**: [1sam.2.21](verse://1sam.2.21) → [1sam.3.19](verse://1sam.3.19)
+- **direct_quotation**: [1sam.2.26](verse://1sam.2.26) → [1sam.2.21](verse://1sam.2.21)
+- **direct_quotation**: [1sam.2.21](verse://1sam.2.21) → [1sam.2.26](verse://1sam.2.26)
+- **direct_quotation**: [1sam.3.1](verse://1sam.3.1) → [1sam.3.21](verse://1sam.3.21)
+- **direct_quotation**: [1sam.7.12](verse://1sam.7.12) → [1sam.4.1](verse://1sam.4.1)
+- **allusion**: [1sam.3.21](verse://1sam.3.21) → [1sam.3.1](verse://1sam.3.1)
+- **allusion**: [1sam.2.18](verse://1sam.2.18) → [1sam.3.1](verse://1sam.3.1)
+
+## Related Entities
+
+- • **Israel** (nation) — co-occurs in 14 verses
+- 💡 **Word** (concept) — co-occurs in 8 verses
+- 👤 **Eve** (person) — co-occurs in 7 verses
+- 👑 **King** (title) — co-occurs in 5 verses
+- • **God** (deity) — co-occurs in 5 verses
+- 👑 **Servant** (title) — co-occurs in 4 verses
+- 💡 **Sin** (concept) — co-occurs in 2 verses
+- • **Fire** (element) — co-occurs in 2 verses
+- • **Water** (element) — co-occurs in 1 verses
+- 💡 **Temple** (concept) — co-occurs in 1 verses
+
+---
+*Article type: **Person** | Generated from the Scripture Knowledge Engine*
