@@ -1,0 +1,7 @@
+{"type": "feature", "name": "ScriptureEngine", "desc": "Scripture Knowledge Engine with 70,956 verses across 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha) and 1,356,667 typed connections"}
+{"type": "architecture", "desc": "Python FastAPI backend + Go FSRS-5 microservice + Vite 6 React frontend. Hosted on Hetzner CX23 with nginx + Cloudflare SSL"}
+{"type": "feature", "name": "HebrewLearning", "desc": "Full Biblical Hebrew curriculum with 642 nodes across 11 categories (consonants, vowels, vocabulary, verbs, grammar, syntax, reading, roots, phrases). 3,467 practice items, 229 prerequisite edges, FSRS-5 spaced repetition with FIRe"}
+{"type": "feature", "name": "KnowledgeAssessment", "desc": "Adaptive assessment system with 685,086 knowledge items across 4 layers (pshat, remez, drash, sod). BLIM-based IRT scoring. Dedicated AssessmentView UI (no LLM dependency)"}
+{"type": "feature", "name": "AudioAlignment", "desc": "Shmueloff Hebrew OT recordings aligned at word level. 43 alignment files for Genesis 1, word-level audio playback with highlighting"}
+{"type": "refactoring", "desc": "server.py reduced from 4,965 to 2,402 lines by extracting routes to web/routes/ (hebrew, audio, chat, studies, conversations, assessment modules)"}
+{"type": "chat", "name": "LLM_Modes", "desc": "3 chat modes: chat (general scripture), hebrew (language teacher), knowledge (assessment examiner). DeepSeek-v4-flash API with function calling and 52 registered tools"}
