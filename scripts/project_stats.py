@@ -120,7 +120,7 @@ def query_db(conn):
         JOIN books b ON b.id = v.book_id 
         JOIN works w ON w.id = b.work_id 
         GROUP BY w.id 
-        ORDER BY w.position
+        ORDER BY w.id
     """).fetchall()
     stats["verses_by_work"] = {r["title"]: r["c"] for r in works}
     stats["work_count"] = len(works)

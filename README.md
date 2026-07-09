@@ -1,6 +1,6 @@
 # Scripture Knowledge Engine
 
-A deeply connected scripture study tool with **1M+ typed connections across 11 layers** — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod (hidden/temple). Hebrew gematria, Greek isopsephy, English text, all linked and quality-calibrated across **8 works**.
+A deeply connected scripture study tool with **1.36 million typed connections across 11 layers** — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod (hidden/temple). Hebrew gematria, Greek isopsephy, English text, all linked and quality-calibrated across **8 works**.
 
 ## Quick Start
 
@@ -12,16 +12,14 @@ A deeply connected scripture study tool with **1M+ typed connections across 11 l
 
 ## Features
 
-- **42K verses** across 8 works: OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha — 224 books
+- **70,956 verses** across 8 works: OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha — 330 books
 - **23K Hebrew verses** with gematria and morphology
 - **8K Greek verses** with isopsephy
-- **1,028,083 typed connections** across 11 layers (131 types, 70+ subtypes)
-- **305K+ Hebrew gematria entries** (standard, ordinal, reduced, mispar gadol)
-- **137K+ Greek isopsephy entries** (standard, ordinal, reduced)
-- **Semantic search** via vector embeddings (sqlite-vec)
-- **RAM-cached passage guides** — 41K instant per-verse connection contexts
-- **56 MCP tools** for AI/LLM consumption (project-scoped) + generic tool endpoint
-- **102 HTTP API endpoints** with auto-generated OpenAPI docs
+- **1,356,667 typed connections** across 11 layers (124 types)
+- **392K Hebrew gematria entries** (standard, ordinal, reduced, mispar gadol)
+- **137K Greek isopsephy entries** (standard, ordinal, reduced)
+- **61 MCP tools** for AI/LLM consumption (project-scoped) + generic tool endpoint
+- **103 HTTP API endpoints** with auto-generated OpenAPI docs
 - **PaRDeS interpretation levels** — P'shat, Remez, Drash, Sod
 - **Anti-hallucination quality controls** — 5-star calibration, p-values, Bonferroni correction, FDR, null-text validation, skeptic mode
 - **AI review cleanup** — LLM validates connections before deprecation

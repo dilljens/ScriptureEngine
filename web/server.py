@@ -48,7 +48,7 @@ from lib.patterns.intra_verse import detect_intra_verse
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
-    description="API for the scripture connection graph — 1,028,083 connections across 131 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
+    description="API for the scripture connection graph — 1,356,667 connections across 124 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -252,14 +252,31 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
         conn.close()
         guide = dict(row) if row else None
 
+    native_greek = r.get("text_greek") or None
+    lxx_fallback = None
+    if not native_greek:
+        try:
+            import sqlite3 as _s
+            from pathlib import Path as _P
+            _conn = get_db()
+            _lxx = _conn.execute(
+                "SELECT text FROM text_resources WHERE verse_id = ? AND version = 'LXX'",
+                (vid,)
+            ).fetchone()
+            if _lxx:
+                lxx_fallback = _lxx["text"]
+            _conn.close()
+        except Exception:
+            pass  # Non-critical
     resp = {
         "verse_id": vid,
         "reference": f"{r.get('book_title', '')} {r.get('chapter','')}:{r.get('verse','')}",
         "text_english": r["text_english"],
         "text_hebrew": r.get("text_hebrew") or None,
-        "text_greek": r.get("text_greek") or None,
+        "text_greek": native_greek or lxx_fallback,
+        "text_greek_source": "sbl" if native_greek else ("lxx" if lxx_fallback else None),
         "has_hebrew": bool(r.get("has_hebrew")),
-        "has_greek": bool(r.get("has_greek")),
+        "has_greek": bool(native_greek or lxx_fallback),
         "cached": bool(VERSE_CACHE),
     }
 
@@ -2046,7 +2063,19 @@ def get_chapter(ref: str):
                     "confidence": round(r["confidence"], 2),
                 })
 
-    # 4. Build response verses with intra-verse lines + parallelism
+    # 4a. Batch fetch LXX Greek text for verses without native Greek
+    missing_greek_ids = [v["id"] for v in verse_list if not v["text_greek"]]
+    lxx_texts = {}
+    if missing_greek_ids:
+        gp = ",".join("?" for _ in missing_greek_ids)
+        lxx_rows = conn.execute(f"""
+            SELECT verse_id, text FROM text_resources
+            WHERE verse_id IN ({gp}) AND version = 'LXX'
+        """, missing_greek_ids).fetchall()
+        for r in lxx_rows:
+            lxx_texts[r["verse_id"]] = r["text"]
+
+    # 4b. Build response verses with intra-verse lines + parallelism
     response_verses = []
     stats_by_type = {}
     seen_parallels = set()
@@ -2064,11 +2093,15 @@ def get_chapter(ref: str):
                 seen_parallels.add(pair)
                 stats_by_type[p["type"]] = stats_by_type.get(p["type"], 0) + 1
 
+        # Fallback: serve LXX Greek translation when native Greek unavailable
+        greek_text = v["text_greek"] or lxx_texts.get(v["id"]) or None
+        greek_source = "sbl" if v["text_greek"] else ("lxx" if v["id"] in lxx_texts else None)
         response_verses.append({
             "verse": v["verse"],
             "text_english": v["text_english"],
             "text_hebrew": v["text_hebrew"],
-            "text_greek": v["text_greek"],
+            "text_greek": greek_text,
+            "text_greek_source": greek_source,
             "lines": intra["lines"],
             "intra_parallelisms": intra["parallelisms"],
             "parallelisms": parallels,

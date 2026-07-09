@@ -74,9 +74,9 @@ The goal is to let the user see the scripture clearly, without the layers of hum
 
 ## What's in the Engine
 
-- **42,054 verses** across 5 works (OT, NT, BoM, D&C, PGP) — 224 books
-- **1,028,083 typed connections** in 11 layers (linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, sod)
-- **52 MCP/HTTP tools** — 15 of which are study-specific (create, edit, export, publish, fork, import)
+- **70,956 verses** across 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha) — 330 books
+- **1,356,667 typed connections** in 11 layers (linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, sod)
+- **61 MCP/HTTP tools** — 15 of which are study-specific (create, edit, export, publish, fork, import)
 - **Connection graph**: typed edges with layer, type, subtype, strength, confidence — traversable via graph_path, reachable, hubs
 - **Gematria**: standard, ordinal, reduced — Hebrew and Greek
 - **PaRDeS**: four-level interpretation system (P'shat, Remez, Drash, Sod)
