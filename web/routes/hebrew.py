@@ -90,6 +90,61 @@ def fsrs_schedule(stability, difficulty, rating):
     return new_s, new_d, interval
 
 
+# ── Student-Topic Learning Speeds (Math Academy Ch. 29) ──
+# learning_speed = speedup_due_to_ability / slowdown_due_to_difficulty
+# ability = user's weighted accuracy across all topics
+# difficulty = 1 - average accuracy of all users on this topic
+
+def _get_all_user_accuracy(user_id="default"):
+    """Get all accuracy data for a specific user across all Hebrew nodes."""
+    if not MEM_DB.exists(): return {}, 0, 0
+    conn = sqlite3.connect(str(MEM_DB))
+    rows = conn.execute(
+        "SELECT node_id, attempts, correct FROM hebrew_progress WHERE user_id=?",
+        (user_id,)).fetchall()
+    conn.close()
+    total_attempts = sum(r[1] for r in rows)
+    total_correct = sum(r[2] for r in rows)
+    user_acc = {r[0]: r[2] / max(r[1], 1) for r in rows if r[1] > 0}
+    return user_acc, total_attempts, total_correct
+
+
+def _get_topic_difficulty():
+    """Compute difficulty for each topic: 1 - avg accuracy across all users."""
+    if not MEM_DB.exists(): return {}
+    conn = sqlite3.connect(str(MEM_DB))
+    rows = conn.execute(
+        "SELECT node_id, AVG(CAST(correct AS FLOAT) / CAST(MAX(attempts, 1) AS FLOAT)) as avg_acc "
+        "FROM hebrew_progress WHERE attempts > 0 GROUP BY node_id"
+    ).fetchall()
+    conn.close()
+    return {r[0]: 1.0 - r[1] for r in rows}
+
+
+def compute_learning_speed(user_id="default"):
+    """Compute ability/difficulty ratio for each topic.
+    
+    Returns: {node_id: learning_speed, ...}
+    Also returns overall_ability and topic_difficulties for transparency.
+    """
+    user_acc, total_attempts, total_correct = _get_all_user_accuracy(user_id)
+    topic_diff = _get_topic_difficulty()
+    
+    # User ability = overall accuracy (weighted toward recent via exponential decay is ideal,
+    # but simple ratio works well for now — Math Academy uses weighted recent accuracy)
+    overall_ability = total_correct / max(total_attempts, 1) if total_attempts > 0 else 0.5
+    
+    speeds = {}
+    for node_id in topic_diff:
+        diff = topic_diff[node_id]
+        # Avoid division by zero: minimum difficulty of 0.1
+        diff = max(0.1, diff)
+        speed = overall_ability / diff
+        speeds[node_id] = round(speed, 3)
+    
+    return speeds, round(overall_ability, 3), {k: round(v, 3) for k, v in topic_diff.items()}
+
+
 # ── FIRe (Fractional Implicit Repetition) ──
 
 def fire_process(graph, node_id, correct, weight=0.3):
@@ -145,7 +200,12 @@ HEBREW_GRAPH = _build_hebrew_graph()
 
 @router.get("/api/v1/hebrew/fsrs/review")
 def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "default"):
-    """Process an FSRS-5 review with FIRe. Rating: 1=Again, 2=Hard, 3=Good, 4=Easy."""
+    """Process an FSRS-5 review with FIRe and student-topic learning speed.
+    
+    Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
+    Learning speed adjusts the interval: faster learners → longer intervals.
+    If learning_speed < 0.5, FIRe credit is skipped (force explicit reviews).
+    """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
     rating = max(1, min(4, rating))
@@ -161,28 +221,65 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
         a, c, m = 0, 0, 0.0
         stability = fsrs_initial_stability(rating)
         difficulty = 5.0
+    
+    # Compute student-topic learning speed
+    speeds, ability, diffs = compute_learning_speed(user_id)
+    learning_speed = speeds.get(node_id, 1.0)
+    # Clamp learning speed to reasonable range
+    learning_speed = max(0.2, min(5.0, learning_speed))
+    
     new_s, new_d, interval = fsrs_schedule(stability, difficulty, rating)
+    
+    # Adjust interval by learning speed
+    # Faster learners (speed > 1) get longer intervals, slower get shorter
+    adjusted_interval = max(1, round(interval * learning_speed))
+    
     a += 1
     c += 1 if rating >= 3 else 0
     m = min(1.0, c / max(a, 1))
     conn.execute(
         "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced) VALUES (?,?,?,?,?,datetime('now'))",
         (user_id, node_id, m, a, c))
-    # FIRe implicit credit to connected nodes
-    fire_results = fire_process(HEBREW_GRAPH, node_id, rating >= 3, weight=0.3)
-    for prereq_id, credit in fire_results.items():
-        if credit > 0:
-            pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
-                              (user_id, prereq_id)).fetchone()
-            if pr:
-                conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
-                             (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
+    
+    # FIRe: only if learning speed >= 0.5 (Math Academy: < 0.5 forces explicit reviews)
+    fire_results = {}
+    if learning_speed >= 0.5:
+        fire_results = fire_process(HEBREW_GRAPH, node_id, rating >= 3, weight=0.3)
+        for prereq_id, credit in fire_results.items():
+            if credit > 0:
+                pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
+                                  (user_id, prereq_id)).fetchone()
+                if pr:
+                    conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
+                                 (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
+    
     conn.commit()
     conn.close()
     return {"ok": True, "data": {
         "node_id": node_id, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
-        "interval": interval, "mastery": round(m, 3), "attempts": a, "correct": c,
+        "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
+        "learning_speed": round(learning_speed, 3),
+        "user_ability": ability,
         "fire_credits": {k: round(v, 3) for k, v in sorted(fire_results.items(), key=lambda x: -x[1])[:10]},
+    }}
+
+
+@router.get("/api/v1/hebrew/learning-speeds")
+def get_hebrew_learning_speeds(user_id: str = "default"):
+    """Get student-topic learning speeds for all practiced nodes.
+    
+    Returns ability, difficulty per topic, and the ratio (learning speed).
+    Higher speed = learner is faster on this topic → longer intervals.
+    """
+    speeds, ability, diffs = compute_learning_speed(user_id)
+    # Sort by speed ascending (slowest first — needs most review)
+    sorted_speeds = sorted(speeds.items(), key=lambda x: x[1])
+    return {"ok": True, "data": {
+        "user_ability": ability,
+        "learning_speeds": {k: v for k, v in sorted_speeds},
+        "topic_difficulties": diffs,
+        "slowest": [{"node_id": k, "speed": v} for k, v in sorted_speeds[:10]],
+        "fastest": [{"node_id": k, "speed": v} for k, v in sorted_speeds[-10:]],
     }}
 
 
@@ -607,12 +704,19 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
             ret = math.exp(-days / stability) if stability > 0 else 0
         
         if ret < 0.9:
+            # Get learning speed for this user+node
+            try:
+                speeds, _, _ = compute_learning_speed(user_id)
+                lr = speeds.get(r['node_id'], 1.0)
+            except:
+                lr = 1.0
             due.append({
                 "node_id": r['node_id'], "title": r['title'], "level": r['level'],
                 "category": r['category'], "description": r['description'],
                 "mastery": m, "attempts": a, "correct": c,
                 "days_since": round(days, 1), "stability": round(stability, 1),
-                "retrievability": round(ret, 3), "last_practiced": last_str,
+                "retrievability": round(ret, 3), "learning_speed": round(lr, 3),
+                "last_practiced": last_str,
             })
     # Systematic interleaving: sort due reviews for maximum category diversity
     # 1. Group by category
