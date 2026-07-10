@@ -10,12 +10,24 @@
 - Use `sys.path.insert(0, ...)` pattern for relative imports (no pip install -e)
 - Never use `from x import *`
 
+### Testing
+- All Python tests in `tests/` — run with `python3 -m pytest tests/ -q --tb=short`
+- 38 tests covering: verses, search, gematria, graph exploration, quiz endpoints, hub notes, DB schema, DB integrity, count sanity, tradition distribution, OpenAPI snapshot
+- Graph regression: `python3 scripts/test_graph_regression.py -v` — validates layer counts, quality levels, tradition labels, no orphaned refs, no duplicates
+- DB integrity: `sqlite3 data/processed/scripture.db "PRAGMA integrity_check;"` — must return "ok"
+- Pre-deploy gate: all tests + graph regression + integrity check must pass before rsync
+- OpenAPI snapshot: `tests/__snapshots__/openapi.json` — delete and re-run to update when endpoints change
+
+### Deployment
+- `bash scripts/deploy.sh` — runs pre-deploy gate, then rsyncs to OVHcloud VPS
+- Server: `ubuntu@40.160.241.74` — systemd restarts automatically
+- Always verify with `curl https://scriptureengine.org/api/v1/health` after deploy
+
 ### Database
-- All schema changes go through `lib/db.py` (`SCHEMA_SQL` constant)
-- Add columns via `ALTER TABLE`, never drop/recreate tables with data
-- Use `ON CONFLICT DO UPDATE` for upserts
-- WAL mode enabled by default
-- JSON metadata columns for extensibility
+- Main DB: `data/processed/scripture.db` — WAL mode, read-only connections for queries
+- Hebrew DB: `data/memorize.db` — separate SQLite for Hebrew curriculum + progress
+- Schema changes: add columns via `ALTER TABLE`, never drop/recreate with data
+- Virtual IDs in connections: `tg:`, `bd:`, `sefaria:`, `name_72:` prefixes are not real verse IDs
 
 ### API Tools
 - Every tool function signature: `def my_tool(conn, **kwargs) -> dict`

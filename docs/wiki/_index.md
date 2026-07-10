@@ -1,8 +1,8 @@
 # Scripture Knowledge Engine — Codebase Wiki
 
-A deeply connected scripture study tool with **1.07M+ typed connections** across **125 types** in 11 layers — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod (hidden/temple). Hebrew gematria, Greek isopsephy, English text, Septuagint variants, Vulgate Latin variants, DSS variants, STEPBible textual variations, lemma lexicon, semantic domains, temple theology, and Merkabah mysticism — all linked and quality-calibrated.
+A deeply connected scripture study tool with **1.77M+ typed connections** across **11 layers** — linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod (hidden/temple). Hebrew gematria, Greek isopsephy, English text, Septuagint variants, Vulgate Latin variants, DSS variants, lemma lexicon, semantic domains, temple theology, Merkabah mysticism, and **387K+ Jewish tradition connections** (Sefaria: Rashi, Ramban, Talmud, Zohar, Midrash) — all linked, tradition-labeled, and quality-calibrated.
 
-Live at **https://scriptureengine.org** — Hetzner CX23, 2 workers, Let's Encrypt SSL.
+Live at **https://scriptureengine.org** — OVHcloud VPS (4 vCore, 8GB RAM), systemd + Nginx, Let's Encrypt SSL.
 
 ## Quick Reference
 
@@ -12,24 +12,22 @@ Live at **https://scriptureengine.org** — Hetzner CX23, 2 workers, Let's Encry
 
 # Database
 ./run.sh info             # Stats: verses, connections per layer
-./run.sh test             # Smoke tests
-python3 scripts/precompute_guides.py   # Rebuild passage guide cache
-
-# MCP Server (auto-started by opencode)
-python3 mcp_server.py     # Stdio JSON-RPC
-
-# Tools
-python3 tools/verse.py '{"book":"gen","chapter":1,"verse":1}'
-python3 tools/search.py '{"query":"covenant"}'
-python3 tools/gematria.py '{"word":"יהוה"}'
-python3 tools/connections.py '{"verse":"gen.1.1"}'
-python3 tools/patterns.py '{"book":"isa","chapter":6}'
+python3 -m pytest tests/  # 38 Python tests with pre-deploy gate
 
 # Deploy
-./scripts/deploy.sh       # Build + rsync to Hetzner
+./scripts/deploy.sh       # Tests → build → rsync to VPS
+
+# E2E Tests
+node scripts/test_navigation.mjs  # 23 Playwright navigation tests
 
 # Tests
-cd frontend && npm test   # 45 Playwright E2E tests
+python3 -m pytest tests/ -q --tb=short  # 38 tests
+
+# Graph regression
+python3 scripts/test_graph_regression.py -v
+
+# MCP Server (auto-started by opencode)
+python3 mcp_server.py     # Stdio JSON-RPC — 55 tools
 ```
 
 ## Architecture

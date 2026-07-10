@@ -1,73 +1,114 @@
 # Scripture Engine — Project Memory
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-10_
 
-## Current State
+## System Overview
 
 | Metric | Value |
 |--------|-------|
-| Verses | 70,956 across 8 works |
-| Connections | 1,356,667 typed |
-| Knowledge items | 685,086 |
-| Lexicon entries | 25,813 |
-| Tools/Endpoints | 52+ HTTP + MCP |
+| Verses | 70,956 across 8 works (OT, NT, BoM, D&C, PGP, DSS, Apocrypha, Pseudepigrapha) |
+| Connections | 1,769,494 typed edges across 11 layers |
+| Tradition labels | 5: none (52%), multiple (23%), jewish (22%), christian (2%), lds (2%) |
+| Wiki articles | 60 (20 entities + 40 doctrinal) |
+| Learning modules | 26 with lesson content + worked examples + adaptive questions |
+| Hub notes | 14 curated learning paths (88 steps) |
+| Assessment questions | 247 (200 MC + 47 LLM-graded open-ended) |
+| Thematic clusters | 41 multi-witness consistency themes |
+| API endpoints | 60+ HTTP |
+| Database | SQLite (`data/processed/scripture.db` — 1.7GB) |
+| Hebrew DB | `data/memorize.db` — 642 nodes, FSRS-5 scheduling |
 
-## Backend Architecture
+## Architecture
 
-- **server.py**: 2,402 lines (was 4,965 — refactored into route modules)
-- **Route modules** (`web/routes/`):
-  - `hebrew.py` (876 lines) — Hebrew learning + vocabulary + grammar reference + FSRS
-  - `audio.py` (124 lines) — Read-along + audio playback
-  - `chat.py` (979 lines) — LLM chat proxy + tool definitions
-  - `studies.py` (369 lines) — Study guides CRUD
-  - `conversations.py` (151 lines) — Conversation sessions
-  - `assessment.py` (22 lines) — Knowledge assessment endpoints
-- **Go backend** (`backend/go-srs/`): FSRS-5 algorithm + FIRe engine + Hebrew concept graph
-- **Database**: SQLite (`data/processed/scripture.db` — 1.4GB, connections + verses + gematria)
-- **Hebrew DB**: `data/memorize.db` — 642 node curriculum with progress tracking
+- **Web framework**: FastAPI (Python) with Uvicorn
+- **Frontend**: React + Vite + Tailwind CSS
+- **Deployment**: OVHcloud VPS (4 vCore, 8GB RAM), systemd + Nginx
+- **CI**: Pre-deploy gate — Python tests (38), graph regression, DB integrity, frontend build
 
-## Hebrew Learning System
+### Route modules (`web/routes/`)
 
-Full Biblical Hebrew curriculum aligned with The Math Academy Way:
+| Module | Lines | Purpose |
+|--------|-------|---------|
+| `hebrew.py` | ~1,470 | Hebrew curriculum, FSRS-5, FIRe, gamification |
+| `chat.py` | ~980 | LLM proxy to DeepSeek with tool calling |
+| `graph.py` | ~1,070 | Connection graph API + LLM grading + provenance |
+| `learn.py` | ~460 | Learning modules with lessons + adaptive practice |
+| `memorize.py` | ~190 | Verse queue + FSRS-5 memorization review |
+| `assessment.py` | ~210 | Adaptive quiz endpoint with user progress tracking |
+| `auth.py` | ~300 | Google OAuth + anonymous merge + user progress |
+| `audio.py` | 124 | Read-along audio playback |
+| `studies.py` | 369 | Study guides CRUD |
+| `conversations.py` | 151 | Conversation sessions |
 
-| Component | Status |
-|-----------|--------|
-| 642 concept nodes (11 categories) | ✅ Deployed |
-| Practice items | 3,467 across 7 types |
-| Prerequisite edges | 229 |
-| Confusability pairs | 28 |
-| FSRS-5 spaced repetition | ✅ 21-parameter algorithm with FIRe |
-| Student-topic learning speeds | ✅ ability/difficulty ratio |
-| Diagnostic pre-assessment | ✅ 22 questions across all categories |
-| Automaticity timed drills | ✅ Per-question countdown, content-scaled |
-| Micro-scaffolding | ✅ 3 Knowledge Points per lesson |
-| Targeted remediation | ✅ Wrong answers show prerequisite buttons |
-| Systematic interleaving | ✅ Round-robin category diversity |
-| Non-interference | ✅ Confusable topics separated |
-| Gamification | ✅ Streaks + XP (localStorage) |
-| On-screen Hebrew keyboard | ✅ Floating + lesson-integrated |
-| Audio (Shmueloff) | ✅ Word-level playback for Genesis 1 |
+## Core Systems
 
-## Knowledge Assessment
+### Learn (replaces Quiz)
+Structured courses following The Math Academy Way:
+- 26 modules: 14 from hub notes + 12 from Topical Guide
+- Each module: direct instruction → worked examples → adaptive practice
+- Questions: adaptive ordering (weakest first), 3 tiers (text, analysis, consistency)
+- 47 LLM-graded open-ended questions with AI evaluation (4-dimension rubric)
+- Mastery tracking with FSRS-5 spaced repetition
 
-- 685,086 knowledge items across 4 PaRDeS layers
-- 18,717 prerequisite relationships
-- BLIM-based IRT scoring with adaptive item selection
-- Dedicated AssessmentView UI (no LLM dependency)
-- Direct API endpoints: `/api/v1/assessment/start`, `/answer`, `/progress`
+### Hebrew Learning
+Biblical Hebrew curriculum (642 nodes across 7 levels):
+- Practice: 428 items — 0 T/F (MC, typing, recall, transliteration, production)
+- Smart MC distractors using confusable letter pairs
+- FSRS-5 spaced repetition with FIRe implicit credit
+- Student-topic learning speeds (ability/difficulty ratio)
+- 1,716 verse attestations (630/642 nodes show real scripture examples)
+- Audio playback for Genesis 1 alignments
 
-## LLM Integration
+### Memorize Queue
+Verse memorization with FSRS-5:
+- Add/search verses by reference, add entire chapters
+- Review queue sorted by retrievability (most forgotten first)
+- Rating: Again (1) / Hard (2) / Good (3) / Easy (4)
+- Per-verse mastery tracking
 
-- DeepSeek-v4-flash API with 600s timeout for thinking mode
-- 3 chat modes: `chat`, `hebrew`, `knowledge`
-- 52 registered MCP tools
-- Tool definitions for assessment, Hebrew lessons, scripture lookup, graph traversal
+### Connection Graph
+1.77M typed edges with provenance:
+- 11 layers: linguistic, numerical, intertextual, structural, interpretive, symbolic, textual, geographic, chronological, frequency, sod
+- Tradition labels: each connection tagged with tradition (jewish, christian, lds, multiple)
+- 41 thematic clusters showing multi-witness consistency
+- Graph exploration API with BFS traversal, centrality scoring
+
+### Topical Guide + Bible Dictionary
+- 677 LDS Topical Guide topics with descriptions and verse references
+- 47 Bible Dictionary entries
+- 31,065 verse→TG connections in the graph
+- Sefaria Jewish tradition: 387K+ connections (Rashi, Ramban, Talmud, Zohar, Midrash)
+
+### Wiki
+- 60 articles: 20 biblical entities + 40 doctrinal topics from Topical Guide
+- Integrated into learning modules as supplementary content
+- Accessible via tabs (📖 Wiki) on desktop + mobile
+
+### Auth
+- Anonymous user ID in localStorage (persists across refreshes)
+- Google OAuth endpoint (`POST /api/v1/auth/google`)
+- Anonymous progress merge (`POST /api/v1/auth/merge`)
+- User progress aggregation (`GET /api/v1/user/progress/{id}`)
+
+### LLM Integration
+- DeepSeek API with tool calling (52 MCP tools)
+- Chat rendering: react-markdown with verse chip integration
+- LLM grading for open-ended answers with user context
+- Segment-based rendering (markdown + verse chips coexist)
 
 ## UI Features
 
-- Desktop: Library → Work → Book → Chapter navigation with infinity zoom
-- Mobile: 7-tab bottom nav (Read, Chat, Hebrew, Quiz, Review, Go, Menu)
-- Command palette with autocomplete (`/` prefix for commands)
+- Desktop: Library → Work → Book → Chapter navigation with zoom
+- Mobile: 5-tab bottom nav (Read, Chat, Hebrew, Learn, Review) + ⋮ More
+- Command palette (`/`), Chat shortcut (`?`)
+- Dark mode, font size controls, keyboard shortcut hints
+- All features as persistent tabs (hebrew, learn, memorize, wiki, hubnote, chat)
 - Double-tap immersion mode (hides all UI bars)
-- Collapsible tab strip
-- Hebrew, Knowledge, Memory accessed from toolbar + mobile nav
+
+## Monitoring
+
+- Health endpoint: `GET /api/v1/health` — DB integrity, layer/tradition distribution, version, uptime
+- Slow request logging (>2s) via middleware
+- JSON structured logger replacing print()
+- ntfy.sh push notifications on health check failure
+- Pre-deploy gate: 38 Python tests + graph regression + PRAGMA integrity_check
