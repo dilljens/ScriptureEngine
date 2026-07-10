@@ -30,6 +30,8 @@ export default function LearnView({ userId = 'default', onBack }) {
   const [error, setError] = useState(null)
   const [qIdx, setQIdx] = useState(0)
   const [selected, setSelected] = useState(null)
+  const [openInput, setOpenInput] = useState('')
+  const [llmGrade, setLlmGrade] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const [showLesson, setShowLesson] = useState(true)
   const [phase, setPhase] = useState('list')
@@ -47,7 +49,7 @@ export default function LearnView({ userId = 'default', onBack }) {
   }
 
   const loadModule = async (id) => {
-    setLoading(true); setQIdx(0); setSelected(null); setSubmitted(false); setShowLesson(true)
+    setLoading(true); setQIdx(0); setSelected(null); setSubmitted(false); setShowLesson(true); setOpenInput(''); setLlmGrade(null)
     try {
       const r = await fetch(`/api/v1/learn/modules/${id}?user_id=${userId}`)
       const d = await r.json()
@@ -69,11 +71,45 @@ export default function LearnView({ userId = 'default', onBack }) {
     })
     setTimeout(() => {
       if (qIdx + 1 < currentModule.questions.length) {
-        setQIdx(p => p + 1); setSelected(null); setSubmitted(false)
+        setQIdx(p => p + 1); setSelected(null); setSubmitted(false); setOpenInput(''); setLlmGrade(null)
       } else {
         setPhase('complete')
       }
     }, 1500)
+  }
+
+  const submitOpenAnswer = async () => {
+    if (!openInput.trim() || !currentModule) return
+    const q = currentModule.questions[qIdx]
+    setSubmitted(true); setLlmGrade(null)
+    // Record as neutral for now (LLM will evaluate)
+    await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, question_id: q.id, correct: true }),
+    })
+    // Call LLM grading
+    try {
+      const r = await fetch('/api/v1/assess/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q.question,
+          user_answer: openInput,
+          tier: q.tier || 'analysis',
+          user_id: userId,
+        }),
+      })
+      const d = await r.json()
+      if (d.ok) setLlmGrade(d.data?.grading)
+    } catch {}
+    setTimeout(() => {
+      if (qIdx + 1 < currentModule.questions.length) {
+        setQIdx(p => p + 1); setSelected(null); setSubmitted(false); setOpenInput(''); setLlmGrade(null)
+      } else {
+        setPhase('complete')
+      }
+    }, 3000)
   }
 
   useEffect(() => { loadModules() }, [userId])
@@ -220,6 +256,8 @@ export default function LearnView({ userId = 'default', onBack }) {
       return null
     }
 
+    const isOpen = q.is_open || !q.options || q.options.length === 0
+
     const handleSelect = (opt) => {
       if (submitted) return
       setSelected(opt)
@@ -255,44 +293,111 @@ export default function LearnView({ userId = 'default', onBack }) {
               }`}>{q.tier}</span>
             )}
             {q.bloom_level && <span className="text-[9px] text-neutral-400">{q.bloom_level}</span>}
+            {isOpen && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600">AI Graded</span>}
           </div>
 
           <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-4 whitespace-pre-wrap">
             {q.question}
           </div>
 
-          <div className="space-y-1.5">
-            {(q.options || []).map((opt, i) => {
-              const isCorrect = String(opt) === String(q.correct_answer)
-              const isSelected = selected === opt || selected === i
-              let cls = 'w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer '
-              if (!submitted) {
-                cls += isSelected
-                  ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
-                  : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
-              } else {
-                cls += isCorrect
-                  ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                  : isSelected
-                    ? 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
-              }
-              return (
-                <button key={i} onClick={() => handleSelect(opt)} className={cls}>
-                  <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
-                  {opt}
+          {isOpen ? (
+            /* Open-ended question — text input + LLM grading */
+            <div>
+              <textarea
+                value={openInput}
+                onChange={e => setOpenInput(e.target.value)}
+                disabled={submitted}
+                rows={4}
+                placeholder="Write your analysis here… Reference specific words, phrases, and connections."
+                className="w-full px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 outline-none transition-all resize-y disabled:opacity-50"
+              />
+              {llmGrade && (
+                <div className="mt-3 p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">AI Evaluation</p>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {['text_engagement', 'reasoning', 'depth', 'context'].map(k => {
+                      const score = llmGrade?.scores?.[k] || llmGrade?.[k]
+                      if (score === undefined) return null
+                      return (
+                        <div key={k}>
+                          <div className="text-[9px] text-neutral-400 capitalize mb-0.5">{k.replace('_', ' ')}</div>
+                          <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(score / 10) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] font-mono text-neutral-500">{score}/10</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{llmGrade.feedback}</p>}
+                  {llmGrade.strengths?.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[9px] font-medium text-green-600">Strengths:</p>
+                      {llmGrade.strengths.map((s, i) => <p key={i} className="text-[10px] text-green-600">✅ {s}</p>)}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!submitted ? (
+                <button onClick={submitOpenAnswer} disabled={!openInput.trim()}
+                  className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                  Submit for AI Evaluation
                 </button>
-              )
-            })}
-          </div>
+              ) : (
+                <div className="mt-3">
+                  <p className="text-xs text-center font-medium text-green-600">✓ Submitted for evaluation</p>
+                  {q.explanation && (
+                    <div className="mt-2 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      {q.explanation}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Multiple choice */
+            <div className="space-y-1.5">
+              {(q.options || []).map((opt, i) => {
+                const isCorrect = String(opt) === String(q.correct_answer)
+                const isSelected = selected === opt || selected === i
+                let cls = 'w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer '
+                if (!submitted) {
+                  cls += isSelected
+                    ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
+                } else {
+                  cls += isCorrect
+                    ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
+                    : isSelected
+                      ? 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                      : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
+                }
+                return (
+                  <button key={i} onClick={() => handleSelect(opt)} className={cls}>
+                    <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
+                    {opt}
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
-          {!submitted ? (
+          {!submitted && !isOpen && (
             <button onClick={handleSubmit} disabled={selected === null}
               className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               Submit
             </button>
-          ) : (
-            <p className="mt-3 text-xs text-center font-medium text-green-600">{'✓ Moving to next question...'}</p>
+          )}
+
+          {submitted && !isOpen && (
+            <div className="mt-3">
+              <p className="text-xs text-center font-medium text-green-600">✓ Answer recorded</p>
+              {q.explanation && (
+                <div className="mt-2 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                  {q.explanation}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

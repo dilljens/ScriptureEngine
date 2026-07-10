@@ -167,6 +167,14 @@ def seed_modules():
         
         for q in q_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)", (hid, q[0]))
+        
+        # Also link a couple open-ended questions
+        open_ids = conn.execute("""
+            SELECT id FROM assessment_items WHERE question_type_open = 1
+            ORDER BY RANDOM() LIMIT 2
+        """).fetchall()
+        for q in open_ids:
+            conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)", (hid, q[0]))
     
     # Add TG-based modules (doctrinal topics)
     tg_topics = conn.execute("""
@@ -210,6 +218,14 @@ def seed_modules():
         ))
         
         for q in q_ids:
+            conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)",
+                        (f"tg_{slug}", q[0]))
+        
+        open_ids = conn.execute("""
+            SELECT id FROM assessment_items WHERE question_type_open = 1
+            ORDER BY RANDOM() LIMIT 2
+        """).fetchall()
+        for q in open_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)",
                         (f"tg_{slug}", q[0]))
     
@@ -268,10 +284,10 @@ def get_module(module_id: str, user_id: str = "default"):
         conn.close()
         raise HTTPException(404, f"Module not found: {module_id}")
     
-    # Get practice questions — adaptive: weakest first
+    # Get practice questions — adaptive: weakest first, mix of MC and open-ended
     questions = conn.execute("""
         SELECT a.id, a.question_type, a.question_text, a.options_json, a.correct_answer,
-               a.bloom_level, a.tier,
+               a.bloom_level, a.tier, a.explanation, a.question_type_open,
                COALESCE(qp.correct, 0) as user_correct,
                COALESCE(qp.attempts, 0) as user_attempts
         FROM module_questions mq
@@ -315,6 +331,8 @@ def get_module(module_id: str, user_id: str = "default"):
             "correct_answer": q["correct_answer"],
             "bloom_level": q["bloom_level"],
             "tier": q["tier"],
+            "explanation": q["explanation"] or "",
+            "is_open": bool(q["question_type_open"]),
             "user_correct": q["user_correct"],
             "user_attempts": q["user_attempts"],
         })

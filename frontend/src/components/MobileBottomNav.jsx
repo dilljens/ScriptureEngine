@@ -1,5 +1,5 @@
 /**
- * Mobile bottom navigation — 7 tabs with Hebrew, Learn, Memory.
+ * Mobile bottom navigation — 5 tabs + More button.
  * Fixed to bottom of screen at all times on mobile.
  */
 
@@ -11,8 +11,6 @@ const TABS = [
   { id: 'hebrew', label: 'Hebrew', icon: 'א' },
   { id: 'learn', label: 'Learn', icon: '📚' },
   { id: 'memorize', label: 'Review', icon: '🧠' },
-  { id: 'command', label: 'Go', icon: '🔍' },
-  { id: 'menu', label: 'Menu', icon: '☰' },
 ]
 
 export default function MobileBottomNav({ activeTab, onTab, visible = true }) {
@@ -23,15 +21,20 @@ export default function MobileBottomNav({ activeTab, onTab, visible = true }) {
           <button
             key={tab.id}
             onClick={() => onTab(tab.id)}
-            className={`flex flex-col items-center justify-center flex-1 h-full text-[9px] font-medium transition-colors cursor-pointer min-w-0 px-0.5
+            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-medium transition-colors cursor-pointer min-w-0 px-0.5
               ${activeTab === tab.id
                 ? 'text-blue-600 dark:text-blue-400'
                 : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'}`}
           >
-            <span className="text-base leading-none mb-0.5">{tab.icon}</span>
+            <span className="text-lg leading-none mb-0.5">{tab.icon}</span>
             <span className="truncate max-w-full">{tab.label}</span>
           </button>
         ))}
+        <button onClick={() => onTab('menu')}
+          className="flex flex-col items-center justify-center h-full text-[10px] font-medium text-neutral-400 min-w-0 px-0.5 hover:text-neutral-600 cursor-pointer">
+          <span className="text-lg leading-none mb-0.5">⋮</span>
+          <span className="truncate max-w-full">More</span>
+        </button>
       </div>
     </nav>
   )

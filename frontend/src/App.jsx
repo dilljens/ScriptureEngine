@@ -434,8 +434,7 @@ function AppInner() {
   const [bookData, setBookData] = useState(null); const [serverInfo, setServerInfo] = useState(null)
   const [poetryMode, setPoetryMode] = useState(false) // default Narrative
   const [showLayers, setShowLayers] = useState(false)
-  const [showStudyMenu, setShowStudyMenu] = useState(false)
-  const [showToolsMenu, setShowToolsMenu] = useState(false)
+  const [showMainMenu, setShowMainMenu] = useState(false)
   const layersBtnRef = useRef(null)
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
@@ -469,7 +468,7 @@ function AppInner() {
   useEffect(() => { getInfo().then(r => setServerInfo(r.data)).catch(() => {}) }, [])
   // Close dropdown menus when clicking outside
   useEffect(() => {
-    const handler = () => { setShowStudyMenu(false); setShowToolsMenu(false) }
+    const handler = () => { setShowMainMenu(false) }
     window.addEventListener('click', handler)
     return () => window.removeEventListener('click', handler)
   }, [])
@@ -1114,52 +1113,29 @@ function AppInner() {
             {/* Divider */}
             <span className="w-px h-4 bg-neutral-200 dark:border-neutral-700 mx-0.5 shrink-0" />
 
-            {/* ── Study dropdown ── */}
+            {/* ── Unified Menu dropdown ── */}
             <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowStudyMenu(p => !p); setShowToolsMenu(false) }}
+              <button onClick={(e) => { e.stopPropagation(); setShowMainMenu(p => !p); setShowStudyMenu(false); setShowToolsMenu(false) }}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 text-[10px] font-medium ${
-                  showStudyMenu ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
-                }`} title="Study tools">
-                📖 Study ▾
+                  showMainMenu ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
+                }`} title="Menu">
+                ☰ Menu ▾
               </button>
-              {showStudyMenu && (
-                <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 py-1 min-w-[160px]">
-                  <button onClick={() => { setShowStudyMenu(false); openWikiTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    📖 Wiki</button>
-                  <button onClick={() => { setShowStudyMenu(false); openMemorizeTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    🧠 Memorize</button>
-                  <button onClick={() => { setShowStudyMenu(false); openLearnTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    📚 Learn</button>
-                  <button onClick={() => { setShowStudyMenu(false); openHubNoteTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    🗺️ Study Paths</button>
-                  <button onClick={() => { setShowStudyMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    א Hebrew</button>
+              {showMainMenu && (
+                <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 py-1 min-w-[180px]">
+                  <p className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Study</p>
+                  <button onClick={() => { setShowMainMenu(false); openLearnTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📚 Learn</button>
+                  <button onClick={() => { setShowMainMenu(false); openHebrewTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">א Hebrew</button>
+                  <button onClick={() => { setShowMainMenu(false); openMemorizeTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🧠 Memorize</button>
+                  <button onClick={() => { setShowMainMenu(false); openHubNoteTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🗺️ Study Paths</button>
+                  <button onClick={() => { setShowMainMenu(false); openWikiTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📖 Wiki</button>
                   <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
-                  <button onClick={() => { setShowStudyMenu(false); setShowStructure(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    ▦ Structure</button>
-                </div>
-              )}
-            </div>
-
-            {/* ── Tools dropdown ── */}
-            <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowToolsMenu(p => !p); setShowStudyMenu(false) }}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 text-[10px] font-medium ${
-                  showToolsMenu ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
-                }`} title="More tools">
-                🛠️ Tools ▾
-              </button>
-              {showToolsMenu && (
-                <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 py-1 min-w-[160px]">
-                  <button onClick={() => { setShowToolsMenu(false); handleOpenChat() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    💬 Chat</button>
-                  <button onClick={() => { setShowToolsMenu(false); setShowHistory(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    🕐 History</button>
-                  <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
-                  <button onClick={() => { setShowToolsMenu(false); setShowLayers(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    🎨 Layers</button>
-                  <button onClick={() => { setShowToolsMenu(false); setShowGlobalKeyboard(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
-                    א Keyboard</button>
+                  <p className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Tools</p>
+                  <button onClick={() => { setShowMainMenu(false); handleOpenChat() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">💬 Chat</button>
+                  <button onClick={() => { setShowMainMenu(false); setShowHistory(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🕐 History</button>
+                  <button onClick={() => { setShowMainMenu(false); setShowStructure(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">⊞ Structure</button>
+                  <button onClick={() => { setShowMainMenu(false); setShowLayers(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🎨 Layers</button>
+                  <button onClick={() => { setShowMainMenu(false); setShowGlobalKeyboard(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">א Keyboard</button>
                 </div>
               )}
             </div>
@@ -1184,12 +1160,6 @@ function AppInner() {
             </button>
             <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}><GearIcon /></button>
             <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}><CommandIcon /></button>
-
-            {/* Tiles (manage tabs/subjects) */}
-            <button onClick={openTilesView}
-              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
-              ▦ Tiles
-            </button>
           </div>
         </div>
       </header>
@@ -1230,6 +1200,15 @@ function AppInner() {
             )}
             {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
           </h1>
+        </div>
+        {/* Right side: nav arrows + Tiles */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={doHistoryBack} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer" title="Back (Alt+←)"><ChevronLeft /></button>
+          <button onClick={doHistoryForward} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer" title="Forward (Alt+→)"><ChevronRight /></button>
+          <button onClick={openTilesView}
+            className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
+            ▦ Tiles
+          </button>
         </div>
       </div>
 

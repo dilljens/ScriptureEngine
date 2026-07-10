@@ -502,10 +502,11 @@ def build_deep_questions(count=200):
     for item in items:
         try:
             tier = item.get("tier", "text")
+            explanation = item.get("explanation", "")
             conn.execute("""
                 INSERT INTO assessment_items
-                    (question_type, question_text, options_json, correct_answer, layer, bloom_level, tier)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (question_type, question_text, options_json, correct_answer, layer, bloom_level, tier, explanation)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 item["type"],
                 item["question"],
@@ -514,6 +515,7 @@ def build_deep_questions(count=200):
                 "p'shat",
                 item.get("bloom_level", "understand"),
                 tier,
+                explanation[:500],
             ))
             stored += 1
         except:

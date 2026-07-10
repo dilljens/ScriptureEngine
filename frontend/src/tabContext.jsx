@@ -288,14 +288,14 @@ export function TabProvider({ children }) {
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })
         if (entityId) {
-          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: entityId, label: label || `Wiki: ${entityId}` } })
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: entityId, label: label || `📖 Wiki: ${entityId}` } })
         }
       } else {
         dispatch({
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || (entityId ? `Wiki: ${entityId}` : 'Wiki'),
+          label: label || (entityId ? `📖 Wiki: ${entityId}` : '📖 Wiki'),
           view: 'wiki',
           viewRef: entityId || null,
         })
@@ -312,7 +312,7 @@ export function TabProvider({ children }) {
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || 'Memorize',
+          label: label || '🧠 Memorize',
           view: 'memorize',
         })
       }
@@ -330,7 +330,7 @@ export function TabProvider({ children }) {
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || 'Chat',
+          label: label || '💬 Chat',
           view: 'chat',
         })
       }
@@ -366,7 +366,7 @@ export function TabProvider({ children }) {
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || 'Learn',
+          label: label || '📚 Learn',
           view: 'learn',
         })
       }
@@ -382,7 +382,7 @@ export function TabProvider({ children }) {
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || 'Learn',
+          label: label || '📚 Learn',
           view: 'learn',
         })
       }

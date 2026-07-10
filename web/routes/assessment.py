@@ -72,7 +72,7 @@ def get_quiz_questions(
     # Get questions with adaptive ordering
     rows = cursor.execute(f"""
         SELECT a.question_type, a.question_text, a.options_json, a.correct_answer, a.bloom_level, a.tier,
-               a.id as question_id,
+               a.id as question_id, a.explanation,
                COALESCE(qp.correct, 0) as user_correct,
                COALESCE(qp.attempts, 0) as user_attempts
         FROM assessment_items a
@@ -100,13 +100,12 @@ def get_quiz_questions(
             "correct_answer": r[3],
             "bloom_level": r[4] or "",
             "tier": r[5] or "text",
+            "question_id": r[6],
+            "explanation": r[7] or "",
         })
     
-    # Include question_id for tracking
-    questions_with_ids = []
-    for i, q in enumerate(questions):
-        q["question_id"] = rows[i]["question_id"]
-        questions_with_ids.append(q)
+    # Rebuild with question_ids included
+    questions_with_ids = questions
     
     conn.close()
     

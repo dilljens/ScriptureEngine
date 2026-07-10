@@ -574,18 +574,63 @@ def _key_points(nid, category):
 
 
 def build_practice_items(nid, title, category):
-    """Generate practice items for a topic."""
+    """Generate practice items for a topic with Math Academy quality."""
     items = []
+    
+    # Confusable pairs for smart distractors
+    SIMILAR_LETTERS = {
+        "aleph": ["Ayin", "He", "Chet"],
+        "bet": ["Vav", "Kaf", "Bet"],
+        "gimel": ["Nun", "Zayin", "Resh"],
+        "dalet": ["Resh", "Dalet", "Vav"],
+        "he": ["Chet", "Tav", "Aleph"],
+        "vav": ["Bet", "Kaf", "Vav"],
+        "zayin": ["Gimel", "Nun", "Zayin"],
+        "chet": ["He", "Tav", "Ayin"],
+        "tet": ["Tav", "Tet", "Qof"],
+        "yod": ["Vav", "Yod", "Zayin"],
+        "kaf": ["Kaf (final)", "Bet", "Kaf"],
+        "lamed": ["Lamed", "Resh", "Vav"],
+        "mem": ["Mem (final)", "Samekh", "Mem"],
+        "nun": ["Nun (final)", "Gimel", "Nun"],
+        "samekh": ["Mem", "Samekh", "Ayin"],
+        "ayin": ["Aleph", "Chet", "Ayin"],
+        "pe": ["Pe (final)", "Bet", "Pe"],
+        "tsade": ["Tsade (final)", "Ayin", "Tsade"],
+        "qof": ["Kaf", "Qof", "Resh"],
+        "resh": ["Dalet", "Resh", "Zayin"],
+        "shin": ["Sin", "Shin", "Samekh"],
+        "sin": ["Shin", "Sin", "Samekh"],
+        "tav": ["Tet", "Tav", "He"],
+    }
+    
+    SIMILAR_VOWELS = {
+        "vowel_patah": ["Qamats", "Segol", "Patah"],
+        "vowel_qamats": ["Patah", "Qamats", "Holam"],
+        "vowel_segol": ["Tsere", "Segol", "Sheva"],
+        "vowel_tsere": ["Segol", "Tsere", "Hiriq"],
+        "vowel_hiriq": ["Tsere", "Hiriq", "Segol"],
+        "vowel_holam": ["Qamats", "Holam", "Shuruq"],
+        "vowel_shuruq": ["Qubuts", "Shuruq", "Holam"],
+        "vowel_qubuts": ["Shuruq", "Qubuts", "Holam"],
+        "vowel_sheva": ["Sheva", "Hatef Patah", "Hatef Segol"],
+    }
     
     # Recognition questions
     if category == "consonant":
         correct = title.split("(")[0].strip()
-        # Generate diverse options including the correct answer
+        # Smart distractors: use similar-looking/sounding letters
+        similar = SIMILAR_LETTERS.get(nid, [])
+        distractors = [s for s in similar if s != correct]
+        # Fallback to random if not enough distractors
         all_letters = ["Aleph", "Bet", "Gimel", "Dalet", "He", "Vav", "Zayin", "Chet", "Tet", "Yod",
                        "Kaf", "Lamed", "Mem", "Nun", "Samekh", "Ayin", "Pe", "Tsade", "Qof", "Resh",
-                       "Shin", "Sin", "Tav", "Kaf (final)", "Mem (final)", "Nun (final)", "Pe (final)", "Tsade (final)"]
-        distractors = [l for l in all_letters if l != correct]
+                       "Shin", "Sin", "Tav"]
         import random
+        while len(distractors) < 3:
+            d = random.choice(all_letters)
+            if d != correct and d not in distractors:
+                distractors.append(d)
         random.shuffle(distractors)
         opts = [correct] + distractors[:3]
         random.shuffle(opts)
@@ -595,23 +640,54 @@ def build_practice_items(nid, title, category):
             "options": json.dumps(opts),
             "correct_answer": correct,
             "difficulty": 0.3,
-            "explanation": f"The letter shown is {title}."
+            "explanation": f"The letter shown is {title}. It belongs to the Hebrew aleph-bet."
         })
+        # Audio identification drill
         items.append({
-            "question_type": "true_false",
-            "question_text": f"Is {title} one of the begadkefat letters?",
-            "options": json.dumps(["True", "False"]),
-            "correct_answer": "True" if nid in ("bet", "gimel", "dalet", "kaf", "pe", "tav") else "False",
+            "question_type": "multiple_choice",
+            "question_text": f"Which letter makes the sound described in the lesson for {title}?",
+            "options": json.dumps(opts),
+            "correct_answer": correct,
             "difficulty": 0.4,
-            "explanation": f"{title} {'is' if nid in ('bet','gimel','dalet','kaf','pe','tav') else 'is not'} a begadkefat letter."
+            "explanation": f"The letter {title} makes this sound."
+        })
+        # Typing drill (production)
+        items.append({
+            "question_type": "typing",
+            "question_text": f"Type the Hebrew letter: {correct}",
+            "correct_answer": correct,
+            "difficulty": 0.4,
+            "explanation": f"The Hebrew letter {correct} looks like this in the script."
+        })
+        # Transliteration (Hebrew→English)
+        items.append({
+            "question_type": "transliteration",
+            "question_text": f"How is this letter transliterated: {title}?",
+            "correct_answer": correct,
+            "difficulty": 0.3,
+            "explanation": f"The letter {title} is transliterated as '{correct}'."
+        })
+        # Reverse: English→Hebrew
+        items.append({
+            "question_type": "recall",
+            "question_text": f"What is the Hebrew letter named '{correct}'?",
+            "correct_answer": correct,
+            "difficulty": 0.5,
+            "explanation": f"The Hebrew letter named '{correct}' is {title}."
         })
     
     elif category == "vowel":
         correct = title.split("(")[0].strip()
+        # Smart distractors based on similar vowels
+        similar = SIMILAR_VOWELS.get(nid, [])
+        distractors = [s for s in similar if s != correct]
         all_vowels = ["Patah", "Qamats", "Segol", "Tsere", "Hiriq", "Holam", "Shuruq", "Qubuts",
                       "Sheva", "Hatef Patah", "Hatef Segol", "Hatef Qamats"]
-        distractors = [v for v in all_vowels if v != correct]
         import random
+        while len(distractors) < 3:
+            d = random.choice(all_vowels)
+            if d != correct and d not in distractors:
+                distractors.append(d)
         random.shuffle(distractors)
         opts = [correct] + distractors[:3]
         random.shuffle(opts)
@@ -622,6 +698,13 @@ def build_practice_items(nid, title, category):
             "correct_answer": correct,
             "difficulty": 0.4,
             "explanation": f"This describes the vowel {title}."
+        })
+        items.append({
+            "question_type": "recall",
+            "question_text": f"Name the Hebrew vowel that sounds like {correct}.",
+            "correct_answer": correct,
+            "difficulty": 0.5,
+            "explanation": f"The vowel is {correct}."
         })
     
     elif category == "verb":

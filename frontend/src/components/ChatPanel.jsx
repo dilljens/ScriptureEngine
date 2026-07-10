@@ -984,47 +984,32 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       )
     }
 
-    // For content with markers, we render the markdown structure first,
-    // then split text output at markers. This avoids breaking markdown syntax.
-    // We render the processed text as markdown, then use a custom text component
-    // to catch and render markers within text nodes.
-    //
-    // react-markdown / hAST renders text nodes by passing string children to
-    // parent elements. We can't intercept text nodes directly, BUT we can
-    // override the paragraph (and other text-containing) components to
-    // do marker splitting on their text children.
-    //
-    // The key insight: we pre-render the whole content as a markdown string,
-    // then use a wrapper that replaces %%% markers with actual components.
-    // This works because react-markdown's paragraph component receives children
-    // that include text strings with %%% markers.
-    const TextSplitter = ({ children }) => {
-      const result = renderWithMarkers(
-        typeof children === 'string' ? children :
-        Array.isArray(children) ? children.map(c => typeof c === 'string' ? c : '').join('') :
-        ''
-      )
-      return <>{result}</>
-    }
+    // For content with markers, split the content at marker boundaries
+    // and render each segment independently. This preserves markdown formatting.
+    const parts = processed.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
+    const segments = parts.map((part, i) => {
+      if (part.startsWith('%%%VERSE:')) {
+        const ref = part.replace('%%%VERSE:', '').replace('%%%', '')
+        return renderWithMarkers(part)
+      }
+      if (part.startsWith('%%%CLICK:')) {
+        return renderWithMarkers(part)
+      }
+      if (part.startsWith('%%%QUIZ:') || part.startsWith('%%%HEBREW_QUIZ:') || part.startsWith('%%%HEBREW:')) {
+        return renderWithMarkers(part)
+      }
+      // Regular markdown text — render with Markdown component
+      if (part.trim()) {
+        return (
+          <Markdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {part}
+          </Markdown>
+        )
+      }
+      return null
+    })
 
-    return (
-      <Markdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          ...markdownComponents,
-          // Override ALL text-producing components to split markers
-          p: ({ children }) => <p className="my-0.5 text-sm leading-relaxed break-words"><TextSplitter>{children}</TextSplitter></p>,
-          li: ({ children, ...props }) => <li {...props}><TextSplitter>{children}</TextSplitter></li>,
-          td: ({ children }) => <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400 align-top leading-relaxed"><TextSplitter>{children}</TextSplitter></td>,
-          th: ({ children }) => <th className="px-3 py-2 text-left font-semibold text-neutral-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider"><TextSplitter>{children}</TextSplitter></th>,
-          blockquote: ({ children }) => <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic"><TextSplitter>{children}</TextSplitter></blockquote>,
-          h1: ({ children }) => <h1 className="text-base font-bold my-2"><TextSplitter>{children}</TextSplitter></h1>,
-          h2: ({ children }) => <h2 className="text-sm font-bold my-1.5"><TextSplitter>{children}</TextSplitter></h2>,
-          h3: ({ children }) => <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 mt-3 mb-1 first:mt-0 text-sm"><TextSplitter>{children}</TextSplitter></h3>,
-        }}>
-        {processed}
-      </Markdown>
-    )
+    return <>{segments}</>
   }
 
   // ── Shared chat body (messages + input) ──
