@@ -229,6 +229,9 @@ def lookup_verse(conn, book, chapter, verse, version=None):
         "available_languages": {
             "hebrew": bool(result.get("has_hebrew")),
             "greek": bool(result.get("has_greek")),
+            "greek_lxx": bool(not result.get("has_greek") and result.get("text_versions", {}) and any(
+                v.get("language") == "grc" for v in result.get("text_versions", {}).values()
+            )),
             "latin": "lxx" in str(result.get("book_id", "")),
         },
         "gematria_words": gematria_words[:20] if gematria_words else [],

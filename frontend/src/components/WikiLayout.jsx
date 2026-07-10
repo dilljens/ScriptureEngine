@@ -112,6 +112,68 @@ function ConnectionSection({ layer, connections, defaultOpen }) {
   )
 }
 
+/** Simple SVG force-directed graph — renders nodes as circles and edges as colored lines */
+function ConnectionGraphSVG({ nodes, edges, width = 500, height = 250 }) {
+  const cx = width / 2
+  const cy = height / 2
+  const radius = Math.min(cx, cy) - 30
+
+  // Circular layout positions
+  const positions = {}
+  nodes.forEach((n, i) => {
+    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2
+    positions[n.id] = {
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    }
+  })
+
+  // Layer colors (matches ConnectionGraph)
+  const EDGE_COLORS = {
+    linguistic: '#10b981', numerical: '#f59e0b', structural: '#8b5cf6',
+    intertextual: '#3b82f6', textual: '#ec4899', geographic: '#14b8a6',
+    chronological: '#f97316', interpretive: '#a855f7', frequency: '#06b6d4',
+    symbolic: '#eab308', sod: '#ef4444',
+  }
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto max-h-64 bg-neutral-50 dark:bg-neutral-900/20 rounded">
+      {/* Edges */}
+      {edges.map((e, i) => {
+        const p1 = positions[e.source]
+        const p2 = positions[e.target]
+        if (!p1 || !p2) return null
+        return (
+          <line key={i}
+            x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+            stroke={EDGE_COLORS[e.layer] || '#6b7280'}
+            strokeWidth={1} opacity={0.5}
+          />
+        )
+      })}
+      {/* Nodes */}
+      {nodes.map((n) => {
+        const p = positions[n.id]
+        if (!p) return null
+        return (
+          <g key={n.id}>
+            <circle cx={p.x} cy={p.y} r={14}
+              className="fill-blue-100 dark:fill-blue-900/40 stroke-blue-500 dark:stroke-blue-400"
+              strokeWidth={2}
+            />
+            <text x={p.x} y={p.y + 0.5} textAnchor="middle" dominantBaseline="central"
+              className="fill-blue-700 dark:fill-blue-300 text-[9px] font-medium"
+              fontSize={9}>
+              {n.label}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+
 export default function WikiLayout({ data, book, chapter, toggles, chapterConnections, onOpenWiki }) {
   const [graphOpen, setGraphOpen] = React.useState(false)
   const [browseLayer, setBrowseLayer] = React.useState(null)
@@ -223,7 +285,7 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
             </div>
           </div>
 
-          {/* ── Graph Panel (B3) — collapsible ── */}
+          {/* ── Graph Panel — interactive SVG force graph ── */}
           {graphElements.nodes.length > 1 && (
             <div className="mb-6 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
               <button
@@ -239,27 +301,23 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
               </button>
               {graphOpen && (
                 <div className="p-3 bg-white dark:bg-neutral-800/10">
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {graphElements.nodes.map(n => (
-                      <span key={n.id} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-bold">
-                        {n.label}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="text-[10px] text-neutral-400 max-h-32 overflow-y-auto space-y-0.5">
-                    {graphElements.edges.slice(0, 30).map((e, i) => (
-                      <div key={i} className="truncate">
-                        <span className="font-mono text-blue-500">{e.source}</span>
-                        <span className="mx-1">—{e.layer?.slice(0, 4)}→</span>
-                        <span className="font-mono text-blue-500">{e.target}</span>
-                        <span className="ml-1 text-neutral-400">({e.type})</span>
-                      </div>
-                    ))}
-                    {graphElements.edges.length > 30 && (
-                      <span className="text-neutral-300">+{graphElements.edges.length - 30} more edges</span>
-                    )}
-                  </div>
-                  {/* ponytail: full interactive graph rendering deferred to Track D */}
+                  <ConnectionGraphSVG nodes={graphElements.nodes} edges={graphElements.edges} />
+                  {/* Edge list below graph */}
+                  <details className="mt-2">
+                    <summary className="text-[10px] text-neutral-400 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300">
+                      Show edge list ({graphElements.edges.length} edges)
+                    </summary>
+                    <div className="text-[10px] text-neutral-400 max-h-24 overflow-y-auto space-y-0.5 mt-1">
+                      {graphElements.edges.slice(0, 50).map((e, i) => (
+                        <div key={i} className="truncate">
+                          <span className="font-mono text-blue-500">{e.source}</span>
+                          <span className="mx-1">—{e.layer?.slice(0, 4)}→</span>
+                          <span className="font-mono text-blue-500">{e.target}</span>
+                          <span className="ml-1 text-neutral-400">({e.type})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 </div>
               )}
             </div>
