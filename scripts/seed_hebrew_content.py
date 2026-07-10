@@ -579,13 +579,23 @@ def build_practice_items(nid, title, category):
     
     # Recognition questions
     if category == "consonant":
+        correct = title.split("(")[0].strip()
+        # Generate diverse options including the correct answer
+        all_letters = ["Aleph", "Bet", "Gimel", "Dalet", "He", "Vav", "Zayin", "Chet", "Tet", "Yod",
+                       "Kaf", "Lamed", "Mem", "Nun", "Samekh", "Ayin", "Pe", "Tsade", "Qof", "Resh",
+                       "Shin", "Sin", "Tav", "Kaf (final)", "Mem (final)", "Nun (final)", "Pe (final)", "Tsade (final)"]
+        distractors = [l for l in all_letters if l != correct]
+        import random
+        random.shuffle(distractors)
+        opts = [correct] + distractors[:3]
+        random.shuffle(opts)
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"Which letter is described as '{_explanation(nid, title, category)[:80]}...'?",
-            "options": json.dumps(["Aleph", "Bet", "Gimel", "Dalet"]),
-            "correct_answer": title.split("(")[0].strip(),
+            "question_text": f"What is the name of this Hebrew letter: {title}?",
+            "options": json.dumps(opts),
+            "correct_answer": correct,
             "difficulty": 0.3,
-            "explanation": f"The description matches {title}."
+            "explanation": f"The letter shown is {title}."
         })
         items.append({
             "question_type": "true_false",
@@ -597,11 +607,19 @@ def build_practice_items(nid, title, category):
         })
     
     elif category == "vowel":
+        correct = title.split("(")[0].strip()
+        all_vowels = ["Patah", "Qamats", "Segol", "Tsere", "Hiriq", "Holam", "Shuruq", "Qubuts",
+                      "Sheva", "Hatef Patah", "Hatef Segol", "Hatef Qamats"]
+        distractors = [v for v in all_vowels if v != correct]
+        import random
+        random.shuffle(distractors)
+        opts = [correct] + distractors[:3]
+        random.shuffle(opts)
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"Which vowel makes the '{_explanation(nid, title, category)[:60]}...' sound?",
-            "options": json.dumps(["Patah", "Qamats", "Hiriq", "Segol"]),
-            "correct_answer": title.split("(")[0].strip(),
+            "question_text": f"Which Hebrew vowel makes the sound described by {title}?",
+            "options": json.dumps(opts),
+            "correct_answer": correct,
             "difficulty": 0.4,
             "explanation": f"This describes the vowel {title}."
         })

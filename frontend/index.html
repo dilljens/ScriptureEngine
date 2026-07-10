@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -14,7 +14,7 @@
     <script>try{var s=JSON.parse(localStorage.getItem('scripture_settings')||'{}'),d=s.darkMode;if(d===undefined||d===null){var m=window.matchMedia('(prefers-color-scheme:dark)');if(m.matches)document.documentElement.classList.add('dark')}else if(d)document.documentElement.classList.add('dark')}catch(e){}</script>
     <script defer src="/debug-reporter.js"></script>
   </head>
-  <body class="bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased">
+  <body class="bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased" style="touch-action: pan-y; -webkit-text-size-adjust: 100%;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>

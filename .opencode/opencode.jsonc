@@ -3,7 +3,7 @@
   "mcp": {
     "scriptureengine": {
       "type": "local",
-      "command": ["python3", "/home/dillon/_code/ScriptureEngine/mcp_server.py"],
+      "command": ["python3", "/home/dillon/_code/scriptureengine/mcp_server.py"],
       "enabled": true
     }
   },

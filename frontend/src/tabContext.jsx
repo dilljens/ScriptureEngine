@@ -335,6 +335,78 @@ export function TabProvider({ children }) {
         })
       }
     }, [state]),
+
+    openHebrewTab: useCallback((lessonId) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'hebrew')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+        if (lessonId) {
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: lessonId, label: `Hebrew: ${lessonId}` } })
+        }
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: lessonId ? `Hebrew: ${lessonId}` : 'Hebrew',
+          view: 'hebrew',
+          viewRef: lessonId || null,
+        })
+      }
+    }, [state]),
+
+    openKnowledgeTab: useCallback((label) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'learn')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || 'Learn',
+          view: 'learn',
+        })
+      }
+    }, [state]),
+
+    openLearnTab: useCallback((label) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'learn')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || 'Learn',
+          view: 'learn',
+        })
+      }
+    }, [state]),
+
+    openHubNoteTab: useCallback((hubId) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'hubnote')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+        if (hubId) {
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: hubId, label: `Study: ${hubId}` } })
+        }
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: hubId ? `Study: ${hubId}` : 'Study Paths',
+          view: 'hubnote',
+          viewRef: hubId || null,
+        })
+      }
+    }, [state]),
   }
 
   const currentWorkspace = state

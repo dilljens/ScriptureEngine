@@ -150,9 +150,9 @@ def main():
     for lesson in ROOT_LESSONS:
         lid = f"root_{lesson['root']}"
         
-        existing = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (lid,)).fetchone()
+        existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing:
-            print(f"  SKIP {lid}: already exists")
+            print(f"  SKIP {lid}: practice items already exist")
             continue
         
         title = f"Root {lesson['root']} — {lesson['meaning']}"

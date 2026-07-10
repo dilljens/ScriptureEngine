@@ -75,7 +75,21 @@ if [ -n "$JS_HREF" ]; then
     fi
 fi
 
+echo "--- Enhanced Health ---"
+check_content "$API/api/v1/health" "integrity" "health has integrity field"
+check_content "$API/api/v1/health" "traditional_distribution" "health has tradition breakdown"
+check_content "$API/api/v1/health" "layer_distribution" "health has layer breakdown"
+
 echo ""
 echo "--- Summary ---"
 echo "  $PASS passed, $FAIL failed"
+
+# ntfy.sh alert on failure
+if [ "$FAIL" -gt 0 ]; then
+    curl -s -X POST https://ntfy.sh/scriptureengine \
+      -H "Title: Health Check Failed" \
+      -d "$FAIL checks failed on scriptureengine.org" > /dev/null 2>&1
+    echo "  📲 Alert sent via ntfy.sh"
+fi
+
 exit $FAIL

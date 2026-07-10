@@ -876,10 +876,10 @@ def main():
     for lesson in GRAMMAR_LESSONS:
         lid = lesson["id"]
         
-        # Skip if exists
-        existing = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (lid,)).fetchone()
+        # Skip if practice items already exist for this node
+        existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing:
-            print(f"  SKIP {lid}: already exists")
+            print(f"  SKIP {lid}: practice items already exist")
             continue
         
         # Create node

@@ -13,8 +13,8 @@ import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './compon
 import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   ChatIcon, GridIcon, SunIcon, MoonIcon,
-  GearIcon, CommandIcon, LayersIcon, ClockIcon,
-  TextSmallIcon, TextLargeIcon, GraphIcon,
+  GearIcon, CommandIcon, ClockIcon,
+  TextSmallIcon, TextLargeIcon,
   BookIcon, MenuIcon, PlusIcon,
 } from './icons'
 import MobileBottomNav from './components/MobileBottomNav'
@@ -28,7 +28,8 @@ import SettingsPanel from './components/SettingsPanel'
 import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
 import ChapterView from './components/ChapterView'
-const ConnectionGraph = React.lazy(() => import('./components/ConnectionGraph'))
+import AuthButton from './components/AuthButton'
+const HubNoteView = React.lazy(() => import('./components/HubNoteView'))
 const MemorizeView = React.lazy(() => import('./components/MemorizeView'))
 import TileDashboard from './components/TileDashboard'
 import SubjectTabBar from './components/SubjectTabBar'
@@ -398,7 +399,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
-    moveTab, openMemorizeTab, openWikiTab,
+    moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, persist } = useSettings()
@@ -433,6 +434,8 @@ function AppInner() {
   const [bookData, setBookData] = useState(null); const [serverInfo, setServerInfo] = useState(null)
   const [poetryMode, setPoetryMode] = useState(false) // default Narrative
   const [showLayers, setShowLayers] = useState(false)
+  const [showStudyMenu, setShowStudyMenu] = useState(false)
+  const [showToolsMenu, setShowToolsMenu] = useState(false)
   const layersBtnRef = useRef(null)
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
@@ -440,8 +443,21 @@ function AppInner() {
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
-  const [showAssessment, setShowAssessment] = useState(false)
+  const [showHubNotes, setShowHubNotes] = useState(false)
+  const [hubNoteId, setHubNoteId] = useState(null)
   const [showTabs, setShowTabs] = useState(true)
+  
+  // Stable anonymous user_id — persists across sessions via localStorage
+  const [userId, setUserId] = useState(() => {
+    let uid = localStorage.getItem('scripture_user_id')
+    if (!uid) {
+      uid = 'anon_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+      localStorage.setItem('scripture_user_id', uid)
+    }
+    return uid
+  })
+  const [userName, setUserName] = useState(localStorage.getItem('scripture_user_name') || '')
+  const [userAvatar, setUserAvatar] = useState(localStorage.getItem('scripture_user_avatar') || '')
   const [showGlobalKeyboard, setShowGlobalKeyboard] = useState(false)
   const [showCommand, setShowCommand] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -451,6 +467,12 @@ function AppInner() {
 
   useEffect(() => { getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => {}) }, [])
   useEffect(() => { getInfo().then(r => setServerInfo(r.data)).catch(() => {}) }, [])
+  // Close dropdown menus when clicking outside
+  useEffect(() => {
+    const handler = () => { setShowStudyMenu(false); setShowToolsMenu(false) }
+    window.addEventListener('click', handler)
+    return () => window.removeEventListener('click', handler)
+  }, [])
 
   // Open study from URL query param (e.g., ?study=torah-in-all-scripture)
   useEffect(() => {
@@ -762,15 +784,12 @@ function AppInner() {
     }
   }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch])
 
-  // Open a graph tab centered on the current view
-  const openGraphTab = useCallback(() => {
-    const ref = viewRef || `${book}.${chapter}.1`
-    const label = `Graph: ${bookTitle} ${chapter}`
-    openTab(book, chapter, { label, view: 'graph', viewRef: ref })
-  }, [book, chapter, viewRef, bookTitle, openTab])
-
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+  }, [currentTab?.id, updateTab])
+
+  const openLibraryView = useCallback(() => {
+    updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
   }, [currentTab?.id, updateTab])
 
   // ── Split-pane reading ──
@@ -853,14 +872,6 @@ function AppInner() {
   const highlightVerse = currentTab?.highlights?.[0] || null
 
   const renderMainContent = () => {
-    if (showAssessment) {
-      const AssessmentView = React.lazy(() => import('./components/AssessmentView'))
-      return (
-        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading assessment...</div>}>
-          <AssessmentView onBack={() => setShowAssessment(false)} />
-        </Suspense>
-      )
-    }
     if (showHebrewDiagnostic) {
       const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'))
       return (
@@ -874,6 +885,13 @@ function AppInner() {
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
           <HebrewLessonView nodeId={hebrewLessonId} onBack={() => setHebrewLessonId(null)} />
+        </Suspense>
+      )
+    }
+    if (showHubNotes) {
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading paths...</div>}>
+          <HubNoteView hubId={hubNoteId} onNavigate={(v) => { const p = v.split('.'); if (p.length >= 2) handleChatNavigate?.(p[0], parseInt(p[1])||1) }} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
         </Suspense>
       )
     }
@@ -902,14 +920,6 @@ function AppInner() {
           onClose={() => {}}
         />
       </Suspense>
-      )
-    }
-    // Graph view — render ConnectionGraph
-    if (viewLevel === 'graph') {
-      return (
-        <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading graph...</div>}>
-          <ConnectionGraph centerVerse={viewRef || `${book}.${chapter}.1`} onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
-        </Suspense>
       )
     }
     // Memorize view
@@ -951,6 +961,38 @@ function AppInner() {
             onNavigate={(eid) => updateTab(currentTab?.id, { view: 'wiki', viewRef: eid, label: `Wiki: ${eid}` })}
             onOpenTab={(b, ch, opts) => openTab(b, ch, opts)}
           />
+        </Suspense>
+      )
+    }
+
+    // HubNote tab view
+    if (viewLevel === 'hubnote') {
+      const HubNoteView = React.lazy(() => import('./components/HubNoteView'))
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading study path...</div>}>
+          <HubNoteView hubId={viewRef} onNavigate={(v) => { const p = v.split('.'); if (p.length >= 2) handleChatNavigate?.(p[0], parseInt(p[1])||1) }} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
+        </Suspense>
+      )
+    }
+
+    // Hebrew view
+    if (viewLevel === 'hebrew') {
+      const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading Hebrew...</div>}>
+          <HebrewLearnView onOpenLesson={(nodeId) => {
+            if (currentTab?.id) updateTab(currentTab.id, { viewRef: nodeId, label: `Hebrew: ${nodeId}` })
+          }} />
+        </Suspense>
+      )
+    }
+
+    // Learn view
+    if (viewLevel === 'learn') {
+      const LearnView = React.lazy(() => import('./components/LearnView'))
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading learn...</div>}>
+          <LearnView userId={userId} onBack={() => {}} />
         </Suspense>
       )
     }
@@ -1065,121 +1107,88 @@ function AppInner() {
             </button>
           </div>
 
-          {/* Right: Search + command icons */}
+          {/* Right: Search + consolidated dropdown menus */}
           <div className="flex items-center gap-0.5 text-neutral-400 dark:text-neutral-500">
             <SearchBar onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} bookData={bookData} onCommand={handleSearchCommand} />
 
             {/* Divider */}
-            <span className="w-px h-4 bg-neutral-200 dark:bg-neutral-700 mx-0.5 shrink-0" />
+            <span className="w-px h-4 bg-neutral-200 dark:border-neutral-700 mx-0.5 shrink-0" />
 
-            {/* Chat */}
-            <button onClick={handleOpenChat} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Chat (${getHotkey('chat')})`}>
-              <ChatIcon />
-            </button>
-
-            {/* Structure (Isaiah) */}
-            <button onClick={() => setShowStructure(true)}
-              className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
-              title={`Isaiah Structure (${getHotkey('structureModal')})`}>
-              <GridIcon />
-            </button>
-
-            {/* Memorize */}
-             {/* Wiki — browse entity articles */}
-             <button onClick={() => openWikiTab()} className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0" title="Wiki (browse entity articles)">
-               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M4 5.5h8M4 8h6M4 10.5h4" /></svg>
-             </button>
-
-             <button onClick={() => openMemorizeTab()} className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0" title="Memorize (spaced repetition, palaces, AI)">
-               <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
-             </button>
-
-            {/* Knowledge (Assessment) — DEDICATED UI, no LLM dependency */}
-            <button onClick={() => setShowAssessment(true)}
-              className="p-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer shrink-0"
-              title="Knowledge Assessment (test your understanding of scripture connections)">
-              <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <circle cx={8} cy={8} r={6} />
-                <path d="M8 5v3M8 11h0" />
-              </svg>
-            </button>
-
-            {/* Learn (Hebrew) */}
-            <button onClick={() => { setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
-              className="p-1 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 text-neutral-400 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer shrink-0"
-              title="Learn Biblical Hebrew (642 lessons)">
-              <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <path d="M3 4h10M3 8h10M3 12h8" />
-                <circle cx={12.5} cy={7.5} r={0.5} fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-
-            {/* History */}
-            <button onClick={() => setShowHistory(p => !p)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Conversation History">
-              <ClockIcon />
-            </button>
-
-            {/* Font size */}
-            <div className="flex items-center gap-0">
-              <button onClick={() => changeFontSize(-1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Smaller (${getHotkey('fontDown')})`}>
-                <TextSmallIcon />
+            {/* ── Study dropdown ── */}
+            <div className="relative">
+              <button onClick={(e) => { e.stopPropagation(); setShowStudyMenu(p => !p); setShowToolsMenu(false) }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 text-[10px] font-medium ${
+                  showStudyMenu ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
+                }`} title="Study tools">
+                📖 Study ▾
               </button>
-              <span className="text-[9px] w-4 text-center shrink-0 font-mono">{fontSize}%</span>
-              <button onClick={() => changeFontSize(1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Larger (${getHotkey('fontUp')})`}>
-                <TextLargeIcon />
-              </button>
+              {showStudyMenu && (
+                <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 py-1 min-w-[160px]">
+                  <button onClick={() => { setShowStudyMenu(false); openWikiTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    📖 Wiki</button>
+                  <button onClick={() => { setShowStudyMenu(false); openMemorizeTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    🧠 Memorize</button>
+                  <button onClick={() => { setShowStudyMenu(false); openLearnTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    📚 Learn</button>
+                  <button onClick={() => { setShowStudyMenu(false); openHubNoteTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    🗺️ Study Paths</button>
+                  <button onClick={() => { setShowStudyMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    א Hebrew</button>
+                  <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+                  <button onClick={() => { setShowStudyMenu(false); setShowStructure(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    ▦ Structure</button>
+                </div>
+              )}
             </div>
 
-            {/* Dark mode */}
+            {/* ── Tools dropdown ── */}
+            <div className="relative">
+              <button onClick={(e) => { e.stopPropagation(); setShowToolsMenu(p => !p); setShowStudyMenu(false) }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 text-[10px] font-medium ${
+                  showToolsMenu ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
+                }`} title="More tools">
+                🛠️ Tools ▾
+              </button>
+              {showToolsMenu && (
+                <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl z-50 py-1 min-w-[160px]">
+                  <button onClick={() => { setShowToolsMenu(false); handleOpenChat() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    💬 Chat</button>
+                  <button onClick={() => { setShowToolsMenu(false); setShowHistory(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    🕐 History</button>
+                  <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+                  <button onClick={() => { setShowToolsMenu(false); setShowLayers(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    🎨 Layers</button>
+                  <button onClick={() => { setShowToolsMenu(false); setShowGlobalKeyboard(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">
+                    א Keyboard</button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Auth (Google sign-in) ── */}
+            <AuthButton userId={userId} userName={userName} userAvatar={userAvatar} onLogin={(u) => {
+              localStorage.setItem('scripture_user_name', u.name || '')
+              localStorage.setItem('scripture_user_avatar', u.avatar_url || '')
+              localStorage.setItem('scripture_auth_user_id', u.user_id || '')
+              setUserName(u.name || '')
+              setUserAvatar(u.avatar_url || '')
+            }} />
+
+            {/* ── Display controls (always visible) ── */}
+            <div className="flex items-center gap-0">
+              <button onClick={() => changeFontSize(-1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Smaller (${getHotkey('fontDown')})`}><TextSmallIcon /></button>
+              <span className="text-[9px] w-4 text-center shrink-0 font-mono">{fontSize}%</span>
+              <button onClick={() => changeFontSize(1)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Larger (${getHotkey('fontUp')})`}><TextLargeIcon /></button>
+            </div>
             <button onClick={toggleDarkMode} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Dark mode (${getHotkey('darkMode')})`}>
               {darkMode ? <MoonIcon /> : <SunIcon />}
             </button>
+            <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}><GearIcon /></button>
+            <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}><CommandIcon /></button>
 
-            {/* Settings */}
-            <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}>
-              <GearIcon />
-            </button>
-
-            {/* Command */}
-            <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}>
-              <CommandIcon />
-            </button>
-
-            {/* Subjects (mobile quick access to tile dashboard) */}
+            {/* Tiles (manage tabs/subjects) */}
             <button onClick={openTilesView}
-              className="sm:hidden inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
-              title="Manage tiles">
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
               ▦ Tiles
-            </button>
-            {/* Graph */}
-            <button onClick={openGraphTab} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title="Connection Graph">
-              <GraphIcon />
-            </button>
-
-            {/* Layers — with ref for popover positioning */}
-            <div className="relative">
-              <button ref={layersBtnRef} onClick={() => setShowLayers(p => !p)}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                  showLayers
-                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                    : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400'
-                }`}
-                title="Layers (toggle visibility)">
-                <LayersIcon />
-              </button>
-              <LayersPopover open={showLayers} onClose={() => setShowLayers(false)}
-                poetryMode={poetryMode} setPoetryMode={setPoetryMode} buttonRef={layersBtnRef} />
-            </div>
-
-            {/* Hebrew keyboard toggle */}
-            <button onClick={() => setShowGlobalKeyboard(p => !p)}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                showGlobalKeyboard
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400'
-              }`}
-              title="Toggle Hebrew keyboard (Ctrl+Shift+H)">
-              <span className="text-sm font-serif" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>א</span>
             </button>
           </div>
         </div>
@@ -1242,8 +1251,8 @@ function AppInner() {
             title={showTabs ? 'Hide tabs' : 'Show tabs'}>
             {showTabs ? '▲' : '▼'}
           </button>
-        {/* Workspace selector (mobile only) */}
-        <div className="flex sm:hidden items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
+        {/* Workspace selector (desktop only) */}
+        <div className="hidden sm:flex items-center gap-0.5 pl-2 pr-1 border-r border-neutral-200 dark:border-neutral-700 shrink-0">
           <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 mr-1">WS</span>
           <select value={activeWorkspace || ''} onChange={e => selectWorkspace(e.target.value)}
             className="text-xs bg-transparent border-none outline-none cursor-pointer text-neutral-600 dark:text-neutral-400 font-medium pr-4 appearance-none"
@@ -1255,8 +1264,8 @@ function AppInner() {
           <button onClick={() => newWorkspace()} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm leading-none px-0.5" title="New workspace">+</button>
         </div>
 
-        {/* Chapter tabs — always visible */}
-        <div className="flex items-center gap-0.5 overflow-x-auto tab-scroll flex-1 px-1">
+        {/* Chapter tabs — always visible (hidden on mobile, use bottom nav) */}
+        <div className="hidden sm:flex items-center gap-0.5 overflow-x-auto tab-scroll flex-1 px-1">
           {(currentWorkspace?.tabs || []).map(tab => (
               <div key={tab.id} onClick={() => selectTab(tab.id)}
                 className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer text-xs border-b-2 transition-colors shrink-0 ${
@@ -1273,9 +1282,7 @@ function AppInner() {
                   title="Close tab">&times;</button>
               </div>
             ))}
-            <button onClick={() => openTab(book, chapter, { label: `${bookTitle} ${chapter}` })}
-              className="px-1.5 py-0.5 rounded text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer text-sm shrink-0 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"
-              title="New tab (Ctrl+T)">+</button>
+
           </div>
         </div>
       </div>
@@ -1405,23 +1412,21 @@ function AppInner() {
       </button>
 
       {/* Mobile: Bottom Navigation — hidden when uiVisible is false (immersion mode) */}
-      <div className={`sm:hidden transition-transform duration-300 ${uiVisible ? 'translate-y-0' : 'translate-y-full'}`}>
-      <MobileBottomNav activeTab={mobileActiveTab} onTab={(tab) => {
+      <MobileBottomNav activeTab={mobileActiveTab} visible={uiVisible} onTab={(tab) => {
         switch (tab) {
           case 'read': {
-            // Switch to last non-chat tab, or open chapter for current book
             setShowCommand(false); setShowMobileMenu(false)
+            // Go to Library view if no read tabs exist
             const readTab = currentWorkspace?.tabs?.slice().reverse().find(t => t.view !== 'chat')
             if (readTab && readTab.id !== currentTab?.id) {
               selectTab(readTab.id)
-            } else if (!readTab) {
-              openTab(book, chapter, { label: `${bookTitle} ${chapter}` })
+            } else {
+              openLibraryView()
             }
             break
           }
           case 'chat': {
-            // Switch to existing chat tab or create one
-            setShowMobileMenu(false)
+            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null)
             const chatTab = currentWorkspace?.tabs?.find(t => t.view === 'chat')
             if (chatTab) {
               selectTab(chatTab.id)
@@ -1431,13 +1436,13 @@ function AppInner() {
             break
           }
           case 'hebrew':
-            setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null)
+            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null); openHebrewTab()
             break
-          case 'knowledge':
-            setShowMobileMenu(false); setShowAssessment(true)
+          case 'learn':
+            setShowMobileMenu(false); setShowHebrewDiagnostic(false); openLearnTab()
             break
           case 'memorize':
-            setShowMobileMenu(false); openMemorizeTab()
+            setShowMobileMenu(false); setShowHebrewDiagnostic(false); openMemorizeTab()
             break
           case 'tiles':
             openTilesView(); setShowMobileMenu(false)
@@ -1450,19 +1455,19 @@ function AppInner() {
             break
         }
       }} />
-      </div>
 
       {/* Mobile: Menu Drawer */}
       <MobileMenuDrawer
         open={showMobileMenu}
         onClose={() => setShowMobileMenu(false)}
-        onGraph={() => { setShowMobileMenu(false); openGraphTab() }}
+        onWiki={() => { setShowMobileMenu(false); openWikiTab() }}
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
         onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
         onHebrew={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
         onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
-        onKnowledge={() => { setShowMobileMenu(false); setShowAssessment(true) }}
+        onKnowledge={() => { setShowMobileMenu(false); openLearnTab() }}
+        onHubNotes={() => { setShowMobileMenu(false); openHubNoteTab() }}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         fontSize={fontSize}
@@ -1471,7 +1476,7 @@ function AppInner() {
       />
 
       {/* Spacer to prevent content from being hidden behind bottom nav — hidden when UI is hidden */}
-      <div className={`sm:hidden transition-all duration-300 ${uiVisible ? 'h-24' : 'h-0'}`} />
+      <div className={`sm:hidden transition-all duration-300 ${uiVisible ? 'h-14' : 'h-0'}`} />
 
     </div>
   )

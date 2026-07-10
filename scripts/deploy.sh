@@ -11,13 +11,33 @@
 
 set -euo pipefail
 
-HOST="root@40.160.241.74"
+HOST="ubuntu@40.160.241.74"
 REMOTE_DIR="/var/www/scripture"
 
 echo "=== ScriptureEngine Deployment ==="
 
-# 1. Build frontend
-echo "Building frontend..."
+# 1. Pre-deploy validation gate
+echo "=== Pre-deploy Validation ==="
+
+echo "[1/4] Python test suite..."
+python3 -m pytest tests/ -q --tb=short || {
+    echo "✗ Tests failed — aborting deploy"
+    exit 1
+}
+
+echo "[2/4] Graph regression check..."
+python3 scripts/test_graph_regression.py || {
+    echo "✗ Graph regression detected — aborting deploy"
+    exit 1
+}
+
+echo "[3/4] DB integrity check..."
+sqlite3 data/processed/scripture.db "PRAGMA integrity_check;" | grep -q "ok" || {
+    echo "✗ DB integrity check failed — aborting deploy"
+    exit 1
+}
+
+echo "[4/4] Frontend build..."
 cd frontend
 npm run build
 cd ..
@@ -49,12 +69,15 @@ rsync -avz --delete \
 # Sync audio alignments separately (small JSON files, not the raw audio)
 if [ -d data/audio/alignments ]; then
 	echo "Syncing audio alignments..."
+	ssh "$HOST" "mkdir -p $REMOTE_DIR/data/audio/alignments"
 	rsync -avz --delete data/audio/alignments/ "$HOST:$REMOTE_DIR/data/audio/alignments/"
 fi
 
 echo "Syncing nginx + service configs..."
-rsync -avz scripts/nginx-scripture.conf "$HOST:/etc/nginx/sites-available/scriptureengine"
-rsync -avz scripts/scripture-api.service "$HOST:/etc/systemd/system/scripture-api.service"
+rsync -avz scripts/nginx-scripture.conf "$HOST:$REMOTE_DIR/nginx-scripture.conf"
+ssh "$HOST" "sudo cp $REMOTE_DIR/nginx-scripture.conf /etc/nginx/sites-available/scriptureengine"
+rsync -avz scripts/scripture-api.service "$HOST:$REMOTE_DIR/scripture-api.service"
+ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scripture-api.service"
 
 # 3. Install Python dependencies on remote
 echo "Installing Python dependencies..."
@@ -62,15 +85,15 @@ ssh "$HOST" "cd $REMOTE_DIR && pip install -r web/requirements.txt 2>&1 | tail -
 
 # 4. Ensure nginx site is enabled + reloaded
 echo "Configuring nginx..."
-ssh "$HOST" "ln -sf /etc/nginx/sites-available/scriptureengine /etc/nginx/sites-enabled/ && systemctl reload nginx || systemctl restart nginx"
+ssh "$HOST" "sudo ln -sf /etc/nginx/sites-available/scriptureengine /etc/nginx/sites-enabled/ && sudo systemctl reload nginx || sudo systemctl restart nginx"
 
 # 5. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
-ssh "$HOST" "systemctl daemon-reload && systemctl enable scripture-api"
+ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api"
 
 # 6. Restart API server
 echo "Restarting API server..."
-ssh "$HOST" "systemctl restart scripture-api"
+ssh "$HOST" "sudo systemctl restart scripture-api"
 
 echo "=== Done ==="
 echo "Frontend: https://scriptureengine.org"

@@ -3,9 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react'
 /**
  * HebrewLearnView — curriculum dashboard with gamification.
  * - 602 lessons across 9 categories with mastery tracking
- * - Streak counter + XP
+ * - Server-side streak + XP + badges
  * - 5-minute quick session mode
  * - Category filter tabs
+ * - Mastery Map visualization
  * - Progress bar showing mastered/total
  */
 
@@ -26,59 +27,45 @@ const CATEGORY_STYLES = {
 
 export default function HebrewLearnView({ onOpenLesson }) {
   const [curriculum, setCurriculum] = useState(null)
+  const [gamification, setGamification] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [streak, setStreak] = useState(0)
-  const [xp, setXp] = useState(0)
+  const [showMasteryMap, setShowMasteryMap] = useState(false)
   const [quickMode, setQuickMode] = useState(false)
   const [quickQuestions, setQuickQuestions] = useState([])
   const [quickIdx, setQuickIdx] = useState(0)
   const [timeLeft, setTimeLeft] = useState(300)
   const [quickScore, setQuickScore] = useState(0)
+  const [toast, setToast] = useState(null) // {message, type}
 
-  // Load curriculum
-  const loadCurriculum = () => {
+  // Load curriculum + gamification in parallel
+  const loadAll = () => {
     setLoading(true)
-    fetch('/api/v1/hebrew/curriculum')
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok) {
-          setCurriculum(d.data)
-          computeStreak(d.data.nodes)
-        } else setError(d.detail || 'Failed to load')
+    Promise.all([
+      fetch('/api/v1/hebrew/curriculum').then(r => r.json()),
+      fetch('/api/v1/hebrew/gamification').then(r => r.json()),
+    ])
+      .then(([curData, gamData]) => {
+        if (curData.ok) setCurriculum(curData.data)
+        else setError(curData.detail || 'Failed to load')
+        if (gamData.ok) setGamification(gamData.data)
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
-  useEffect(loadCurriculum, [])
+  useEffect(loadAll, [])
 
-  // Compute streak from progress data (stored in localStorage for persistence)
-  const computeStreak = (nodes) => {
-    // Simple: count consecutive days from localStorage
-    const last = localStorage.getItem('hebrew_last_practice')
-    const today = new Date().toDateString()
-    if (last === today) {
-      // Already practiced today, keep streak
-    } else if (last && new Date(last).getTime() >= Date.now() - 2 * 86400000) {
-      // Practiced yesterday, increment
-    } else {
-      // Streak broken
-      localStorage.setItem('hebrew_streak', '0')
-    }
-    const saved = parseInt(localStorage.getItem('hebrew_streak') || '0')
-    setStreak(saved)
-    const savedXp = parseInt(localStorage.getItem('hebrew_xp') || '0')
-    setXp(savedXp)
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
   }
 
   // Start quick session
   const startQuickSession = () => {
     if (!curriculum?.nodes) return
-    // Pick from unlocked nodes
     const unlocked = curriculum.nodes.filter(n => n.unlocked && n.mastery < 0.8)
     if (unlocked.length === 0) {
-      // Pick from mastered for review
       unlocked.push(...curriculum.nodes.filter(n => n.mastery >= 0.8))
     }
     const shuffled = [...unlocked].sort(() => Math.random() - 0.5).slice(0, 10)
@@ -96,22 +83,6 @@ export default function HebrewLearnView({ onOpenLesson }) {
     const timer = setInterval(() => setTimeLeft(t => t - 1), 1000)
     return () => clearInterval(timer)
   }, [quickMode, timeLeft])
-
-  const recordPractice = () => {
-    // Update streak
-    const today = new Date().toDateString()
-    localStorage.setItem('hebrew_last_practice', today)
-    const curStreak = parseInt(localStorage.getItem('hebrew_streak') || '0')
-    const newStreak = curStreak + 1
-    localStorage.setItem('hebrew_streak', String(newStreak))
-    setStreak(newStreak)
-    // Add XP
-    const newXp = parseInt(localStorage.getItem('hebrew_xp') || '0') + 10
-    localStorage.setItem('hebrew_xp', String(newXp))
-    setXp(newXp)
-    // Reload curriculum (to update mastery)
-    setTimeout(loadCurriculum, 500)
-  }
 
   if (loading) return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -180,8 +151,19 @@ export default function HebrewLearnView({ onOpenLesson }) {
     )
   }
 
+  const gam = gamification || {}
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all animate-slide-down ${
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -189,17 +171,23 @@ export default function HebrewLearnView({ onOpenLesson }) {
           <p className="text-sm text-neutral-500 dark:text-neutral-400">{total} lessons · {mastered} mastered · {locked} locked</p>
         </div>
         <div className="flex items-center gap-3">
-          {streak > 0 && (
+          {gam.streak > 0 && (
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
               <span className="text-sm">🔥</span>
-              <span className="text-sm font-bold text-amber-700 dark:text-amber-300">{streak}</span>
+              <span className="text-sm font-bold text-amber-700 dark:text-amber-300">{gam.streak}</span>
               <span className="text-[9px] text-amber-500 dark:text-amber-400">day streak</span>
             </div>
           )}
-          {xp > 0 && (
+          {gam.badge_count > 0 && (
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700">
+              <span className="text-sm">🏅</span>
+              <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{gam.badge_count}</span>
+            </div>
+          )}
+          {gam.xp > 0 && (
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
               <span className="text-sm">✨</span>
-              <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">{xp}</span>
+              <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">{gam.xp}</span>
               <span className="text-[9px] text-indigo-500 dark:text-indigo-400">XP</span>
             </div>
           )}
@@ -208,21 +196,49 @@ export default function HebrewLearnView({ onOpenLesson }) {
 
       {/* Stats + Quick mode button */}
       <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
             <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${(mastered / Math.max(total, 1)) * 100}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+        <div className="flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400 flex-wrap">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {mastered} mastered</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {in_progress}</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-600" /> {locked} locked</span>
+          {curriculum.overall_ability !== undefined && (
+            <span className="flex items-center gap-1 ml-2 pl-2 border-l border-neutral-200 dark:border-neutral-700">
+              <span className="text-xs">{curriculum.avg_learning_speed > 1.2 ? '⚡' : curriculum.avg_learning_speed >= 0.8 ? '→' : '～'}</span>
+              <span className="text-[9px]">speed {Math.round(curriculum.avg_learning_speed * 100)}%</span>
+            </span>
+          )}
         </div>
+        <button onClick={() => setShowMasteryMap(!showMasteryMap)}
+          className="px-3 py-2 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300 text-[10px] font-medium cursor-pointer transition-colors shrink-0">
+          {showMasteryMap ? '📋 List' : '🗺️ Map'}
+        </button>
         <button onClick={startQuickSession}
           className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           ⏱ 5-min quick
         </button>
       </div>
+
+      {/* Badges row */}
+      {gam.badge_catalog && gam.badge_catalog.filter(b => b.earned).length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1">Badges</span>
+          {gam.badge_catalog.filter(b => b.earned).map(b => (
+            <span key={b.id} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 text-xs" title={b.desc}>
+              <span>{b.icon}</span>
+              <span className="text-[10px] font-medium text-purple-700 dark:text-purple-300">{b.name}</span>
+            </span>
+          ))}
+          {gam.next_badges && gam.next_badges.length > 0 && (
+            <span className="text-[9px] text-neutral-400 ml-2">
+              Next: {gam.next_badges.map(b => b.name).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Category filter */}
       <div className="flex flex-wrap gap-1.5 mb-6">
@@ -243,72 +259,140 @@ export default function HebrewLearnView({ onOpenLesson }) {
         ))}
       </div>
 
+      {/* Mastery Map grid (toggle) */}
+      {showMasteryMap && (
+        <div className="mb-6 p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
+            Mastery Map · {mastered}/{total} nodes mastered ({Math.round(mastered / Math.max(total, 1) * 100)}%)
+          </h3>
+          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1.5">
+            {nodes.map(node => {
+              const locked = !node.unlocked
+              const masteryPct = node.mastery || 0
+              let color = ''
+              if (locked) color = 'bg-neutral-200 dark:bg-neutral-700'
+              else if (masteryPct >= 1.0) color = 'bg-yellow-400 dark:bg-yellow-500'
+              else if (masteryPct >= 0.8) color = 'bg-green-500'
+              else if (masteryPct >= 0.6) color = 'bg-blue-400'
+              else if (masteryPct >= 0.3) color = 'bg-amber-400'
+              else if (masteryPct > 0) color = 'bg-red-300 dark:bg-red-700'
+              else color = 'bg-neutral-100 dark:bg-neutral-600'
+              
+              return (
+                <button key={node.id}
+                  onClick={() => { if (!locked) onOpenLesson?.(node.id) }}
+                  disabled={locked}
+                  className={`w-full aspect-square rounded-md ${color} transition-all hover:ring-2 hover:ring-indigo-400 cursor-pointer disabled:cursor-not-allowed relative group`}
+                  title={`${node.title} (${Math.round(masteryPct * 100)}%)`}>
+                  {/* Tooltip on hover */}
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-neutral-800 text-white text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    {node.title} — {Math.round(masteryPct * 100)}%
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex items-center gap-3 mt-3 text-[9px] text-neutral-400">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400" /> Mastered</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500" /> 80%+</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-400" /> Learning</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400" /> Started</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-300" /> Needs work</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-neutral-200 dark:bg-neutral-700" /> Locked</span>
+          </div>
+        </div>
+      )}
+
       {/* Lessons by level */}
-      <div className="space-y-6">
-        {Object.entries(byLevel).map(([level, levelNodes]) => (
-          <div key={level}>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">Level {level}</h3>
-            <div className="space-y-1.5">
-              {levelNodes.map(node => {
-                const cs = CATEGORY_STYLES[node.category] || {}
-                const isMastered = node.mastery >= 0.8
-                const isLearning = node.mastery > 0 && node.mastery < 0.8
-                const isLocked = !node.unlocked
+      {!showMasteryMap && (
+        <div className="space-y-6">
+          {Object.entries(byLevel).map(([level, levelNodes]) => (
+            <div key={level}>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">Level {level}</h3>
+              <div className="space-y-1.5">
+                {levelNodes.map(node => {
+                  const cs = CATEGORY_STYLES[node.category] || {}
+                  const isMastered = node.mastery >= 0.8
+                  const isLearning = node.mastery > 0 && node.mastery < 0.8
+                  const isLocked = !node.unlocked
 
-                return (
-                  <button key={node.id} onClick={() => { if (!isLocked) onOpenLesson?.(node.id) }} disabled={isLocked}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
-                      ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
-                        : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
-                        : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
-                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
-                      }`}>
-                    {/* Status dot */}
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
-                        : isMastered ? 'bg-green-500'
-                        : isLearning ? 'bg-amber-500'
-                        : 'bg-neutral-200 dark:bg-neutral-700'
-                    }`} />
+                  return (
+                    <button key={node.id} onClick={() => { if (!isLocked) onOpenLesson?.(node.id) }} disabled={isLocked}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
+                        ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
+                          : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
+                          : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
+                          : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
+                        }`}>
+                      {/* Status dot */}
+                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                        isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
+                          : isMastered ? 'bg-green-500'
+                          : isLearning ? 'bg-amber-500'
+                          : 'bg-neutral-200 dark:bg-neutral-700'
+                      }`} />
 
-                    {/* Level */}
-                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-6 shrink-0">L{node.level}</span>
+                      {/* Level */}
+                      <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-6 shrink-0">L{node.level}</span>
 
-                    {/* Title + category */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium truncate ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'}`}>
-                          {node.title}
-                        </span>
-                        {cs?.label && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cs.bg} ${cs.text} ${cs.border} border`}>
-                            {cs.icon} {cs.label}
+                      {/* Title + category */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium truncate ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'}`}>
+                            {node.title}
                           </span>
+                          {cs?.label && (
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cs.bg} ${cs.text} ${cs.border} border`}>
+                              {cs.icon} {cs.label}
+                            </span>
+                          )}
+                        </div>
+                        {node.description && (
+                          <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
                         )}
                       </div>
-                      {node.description && (
-                        <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
-                      )}
-                    </div>
 
-                    {/* Mastery bar */}
-                    <div className="w-14 shrink-0">
-                      <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
-                          style={{ width: `${node.mastery * 100}%` }} />
+                      {/* Mastery bar */}
+                      <div className="w-14 shrink-0">
+                        <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
+                            style={{ width: `${node.mastery * 100}%` }} />
+                        </div>
+                        <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>
                       </div>
-                      <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>
-                    </div>
 
-                    {isLocked && <span className="text-xs text-neutral-400 shrink-0">🔒</span>}
-                    {!isLocked && !isMastered && <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
-                  </button>
-                )
-              })}
+                      {/* Learning speed indicator */}
+                      {!isLocked && node.learning_speed !== undefined && (
+                        <div className="w-6 shrink-0 flex items-center justify-center" title={
+                          node.learning_speed > 1.5 ? 'Fast learner on this topic' :
+                          node.learning_speed >= 0.8 ? 'Normal pace' :
+                          node.learning_speed >= 0.4 ? 'Needs extra practice' :
+                          'Struggling — review prerequisites'
+                        }>
+                          <span className={`text-xs ${
+                            node.learning_speed > 1.5 ? 'text-green-500' :
+                            node.learning_speed >= 0.8 ? 'text-blue-400' :
+                            node.learning_speed >= 0.4 ? 'text-amber-500' :
+                            'text-red-500'
+                          }`}>
+                            {node.learning_speed > 1.5 ? '⚡' :
+                             node.learning_speed >= 0.8 ? '→' :
+                             node.learning_speed >= 0.4 ? '～' :
+                             '⚠'}
+                          </span>
+                        </div>
+                      )}
+
+                      {isLocked && <span className="text-xs text-neutral-400 shrink-0">🔒</span>}
+                      {!isLocked && !isMastered && <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 && (
         <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">

@@ -286,9 +286,9 @@ def main():
     for i, w in enumerate(words):
         lid = make_lesson_id(w['hebrew'], i)
         
-        # Skip if already exists
-        existing_node = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (lid,)).fetchone()
-        if existing_node:
+        # Skip if practice items already exist for this node
+        existing_items = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
+        if existing_items:
             continue
         
         # Find a verse example

@@ -350,6 +350,43 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
         </div>
       )}
 
+      {/* Verse attestations — show real scripture examples of this concept */}
+      {batch === 0 && node?.verse_attestations?.length > 0 && Object.keys(submitted).length === 0 && (
+        <div className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm">📖</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
+              In Scripture — {node.verse_attestations.length} witnesses
+            </span>
+            <span className="text-[8px] text-green-500 dark:text-green-400">
+              (consistency through multiple attestations)
+            </span>
+          </div>
+          <div className="space-y-2">
+            {node.verse_attestations.map((att, i) => (
+              <div key={i} className="p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-green-200 dark:border-green-700">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[10px] font-mono font-medium text-green-700 dark:text-green-300">{att.verse_id}</span>
+                  {att.attestation_type && (
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                      {att.attestation_type.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
+                {att.text && (
+                  <p className="text-[11px] text-neutral-700 dark:text-neutral-300 italic leading-relaxed">
+                    “{att.text}”
+                  </p>
+                )}
+                {att.explanation && (
+                  <p className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5">{att.explanation}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Progress + speed */}
       <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <div className="flex-1">

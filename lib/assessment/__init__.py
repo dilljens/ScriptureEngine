@@ -1,8 +1,8 @@
 from .engine import AssessmentEngine
-from .items import ItemGenerator
+from .items import DeepQuestionGenerator, build_deep_questions
 from .models import BLIM, KnowledgeState
 
-__all__ = ['AssessmentEngine', 'ItemGenerator', 'BLIM', 'KnowledgeState']
+__all__ = ['AssessmentEngine', 'DeepQuestionGenerator', 'build_deep_questions', 'BLIM', 'KnowledgeState']
 
 # Self-test
 if __name__ == "__main__":

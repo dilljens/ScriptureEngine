@@ -1004,7 +1004,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
                p.options_json, p.correct_answer, p.explanation
         FROM hebrew_nodes n
         JOIN hebrew_practice_items p ON p.node_id = n.id
-        WHERE n.category = ? AND p.question_type IN ('multiple_choice', 'transliteration', 'recall')
+        WHERE n.category = ? AND p.question_type IN ('multiple_choice', 'transliteration', 'recall', 'typing', 'cloze', 'contrast')
         ORDER BY RANDOM()
         LIMIT ?
     """, (category, count * 3)).fetchall()  # extra for diversity
@@ -1029,18 +1029,22 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
         options = json.loads(n['options_json']) if n['options_json'] else []
         correct = n['correct_answer']
         
-        # Determine the correct answer index
-        correct_idx = 0
-        for i, opt in enumerate(options):
-            if opt == correct or opt.strip() == correct.strip():
-                correct_idx = i
-                break
+        # Determine the correct answer (index for choice types, text for production types)
+        correct_answer_val = correct
+        if n['question_type'] in ('multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification'):
+            correct_idx = 0
+            for i, opt in enumerate(options):
+                if opt == correct or opt.strip() == correct.strip():
+                    correct_idx = i
+                    break
+            correct_answer_val = correct_idx
         
         questions.append({
             "node_id": nid,
             "question": n['question_text'],
             "options": options,
-            "correctAnswer": correct_idx,
+            "correctAnswer": correct_answer_val,
+            "hebrewGlyph": "",  # will be filled from node data if available
             "explanation": n['explanation'] or '',
             "category": n['category'],
             "nodeTitle": n['title'],

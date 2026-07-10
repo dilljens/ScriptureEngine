@@ -10,7 +10,7 @@ Usage:
   # Open http://localhost:8000/docs for interactive API browser
 """
 
-import sys, os, json, sqlite3, time, asyncio
+import sys, os, json, sqlite3, time, asyncio, logging
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -69,11 +69,21 @@ from web.routes.audio import router as audio_router
 from web.routes.chat import router as chat_router
 from web.routes.studies import router as studies_router
 from web.routes.conversations import router as conversations_router
+from web.routes.assessment import router as assessment_router
+from web.routes.auth import router as auth_router
+from web.routes.graph import router as graph_router
+from web.routes.memorize import router as memorize_router
+from web.routes.learn import router as learn_router
 app.include_router(hebrew_router)
 app.include_router(audio_router)
 app.include_router(chat_router)
 app.include_router(studies_router)
 app.include_router(conversations_router)
+app.include_router(assessment_router)
+app.include_router(auth_router)
+app.include_router(graph_router)
+app.include_router(memorize_router)
+app.include_router(learn_router)
 
 
 # ─── RAM Cache (loaded at startup, zero disk reads after) ───
@@ -82,6 +92,33 @@ VERSE_CACHE = {}          # verse_id → {id, text_english, text_hebrew, text_gr
 ENTITY_CACHE = []         # all entity links
 LEXICON_CACHE = {}        # lemma → lexicon entry (loaded at startup)
 VEC_CACHE = {"available": False}  # vector search — populated by embed script
+
+# ── Structured JSON Logger ──
+
+class JSONLogger:
+    """Simple JSON-structured logger. Replaces print() for server-side logging."""
+    def _log(self, level, msg, **extra):
+        record = {"level": level, "msg": msg, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        record.update(extra)
+        print(json.dumps(record), flush=True)
+    
+    def info(self, msg, **extra): self._log("info", msg, **extra)
+    def warn(self, msg, **extra): self._log("warn", msg, **extra)
+    def error(self, msg, **extra): self._log("error", msg, **extra)
+
+log = JSONLogger()
+
+# ── Request Timing Middleware ──
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    if duration > 2.0:
+        log.warn("slow_request", method=request.method, path=str(request.url.path),
+                 duration=round(duration, 3), status=response.status_code)
+    return response
 
 
 @app.on_event("startup")
@@ -2517,30 +2554,58 @@ def create_annotation(ann: AnnotationCreate):
 
 @app.get("/api/v1/health")
 def health_check():
-    """Simple health check returning server status."""
+    """Health check with DB integrity, cache status, version, and uptime."""
+    import time as _time
     conn = get_db()
     verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
-    conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
+    conn_count = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
+    
+    # DB integrity check
+    integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+    
+    # Traditional distribution summary
+    trad_dist = {
+        r[0]: r[1] for r in conn.execute(
+            "SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt "
+            "FROM connections WHERE deprecated=0 GROUP BY t ORDER BY cnt DESC"
+        ).fetchall()
+    }
+    
+    # Layer distribution
+    layer_dist = {
+        r[0]: r[1] for r in conn.execute(
+            "SELECT layer, COUNT(*) as cnt FROM connections WHERE deprecated=0 GROUP BY layer ORDER BY cnt DESC"
+        ).fetchall()
+    }
+    
+    # Audio alignments count
     audio_count = 0
-    align_dir = Path(__file__).parent.parent / "data" / "audio" / "alignments"
+    align_dir = Path(__file__).resolve().parent.parent / "data" / "audio" / "alignments"
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
+    
+    # Uptime (if server started capturing it)
+    uptime_seconds = int(_time.time() - globals().get("_start_time", _time.time())) if "_start_time" in globals() else 0
     conn.close()
+    
     return {"ok": True, "data": {
-        "status": "running",
+        "status": "ok" if integrity == "ok" else "degraded",
+        "version": "1.0.0",
+        "uptime_seconds": uptime_seconds,
+        "verses": verse_count,
         "connections": conn_count,
-        "guides": 41126,
+        "integrity": integrity,
+        "traditional_distribution": trad_dist,
+        "layer_distribution": layer_dist,
+        "audio_alignments": audio_count,
         "tools": len(TOOL_REGISTRY),
         "lexicon": len(LEXICON_CACHE),
-        "wiki": len(globals().get("WIKI_CACHE", {})),
-        "audio_alignments": audio_count,
-        "ratings_available": True,
-        "rating_tiers": ["verified(5★)","strong(4★)","probable(3★)","suggested(2★)","pattern(1★)"],
-        "star_scale": "1-5",
-        "rating_system": "Multi-signal: discovery_method + connection_type + reasoning + confidence + confirmations",
-        "api_filtering": "Filter by: layer, min_quality, discovered_by, min_confidence, show_signals",
-        "user_feedback": "POST /api/v1/connections/feedback — confirm, reject, or unclear",
     }}
+
+
+# Track server start time
+import time as _time
+_start_time = _time.time()
 
 
 # ─── Conversation sessions moved to web/routes/conversations.py ───

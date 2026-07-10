@@ -2,15 +2,15 @@ import React from 'react'
 
 /**
  * Mobile menu drawer — slide-out panel with navigation options.
- * Now includes Hebrew, Memorize, and Knowledge buttons.
+ * Includes Hebrew, Memorize, Knowledge, Wiki, and settings.
  */
 export default function MobileMenuDrawer({
   open, onClose,
-  onGraph, onLayers, onHistory, onStructure,
+  onWiki, onLayers, onHistory, onStructure,
   darkMode, onToggleDarkMode,
   fontSize, onChangeFontSize,
   onSettings,
-  onHebrew, onMemorize, onKnowledge,
+  onHebrew, onMemorize, onKnowledge, onHubNotes,
 }) {
   if (!open) return null
 
@@ -23,16 +23,17 @@ export default function MobileMenuDrawer({
 
         {/* Learning Row */}
         <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Learning</p>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-3 mb-4">
           <MenuButton icon="📖" label="Hebrew" onClick={onHebrew} badge="new" />
           <MenuButton icon="🧠" label="Memorize" onClick={onMemorize} badge="" />
-          <MenuButton icon="✍️" label="Knowledge" onClick={onKnowledge} badge="" />
+          <MenuButton icon="📚" label="Learn" onClick={onKnowledge} badge="" />
+          <MenuButton icon="🗺️" label="Paths" onClick={onHubNotes} />
+          <MenuButton icon="📖" label="Wiki" onClick={onWiki} />
         </div>
 
         {/* Tools Row */}
         <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Tools</p>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <MenuButton icon="⊞" label="Graph" onClick={onGraph} />
           <MenuButton icon="☰" label="Layers" onClick={onLayers} />
           <MenuButton icon="⊞" label="Structure" onClick={onStructure} />
           <MenuButton icon="🕐" label="History" onClick={onHistory} />

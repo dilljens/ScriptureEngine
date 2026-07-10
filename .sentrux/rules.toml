@@ -1,0 +1,9 @@
+[constraints]
+max_cycles = 0
+max_cc = 30
+no_god_files = true
+no_god_file_lines = 1000
+
+# Default: flat project. Override [[layers]] and [[boundaries]] 
+# as the project grows to enforce dependency direction.
+# See: https://github.com/sentrux/sentrux

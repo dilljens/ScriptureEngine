@@ -1,251 +1,115 @@
 import React, { useEffect, useState } from 'react'
-import { memorizeApi } from '../memorizeApi'
+import MemorizeQueue from './MemorizeQueue'
 
-import ReviewSession from './ReviewSession'
-import PalaceList from './PalaceList'
-import PalaceBuilder from './PalaceBuilder'
-
-const BADGE_NAMES = {
-  '100_xp': '🌟 Scholar',
-  '500_xp': '🔥 Dedicated',
-  '1000_xp': '💎 Master',
-  '10_mastered': '📖 Learner',
-  '50_mastered': '🏆 Memorizer',
-  'week_streak': '📅 Weekly Warrior',
-  'month_streak': '📅 Iron Will',
-}
-
+/**
+ * MemorizeView — spaced repetition verse memorization.
+ * Uses Python backend (web/routes/memorize.py) with FSRS-5 scheduling.
+ */
 export default function MemorizeView() {
-  const [view, setView] = useState('loading') // 'loading' | 'dashboard' | 'review' | 'palaces' | 'palace-builder'
-  const [activePalaceId, setActivePalaceId] = useState(null)
-  const [stats, setStats] = useState(null)
-  const [error, setError] = useState(null)
+  const [view, setView] = useState('queue') // queue | review
+  const [reviewData, setReviewData] = useState([])
+  const [reviewIdx, setReviewIdx] = useState(0)
+  const [rating, setRating] = useState(null)
+  const [stats, setStats] = useState({ total: 0, mastered: 0, learning: 0 })
 
-  useEffect(() => {
-    let cancelled = false
-    memorizeApi.get('/stats')
-      .then(data => {
-        if (cancelled) return
-        setStats(data.stats || {})
-        if (data.stats?.due_cards > 0) {
-          setView('review')
-        } else {
-          setView('dashboard')
-        }
+  const loadStats = async () => {
+    try {
+      const r = await fetch('/api/v1/memorize/queue')
+      const d = await r.json()
+      if (d.ok) {
+        const verses = d.data.verses || []
+        setStats({
+          total: verses.length,
+          mastered: verses.filter(v => (v.mastery || 0) >= 0.8).length,
+          learning: verses.filter(v => (v.mastery || 0) > 0 && (v.mastery || 0) < 0.8).length,
+        })
+      }
+    } catch {}
+  }
+
+  const startReview = async () => {
+    try {
+      const r = await fetch('/api/v1/memorize/review?limit=10')
+      const d = await r.json()
+      if (d.ok) {
+        setReviewData(d.data.reviews || [])
+        setReviewIdx(0)
+        setRating(null)
+        setView('review')
+      }
+    } catch {}
+  }
+
+  const submitRating = async (r) => {
+    if (!reviewData[reviewIdx]) return
+    try {
+      await fetch(`/api/v1/memorize/review/${reviewData[reviewIdx].queue_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: r }),
       })
-      .catch(err => {
-        if (!cancelled) {
-          setError(err.message)
-          setView('dashboard')
-        }
-      })
-    return () => { cancelled = true }
-  }, [])
-
-  if (view === 'review') {
-    return <ReviewSession onDone={() => setView('dashboard')} />
+    } catch {}
+    setRating(r)
+    setTimeout(() => {
+      if (reviewIdx + 1 < reviewData.length) {
+        setReviewIdx(p => p + 1)
+        setRating(null)
+      } else {
+        setView('queue')
+        loadStats()
+      }
+    }, 1000)
   }
 
-  if (view === 'palaces') {
-    return <PalaceList
-      onSelect={(id) => { setActivePalaceId(id); setView('palace-builder') }}
-      onCreate={() => {}}
-    />
-  }
+  useEffect(() => { loadStats() }, [])
 
-  if (view === 'palace-builder' && activePalaceId) {
-    return <PalaceBuilder palaceId={activePalaceId} onBack={() => setView('palaces')} />
-  }
-
-  return (<>
-    <div className="max-w-2xl mx-auto p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-          <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-indigo-600 dark:text-indigo-400"><path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5v-9z" /><path d="M5.5 4.5v7M8 4.5v7M10.5 4.5v3" /></svg>
+  if (view === 'review' && reviewData.length > 0) {
+    const item = reviewData[reviewIdx]
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => setView('queue')} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Queue</button>
+          <span className="text-[10px] text-neutral-400">{reviewIdx + 1}/{reviewData.length}</span>
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Memorize</h1>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Spaced repetition · Memory palaces · AI imagery
-          </p>
+        <div className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 text-center">
+          <p className="text-[10px] font-mono text-indigo-400 mb-2">{item.verse_id}</p>
+          <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 mb-6 italic">"{item.text}"</p>
+          <div className="flex gap-2 justify-center">
+            {rating === null ? (
+              <>
+                {[
+                  { val: 1, label: 'Again', color: 'bg-red-500 hover:bg-red-600' },
+                  { val: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-600' },
+                  { val: 3, label: 'Good', color: 'bg-green-500 hover:bg-green-600' },
+                  { val: 4, label: 'Easy', color: 'bg-blue-500 hover:bg-blue-600' },
+                ].map(b => (
+                  <button key={b.val} onClick={() => submitRating(b.val)}
+                    className={`px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color}`}>
+                    {b.label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <p className="text-sm text-green-600 font-medium">✓ Recorded</p>
+            )}
+          </div>
         </div>
       </div>
+    )
+  }
 
-      {/* Connection error */}
-      {error && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 text-sm text-amber-700 dark:text-amber-400 mb-4">
-          <p className="font-medium">Memorization service unavailable</p>
-          <p className="mt-1 text-xs opacity-80">
-            Start the Go backend to enable review features.
-          </p>
-        </div>
-      )}
-
-      {/* Stats row + Quick start + Feature cards */}
-      {stats && (
-        <div className="contents">
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          <StatBox label="Cards" value={stats.total_cards || 0} />
-          <StatBox label="Due" value={stats.due_cards || 0} highlight />
-          <StatBox label="Mastered" value={stats.mastered || 0} />
-          <StatBox label="Streak" value={`${stats.streak || 0}d`} />
-        </div>
-
-        {/* XP + Reviews Today */}
-        <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-4 px-1">
-          <span>{stats.total_xp || 0} total XP</span>
-          <span>{stats.reviews_today || 0} reviews today</span>
-        </div>
-
-        {/* Badges */}
-        {stats.badges && stats.badges.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Badges</p>
-            <div className="flex flex-wrap gap-1.5">
-              {stats.badges.map(b => (
-                <span key={b} className="text-[10px] px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                  {BADGE_NAMES[b] || b}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Heatmap (last 30 days) */}
-        {stats.heatmap && stats.heatmap.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Last 30 Days</p>
-            <div className="flex gap-0.5 flex-wrap">
-              {stats.heatmap.map((d, i) => (
-                <div
-                  key={i}
-                  className="w-3 h-3 rounded-sm"
-                  style={{
-                    backgroundColor: d.count > 10
-                      ? '#4f46e5'
-                      : d.count > 5
-                      ? '#818cf8'
-                      : d.count > 2
-                      ? '#a5b4fc'
-                      : d.count > 0
-                      ? '#c7d2fe'
-                      : '#e5e7eb'
-                  }}
-                  title={`${d.date}: ${d.count} reviews`}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Top verses */}
-        {stats.top_verses && stats.top_verses.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-1.5">Most Reviewed</p>
-            <div className="space-y-0.5">
-              {stats.top_verses.map((v, i) => (
-                <div key={i} className="text-[11px] text-neutral-500 dark:text-neutral-400 flex justify-between">
-                  <span>{v.verse}</span>
-                  <span className="tabular-nums">{v.reviews}x</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        </div>
-        )}
-      )}
-
-      {/* Quick start */}
-      {stats && stats.due_cards > 0 && (
-        <button
-          onClick={() => setView('review')}
-          className="w-full py-3 px-4 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white font-medium text-sm mb-6 transition-colors"
-        >
-          Start Review ({stats.due_cards} cards due)
-        </button>
-      )}
-
-      {/* Feature cards — always visible */}
-      <div className="grid gap-3">
-        <FeatureCard
-          icon="📋"
-          title="Review Queue"
-          description="FSRS spaced repetition — review due cards"
-          badge={stats?.due_cards > 0 ? `${stats.due_cards} due` : 'Up to date'}
-          ready={stats?.due_cards > 0}
-        />
-        <button onClick={() => setView('palaces')} className="w-full text-left">
-          <FeatureCard
-            icon="🏛️"
-            title="Memory Palaces"
-            description="Upload photos, place loci, assign verses"
-            badge="Ready"
-            ready={true}
-          />
-        </button>
-        <FeatureCard
-          icon="🎨"
-          title="Image Studio"
-          description="Generate concept images for each verse"
-          badge="Phase 4"
-          ready={false}
-        />
-        <FeatureCard
-          icon="🎤"
-          title="Audio Studio"
-          description="Record and review your recitations"
-          badge="Phase 8"
-          ready={false}
-        />
-        <FeatureCard
-          icon="📊"
-          title="Analytics"
-          description="Streak, heat maps, accuracy trends"
-          badge="Phase 9"
-          ready={false}
-        />
-      </div>
-    </div>
-    </>
-  )
-}
-
-function StatBox({ label, value, highlight }) {
   return (
-    <div className={`rounded-lg border p-3 text-center ${
-      highlight
-        ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30'
-        : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900'
-    }`}>
-      <div className={`text-lg font-bold tabular-nums ${
-        highlight
-          ? 'text-indigo-600 dark:text-indigo-400'
-          : 'text-neutral-900 dark:text-neutral-100'
-      }`}>{value}</div>
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">{label}</div>
-    </div>
-  )
-}
-
-function FeatureCard({ icon, title, description, badge, ready }) {
-  return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-      <span className="text-lg shrink-0 mt-0.5">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{title}</h3>
-          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-            ready
-              ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
-              : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500'
-          }`}>
-            {badge}
-          </span>
+    <div>
+      <MemorizeQueue onStartReview={startReview} />
+      {stats.total > 0 && (
+        <div className="max-w-2xl mx-auto px-4 pb-4">
+          <div className="flex items-center gap-3 text-[10px] text-neutral-400">
+            <span>{stats.total} verses</span>
+            <span>{stats.mastered} mastered</span>
+            <span>{stats.learning} learning</span>
+          </div>
         </div>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{description}</p>
-      </div>
+      )}
     </div>
   )
 }
