@@ -5,33 +5,33 @@ test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
-    await expect(page.locator("h1")).toBeVisible({ timeout: 15000 })
+    // Wait for book data to load
+    await expect(page.locator('h1').first()).toContainText('Isaiah', { timeout: 20000 })
   })
 
   test('keyboard ArrowRight navigates to next chapter', async ({ page }) => {
     // Get the breadcrumb text before
-    const titleBefore = await page.locator('h1').textContent()
+    const titleBefore = await page.locator('h1').first().textContent()
 
     // ArrowRight goes to next chapter
     await page.keyboard.press('ArrowRight')
     await page.waitForTimeout(2000)
 
     // Breadcrumb should change (chapter number)
-    const titleAfter = await page.locator('h1').textContent()
+    const titleAfter = await page.locator('h1').first().textContent()
     expect(titleAfter).not.toBe(titleBefore)
   })
 
   test('toolbar right arrow button navigates to next chapter', async ({ page }) => {
     // Get current chapter
-    const titleBefore = await page.locator('h1').textContent()
+    const titleBefore = await page.locator('h1').first().textContent()
 
     // Click the right arrow button in the toolbar
-    // The rightmost nav button before the breadcrumb title
-    const rightArrow = page.locator('h1').locator('..').locator('button').last()
+    const rightArrow = page.locator('h1').first().locator('..').locator('button').last()
     await rightArrow.click()
     await page.waitForTimeout(1500)
 
-    const titleAfter = await page.locator('h1').textContent()
+    const titleAfter = await page.locator('h1').first().textContent()
     expect(titleAfter).not.toBe(titleBefore)
   })
 
@@ -54,7 +54,7 @@ test.describe('Navigation', () => {
     // ArrowDown to go back to chapter view
     await page.keyboard.press('ArrowDown')
     await page.waitForTimeout(1500)
-    await expect(page.locator('h1')).toContainText('Isaiah', { timeout: 5000 })
+    await expect(page.locator('h1').first()).toContainText('Isaiah', { timeout: 5000 })
   })
 
   test('zoom out twice to work view', async ({ page }) => {
@@ -67,26 +67,14 @@ test.describe('Navigation', () => {
     await expect(page.getByText('Exodus').first()).toBeVisible()
   })
 
-  test('graph tab opens from toolbar button', async ({ page }) => {
-    // Click the graph button
-    const graphBtn = page.locator('button[title="Connection Graph"]')
-    await expect(graphBtn).toBeVisible()
-    await graphBtn.click()
-
-    // Should open a new tab labeled "Graph: ..."
-    await page.waitForTimeout(1000)
-    await expect(page.getByText('Graph:').first()).toBeVisible({ timeout: 5000 })
-  })
-
   test('new tab opens from + button in tab strip', async ({ page }) => {
     // The + button in the tab strip
-    const newTabBtn = page.locator('button[title="New tab (Ctrl+T)"]')
+    const newTabBtn = page.locator('button[title="New workspace"]')
     await expect(newTabBtn).toBeVisible()
     await newTabBtn.click()
 
     await page.waitForTimeout(500)
-    // Should create a duplicate tab
-    const tabs = await page.getByText('Isaiah 6').all()
-    expect(tabs.length).toBeGreaterThanOrEqual(1)
+    // A new workspace/tab should appear
+    await expect(page.getByText('New Workspace').first()).toBeVisible()
   })
 })

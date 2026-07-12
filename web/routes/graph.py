@@ -6,7 +6,7 @@ Endpoints:
   GET /api/v1/graph/search?q=X&limit=N
   GET /api/v1/connections/{verse_a}/{verse_b}/explain
 """
-import json, sqlite3, re, math, time
+import json, sqlite3, re, math, time, os
 from pathlib import Path
 from collections import defaultdict, Counter
 
@@ -921,11 +921,12 @@ def grade_answer(body: GradingRequest):
     
     # Fetch user progress context if user_id provided
     user_context = ""
+    _api_base = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
     if body.user_id:
         try:
             import requests as _req
             prog = _req.get(
-                f"http://localhost:8000/api/v1/user/progress/{body.user_id}",
+                f"{_api_base}/api/v1/user/progress/{body.user_id}",
                 timeout=5
             ).json()
             if prog.get("ok"):
@@ -979,8 +980,7 @@ def grade_answer(body: GradingRequest):
     result = {}
     try:
         import requests
-        api_base = "http://localhost:8000"
-        resp = requests.post(f"{api_base}/api/v1/chat", json={
+        resp = requests.post(f"{_api_base}/api/v1/chat", json={
             "message": prompt,
             "model": "default",
         }, timeout=30)

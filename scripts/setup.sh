@@ -109,6 +109,6 @@ fi
 # ── Done ──
 echo ""
 echo "=== Setup complete! ==="
-echo "  Start the API:   .venv/bin/uvicorn web.server:app --reload --port 8000"
+echo "  Start the API:   .venv/bin/uvicorn web.server:app --reload --port ${SCRIPTURE_API_PORT:-8002}"
 echo "  Start frontend:  cd frontend && npx vite dev"
 echo "  Open browser:    http://localhost:5173"

@@ -1,6 +1,6 @@
 # Scripture Knowledge Engine — Architecture Overview
 
-**Build**: `python3 scripts/ingest.py`  **Serve**: `./run.sh web`  **API**: `http://localhost:8000/docs`
+**Build**: `python3 scripts/ingest.py`  **Serve**: `./run.sh web`  **API**: `http://localhost:8002/docs`
 **Database**: `data/processed/scripture.db` (1,028,083 connections, 41,126 passage guides, 42,054 vector embeddings)
 
 ## Quick Reference

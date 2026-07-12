@@ -92,7 +92,7 @@ def evaluate_with_llm(items):
     prompt = "\n".join(prompt_parts)
     
     # Call the local chat endpoint
-    api_url = "http://localhost:8000/api/v1/chat"
+    api_url = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002") + "/api/v1/chat"
     req_data = json.dumps({"message": prompt, "model": "default"}).encode()
     req = urllib.request.Request(api_url, data=req_data, 
                                  headers={"Content-Type": "application/json"},

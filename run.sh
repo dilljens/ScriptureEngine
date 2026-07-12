@@ -114,7 +114,7 @@ case "${1:-help}" in
   web)
     # Usage: ./run.sh web [--workers N] [--port N]
     WORKERS=2
-    PORT=8000
+    PORT=${SCRIPTURE_API_PORT:-8002}
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --workers) WORKERS="$2"; shift 2 ;;

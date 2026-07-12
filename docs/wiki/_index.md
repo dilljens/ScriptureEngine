@@ -8,7 +8,7 @@ Live at **https://scriptureengine.org** — OVHcloud VPS (4 vCore, 8GB RAM), sys
 
 ```bash
 # Start API
-./run.sh web              # uvicorn on port 8000 (2 workers by default)
+./run.sh web              # uvicorn on port 8002 (2 workers by default)
 
 # Database
 ./run.sh info             # Stats: verses, connections per layer
@@ -61,7 +61,7 @@ lib/db.py                ← SQLite (data/processed/scripture.db)
      ├── lib/lexicon/     ← Lemma/lexicon search
      └── lib/api/         ← Shared tool registry
 
-web/server.py            ← FastAPI HTTP (port 8000, 2 workers)
+web/server.py            ← FastAPI HTTP (port 8002, 2 workers)
      │
      ├── /api/v1/verses/{ref}          [?context=N]
      ├── /api/v1/verses/{ref}/guide

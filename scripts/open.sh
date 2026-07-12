@@ -6,7 +6,7 @@
 
 set -e
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-API_PORT="${SCRIPTURE_API_PORT:-8000}"
+API_PORT="${SCRIPTURE_API_PORT:-8002}"
 FE_PORT="${SCRIPTURE_FE_PORT:-5173}"
 API_PID_FILE="/tmp/scripture-dev-api.pid"
 FE_PID_FILE="/tmp/scripture-dev-fe.pid"

@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { cleanHebrew, lineHasChiasmRole } from '../utils'
 import WordPopup from './WordPopup'
+import DisagreementsPanel from './DisagreementsPanel'
+import JSTDiffViewer from './JSTDiffViewer'
 
 // ── Transliteration maps ──
 
@@ -202,6 +204,30 @@ function ConnectionPanel({ extraConnections, tskRefs, navigateToRef }) {
                         <span className="text-neutral-500 dark:text-neutral-400 shrink-0 min-w-[3.5rem]">
                           {c.type.replace(/_/g, ' ')}
                         </span>
+                        {/* Hermeneutic badge */}
+                        {c.hermeneutic && c.hermeneutic !== 'linguistic' && (
+                          <span className={`text-[8px] px-1 rounded shrink-0 font-medium ${
+                            c.hermeneutic === 'faith' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                            c.hermeneutic === 'historical_critical' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                            c.hermeneutic === 'structural' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                            'bg-neutral-100 dark:bg-neutral-700 text-neutral-500'
+                          }`}>
+                            {c.hermeneutic === 'faith' ? '✝️' : c.hermeneutic === 'historical_critical' ? '🔬' : c.hermeneutic === 'structural' ? '⟷' : c.hermeneutic}
+                          </span>
+                        )}
+                        {/* Tradition badge */}
+                        {c.tradition && c.tradition !== 'none' && (
+                          <span className={`text-[8px] px-1 rounded shrink-0 font-medium ${
+                            c.tradition === 'jewish' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' :
+                            c.tradition === 'christian' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
+                            c.tradition === 'lds' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
+                            c.tradition === 'critical_scholarship' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                            c.tradition === 'multiple' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                            'bg-neutral-100 dark:bg-neutral-700 text-neutral-500'
+                          }`}>
+                            {c.tradition === 'jewish' ? '✡️' : c.tradition === 'christian' ? '✝️' : c.tradition === 'lds' ? '📖' : c.tradition === 'multiple' ? '🤝' : c.tradition}
+                          </span>
+                        )}
                         {/* Target */}
                         <span className="font-mono font-medium text-neutral-700 dark:text-neutral-300 truncate">
                           {c.target}
@@ -553,6 +579,12 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
 
       {/* Unified connections panel — grouped, filterable, clickable */}
       <ConnectionPanel extraConnections={extraConnections} tskRefs={tskRefs} navigateToRef={navigateToRef} />
+
+      {/* Interpretive disagreements — contradictory readings across traditions */}
+      {verse?.id && <DisagreementsPanel verse={verse.id} onNavigate={(book, ch) => navigateToRef(`${book}.${ch}.1`)} />}
+
+      {/* JST diff — shows JST text changes for this verse */}
+      {verse?.id && <JSTDiffViewer verse={verse.id} />}
 
       {/* Expand — footnotes with clickable references */}
       {expanded && (

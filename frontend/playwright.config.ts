@@ -31,6 +31,6 @@ export default defineConfig({
     url: 'http://127.0.0.1:5176',
     reuseExistingServer: true,
     timeout: 30000,
-    cwd: '/home/dillon/_code/scripture-explorer/frontend',
+    cwd: '/home/dillon/_code/scriptureengine/frontend',
   },
 })

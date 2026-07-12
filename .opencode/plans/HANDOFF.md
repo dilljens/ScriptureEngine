@@ -101,7 +101,7 @@ Needs 3 things:
 
 ```bash
 # Start API server
-./run.sh web            # http://localhost:8000/docs
+./run.sh web            # http://localhost:8002/docs
 
 # Generate wiki articles
 python3 generators/generate_wiki_articles.py --entity covenant

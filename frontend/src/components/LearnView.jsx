@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { preprocess, createComponents } from '../lib/scripture-markdown'
+import CardQueue from './CardQueue'
+import { lessonToCards } from '../lib/card-factory'
 
 /**
  * LearnView — structured learning modules following The Math Academy Way.
@@ -33,9 +38,12 @@ export default function LearnView({ userId = 'default', onBack }) {
   const [openInput, setOpenInput] = useState('')
   const [llmGrade, setLlmGrade] = useState(null)
   const [submitted, setSubmitted] = useState(false)
+  const [showNext, setShowNext] = useState(false)
   const [showLesson, setShowLesson] = useState(true)
   const [phase, setPhase] = useState('list')
   const [subjectFilter, setSubjectFilter] = useState('all')
+  const [practiceCards, setPracticeCards] = useState([])
+  const [answerState, setAnswerState] = useState({})
 
   const loadModules = async () => {
     setLoading(true)
@@ -49,7 +57,7 @@ export default function LearnView({ userId = 'default', onBack }) {
   }
 
   const loadModule = async (id) => {
-    setLoading(true); setQIdx(0); setSelected(null); setSubmitted(false); setShowLesson(true); setOpenInput(''); setLlmGrade(null)
+    setLoading(true); setQIdx(0); setSelected(null); setSubmitted(false); setShowNext(false); setShowLesson(true); setOpenInput(''); setLlmGrade(null)
     try {
       const r = await fetch(`/api/v1/learn/modules/${id}?user_id=${userId}`)
       const d = await r.json()
@@ -57,6 +65,14 @@ export default function LearnView({ userId = 'default', onBack }) {
       else setError(d.detail)
     } catch (e) { setError(e.message) }
     setLoading(false)
+  }
+
+  const advanceToNext = () => {
+    if (qIdx + 1 < currentModule.questions.length) {
+      setQIdx(p => p + 1); setSelected(null); setSubmitted(false); setShowNext(false); setOpenInput(''); setLlmGrade(null)
+    } else {
+      setPhase('complete')
+    }
   }
 
   const submitAnswer = async (correct) => {
@@ -69,13 +85,7 @@ export default function LearnView({ userId = 'default', onBack }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, question_id: q.id, correct }),
     })
-    setTimeout(() => {
-      if (qIdx + 1 < currentModule.questions.length) {
-        setQIdx(p => p + 1); setSelected(null); setSubmitted(false); setOpenInput(''); setLlmGrade(null)
-      } else {
-        setPhase('complete')
-      }
-    }, 1500)
+    setShowNext(true)
   }
 
   const submitOpenAnswer = async () => {
@@ -103,13 +113,7 @@ export default function LearnView({ userId = 'default', onBack }) {
       const d = await r.json()
       if (d.ok) setLlmGrade(d.data?.grading)
     } catch {}
-    setTimeout(() => {
-      if (qIdx + 1 < currentModule.questions.length) {
-        setQIdx(p => p + 1); setSelected(null); setSubmitted(false); setOpenInput(''); setLlmGrade(null)
-      } else {
-        setPhase('complete')
-      }
-    }, 3000)
+    setShowNext(true)
   }
 
   useEffect(() => { loadModules() }, [userId])
@@ -208,8 +212,15 @@ export default function LearnView({ userId = 'default', onBack }) {
             <span className="text-2xl">{currentModule.icon}</span>
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{currentModule.title}</h2>
           </div>
-          <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap max-h-80 overflow-y-auto">
-            {currentModule.lesson_content}
+          <div className="prose prose-sm dark:prose-invert max-w-none
+            prose-headings:text-neutral-800 dark:prose-headings:text-neutral-200
+            prose-a:text-blue-600 dark:prose-a:text-blue-400
+            prose-strong:text-neutral-800 dark:prose-strong:text-neutral-200
+            prose-code:text-[11px] prose-code:bg-neutral-100 dark:prose-code:bg-neutral-800 prose-code:px-1 prose-code:rounded
+            p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700 max-h-80 overflow-y-auto">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+              {preprocess(currentModule.lesson_content || '')}
+            </ReactMarkdown>
           </div>
         </div>
 
@@ -233,13 +244,21 @@ export default function LearnView({ userId = 'default', onBack }) {
         {currentModule.related_wiki && (
           <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">📖 Related Wiki Articles</h3>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap">{currentModule.related_wiki}</p>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+                {preprocess(currentModule.related_wiki || '')}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
 
-        {/* Start practice */}
+        {/* Start practice — flashcard mode */}
         {currentModule.questions?.length > 0 && (
-          <button onClick={() => setPhase('practice')}
+          <button onClick={() => {
+            setPracticeCards(lessonToCards(currentModule))
+            setAnswerState({})
+            setPhase('practice')
+          }}
             className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
             Start Practice ({currentModule.questions.length} questions)
           </button>
@@ -248,158 +267,92 @@ export default function LearnView({ userId = 'default', onBack }) {
     )
   }
 
-  // ── Practice mode ──
+  // ── Practice mode — flashcard via CardQueue ──
   if (phase === 'practice' && currentModule) {
-    const q = currentModule.questions[qIdx]
-    if (!q) {
-      setPhase('complete')
-      return null
+    const handleRate = async (card, rating) => {
+      // For MC questions, the correct/incorrect is based on the stored answer
+      const isCorrect = rating >= 3
+      await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          question_id: card.data?.question_id || card.id,
+          correct: isCorrect,
+        }),
+      })
     }
 
-    const isOpen = q.is_open || !q.options || q.options.length === 0
+    const handleAnswer = async (card, answer) => {
+      const q = currentModule.questions.find(q => q.id === card.data?.question_id)
+      if (!q?.is_open || !answer?.openInput?.trim()) return
 
-    const handleSelect = (opt) => {
-      if (submitted) return
-      setSelected(opt)
+      // For open-ended: record + call LLM grading
+      await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, question_id: q.id, correct: true }),
+      })
+
+      try {
+        const r = await fetch('/api/v1/assess/grade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: q.question,
+            user_answer: answer.openInput,
+            tier: q.tier || 'analysis',
+            user_id: userId,
+          }),
+        })
+        const d = await r.json()
+        if (d.ok) setAnswerState(prev => ({ ...prev, [card.id]: { llmGrade: d.data?.grading } }))
+      } catch {}
     }
 
-    const handleSubmit = () => {
-      if (selected === null) return
-      const correct = selected === q.correct_answer || String(selected) === String(q.correct_answer)
-      submitAnswer(correct)
+    // After CardQueue completes, show the completion screen
+    if (practiceCards.length === 0) {
+      return (
+        <div className="max-w-3xl mx-auto px-4 py-8 text-center">
+          <span className="text-4xl block mb-4">🎉</span>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Module Complete!</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+            You've completed the practice for this module. Keep reviewing to strengthen your understanding.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <button onClick={() => { setPhase('list'); setCurrentModule(null); setPracticeCards([]) }}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700 transition-colors">
+              Back to Modules
+            </button>
+            <button onClick={() => {
+              setPracticeCards(lessonToCards(currentModule))
+              setAnswerState({})
+            }}
+              className="px-4 py-2 rounded-lg bg-neutral-200 dark:bg-neutral-700 text-sm font-medium cursor-pointer hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">
+              Review Again
+            </button>
+          </div>
+        </div>
+      )
     }
 
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setPhase('lesson')} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+      <div>
+        <div className="max-w-3xl mx-auto px-4 pt-2">
+          <button onClick={() => setPhase('lesson')}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
             ← Back to Lesson
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-neutral-400 font-mono">{qIdx + 1}/{currentModule.questions.length}</span>
-            <div className="w-20 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-              <div className="h-full rounded-full bg-indigo-500" style={{ width: `${((qIdx) / currentModule.questions.length) * 100}%` }} />
-            </div>
-          </div>
         </div>
-
-        <div className="p-5 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-neutral-800">
-          <div className="flex items-center gap-2 mb-3">
-            {q.tier && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                q.tier === 'text' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                q.tier === 'analysis' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
-                'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-              }`}>{q.tier}</span>
-            )}
-            {q.bloom_level && <span className="text-[9px] text-neutral-400">{q.bloom_level}</span>}
-            {isOpen && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600">AI Graded</span>}
-          </div>
-
-          <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-4 whitespace-pre-wrap">
-            {q.question}
-          </div>
-
-          {isOpen ? (
-            /* Open-ended question — text input + LLM grading */
-            <div>
-              <textarea
-                value={openInput}
-                onChange={e => setOpenInput(e.target.value)}
-                disabled={submitted}
-                rows={4}
-                placeholder="Write your analysis here… Reference specific words, phrases, and connections."
-                className="w-full px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 outline-none transition-all resize-y disabled:opacity-50"
-              />
-              {llmGrade && (
-                <div className="mt-3 p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">AI Evaluation</p>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    {['text_engagement', 'reasoning', 'depth', 'context'].map(k => {
-                      const score = llmGrade?.scores?.[k] || llmGrade?.[k]
-                      if (score === undefined) return null
-                      return (
-                        <div key={k}>
-                          <div className="text-[9px] text-neutral-400 capitalize mb-0.5">{k.replace('_', ' ')}</div>
-                          <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(score / 10) * 100}%` }} />
-                          </div>
-                          <span className="text-[10px] font-mono text-neutral-500">{score}/10</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{llmGrade.feedback}</p>}
-                  {llmGrade.strengths?.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-[9px] font-medium text-green-600">Strengths:</p>
-                      {llmGrade.strengths.map((s, i) => <p key={i} className="text-[10px] text-green-600">✅ {s}</p>)}
-                    </div>
-                  )}
-                </div>
-              )}
-              {!submitted ? (
-                <button onClick={submitOpenAnswer} disabled={!openInput.trim()}
-                  className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                  Submit for AI Evaluation
-                </button>
-              ) : (
-                <div className="mt-3">
-                  <p className="text-xs text-center font-medium text-green-600">✓ Submitted for evaluation</p>
-                  {q.explanation && (
-                    <div className="mt-2 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                      {q.explanation}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Multiple choice */
-            <div className="space-y-1.5">
-              {(q.options || []).map((opt, i) => {
-                const isCorrect = String(opt) === String(q.correct_answer)
-                const isSelected = selected === opt || selected === i
-                let cls = 'w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer '
-                if (!submitted) {
-                  cls += isSelected
-                    ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
-                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
-                } else {
-                  cls += isCorrect
-                    ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                    : isSelected
-                      ? 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                      : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
-                }
-                return (
-                  <button key={i} onClick={() => handleSelect(opt)} className={cls}>
-                    <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
-                    {opt}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {!submitted && !isOpen && (
-            <button onClick={handleSubmit} disabled={selected === null}
-              className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Submit
-            </button>
-          )}
-
-          {submitted && !isOpen && (
-            <div className="mt-3">
-              <p className="text-xs text-center font-medium text-green-600">✓ Answer recorded</p>
-              {q.explanation && (
-                <div className="mt-2 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                  {q.explanation}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <CardQueue
+          cards={practiceCards}
+          onRate={handleRate}
+          onAnswer={handleAnswer}
+          answerState={answerState}
+          onComplete={() => setPracticeCards([])}
+          title={currentModule.title}
+          emptyMessage="No questions to review."
+        />
       </div>
     )
   }

@@ -146,7 +146,7 @@ The scripture engine runs as an HTTP API server:
 ```bash
 cd /home/dillon/_code/scriptureengine
 ./run.sh web                    # Start server on port 8000
-# Open http://localhost:8000/docs for interactive API browser
+# Open http://localhost:8002/docs for interactive API browser
 ```
 
 API endpoints (all return `{"ok": true, "data": ...}`):

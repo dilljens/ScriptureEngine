@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import VersePreviewCard from './VersePreviewCard'
+import StudyViewer from './StudyViewer'
 
 /**
  * StudyEditor — full study creation/editing with LLM-assisted modification.
@@ -31,6 +32,8 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
   const [qaMessages, setQaMessages] = useState([])
   const [qaWaiting, setQaWaiting] = useState(false)
   const [pendingActions, setPendingActions] = useState([])
+  const [showPreview, setShowPreview] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const qaEndRef = useRef(null)
 
   // Auto-scroll QA
@@ -273,6 +276,31 @@ Users must click "Apply" to execute changes — don't apply them automatically.`
     setPendingActions([])
   }, [])
 
+  // ── Preview mode (read-only view of current state) ──
+  if (showPreview) {
+    const previewStudy = {
+      ...initialStudy,
+      title,
+      description,
+      steps: steps.map(s => ({
+        ...s,
+        // Build a minimal verse_refs array needed by StudyViewer
+        verse_refs: s.verse ? [s.verse] : [],
+      })),
+    }
+    return (
+      <div>
+        <div className="max-w-4xl mx-auto px-6 pt-4">
+          <button onClick={() => setShowPreview(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Editing
+          </button>
+        </div>
+        <StudyViewer study={previewStudy} onNavigate={onNavigate} onOpenTab={onOpenTab} showQuickAsk={false} />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-6">
       {/* Title & Description */}
@@ -326,18 +354,88 @@ Users must click "Apply" to execute changes — don't apply them automatically.`
         + Add Step
       </button>
 
-      {/* Save */}
-      <div className="flex items-center gap-3 mt-4">
+      {/* Toolbar: Save / Preview / Export / Import */}
+      <div className="flex items-center gap-2 mt-4 flex-wrap">
         <button onClick={save} disabled={!dirty || saving}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer
+          className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
             ${dirty && !saving
-              ? 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700'
+              ? 'bg-blue-500 text-white hover:bg-blue-600'
               : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed'
             }`}>
           {saving ? 'Saving...' : dirty ? 'Save Changes' : 'Saved ✓'}
         </button>
         {dirty && <span className="text-[10px] text-amber-500">Unsaved changes</span>}
+
+        <button onClick={() => setShowPreview(true)}
+          className="px-4 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors">
+          👁 Preview
+        </button>
+
+        <button onClick={() => {
+          const studyData = { title, description, steps }
+          const blob = new Blob([JSON.stringify(studyData, null, 2)], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${title || 'study'}.json`.replace(/[^a-zA-Z0-9._-]/g, '_')
+          a.click()
+          URL.revokeObjectURL(url)
+        }}
+          className="px-4 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors">
+          ⬇ Export JSON
+        </button>
+
+        {/* Hidden file input for import */}
+        <input type="file" accept=".json" onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          try {
+            const text = await file.text()
+            const data = JSON.parse(text)
+            if (data.steps) setSteps(data.steps.map((s, i) => ({ ...s, step: i + 1 })))
+            if (data.title) setTitle(data.title)
+            if (data.description) setDescription(data.description || '')
+          } catch (err) {
+            alert('Invalid JSON file: ' + err.message)
+          }
+          e.target.value = ''
+        }}
+          className="hidden" id="import-json-input" />
+        <label htmlFor="import-json-input"
+          className="px-4 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors inline-block">
+          ⬆ Import JSON
+        </label>
       </div>
+
+      {/* Drag-and-drop import zone */}
+      {dragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={async (e) => {
+            e.preventDefault()
+            setDragging(false)
+            const file = e.dataTransfer.files?.[0]
+            if (!file) return
+            try {
+              const text = await file.text()
+              const data = JSON.parse(text)
+              if (data.steps) setSteps(data.steps.map((s, i) => ({ ...s, step: i + 1 })))
+              if (data.title) setTitle(data.title)
+              if (data.description) setDescription(data.description || '')
+            } catch (err) {
+              alert('Invalid JSON file: ' + err.message)
+            }
+          }}>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl p-8 text-center border-2 border-dashed border-blue-400">
+            <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">Drop JSON file here</p>
+            <p className="text-sm text-neutral-500 mt-1">Import a study from JSON</p>
+          </div>
+        </div>
+      )}
+
+      {/* Global drag-over listener */}
+      <div onDragOver={e => { e.preventDefault(); setDragging(true) }} className="hidden" />
 
       {/* ─── LLM Assistant ─── */}
       {showQuickAsk && (

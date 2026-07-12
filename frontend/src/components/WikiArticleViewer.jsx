@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getWikiArticle, getWikiBrowse, getWikiSearch } from '../api'
+import { preprocess, createComponents } from '../lib/scripture-markdown'
 
 /**
  * WikiArticleViewer — renders a wiki article about a biblical entity.
@@ -30,24 +31,11 @@ const TYPE_COLORS = {
   being: { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800' },
 }
 
-/** Custom Markdown renderers for verse links */
-function VerseLink({ href, children }) {
-  const match = href?.match(/verse:\/\/(.+)/)
-  if (match) {
-    return (
-      <a href={`#verse-${match[1]}`}
-        className="text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-200 text-[11px] font-mono cursor-pointer"
-        onClick={(e) => {
-          e.preventDefault()
-          window.dispatchEvent(new CustomEvent('scripture-navigate', {
-            detail: { ref: match[1] }
-          }))
-        }}>
-        {children}
-      </a>
-    )
-  }
-  return <a href={href} className="text-blue-600 dark:text-blue-400 underline">{children}</a>
+/** Handle verse navigation from wiki content */
+function handleWikiVerse(ref) {
+  window.dispatchEvent(new CustomEvent('scripture-navigate', {
+    detail: { ref }
+  }))
 }
 
 export default function WikiArticleViewer({ entityId, browseType, searchQuery, onNavigate, onOpenTab }) {
@@ -221,13 +209,15 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
         prose-blockquote:text-neutral-500 dark:prose-blockquote:text-neutral-400 prose-blockquote:border-l-neutral-300 dark:prose-blockquote:border-l-neutral-600">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          components={{
-            a: VerseLink,
-            img: ({ src, alt }) => src?.startsWith('http') ? (
-              <img src={src} alt={alt} className="max-w-sm rounded-lg shadow-md my-4" loading="lazy" />
-            ) : null,
-          }}>
-          {article.content || ''}
+          components={createComponents({
+            onOpenVerse: handleWikiVerse,
+            customComponents: {
+              img: ({ src, alt }) => src?.startsWith('http') ? (
+                <img src={src} alt={alt} className="max-w-sm rounded-lg shadow-md my-4" loading="lazy" />
+              ) : null,
+            },
+          })}>
+          {preprocess(article.content || '')}
         </ReactMarkdown>
       </div>
 

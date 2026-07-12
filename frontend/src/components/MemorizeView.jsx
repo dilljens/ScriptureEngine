@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import MemorizeQueue from './MemorizeQueue'
+import CardQueue from './CardQueue'
 
 /**
  * MemorizeView — spaced repetition verse memorization.
- * Uses Python backend (web/routes/memorize.py) with FSRS-5 scheduling.
+ * Now uses the generic CardQueue for the review interface.
  */
 export default function MemorizeView() {
   const [view, setView] = useState('queue') // queue | review
   const [reviewData, setReviewData] = useState([])
-  const [reviewIdx, setReviewIdx] = useState(0)
-  const [rating, setRating] = useState(null)
   const [stats, setStats] = useState({ total: 0, mastered: 0, learning: 0 })
 
   const loadStats = async () => {
@@ -32,69 +31,51 @@ export default function MemorizeView() {
       const r = await fetch('/api/v1/memorize/review?limit=10')
       const d = await r.json()
       if (d.ok) {
-        setReviewData(d.data.reviews || [])
-        setReviewIdx(0)
-        setRating(null)
+        // Map backend reviews to generic card format
+        const cards = (d.data.reviews || []).map(item => ({
+          id: item.queue_id || item.verse_id,
+          type: 'verse',
+          queue_id: item.queue_id,
+          data: {
+            reference: item.verse_id,
+            text: item.text,
+            book: item.verse_id?.split('.')[0],
+            chapter: parseInt(item.verse_id?.split('.')[1]) || 1,
+            verse: parseInt(item.verse_id?.split('.')[2]) || 1,
+          },
+        }))
+        setReviewData(cards)
         setView('review')
       }
     } catch {}
   }
 
-  const submitRating = async (r) => {
-    if (!reviewData[reviewIdx]) return
-    try {
-      await fetch(`/api/v1/memorize/review/${reviewData[reviewIdx].queue_id}`, {
+  const handleRate = async (card, rating) => {
+    if (card.queue_id) {
+      await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating: r }),
+        body: JSON.stringify({ rating }),
       })
-    } catch {}
-    setRating(r)
-    setTimeout(() => {
-      if (reviewIdx + 1 < reviewData.length) {
-        setReviewIdx(p => p + 1)
-        setRating(null)
-      } else {
-        setView('queue')
-        loadStats()
-      }
-    }, 1000)
+    }
+  }
+
+  const handleComplete = () => {
+    setView('queue')
+    loadStats()
   }
 
   useEffect(() => { loadStats() }, [])
 
-  if (view === 'review' && reviewData.length > 0) {
-    const item = reviewData[reviewIdx]
+  if (view === 'review') {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setView('queue')} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Queue</button>
-          <span className="text-[10px] text-neutral-400">{reviewIdx + 1}/{reviewData.length}</span>
-        </div>
-        <div className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 text-center">
-          <p className="text-[10px] font-mono text-indigo-400 mb-2">{item.verse_id}</p>
-          <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 mb-6 italic">"{item.text}"</p>
-          <div className="flex gap-2 justify-center">
-            {rating === null ? (
-              <>
-                {[
-                  { val: 1, label: 'Again', color: 'bg-red-500 hover:bg-red-600' },
-                  { val: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-600' },
-                  { val: 3, label: 'Good', color: 'bg-green-500 hover:bg-green-600' },
-                  { val: 4, label: 'Easy', color: 'bg-blue-500 hover:bg-blue-600' },
-                ].map(b => (
-                  <button key={b.val} onClick={() => submitRating(b.val)}
-                    className={`px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color}`}>
-                    {b.label}
-                  </button>
-                ))}
-              </>
-            ) : (
-              <p className="text-sm text-green-600 font-medium">✓ Recorded</p>
-            )}
-          </div>
-        </div>
-      </div>
+      <CardQueue
+        cards={reviewData}
+        onRate={handleRate}
+        onComplete={handleComplete}
+        title="Verse Review"
+        emptyMessage="No verses due for review."
+      />
     )
   }
 

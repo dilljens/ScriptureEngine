@@ -30,21 +30,21 @@ check_port() {
 
 echo -e "${YELLOW}Checking servers...${NC}"
 
-# Check Python API (port 8000)
-if check_port 8000; then
-  echo -e "  ${GREEN}✓${NC} Python API on :8000"
+# Check Python API (port 8002)
+if check_port 8002; then
+  echo -e "  ${GREEN}✓${NC} Python API on :8002"
 else
-  echo -e "  ${YELLOW}Starting Python API on :8000...${NC}"
+  echo -e "  ${YELLOW}Starting Python API on :8002...${NC}"
   cd "$PROJECT_ROOT"
-  .venv/bin/uvicorn web.server:app --port 8000 --host 127.0.0.1 &
+  .venv/bin/uvicorn web.server:app --port 8002 --host 127.0.0.1 &
   API_PID=$!
   echo -n "  Waiting for API..."
   for i in $(seq 1 30); do
-    if check_port 8000; then echo -e " ${GREEN}ready${NC}"; break; fi
+    if check_port 8002; then echo -e " ${GREEN}ready${NC}"; break; fi
     sleep 1; echo -n "."
   done
   echo ""
-  if ! check_port 8000; then
+  if ! check_port 8002; then
     echo -e "  ${RED}✗ API failed to start${NC}"
     kill $API_PID 2>/dev/null || true
     exit 1

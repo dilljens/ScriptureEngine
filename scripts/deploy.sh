@@ -19,26 +19,36 @@ echo "=== ScriptureEngine Deployment ==="
 # 1. Pre-deploy validation gate
 echo "=== Pre-deploy Validation ==="
 
-echo "[1/4] Python test suite..."
+echo "[1/5] Python test suite..."
 python3 -m pytest tests/ -q --tb=short || {
     echo "✗ Tests failed — aborting deploy"
     exit 1
 }
 
-echo "[2/4] Graph regression check..."
+echo "[2/5] Graph regression check..."
 python3 scripts/test_graph_regression.py || {
     echo "✗ Graph regression detected — aborting deploy"
     exit 1
 }
 
-echo "[3/4] DB integrity check..."
+echo "[3/5] DB integrity check..."
 sqlite3 data/processed/scripture.db "PRAGMA integrity_check;" | grep -q "ok" || {
     echo "✗ DB integrity check failed — aborting deploy"
     exit 1
 }
 
-echo "[4/4] Frontend build..."
+echo "[4/5] API contract snapshot..."
+python3 -m pytest tests/test_openapi_snapshot.py -q --tb=short || {
+    echo "✗ API contract changed — update snapshot or fix endpoints"
+    exit 1
+}
+
+echo "[5/5] Frontend E2E tests..."
 cd frontend
+npx playwright test app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=30000 || {
+    echo "✗ Frontend E2E tests failed — aborting deploy"
+    exit 1
+}
 npm run build
 cd ..
 

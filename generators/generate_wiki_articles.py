@@ -590,7 +590,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
             for c in conns[:8]:
                 src_ref = c["source_verse"]
                 tgt_ref = c["target_verse"]
-                lines.append(f"- **{c['type']}**: [{src_ref}](verse://{src_ref}) → [{tgt_ref}](verse://{tgt_ref})")
+                lines.append(f"- **{c['type']}**: :verse[{src_ref}] → :verse[{tgt_ref}]")
             if len(conns) > 8:
                 lines.append(f"  *... and {len(conns) - 8} more*\n")
         lines.append("")
@@ -654,7 +654,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
             for item in top_items[:5]:
                 src = item["source_text"][:80] if item["source_text"] else ""
                 tgt = item["target_text"][:80] if item["target_text"] else ""
-                lines.append(f"- **{item['connection_type']}**: [{item['verse_id']}](verse://{item['verse_id']}) → [{item['target_verse']}](verse://{item['target_verse']})")
+                lines.append(f"- **{item['connection_type']}**: :verse[{item['verse_id']}] → :verse[{item['target_verse']}]")
                 lines.append(f"  {'★' * item['star_rating']} | {item['pa_r_de_s_level'].title()} | Bloom: {item['bloom_level'].title()} | Difficulty: {item['difficulty']:.2f}")
                 if src:
                     lines.append(f"  > \"{src}\"")
@@ -795,7 +795,7 @@ def generate_book_article(conn, book_id):
         if top_items:
             lines.append("### Featured Connections\n")
             for item in top_items[:3]:
-                lines.append(f"- **{item['connection_type']}**: [{item['verse_id']}](verse://{item['verse_id']}) → [{item['target_verse']}](verse://{item['target_verse']})")
+                lines.append(f"- **{item['connection_type']}**: :verse[{item['verse_id']}] → :verse[{item['target_verse']}]")
                 lines.append(f"  {'★' * item['star_rating']} | {item['pa_r_de_s_level'].title()} | Difficulty: {item['difficulty']:.2f}")
             lines.append("")
 

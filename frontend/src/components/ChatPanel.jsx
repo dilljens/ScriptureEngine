@@ -8,12 +8,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import VerseChip from './VerseChip'
 import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
 import VersePopup from './VersePopup'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
+import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
 
 // ── Verse ref detection ──
 
@@ -97,7 +97,7 @@ function preprocessVerses(markdown) {
     const bookId = resolveBookName(bookName)
     if (!bookId) return match // not a known book, leave as-is
     const firstVerse = verseStr ? verseStr.split(/[-,]/)[0] : '1'
-    return `%%%VERSE:${bookId}.${chapter}.${firstVerse}%%%`
+    return `:verse[${bookId}.${chapter}.${firstVerse}]`
   }
 
   // 1. Match "Book Name ch:vs" or "Book Name ch.vs" with optional leading ** or 📖
@@ -117,18 +117,18 @@ function preprocessVerses(markdown) {
       if (!bookId) return match
       // Keep verse ranges intact (e.g. "1-12" stays as "1-12"), but strip comma lists. Normalize spaces around dashes.
       const versePart = verseStr ? verseStr.replace(/,.*$/, '').replace(/\s*-\s*/g, '-').trim() : '1'
-      return `%%%VERSE:${bookId}.${chapter}.${versePart}%%%`
+      return `:verse[${bookId}.${chapter}.${versePart}]`
     }
   )
 
   // 2. Replace gen.1.1 or gen:1:1 format (book.chapter.verse)
   // Also captures ranges like gen.1.1-12 or exo.25.18-22
   result = result.replace(
-    /%%%VERSE:[^%]+%%%|([a-z0-9_]+)[.:](\d+)[.:](\d+)(?:[-,](\d+))?/gi,
+    /:verse\[[^\]]+\]|([a-z0-9_]+)[.:](\d+)[.:](\d+)(?:[-,](\d+))?/gi,
     (match, book, ch, vs, vsEnd) => {
       if (book) {
         const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
-        return `%%%VERSE:${book.toLowerCase()}.${ch}.${versePart}%%%`
+        return `:verse[${book.toLowerCase()}.${ch}.${versePart}]`
       }
       return match // already a marker
     }
@@ -137,9 +137,9 @@ function preprocessVerses(markdown) {
   // 3. Replace book.chapter format (gen.3, isa.55) — 2-part refs (skip existing markers)
   // Must have at least one letter to be a valid book ID (avoids matching "26.1" or "1.2")
   result = result.replace(
-    /%%%VERSE:[^%]+%%%|([a-z0-9_]*[a-z][a-z0-9_]*)\.(\d+)\b(?!\.\d+)/gi,
+    /:verse\[[^\]]+\]|([a-z0-9_]*[a-z][a-z0-9_]*)\.(\d+)\b(?!\.\d+)/gi,
     (match, book, ch) => {
-      if (book) return `%%%VERSE:${book.toLowerCase()}.${ch}.1%%%`
+      if (book) return `:verse[${book.toLowerCase()}.${ch}.1]`
       return match // already a marker
     }
   )
@@ -147,8 +147,8 @@ function preprocessVerses(markdown) {
   // Post-process: convert D&C refs from "dc.N.V" to "dcN.N.V"
   // D&C uses section numbers as book IDs, e.g. dc76.76.22 not dc.76.22
   result = result.replace(
-    /%%%VERSE:dc\.(\d+)\.(\d+(?:-\d+)?)%%%/g,
-    (match, ch, vs) => `%%%VERSE:dc${ch}.${ch}.${vs}%%%`
+    /:verse\[dc\.(\d+)\.(\d+(?:-\d+)?)\]/g,
+    (match, ch, vs) => `:verse[dc${ch}.${ch}.${vs}]`
   )
 
   return result
@@ -808,96 +808,92 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   if (variant === 'overlay' && !open) return null
 
-  // ── Markdown components with verse chip integration ──
-  const markdownComponents = {
-    p: ({ children }) => (
-      <p className="my-0.5 text-sm leading-relaxed break-words">{children}</p>
-    ),
-    strong: ({ children }) => (
-      <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{children}</strong>
-    ),
-    em: ({ children }) => (
-      <em className="italic text-neutral-700 dark:text-neutral-300">{children}</em>
-    ),
-    code: ({ className, children, ...props }) => {
-      const isInline = !className
-      return isInline ? (
-        <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-[10px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700" {...props}>
+  // ── Markdown components with scripture integration ──
+  // Uses the shared scripture-markdown module for :verse[], :entity[], :gematria[], etc.
+  const markdownComponents = createComponents({
+    onOpenVerse: (ref) => setPopupRef(ref),
+    customComponents: {
+      // Chat-specific overrides for standard elements
+      p: ({ children }) => (
+        <p className="my-0.5 text-sm leading-relaxed break-words">{children}</p>
+      ),
+      strong: ({ children }) => (
+        <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{children}</strong>
+      ),
+      em: ({ children }) => (
+        <em className="italic text-neutral-700 dark:text-neutral-300">{children}</em>
+      ),
+      code: ({ className, children, ...props }) => {
+        const isInline = !className
+        return isInline ? (
+          <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded text-[10px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700" {...props}>
+            {children}
+          </code>
+        ) : (
+          <pre className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-3 my-1.5 overflow-x-auto text-[11px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+            <code className={className} {...props}>{children}</code>
+          </pre>
+        )
+      },
+      blockquote: ({ children }) => (
+        <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic">
           {children}
-        </code>
-      ) : (
-        <pre className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-3 my-1.5 overflow-x-auto text-[11px] font-mono text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-          <code className={className} {...props}>{children}</code>
-        </pre>
-      )
+        </blockquote>
+      ),
+      a: ({ href, children }) => (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline hover:decoration-dotted">
+          {children}
+        </a>
+      ),
+      h3: ({ children }) => (
+        <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 mt-3 mb-1 first:mt-0 text-sm">{children}</h3>
+      ),
+      ul: ({ children }) => (
+        <ul className="list-disc list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ul>
+      ),
+      ol: ({ children }) => (
+        <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ol>
+      ),
+      hr: () => <hr className="my-2 border-neutral-200 dark:border-neutral-700" />,
+      table: ({ children }) => (
+        <div className="overflow-x-auto my-3">
+          <table className="w-full text-xs sm:text-sm border-collapse border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-hidden">
+            {children}
+          </table>
+        </div>
+      ),
+      thead: ({ children }) => (
+        <thead className="bg-neutral-100 dark:bg-neutral-800 border-b-2 border-neutral-300 dark:border-neutral-700">
+          {children}
+        </thead>
+      ),
+      tbody: ({ children }) => (
+        <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+          {children}
+        </tbody>
+      ),
+      tr: ({ children }) => (
+        <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">{children}</tr>
+      ),
+      th: ({ children }) => (
+        <th className="px-3 py-2 text-left font-semibold text-neutral-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider">{children}</th>
+      ),
+      td: ({ children }) => (
+        <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400 align-top leading-relaxed">{children}</td>
+      ),
     },
-    blockquote: ({ children }) => (
-      <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic">
-        {children}
-      </blockquote>
-    ),
-    h3: ({ children }) => (
-      <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 mt-3 mb-1 first:mt-0 text-sm">{children}</h3>
-    ),
-    ul: ({ children }) => (
-      <ul className="list-disc list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ul>
-    ),
-    ol: ({ children }) => (
-      <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ol>
-    ),
-    a: ({ href, children }) => (
-      <a href={href} target="_blank" rel="noopener noreferrer"
-        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline hover:decoration-dotted">
-        {children}
-      </a>
-    ),
-    hr: () => <hr className="my-2 border-neutral-200 dark:border-neutral-700" />,
-    table: ({ children }) => (
-      <div className="overflow-x-auto my-3">
-        <table className="w-full text-xs sm:text-sm border-collapse border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-hidden">
-          {children}
-        </table>
-      </div>
-    ),
-    thead: ({ children }) => (
-      <thead className="bg-neutral-100 dark:bg-neutral-800 border-b-2 border-neutral-300 dark:border-neutral-700">
-        {children}
-      </thead>
-    ),
-    tbody: ({ children }) => (
-      <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-        {children}
-      </tbody>
-    ),
-    tr: ({ children }) => (
-      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50">{children}</tr>
-    ),
-    th: ({ children }) => (
-      <th className="px-3 py-2 text-left font-semibold text-neutral-700 dark:text-neutral-300 text-[11px] uppercase tracking-wider">{children}</th>
-    ),
-    td: ({ children }) => (
-      <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400 align-top leading-relaxed">{children}</td>
-    ),
-  }
+  })
 
   // ── Split text into segments at %% markers (inline, html-safe) ──
   // Returns an array of plain text and React elements.
+  // Note: verse references are now handled by the :verse[] syntax and scripture-markdown module
   function renderWithMarkers(text) {
     if (!text) return text
-    const parts = text.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*})%%%)/g)
+    const parts = text.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*})%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
     const elements = parts.map((part, i) => {
-      const vm = part.match(/%%%VERSE:([^%]+)%%%/)
-      if (vm) {
-        return (
-          <span key={`v${i}`} className="inline-block mx-0.5 align-baseline">
-            <VerseChip ref={vm[1]} onOpenCard={setPopupRef}
-              visited={visitedRefs.has(vm[1])}
-              onVisit={(v) => setVisitedRefs(prev => new Set([...prev, v]))} />
-          </span>
-        )
-      }
       const cm = part.match(/%%%CLICK:([^%]+)%%%/)
       if (cm) {
         return (
@@ -966,7 +962,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   function renderContent(content) {
     if (!content) return null
 
-    // Pre-process: replace refs with %%%VERSE:...%%% markers
+    // Step 1: Pre-process: replace natural-language refs with :verse[book.ch.vs] syntax
     let processed = preprocessVerses(content)
     // Convert %%SUGGEST:N%% → %%%CLICK:text%%%
     processed = processed.replace(/%%%SUGGEST:(\d+)%%%/g, (m, idx) => {
@@ -974,31 +970,30 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       return text ? `%%%CLICK:${text}%%%` : m
     })
 
-    // Check if there are any markers that need special rendering
-    const hasMarkers = /%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%/g.test(processed)
-    if (!hasMarkers) {
+    // Step 2: Convert :verse[], :entity[], etc. to <span data-type=""> tags
+    processed = preprocessScripture(processed)
+
+    // Check if there are any action markers that need special rendering
+    // (CLICK, QUIZ, HEBREW, HEBREW_QUIZ — verse refs handled by scripture-markdown)
+    const hasActionMarkers = /%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%/g.test(processed)
+    if (!hasActionMarkers) {
       return (
         <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {content}
+          {processed}
         </Markdown>
       )
     }
 
-    // For content with markers, split the content at marker boundaries
-    // and render each segment independently. This preserves markdown formatting.
-    const parts = processed.split(/(%%%(?:VERSE|CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
+    // For content with action markers, split at marker boundaries
+    const parts = processed.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
     const segments = parts.map((part, i) => {
-      if (part.startsWith('%%%VERSE:')) {
-        const ref = part.replace('%%%VERSE:', '').replace('%%%', '')
-        return renderWithMarkers(part)
-      }
       if (part.startsWith('%%%CLICK:')) {
         return renderWithMarkers(part)
       }
       if (part.startsWith('%%%QUIZ:') || part.startsWith('%%%HEBREW_QUIZ:') || part.startsWith('%%%HEBREW:')) {
         return renderWithMarkers(part)
       }
-      // Regular markdown text — render with Markdown component
+      // Regular markdown text (with <span> tags from scripture) — render with Markdown component
       if (part.trim()) {
         return (
           <Markdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>

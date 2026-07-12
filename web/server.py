@@ -6,8 +6,8 @@ Loads all connection data into RAM at startup for sub-ms responses.
 Auto-generates OpenAPI docs at /docs.
 
 Usage:
-  cd web && uvicorn server:app --reload --port 8000
-  # Open http://localhost:8000/docs for interactive API browser
+  cd web && uvicorn server:app --reload --port 8002
+  # Open http://localhost:8002/docs for interactive API browser
 """
 
 import sys, os, json, sqlite3, time, asyncio, logging
@@ -45,6 +45,9 @@ from lib.api.study import (
 )
 from lib.lexicon import search_lexicon, get_lexicon_entry, get_root_family, get_concordance, get_domain_members
 from lib.patterns.intra_verse import detect_intra_verse
+
+# Track server start time for uptime reporting
+_start_time = time.time()
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
@@ -156,13 +159,13 @@ def load_ram_cache():
     """
     workers = int(os.environ.get("SCRIPTURE_WORKERS", "1"))
     if workers != 1:
-        print(f"  Skipping RAM cache (multi-worker: {workers} workers). Using direct SQLite.", flush=True)
+        log.info("Skipping RAM cache", workers=workers, mode="direct_sqlite")
         return
 
-    print("Loading passage guides into RAM...", flush=True)
+    log.info("Loading cache", phase="start")
     db_path = DEFAULT_DB_PATH
     if not os.path.exists(db_path):
-        print(f"  DB not found: {db_path}", flush=True)
+        log.error("DB not found", path=str(db_path))
         return
 
     conn = sqlite3.connect(str(db_path))
@@ -176,7 +179,7 @@ def load_ram_cache():
     for r in rows:
         d = dict(r)
         VERSE_CACHE[d["id"]] = d
-    print(f"  {len(VERSE_CACHE)} verses loaded", flush=True)
+    log.info("Cache loaded", cache="verses", count=len(VERSE_CACHE))
 
     # Load passage guides
     rows = conn.execute("""
@@ -187,19 +190,19 @@ def load_ram_cache():
     for r in rows:
         d = dict(r)
         GUIDE_CACHE[d["verse_id"]] = d
-    print(f"  {len(GUIDE_CACHE)} passage guides loaded", flush=True)
+    log.info("Cache loaded", cache="passage_guides", count=len(GUIDE_CACHE))
 
     # Load entity links
     rows = conn.execute("SELECT * FROM entity_links").fetchall()
     for r in rows:
         ENTITY_CACHE.append(dict(r))
-    print(f"  {len(ENTITY_CACHE)} entity links loaded", flush=True)
+    log.info("Cache loaded", cache="entity_links", count=len(ENTITY_CACHE))
 
     # Load lexicon
     lex_rows = conn.execute("SELECT * FROM lexicon").fetchall()
     for r in lex_rows:
         LEXICON_CACHE[r["lemma"]] = dict(r)
-    print(f"  {len(LEXICON_CACHE)} lexicon entries loaded", flush=True)
+    log.info("Cache loaded", cache="lexicon", count=len(LEXICON_CACHE))
 
     # Check vector availability — without loading vec0 module
     vec_table = conn.execute("""
@@ -208,12 +211,13 @@ def load_ram_cache():
     if vec_table:
         VEC_CACHE["available"] = True
         VEC_CACHE["count"] = "check via vec queries"
-        print(f"  Vectors available (verify via semantic-search endpoint)", flush=True)
+        log.info("Vectors available", check="semantic_search")
     else:
-        print("  Vectors not found — run: .venv/bin/python3 scripts/embed_verses.py", flush=True)
+        log.warn("Vectors not found", fix=".venv/bin/python3 scripts/embed_verses.py")
 
     conn.close()
-    print(f"  Total RAM cache: {len(VERSE_CACHE) + len(GUIDE_CACHE) + len(ENTITY_CACHE)} items", flush=True)
+    total = len(VERSE_CACHE) + len(GUIDE_CACHE) + len(ENTITY_CACHE)
+    log.info("Cache load complete", total_items=total)
 
 CONNECTION_TYPE_MAP = {
     "linguistic": "Linguistic", "numerical": "Numerical",
@@ -317,6 +321,26 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
         "cached": bool(VERSE_CACHE),
     }
 
+    # JST text (if available)
+    try:
+        _jst = get_db()
+        _jst_row = _jst.execute(
+            "SELECT text FROM text_resources WHERE verse_id=? AND version='JST'",
+            (vid,)
+        ).fetchone()
+        if _jst_row:
+            resp["text_jst"] = _jst_row["text"]
+            # Compute diff type by looking up the JST connection
+            _diff = _jst.execute(
+                "SELECT type FROM connections WHERE source_verse=? AND target_verse=? AND layer='textual' AND (type='jst_change' OR type='jst_addition')",
+                (vid, vid)
+            ).fetchone()
+            if _diff:
+                resp["jst_diff"] = _diff["type"]  # "jst_change" or "jst_addition"
+        _jst.close()
+    except Exception:
+        pass
+
     if guide:
         resp["connections"] = json.loads(guide["connections_json"])
         resp["total_connections"] = guide["total_connections"]
@@ -339,6 +363,48 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
                 lvl = get_pardes_level(layer, item["type"])
                 pardes[lvl] = pardes.get(lvl, 0) + 1
         resp["pardes"] = pardes
+
+        # Enrich connections with tradition + hermeneutic from DB (batch query)
+        try:
+            _conn_meta = get_db()
+            _targets = []
+            for _layer, _items in resp.get("connections", {}).items():
+                for _item in _items:
+                    _tgt = _item.get("target", "")
+                    if _tgt:
+                        _targets.append(_tgt)
+            if _targets:
+                _placeholders = ",".join("?" for _ in _targets)
+                _meta_rows = _conn_meta.execute(
+                    f"""SELECT source_verse, target_verse, tradition, hermeneutic
+                        FROM connections WHERE source_verse=? AND target_verse IN ({_placeholders})""",
+                    (vid, *_targets)
+                ).fetchall()
+                _meta_map = {}
+                for _r in _meta_rows:
+                    _key = f"{_r[0]}→{_r[1]}"
+                    _meta_map[_key] = {"tradition": _r[2] or "none", "hermeneutic": _r[3] or "linguistic"}
+                # Apply to connection items
+                for _layer, _items in resp.get("connections", {}).items():
+                    for _item in _items:
+                        _tgt = _item.get("target", "")
+                        if _tgt:
+                            _key = f"{vid}→{_tgt}"
+                            _meta = _meta_map.get(_key, {})
+                            _item["tradition"] = _meta.get("tradition", "none")
+                            _item["hermeneutic"] = _meta.get("hermeneutic", "linguistic")
+            _conn_meta.close()
+        except Exception:
+            pass  # Non-critical — enrichment failure shouldn't break verse lookup
+
+        # Interpretive disagreements — contradictory readings across traditions
+        try:
+            from lib.api.disagreements import get_disagreements
+            _conn_dis = get_db()
+            resp["disagreements"] = get_disagreements(_conn_dis, vid)
+            _conn_dis.close()
+        except Exception:
+            resp["disagreements"] = {"verse": vid, "count": 0, "disagreements": []}
 
     # Context window — surrounding verses for inline preview
     if context > 0:
@@ -432,6 +498,20 @@ def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Op
         conns = filtered
 
     return {"ok": True, "data": {"verse": ref, "layers": list(conns.keys()), "connections": conns}}
+
+
+@app.get("/api/v1/verses/{ref:path}/disagreements")
+def get_verse_disagreements(ref: str):
+    """Get interpretive disagreements for a verse — contradictory readings across traditions."""
+    conn = get_db()
+    try:
+        from lib.api.disagreements import get_disagreements
+        result = get_disagreements(conn, ref)
+        conn.close()
+        return {"ok": True, "data": result}
+    except Exception as e:
+        conn.close()
+        return {"ok": False, "error": str(e)}
 
 
 # ─── Search ───
@@ -791,6 +871,27 @@ def get_info():
         }
     }
     conn.close()
+
+
+@app.get("/api/v1/books")
+def get_books():
+    """Get all works and their books for navigation."""
+    conn = get_db()
+    works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY id").fetchall()
+    result = []
+    for w in works_rows:
+        books = conn.execute(
+            "SELECT id, title, subtitle FROM books WHERE work_id=? ORDER BY position",
+            (w["id"],)
+        ).fetchall()
+        result.append({
+            "id": w["id"],
+            "title": w["title"],
+            "subtitle": w["subtitle"],
+            "books": [{"id": b["id"], "title": b["title"], "subtitle": b["subtitle"]} for b in books],
+        })
+    conn.close()
+    return {"ok": True, "data": {"works": result, "total": len(result)}}
 
 
 # ─── Lexicon (Word Dictionary) ───
@@ -1542,27 +1643,7 @@ def _load_wiki_cache():
         WIKI_CACHE[r["id"]] = dict(r)
     conn.close()
     if WIKI_CACHE:
-        print(f"  {len(WIKI_CACHE)} wiki articles loaded", flush=True)
-
-
-@app.get("/api/v1/wiki/{entity_id:path}")
-def get_wiki_article(entity_id: str):
-    """Get a wiki article about a biblical entity or concept."""
-    eid = entity_id.strip("/").lower().replace(" ", "_")
-    article = WIKI_CACHE.get(eid)
-    if not article:
-        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
-    import json
-    result = dict(article)
-    try:
-        result["key_verses"] = json.loads(result.get("key_verses", "[]"))
-    except (json.JSONDecodeError, TypeError):
-        result["key_verses"] = []
-    try:
-        result["cross_references"] = json.loads(result.get("cross_references", "[]"))
-    except (json.JSONDecodeError, TypeError):
-        result["cross_references"] = []
-    return {"ok": True, "data": result}
+        log.info("Cache loaded", cache="wiki_articles", count=len(WIKI_CACHE))
 
 
 @app.get("/api/v1/wiki/search")
@@ -1616,6 +1697,26 @@ def wiki_concordance(entity_id: str):
     except (json.JSONDecodeError, TypeError):
         verses = []
     return {"ok": True, "data": {"entity": eid, "verses": verses, "total": len(verses)}}
+
+
+@app.get("/api/v1/wiki/{entity_id:path}")
+def get_wiki_article(entity_id: str):
+    """Get a wiki article about a biblical entity or concept."""
+    eid = entity_id.strip("/").lower().replace(" ", "_")
+    article = WIKI_CACHE.get(eid)
+    if not article:
+        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
+    import json
+    result = dict(article)
+    try:
+        result["key_verses"] = json.loads(result.get("key_verses", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        result["key_verses"] = []
+    try:
+        result["cross_references"] = json.loads(result.get("cross_references", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        result["cross_references"] = []
+    return {"ok": True, "data": result}
 
 
 # ─── Assessment ↔ Wiki Bridges ───
@@ -2584,9 +2685,16 @@ def health_check():
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
     
-    # Uptime (if server started capturing it)
-    uptime_seconds = int(_time.time() - globals().get("_start_time", _time.time())) if "_start_time" in globals() else 0
+    # Uptime
+    uptime_seconds = int(_time.time() - _start_time)
     conn.close()
+    
+    # Cache status
+    cache_sizes = {
+        "wiki_articles": len(WIKI_CACHE),
+        "lexicon_entries": len(LEXICON_CACHE),
+        "tool_registry": len(TOOL_REGISTRY),
+    }
     
     return {"ok": True, "data": {
         "status": "ok" if integrity == "ok" else "degraded",
@@ -2600,12 +2708,8 @@ def health_check():
         "audio_alignments": audio_count,
         "tools": len(TOOL_REGISTRY),
         "lexicon": len(LEXICON_CACHE),
+        "cache_sizes": cache_sizes,
     }}
-
-
-# Track server start time
-import time as _time
-_start_time = _time.time()
 
 
 # ─── Conversation sessions moved to web/routes/conversations.py ───
@@ -2747,7 +2851,138 @@ def staging_list_studies(status: str = "submitted", limit: int = 20):
         return {"ok": False, "error": str(e)}
 
 
-# ─── Static frontend serving (SPA with fallback) — MUST be last ───
+# ─── Cross-Canon Truth Score API ───
+
+@app.get("/api/v1/truth-score")
+def truth_score(
+    q: str = Query("", description="Topic or search term"),
+    verse: str = Query("", description="Specific verse to analyze"),
+    limit: int = Query(20, description="Max verses per work"),
+):
+    """Cross-canon consensus scoring.
+    
+    For a given topic/verse, shows how each canon treats it:
+    - Number of relevant verses per work
+    - Connection counts and tradition distribution
+    - Consensus score across canons
+    
+    The goal: let users see which interpretations are supported
+    across multiple canons vs. unique to one.
+    """
+    conn = get_db()
+    result = {"query": q or verse, "works": [], "consensus": {}}
+    
+    # Get all works
+    works = conn.execute("SELECT id, title FROM works ORDER BY id").fetchall()
+    
+    for w in works:
+        wid = w["id"]
+        wtitle = w["title"]
+        
+        # Find matching verses in this work
+        if verse:
+            # Specific verse analysis
+            verses_data = conn.execute("""
+                SELECT v.id, v.text_english FROM verses v
+                JOIN books b ON b.id = v.book_id
+                WHERE v.id = ? AND b.work_id = ?
+            """, (verse, wid)).fetchall()
+        elif q:
+            # Search in this work's verses
+            verses_data = conn.execute("""
+                SELECT v.id, v.text_english FROM verses v
+                JOIN books b ON b.id = v.book_id
+                WHERE b.work_id = ? AND v.text_english LIKE ?
+                LIMIT ?
+            """, (wid, f"%{q}%", limit)).fetchall()
+        else:
+            verses_data = []
+        
+        if not verses_data:
+            continue
+        
+        verse_ids = [v["id"] for v in verses_data]
+        
+        # Count connections from/to these verses
+        placeholders = ",".join("?" for _ in verse_ids)
+        
+        conn_count = conn.execute(f"""
+            SELECT COUNT(*) as c FROM connections 
+            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+            AND deprecated = 0
+        """, (*verse_ids, *verse_ids)).fetchone()["c"]
+        
+        # Tradition distribution
+        trad_dist = conn.execute(f"""
+            SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt
+            FROM connections 
+            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+            AND deprecated = 0
+            GROUP BY t ORDER BY cnt DESC
+        """, (*verse_ids, *verse_ids)).fetchall()
+        
+        # Layer distribution
+        layer_dist = conn.execute(f"""
+            SELECT layer, COUNT(*) as cnt
+            FROM connections 
+            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+            AND deprecated = 0
+            GROUP BY layer ORDER BY cnt DESC
+        """, (*verse_ids, *verse_ids)).fetchall()
+        
+        # JST changes for these verses
+        jst_count = conn.execute(f"""
+            SELECT COUNT(*) as c FROM connections 
+            WHERE source_verse IN ({placeholders}) AND type LIKE 'jst_%'
+        """, (*verse_ids,)).fetchone()["c"]
+        
+        # Gematria values
+        gem_count = conn.execute(f"""
+            SELECT COUNT(*) as c FROM gematria WHERE verse_id IN ({placeholders})
+        """, (*verse_ids,)).fetchone()["c"]
+        
+        result["works"].append({
+            "work_id": wid,
+            "title": wtitle,
+            "verses_found": len(verses_data),
+            "verse_samples": [{"id": v["id"], "text": (v["text_english"] or "")[:100]} for v in verses_data[:5]],
+            "total_connections": conn_count,
+            "tradition_distribution": {r["t"]: r["cnt"] for r in trad_dist},
+            "layer_distribution": {r["layer"]: r["cnt"] for r in layer_dist},
+            "jst_changes": jst_count,
+            "gematria_entries": gem_count,
+        })
+    
+    conn.close()
+    
+    # Compute consensus
+    works_found = len(result["works"])
+    if works_found > 0:
+        # Average connections per work
+        avg_conn = sum(w["total_connections"] for w in result["works"]) / works_found
+        # Works with connections
+        works_with_conn = sum(1 for w in result["works"] if w["total_connections"] > 0)
+        # Works with JST changes
+        works_with_jst = sum(1 for w in result["works"] if w["jst_changes"] > 0)
+        
+        result["consensus"] = {
+            "works_found": works_found,
+            "works_with_connections": works_with_conn,
+            "works_with_jst_changes": works_with_jst,
+            "average_connections": round(avg_conn, 1),
+            "consensus_score": round(works_with_conn / max(len(works), 1), 2),
+            "interpretation": (
+                "supported across multiple canons" if works_with_conn >= 3
+                else "found in multiple traditions" if works_with_conn >= 2
+                else "unique to one tradition" if works_with_conn == 1
+                else "no connection data"
+            ),
+        }
+    
+    return {"ok": True, "data": result}
+
+
+# ─── Client-side error logging (for debugging) ───
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 

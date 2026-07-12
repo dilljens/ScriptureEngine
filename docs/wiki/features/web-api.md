@@ -81,9 +81,9 @@ In multi-worker mode (`SCRIPTURE_WORKERS > 1`), the cache is skipped and direct 
 ./run.sh web
 
 # Test endpoints
-curl http://localhost:8000/api/v1/verses/gen.1.1
-curl http://localhost:8000/api/v1/info
-curl http://localhost:8000/api/v1/search?q=covenant
+curl http://localhost:8002/api/v1/verses/gen.1.1
+curl http://localhost:8002/api/v1/info
+curl http://localhost:8002/api/v1/search?q=covenant
 ```
 
 ## Path Scope

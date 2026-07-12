@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import HebrewVerbDrill from './HebrewVerbDrill'
+import CardQueue from './CardQueue'
+import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 
 /**
  * HebrewLearnView — curriculum dashboard with gamification.
@@ -32,6 +35,9 @@ export default function HebrewLearnView({ onOpenLesson }) {
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all')
   const [showMasteryMap, setShowMasteryMap] = useState(false)
+  const [showVerbDrill, setShowVerbDrill] = useState(false)
+  const [showHebrewReview, setShowHebrewReview] = useState(false)
+  const [hebrewReviewCards, setHebrewReviewCards] = useState([])
   const [quickMode, setQuickMode] = useState(false)
   const [quickQuestions, setQuickQuestions] = useState([])
   const [quickIdx, setQuickIdx] = useState(0)
@@ -108,6 +114,62 @@ export default function HebrewLearnView({ onOpenLesson }) {
   for (const n of filtered) {
     if (!byLevel[n.level]) byLevel[n.level] = []
     byLevel[n.level].push(n)
+  }
+
+  // Verb drill mode
+  if (showVerbDrill) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Verb Conjugation Drills</h2>
+          <button onClick={() => setShowVerbDrill(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <HebrewVerbDrill />
+      </div>
+    )
+  }
+
+  // Hebrew review mode — flashcard review of unlocked nodes
+  if (showHebrewReview) {
+    const handleRate = async (card, rating) => {
+      try {
+        const nodeId = card.data?.node_id || card.id?.replace(/heb-/, '')
+        if (nodeId) {
+          await fetch(`/api/v1/hebrew/fsrs/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: 'default',
+              node_id: nodeId,
+              rating: rating,
+              source: 'review_queue',
+            }),
+          })
+        }
+      } catch {}
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Hebrew Review</h2>
+          <button onClick={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <CardQueue
+          cards={hebrewReviewCards}
+          onRate={handleRate}
+          onComplete={() => setShowHebrewReview(false)}
+          title="Hebrew Review"
+          emptyMessage="No unlocked nodes to review."
+        />
+      </div>
+    )
   }
 
   // Quick mode rendering
@@ -219,6 +281,26 @@ export default function HebrewLearnView({ onOpenLesson }) {
         <button onClick={startQuickSession}
           className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           ⏱ 5-min quick
+        </button>
+        <button onClick={() => setShowVerbDrill(true)}
+          className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          ע Verb Drills
+        </button>
+        <button onClick={async () => {
+          // Load both node cards and drill cards, interleave them
+          const unlocked = curriculum?.nodes?.filter(n => n.unlocked) || []
+          const nodeCards = hebrewToCards(unlocked)
+          let drillCards = []
+          try {
+            const r = await fetch('/api/v1/hebrew/verb-drill?limit=8')
+            const d = await r.json()
+            if (d.ok) drillCards = drillsToCards(d.data.drills || [])
+          } catch {}
+          setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
+          setShowHebrewReview(true)
+        }}
+          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          🔄 Review 🔀
         </button>
       </div>
 

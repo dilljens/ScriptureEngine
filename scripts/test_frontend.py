@@ -7,13 +7,13 @@ Usage:
   python3 scripts/test_frontend.py --agent      # Agent-powered E2E tests only
   python3 scripts/test_frontend.py --list       # List available tests
 
-Requires: API server running on localhost:8000
-  ./run.sh web --port 8000
+Requires: API server running on localhost:8002
+  ./run.sh web --port 8002
 """
 
 import sys, os, json, time, urllib.request, urllib.error
 
-BASE = "http://localhost:8000"
+BASE = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
 API_BASE = f"{BASE}/api/v1"
 AGENT_BASE = f"{BASE}/api/v1/agent"
 
@@ -263,7 +263,7 @@ def run_all():
             sys.exit(1)
     except Exception as e:
         print(f"\n❌ API not available at {API_BASE}: {e}")
-        print("   Start with: ./run.sh web --port 8000")
+        print("   Start with: ./run.sh web --port 8002")
         sys.exit(1)
 
     run_api_tests()
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     health = fetch(f"{API_BASE}/health")
     if not health.get("ok"):
         print(f"❌ API not available at {API_BASE}")
-        print("   Start with: ./run.sh web --port 8000")
+        print("   Start with: ./run.sh web --port 8002")
         sys.exit(1)
 
     if args.api:

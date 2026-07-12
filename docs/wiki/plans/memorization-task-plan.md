@@ -64,7 +64,7 @@ Also update the "Hetzner CX23" platform reference to the new provider if differe
 
 **⏱ Timebox:** 15 min  
 **✅ Checkpoint:** `curl -s -o /dev/null -w "%{http_code}" https://scriptureengine.org/api/v1/health` returns 200  
-**⚙ Fallback:** Test locally first (`python3 -m uvicorn web.server:app --port 8000`), then diagnose SSH/deploy
+**⚙ Fallback:** Test locally first (`python3 -m uvicorn web.server:app --port 8002`), then diagnose SSH/deploy
 
 ---
 

@@ -7,7 +7,7 @@ A deeply connected scripture study tool with **1.36 million typed connections ac
 ```bash
 # Start the API server
 ./run.sh web
-# Open http://localhost:8000/docs
+# Open http://localhost:8002/docs
 ```
 
 ## Features
