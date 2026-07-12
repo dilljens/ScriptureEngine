@@ -155,6 +155,62 @@ export function drillsToCards(drills) {
 }
 
 /**
+ * Generate cloze deletion cards from a verse.
+ * Masks one or more key words for recall.
+ */
+export function clozeFromVerse(verse) {
+  if (!verse?.text_english || !verse?.id) return []
+  const text = verse.text_english
+  const words = text.split(/\s+/)
+  if (words.length < 5) return []
+
+  // Find the most significant word to blank (verb or noun, not article/prep)
+  const skipWords = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'at', 'by', 'with', 'from', 'for'])
+  const candidates = words.filter(w => w.length > 3 && !skipWords.has(w.toLowerCase().replace(/[^a-z]/g, '')))
+
+  if (candidates.length === 0) return []
+
+  const cards = []
+  // Create cloze cards for up to 2 key words in this verse
+  const chosen = candidates.slice(0, 2)
+  for (const target of chosen) {
+    const blanked = text.replace(new RegExp(`\\b${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$')}\\b`, 'i'), '[___]')
+    if (blanked === text) continue  // no replacement happened
+
+    cards.push({
+      id: `cloze-${verse.id}-${target.toLowerCase().replace(/[^a-z]/g, '')}`,
+      type: 'cloze',
+      data: {
+        passage: blanked,
+        answer: text,
+        verse_ref: verse.id,
+        word_hebrew: verse.text_hebrew || '',
+        hint: `${target.length} letters`,
+      },
+    })
+  }
+  return cards
+}
+
+/**
+ * Generate two-way translation cards from a verse.
+ * Front: English. Back: Hebrew + transliteration.
+ */
+export function translationFromVerse(verse) {
+  if (!verse?.text_english || !verse?.text_hebrew || !verse?.id) return []
+  return [{
+    id: `trans-${verse.id}`,
+    type: 'translation',
+    data: {
+      english: verse.text_english,
+      hebrew: verse.text_hebrew,
+      transliteration: verse.transliteration || '',
+      verse_ref: verse.id,
+    },
+  }]
+}
+
+/**
  * Interleave cards from multiple sources, preventing blocking.
  * No more than `maxConsecutive` cards of the same type appear consecutively.
  * Within each type group, original order is preserved.

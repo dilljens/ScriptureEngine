@@ -35,6 +35,10 @@ export default function CardRenderer({ card, showAnswer, onAnswer, answerState }
       return <StudyStepCardRenderer card={card} showAnswer={showAnswer} />
     case 'hebrew_letter':
       return <HebrewLetterCardRenderer card={card} showAnswer={showAnswer} />
+    case 'cloze':
+      return <ClozeCardRenderer card={card} showAnswer={showAnswer} />
+    case 'translation':
+      return <TranslationCardRenderer card={card} showAnswer={showAnswer} />
     case 'learn_question':
       return <LearnQuestionRenderer card={card} showAnswer={showAnswer} onAnswer={onAnswer} answerState={answerState} />
     default:
@@ -379,6 +383,67 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
           className="mt-3 w-full py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
           Submit for AI Evaluation
         </button>
+      )}
+    </div>
+  )
+}
+
+// ── Cloze Deletion Card ──
+// Front: shows verse with a word replaced by [___]
+// Back: shows complete verse with target word highlighted
+function ClozeCardRenderer({ card, showAnswer }) {
+  const { passage, answer, verse_ref, hint, word_hebrew } = card.data || {}
+  return (
+    <div>
+      {verse_ref && <p className="text-[10px] font-mono text-indigo-400 mb-2">{verse_ref}</p>}
+      {!showAnswer ? (
+        <div>
+          <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
+            {passage || ''}
+          </p>
+          {hint && <p className="text-xs text-neutral-400 mt-2 italic">Hint: {hint}</p>}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
+            {answer || passage || ''}
+          </p>
+          {word_hebrew && (
+            <p className="text-lg font-serif text-center text-indigo-600 dark:text-indigo-400 mt-2"
+              style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
+              dir="rtl">
+              {word_hebrew}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Two-Way Translation Card ──
+// Front: shows English phrase, user must recall Hebrew
+// Back: shows Hebrew text + transliteration + audio
+function TranslationCardRenderer({ card, showAnswer }) {
+  const { english, hebrew, transliteration, verse_ref, lemma } = card.data || {}
+  return (
+    <div>
+      {verse_ref && <p className="text-[10px] font-mono text-indigo-400 mb-2">{verse_ref}</p>}
+      {!showAnswer ? (
+        <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
+          {english || ''}
+        </p>
+      ) : (
+        <div className="space-y-3 text-center">
+          <p className="text-lg font-serif text-neutral-800 dark:text-neutral-200"
+            style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
+            dir="rtl">
+            {hebrew || ''}
+          </p>
+          {transliteration && <p className="text-sm text-neutral-500 italic">{transliteration}</p>}
+          {english && <p className="text-xs text-neutral-400">{english}</p>}
+          {lemma && <p className="text-[9px] text-neutral-400">Strong's: {lemma}</p>}
+        </div>
       )}
     </div>
   )

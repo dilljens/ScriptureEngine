@@ -117,14 +117,14 @@
 | 3.7 | Graph centrality suggestion (`/api/v1/memorize/suggest`) | F4 | 3h | ✅ |
 | 3.8 | Connection-aware difficulty estimation | F5 | 3h | ✅ |
 | 3.9 | Hebrew verb conjugation drills frontend (`HebrewVerbDrill.jsx`) | hebrew-plan | 4h | ✅ |
-| 3.10 | Mukdam u'Meuchar expansion | rabbinic-plan | 3h | ❌ |
+| 3.10 | Mukdam u'Meuchar expansion | rabbinic-plan | 3h | ✅ |
 | 3.11 | Sefirotic mapping | rabbinic-plan | 4h | ❌ |
-| 3.12 | Decay model for overdue reviews (summer slide) | implementation-review | 3h | ✅ (included in FIRe) |
-| 3.13 | Multi-mode FIRe | implementation-review | 8h | ⏳ partial |
+| 3.12 | Decay model for overdue reviews (summer slide) | implementation-review | 3h | ✅ |
+| 3.13 | Multi-mode FIRe | implementation-review | 8h | ⏳ partial (Hebrew + Memorize separate) |
 | 3.14 | Macro-interleaving across works | implementation-review | 3h | ✅ |
 | — | Literary pattern detection — 6 types built | new | 8h | ✅ |
 | — | Additional patterns documented | new | 18h | 📝 |
-| 3.15 | Student-topic learning speeds calibration | implementation-review | 3h | ⏳ partial (seeded from connections) |
+| 3.15 | Student-topic learning speeds calibration | implementation-review | 3h | ✅ |
 
 ---
 
