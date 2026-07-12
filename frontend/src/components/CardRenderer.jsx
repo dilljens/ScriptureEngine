@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm'
  * and use onAnswer callback to handle submission before rating.
  */
 
-export default function CardRenderer({ card, showAnswer, onAnswer, answerState }) {
+export default function CardRenderer({ card, showAnswer, onAnswer, answerState, hebrewOnly }) {
   if (!card) return null
 
   // Dispatch to type-specific renderer
@@ -28,7 +28,7 @@ export default function CardRenderer({ card, showAnswer, onAnswer, answerState }
     case 'gematria':
       return <GematriaCardRenderer card={card} showAnswer={showAnswer} />
     case 'vocab':
-      return <VocabCardRenderer card={card} showAnswer={showAnswer} />
+      return <VocabCardRenderer card={card} showAnswer={showAnswer} hebrewOnly={hebrewOnly} />
     case 'drill':
       return <DrillCardRenderer card={card} showAnswer={showAnswer} />
     case 'study_step':
@@ -149,7 +149,8 @@ function GematriaCardRenderer({ card, showAnswer }) {
 
 // ── Vocabulary Card ──
 // Front: show word, ask for meaning (or vice versa)
-function VocabCardRenderer({ card, showAnswer }) {
+// When hebrewOnly is true, hide transliteration on front (pure immersion)
+function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
   const { word, transliteration, definition, lemma, language } = card.data || {}
   const isHebrew = language === 'hebrew' || !language
   return (
@@ -159,8 +160,11 @@ function VocabCardRenderer({ card, showAnswer }) {
         style={isHebrew ? { fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" } : {}}>
         {word || ''}
       </p>
-      {transliteration && !showAnswer && (
+      {transliteration && !showAnswer && !hebrewOnly && (
         <p className="text-xs text-neutral-400 italic">{transliteration}</p>
+      )}
+      {!showAnswer && hebrewOnly && (
+        <p className="text-xs text-neutral-400 mt-2">What does this word mean?</p>
       )}
       {showAnswer && (
         <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">

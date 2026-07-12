@@ -2982,6 +2982,59 @@ def truth_score(
     return {"ok": True, "data": result}
 
 
+# ─── Daily Verse / Maintenance Mode ───
+
+@app.get("/api/v1/verse-of-day")
+def verse_of_day(user_id: str = "default"):
+    """Get a random verse with word-by-word breakdown for daily study.
+    
+    Returns: random verse with Hebrew, English, Strong's, gematria,
+    and connection count. Used by the DailyVerse component for
+    maintenance-mode study.
+    """
+    conn = get_db()
+    # Pick a random verse with Hebrew text
+    row = conn.execute("""
+        SELECT id, book_id, chapter, verse, text_english, text_hebrew
+        FROM verses 
+        WHERE text_hebrew IS NOT NULL 
+        ORDER BY RANDOM() LIMIT 1
+    """).fetchone()
+    
+    if not row:
+        conn.close()
+        return {"ok": False, "error": "No verses found"}
+    
+    vid = row["id"]
+    result = {
+        "verse_id": vid,
+        "reference": f"{row['book_id']}.{row['chapter']}.{row['verse']}",
+        "text_english": row["text_english"],
+        "text_hebrew": row["text_hebrew"],
+    }
+    
+    # Word count
+    heb_words = [w for w in row["text_hebrew"].split() if w.strip()]
+    result["word_count"] = len(heb_words)
+    
+    # Gematria if available
+    gem = conn.execute(
+        "SELECT COUNT(*) as c FROM gematria WHERE verse_id=? AND value_standard IS NOT NULL",
+        (vid,)
+    ).fetchone()
+    result["has_gematria"] = (gem and gem["c"] > 0)
+    
+    # Connection count
+    conns = conn.execute(
+        "SELECT COUNT(*) as c FROM connections WHERE (source_verse=? OR target_verse=?) AND deprecated=0",
+        (vid, vid)
+    ).fetchone()
+    result["connections_count"] = conns["c"] if conns else 0
+    
+    conn.close()
+    return {"ok": True, "data": result}
+
+
 # ─── Client-side error logging (for debugging) ───
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"

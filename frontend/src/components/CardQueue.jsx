@@ -15,8 +15,9 @@ import CardRenderer from './CardRenderer'
  *   emptyMessage: string — shown when cards is empty
  *   onAnswer: (card, answer) => {} — called when user answers a learn_question (before rating)
  *   answerState: object — extra state to pass to CardRenderer (e.g. LLM grade)
+ *   hebrewOnly: boolean — hide English transliteration on vocab cards
  */
-export default function CardQueue({ cards, onRate, onComplete, title, emptyMessage, onAnswer, answerState }) {
+export default function CardQueue({ cards, onRate, onComplete, title, emptyMessage, onAnswer, answerState, hebrewOnly }) {
   const [idx, setIdx] = useState(0)
   const [rating, setRating] = useState(null)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -148,7 +149,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         onClick={handleReveal}
         className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors min-h-[200px] flex items-center justify-center"
       >
-        <CardRenderer card={current} showAnswer={showAnswer} onAnswer={(ans) => { if (onAnswer) onAnswer(current, ans) }} answerState={answerState} />
+        <CardRenderer card={current} showAnswer={showAnswer} onAnswer={(ans) => { if (onAnswer) onAnswer(current, ans) }} answerState={answerState} hebrewOnly={hebrewOnly} />
       </div>
 
       {/* Hint to flip */}
