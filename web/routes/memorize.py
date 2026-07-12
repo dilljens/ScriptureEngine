@@ -61,12 +61,52 @@ FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
           1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
           1.8729, 0.5425, 0.0912, 0.0658, 0.1542]
 
+def compute_learning_speed(conn, user_id, verse_id):
+    """Compute student-topic learning speed from performance history.
+    
+    Formula (per Math Academy Ch 29):
+      speed = correct_ratio / avg_difficulty_penalty
+      
+    Where:
+      correct_ratio = correct / max(attempts, 1)
+      avg_difficulty_penalty = avg_difficulty / 5.0  (centered at default)
+      
+    Returns a float where:
+      > 1.0 = fast learning (longer intervals)
+      = 1.0 = average learning
+      < 1.0 = slow learning (shorter intervals needed)
+    """
+    prog = conn.execute(
+        "SELECT attempts, correct, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
+        (user_id, verse_id)
+    ).fetchone()
+    
+    if not prog or prog["attempts"] < 2:
+        return 1.0  # Not enough data — default to average
+    
+    correct_ratio = prog["correct"] / max(prog["attempts"], 1)
+    difficulty_penalty = prog["difficulty"] / 5.0
+    
+    # Speed: higher accuracy = faster; higher difficulty = slower
+    speed = (correct_ratio * 1.5) / max(difficulty_penalty, 0.5)
+    
+    # Clamp to reasonable range
+    return max(0.3, min(3.0, speed))
+
 def _fsrs_initial_stability(rating):
     return FSRS_W[max(0, min(3, rating - 1))]
 
-def _fsrs_next_interval(stability, request_retention=0.9):
+def _fsrs_next_interval(stability, request_retention=0.9, learning_speed=1.0):
+    """Compute next review interval, adjusted for student-topic learning speed.
+    
+    Per Math Academy Ch 29: speed governs how quickly the student moves
+    through the spaced repetition process.
+    - Fast learner (speed > 1.0): longer intervals
+    - Slow learner (speed < 1.0): shorter intervals
+    """
     if stability <= 0: return 0
-    return max(1, round(stability * (math.log(request_retention) / math.log(0.9)) ** (1.0 / FSRS_W[10])))
+    base = stability * (math.log(request_retention) / math.log(0.9)) ** (1.0 / FSRS_W[10])
+    return max(1, round(base * learning_speed))
 
 def _fsrs_stability_after_success(stability, difficulty, rating):
     difficulty_weight = math.pow(FSRS_W[7], difficulty - 1)
@@ -561,8 +601,18 @@ def submit_review(queue_id: int, body: dict):
         stability = _fsrs_initial_stability(rating)
         difficulty = 5.0
     
-    # FSRS update
-    new_s, new_d, interval = _fsrs_schedule(stability, difficulty, rating)
+    # FSRS update with student-topic learning speed
+    learning_speed = compute_learning_speed(conn, user_id, verse_id)
+    
+    # Adjust difficulty by learning speed (Math Academy Ch 29):
+    # Fast learners get lower effective difficulty, slow learners higher
+    speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
+    
+    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, rating)
+    
+    # Apply learning speed to interval
+    interval = max(1, round(base_interval * learning_speed))
+    
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     next_review = (datetime.datetime.now() + datetime.timedelta(days=interval)).strftime("%Y-%m-%d")
     

@@ -17,7 +17,6 @@ import (
 	"crypto/elliptic"
 	"encoding/base64"
 	"fmt"
-	"math/big"
 )
 
 func main() {
