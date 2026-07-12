@@ -42,11 +42,17 @@ def get_conn():
             correct INTEGER DEFAULT 0,
             stability REAL DEFAULT 1.0,
             difficulty REAL DEFAULT 5.0,
+            fi_re_credit REAL DEFAULT 0.0,
             last_review TEXT,
             next_review TEXT,
             PRIMARY KEY (user_id, verse_id)
         )
     """)
+    # Add fi_re_credit column if missing (for existing DBs)
+    try:
+        conn.execute("ALTER TABLE memorize_progress ADD COLUMN fi_re_credit REAL DEFAULT 0.0")
+    except Exception:
+        pass
     return conn
 
 
@@ -86,6 +92,135 @@ def _fsrs_schedule(stability, difficulty, rating):
         new_s = _fsrs_stability_after_success(stability, difficulty, rating)
         new_d = _fsrs_next_difficulty(difficulty, rating)
     return new_s, new_d, _fsrs_next_interval(new_s)
+
+
+# ── FIRe (Fractional Implicit Repetition) ──
+
+def compute_fire_credit(conn, verse_id, rating, decay_days=7):
+    """Compute FIRe credit from a successful review and propagate to connected verses.
+    
+    When a verse is reviewed successfully (rating >= 3), all verses connected to it
+    via the graph get fractional credit. When fi_re_credit >= 1.0, the next review
+    can be skipped (knocked out).
+    
+    Credit = connection_strength × rating_factor × decay_factor
+    
+    connection_strength: from graph (0.0-1.0)
+    rating_factor: 0.3 for Good, 0.5 for Easy
+    decay_factor: credit decays over time
+    """
+    if rating < 3:
+        # Failed reviews don't give credit — they may even penalize
+        return
+    
+    # Rating factor
+    rating_factor = 0.3 if rating == 3 else 0.5
+    
+    # Find connected verses from the connection graph
+    connections = conn.execute("""
+        SELECT target_verse as connected, strength, confidence
+        FROM connections WHERE source_verse=? AND deprecated=0 AND target_verse LIKE '%.%.%'
+        UNION
+        SELECT source_verse as connected, strength, confidence
+        FROM connections WHERE target_verse=? AND deprecated=0 AND source_verse LIKE '%.%.%'
+        LIMIT 30
+    """, (verse_id, verse_id)).fetchall()
+    
+    for c in connections:
+        cv = c["connected"]
+        if cv == verse_id:
+            continue
+        
+        # Connection strength (0.0-1.0) * confidence
+        conn_strength = (c["strength"] or 0.5) * (c["confidence"] or 0.5)
+        
+        # FIRe credit for this connection
+        credit = min(0.5, conn_strength * rating_factor * 0.3)
+        if credit < 0.01:
+            continue
+        
+        # Apply to connected verse's progress
+        prog = conn.execute(
+            "SELECT fi_re_credit, last_review FROM memorize_progress WHERE user_id='default' AND verse_id=?",
+            (cv,)
+        ).fetchone()
+        
+        if prog:
+            # Decay existing credit
+            existing = prog["fi_re_credit"] or 0.0
+            if prog["last_review"]:
+                try:
+                    last = datetime.datetime.strptime(prog["last_review"], "%Y-%m-%d %H:%M:%S")
+                    days_since = (datetime.datetime.now() - last).total_seconds() / 86400.0
+                    existing *= math.pow(0.9, days_since)  # Decay 10% per day
+                except:
+                    pass
+            
+            new_credit = min(1.0, existing + credit)
+            conn.execute(
+                "UPDATE memorize_progress SET fi_re_credit=? WHERE user_id='default' AND verse_id=?",
+                (round(new_credit, 3), cv)
+            )
+
+
+def get_connection_difficulty(conn, verse_id):
+    """Estimate verse difficulty from graph centrality.
+    
+    Verses with more connections are more memorable (lower difficulty).
+    Verses with fewer connections are harder to remember (higher difficulty).
+    Returns a difficulty value (1.0-10.0).
+    """
+    count = conn.execute("""
+        SELECT COUNT(*) as c FROM connections 
+        WHERE (source_verse=? OR target_verse=?) AND deprecated=0
+    """, (verse_id, verse_id)).fetchone()["c"]
+    
+    # Map: 0 connections → difficulty 8.0 (very hard)
+    #       100+ connections → difficulty 2.0 (very easy)
+    if count >= 100:
+        return 2.0
+    elif count >= 50:
+        return 3.0
+    elif count >= 20:
+        return 4.0
+    elif count >= 10:
+        return 5.0
+    elif count >= 5:
+        return 6.0
+    elif count >= 2:
+        return 7.0
+    else:
+        return 8.0
+
+
+def get_graph_centrality(conn, limit=5):
+    """Find the most central (best-connected) verses not yet memorized.
+    Used for automatic verse selection.
+    """
+    rows = conn.execute("""
+        SELECT source_verse as verse_id, COUNT(*) as conn_count
+        FROM connections 
+        WHERE deprecated=0 AND source_verse LIKE '%.%.%'
+        GROUP BY source_verse
+        ORDER BY conn_count DESC
+        LIMIT ?
+    """, (limit,)).fetchall()
+    
+    # Filter to verses not already in queue
+    results = []
+    for r in rows:
+        in_queue = conn.execute(
+            "SELECT 1 FROM memorize_queue WHERE verse_id=? AND user_id='default'",
+            (r["verse_id"],)
+        ).fetchone()
+        if not in_queue:
+            vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
+            results.append({
+                "verse_id": r["verse_id"],
+                "connections": r["conn_count"],
+                "text": vt[0][:150] if vt and vt[0] else "",
+            })
+    return results
 
 
 @router.get("/api/v1/memorize/queue")
@@ -148,18 +283,19 @@ def add_to_queue(body: dict):
             VALUES (?, ?)
         """, (user_id, verse_id))
         conn.commit()
-        # Initialize progress
+        # Initialize progress with connection-aware difficulty
+        difficulty = get_connection_difficulty(conn, verse_id)
         conn.execute("""
-            INSERT OR IGNORE INTO memorize_progress (user_id, verse_id, mastery, attempts, correct)
-            VALUES (?, ?, 0, 0, 0)
-        """, (user_id, verse_id))
+            INSERT OR IGNORE INTO memorize_progress (user_id, verse_id, mastery, attempts, correct, difficulty)
+            VALUES (?, ?, 0, 0, 0, ?)
+        """, (user_id, verse_id, difficulty))
         conn.commit()
         added = True
     except:
         added = False
     
     conn.close()
-    return {"ok": True, "data": {"verse_id": verse_id, "added": added}}
+    return {"ok": True, "data": {"verse_id": verse_id, "added": added, "initial_difficulty": difficulty if 'difficulty' in dir() else 5.0}}
 
 
 @router.delete("/api/v1/memorize/queue/{item_id}")
@@ -210,8 +346,15 @@ def add_chapter_to_queue(body: dict):
 
 
 @router.get("/api/v1/memorize/review")
-def get_due_reviews(user_id: str = "default", limit: int = 10):
-    """Get due reviews from the memorize queue, ordered by urgency."""
+def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = False, palace_order: bool = False):
+    """Get due reviews from the memorize queue, ordered by urgency.
+    
+    Features:
+    - FIRe knock-out: cards with fi_re_credit >= 1.0 are skipped (extend interval)
+    - Connection-aware difficulty: shown in response
+    - Repetition compression (if compress=True): connected cards grouped together
+    - Palace-guided ordering (if palace_order=True): ordered by memory palace loci
+    """
     conn = get_conn()
     now = datetime.datetime.now()
     
@@ -222,16 +365,36 @@ def get_due_reviews(user_id: str = "default", limit: int = 10):
                COALESCE(p.correct, 0) as correct,
                COALESCE(p.stability, 1.0) as stability,
                COALESCE(p.difficulty, 5.0) as difficulty,
+               COALESCE(p.fi_re_credit, 0.0) as fi_re_credit,
                p.last_review
         FROM memorize_queue q
         LEFT JOIN memorize_progress p ON p.user_id=q.user_id AND p.verse_id=q.verse_id
         WHERE q.user_id=?
         ORDER BY p.last_review ASC
         LIMIT ?
-    """, (user_id, limit)).fetchall()
+    """, (user_id, limit * 2)).fetchall()  # Fetch extra for FIRe knock-out filtering
     
     reviews = []
+    knocked_out = 0
     for r in rows:
+        # FIRe knock-out: skip if credit >= 1.0
+        fire_credit = r["fi_re_credit"] or 0.0
+        if fire_credit >= 1.0:
+            knocked_out += 1
+            # Extend due date (pretend a 'Good' review happened)
+            prog = conn.execute(
+                "SELECT stability FROM memorize_progress WHERE user_id=? AND verse_id=?",
+                (user_id, r["verse_id"])
+            ).fetchone()
+            if prog and prog["stability"] > 0:
+                interval = _fsrs_next_interval(prog["stability"])
+                next_review = (now + datetime.timedelta(days=interval)).strftime("%Y-%m-%d")
+                conn.execute(
+                    "UPDATE memorize_progress SET fi_re_credit=0.0, last_review=datetime('now'), next_review=? WHERE user_id=? AND verse_id=?",
+                    (next_review, user_id, r["verse_id"])
+                )
+            continue
+        
         # Compute retrievability
         if r["last_review"]:
             try:
@@ -254,14 +417,68 @@ def get_due_reviews(user_id: str = "default", limit: int = 10):
             "attempts": r["attempts"],
             "stability": r["stability"],
             "difficulty": r["difficulty"],
+            "fi_re_credit": round(fire_credit, 3),
             "retrievability": round(ret, 3),
         })
     
     # Sort by retrievability (most forgotten first)
     reviews.sort(key=lambda x: x["retrievability"])
     
+    # Palace-guided ordering: if enabled, order by memory palace loci
+    if palace_order:
+        try:
+            MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+            mconn = sqlite3.connect(str(MEM_PATH))
+            mconn.row_factory = sqlite3.Row
+            loci_rows = mconn.execute("""
+                SELECT l.verse_id, p.name as palace_name, l.label as locus_label
+                FROM loci l JOIN palaces p ON p.id=l.palace_id
+                WHERE l.verse_id IS NOT NULL
+            """).fetchall()
+            palace_map = {r["verse_id"]: r for r in loci_rows}
+            mconn.close()
+            
+            # Add palace info and sort: palace-ordered first, then retrievability
+            for r in reviews:
+                pi = palace_map.get(r["verse_id"])
+                if pi:
+                    r["palace"] = pi["palace_name"]
+                    r["locus"] = pi["locus_label"]
+            # Sort: palace verses first (by palace order), then non-palace by retrievability
+            reviews.sort(key=lambda x: (
+                0 if x.get("palace") else 1,
+                x.get("palace", ""),
+                x.get("locus", ""),
+                x["retrievability"],
+            ))
+        except Exception:
+            pass  # Palace ordering is optional
+    if compress and len(reviews) > 2:
+        compressed = []
+        used = set()
+        for i, r in enumerate(reviews):
+            if i in used: continue
+            # Find connected cards
+            group = [r]
+            used.add(i)
+            for j in range(i + 1, len(reviews)):
+                if j in used: continue
+                # Check if connected via graph
+                conn_check = conn.execute("""
+                    SELECT 1 FROM connections 
+                    WHERE (source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?)
+                    LIMIT 1
+                """, (r["verse_id"], reviews[j]["verse_id"], reviews[j]["verse_id"], r["verse_id"])).fetchone()
+                if conn_check:
+                    group.append(reviews[j])
+                    used.add(j)
+            compressed.append(group)
+        # Flatten: connected cards appear consecutively
+        reviews = [c for g in compressed for c in g]
+    
+    conn.commit()  # Save FIRe knock-out updates
     conn.close()
-    return {"ok": True, "data": {"reviews": reviews, "due": len(reviews)}}
+    return {"ok": True, "data": {"reviews": reviews, "due": len(reviews), "knocked_out": knocked_out}}
 
 
 @router.post("/api/v1/memorize/review/{queue_id}")
@@ -308,9 +525,16 @@ def submit_review(queue_id: int, body: dict):
     
     conn.execute("""
         INSERT OR REPLACE INTO memorize_progress 
-            (user_id, verse_id, mastery, attempts, correct, stability, difficulty, last_review, next_review)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?)
     """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review))
+    
+    # FIRe credit propagation: successful reviews give credit to connected verses
+    try:
+        compute_fire_credit(conn, verse_id, rating)
+    except Exception:
+        pass  # FIRe is non-critical
+    
     conn.commit()
     conn.close()
     
@@ -318,4 +542,18 @@ def submit_review(queue_id: int, body: dict):
         "verse_id": verse_id, "mastery": round(mastery, 3),
         "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": interval, "next_review": next_review,
+        "fi_re_credit_propagated": True,
     }}
+
+
+@router.get("/api/v1/memorize/suggest")
+def suggest_verses(limit: int = 5, user_id: str = "default"):
+    """Suggest verses to memorize based on graph centrality.
+    
+    Finds well-connected verses not yet in the queue — these are
+    high-value verses that will unlock many connections.
+    """
+    conn = get_conn()
+    results = get_graph_centrality(conn, limit=limit)
+    conn.close()
+    return {"ok": True, "data": {"suggestions": results, "total": len(results)}}
