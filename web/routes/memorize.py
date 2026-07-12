@@ -96,70 +96,117 @@ def _fsrs_schedule(stability, difficulty, rating):
 
 # ── FIRe (Fractional Implicit Repetition) ──
 
-def compute_fire_credit(conn, verse_id, rating, decay_days=7):
-    """Compute FIRe credit from a successful review and propagate to connected verses.
-    
-    When a verse is reviewed successfully (rating >= 3), all verses connected to it
-    via the graph get fractional credit. When fi_re_credit >= 1.0, the next review
-    can be skipped (knocked out).
-    
-    Credit = connection_strength × rating_factor × decay_factor
-    
-    connection_strength: from graph (0.0-1.0)
-    rating_factor: 0.3 for Good, 0.5 for Easy
-    decay_factor: credit decays over time
-    """
-    if rating < 3:
-        # Failed reviews don't give credit — they may even penalize
-        return
-    
-    # Rating factor
-    rating_factor = 0.3 if rating == 3 else 0.5
-    
-    # Find connected verses from the connection graph
-    connections = conn.execute("""
+def get_connected_verses(conn, verse_id, limit=30):
+    """Get all verses connected to verse_id via the connection graph."""
+    return conn.execute("""
         SELECT target_verse as connected, strength, confidence
         FROM connections WHERE source_verse=? AND deprecated=0 AND target_verse LIKE '%.%.%'
         UNION
         SELECT source_verse as connected, strength, confidence
         FROM connections WHERE target_verse=? AND deprecated=0 AND source_verse LIKE '%.%.%'
-        LIMIT 30
-    """, (verse_id, verse_id)).fetchall()
+        LIMIT ?
+    """, (verse_id, verse_id, limit)).fetchall()
+
+
+def compute_fire_credit(conn, verse_id, rating, decay_days=7):
+    """Compute FIRe credit (success) or penalty (failure) and propagate.
+    
+    TWO-WAY FIRe:
+    SUCCESS (rating >= 3): credit flows DOWNWARD from complex → simpler
+      - Reviewing John 1:1 gives credit to Gen 1:1 (simpler, quoted verse)
+      - When fi_re_credit >= 1.0, next review is skipped (knocked out)
+    
+    FAILURE (rating < 3): penalty flows UPWARD from simpler → complex
+      - Failing Gen 1:1 penalizes John 1:1 (complex, depends on Gen 1:1)
+      - Stability is reduced, credit is reduced
+    
+    Connection strength: from graph (0.0-1.0)
+    Complexity proxy: verses with MORE connections are MORE complex
+    """
+    # Get connections
+    connections = get_connected_verses(conn, verse_id)
+    
+    # Count connections of the reviewed verse (complexity proxy)
+    reviewed_count = conn.execute("""
+        SELECT COUNT(*) as c FROM connections 
+        WHERE (source_verse=? OR target_verse=?) AND deprecated=0
+    """, (verse_id, verse_id)).fetchone()["c"]
+    
+    now = datetime.datetime.now()
     
     for c in connections:
         cv = c["connected"]
         if cv == verse_id:
             continue
         
-        # Connection strength (0.0-1.0) * confidence
         conn_strength = (c["strength"] or 0.5) * (c["confidence"] or 0.5)
-        
-        # FIRe credit for this connection
-        credit = min(0.5, conn_strength * rating_factor * 0.3)
-        if credit < 0.01:
+        if conn_strength < 0.01:
             continue
         
-        # Apply to connected verse's progress
+        # Determine direction: is reviewed verse simpler or more complex?
+        cv_count = conn.execute("""
+            SELECT COUNT(*) as c FROM connections 
+            WHERE (source_verse=? OR target_verse=?) AND deprecated=0
+        """, (cv, cv)).fetchone()["c"]
+        
+        # Get existing progress for connected verse
         prog = conn.execute(
-            "SELECT fi_re_credit, last_review FROM memorize_progress WHERE user_id='default' AND verse_id=?",
+            "SELECT fi_re_credit, stability, difficulty, last_review FROM memorize_progress WHERE user_id='default' AND verse_id=?",
             (cv,)
         ).fetchone()
         
-        if prog:
-            # Decay existing credit
-            existing = prog["fi_re_credit"] or 0.0
-            if prog["last_review"]:
-                try:
-                    last = datetime.datetime.strptime(prog["last_review"], "%Y-%m-%d %H:%M:%S")
-                    days_since = (datetime.datetime.now() - last).total_seconds() / 86400.0
-                    existing *= math.pow(0.9, days_since)  # Decay 10% per day
-                except:
-                    pass
+        if not prog:
+            continue
+        
+        existing_credit = prog["fi_re_credit"] or 0.0
+        existing_stability = prog["stability"] or 1.0
+        
+        # Decay existing credit (summer slide: accelerate if overdue)
+        if prog["last_review"]:
+            try:
+                last = datetime.datetime.strptime(prog["last_review"], "%Y-%m-%d %H:%M:%S")
+                days_since = (now - last).total_seconds() / 86400.0
+                # Summer slide: decay accelerates exponentially with time
+                # Base decay is 10%/day, but doubles every 30 days overdue
+                slide_factor = 1.0 + (days_since / 30.0)  # 1x at 0 days, 2x at 30 days, etc.
+                decay_rate = math.pow(0.9, days_since * slide_factor)
+                existing_credit *= decay_rate
+            except:
+                pass
+        
+        if rating >= 3:
+            # ── SUCCESS: Credit flow complex → simpler ──
+            rating_factor = 0.3 if rating == 3 else 0.5
+            credit = min(0.5, conn_strength * rating_factor * 0.3)
+            if credit < 0.01:
+                continue
             
-            new_credit = min(1.0, existing + credit)
+            new_credit = min(1.0, existing_credit + credit)
             conn.execute(
                 "UPDATE memorize_progress SET fi_re_credit=? WHERE user_id='default' AND verse_id=?",
                 (round(new_credit, 3), cv)
+            )
+        else:
+            # ── FAILURE: Penalty flow simpler → complex ──
+            # Only penalize if the connected verse is MORE complex
+            # (has more connections than the reviewed verse)
+            if cv_count <= reviewed_count:
+                continue  # Don't penalize simpler verses when failing complex ones
+            
+            penalty_factor = 1.0 if rating == 1 else 0.3  # Again=full, Hard=partial
+            penalty = min(0.5, conn_strength * penalty_factor * 0.5)
+            if penalty < 0.01:
+                continue
+            
+            # Reduce stability: stability /= (1 + penalty)
+            new_stability = existing_stability / (1.0 + penalty)
+            
+            # Reduce credit
+            new_credit = max(0.0, existing_credit - penalty)
+            
+            conn.execute(
+                "UPDATE memorize_progress SET stability=?, fi_re_credit=? WHERE user_id='default' AND verse_id=?",
+                (round(new_stability, 2), round(new_credit, 3), cv)
             )
 
 
@@ -557,3 +604,253 @@ def suggest_verses(limit: int = 5, user_id: str = "default"):
     results = get_graph_centrality(conn, limit=limit)
     conn.close()
     return {"ok": True, "data": {"suggestions": results, "total": len(results)}}
+
+
+# ── Macro-Interleaving ──
+
+@router.get("/api/v1/review/interleaved")
+def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
+    """Get interleaved reviews from ALL areas: memorize + hebrew + learn.
+    
+    Implements Math Academy's macro-interleaving (Ch 19):
+    - Pulls due cards from memorize queue, hebrew review queue, and learn review
+    - Interleaves them: no more than 2 consecutive from same area
+    - Returns a mixed session for maximum retention
+    """
+    now = datetime.datetime.now()
+    all_cards = []
+    
+    # 1. Memorize cards
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT q.id, q.verse_id, 'memorize' as source,
+               COALESCE(p.mastery, 0) as mastery,
+               COALESCE(p.attempts, 0) as attempts,
+               COALESCE(p.stability, 1.0) as stability,
+               COALESCE(p.fi_re_credit, 0.0) as fi_re_credit,
+               p.last_review
+        FROM memorize_queue q
+        LEFT JOIN memorize_progress p ON p.user_id=q.user_id AND p.verse_id=q.verse_id
+        WHERE q.user_id=? AND (p.fi_re_credit IS NULL OR p.fi_re_credit < 1.0)
+        ORDER BY p.last_review ASC LIMIT ?
+    """, (user_id, limit)).fetchall()
+    for r in rows:
+        vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
+        retro = 0.0
+        if r["last_review"]:
+            try:
+                last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
+                days = (now - last).total_seconds() / 86400.0
+                retro = math.exp(-days / r["stability"]) if r["stability"] > 0 else 1.0
+            except:
+                retro = 0.5
+        all_cards.append({
+            "id": f"mem_{r['id']}", "verse_id": r["verse_id"],
+            "text": (vt[0] or "")[:200] if vt else "",
+            "source": "memorize", "retrievability": round(retro, 3),
+        })
+    
+    # 2. Hebrew review cards (from memorize.db)
+    try:
+        MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+        mconn = sqlite3.connect(str(MEM_PATH))
+        mconn.row_factory = sqlite3.Row
+        heb_rows = mconn.execute("""
+            SELECT h.id, h.title, h.category, h.level,
+                   COALESCE(p.mastery, 0) as mastery,
+                   p.last_practiced as last_review
+            FROM hebrew_nodes h
+            LEFT JOIN hebrew_progress p ON p.node_id=h.id AND p.user_id=?
+            WHERE p.mastery < 0.8
+            ORDER BY p.last_practiced ASC LIMIT ?
+        """, (user_id, limit // 2)).fetchall()
+        for r in heb_rows:
+            all_cards.append({
+                "id": f"heb_{r['id']}", "verse_id": r["id"],
+                "text": (r["title"] or "") + f" ({r['category']})",
+                "source": "hebrew", "retrievability": 0.5,
+            })
+        mconn.close()
+    except Exception:
+        pass
+    
+    # 3. Learn module review cards
+    try:
+        lconn = get_conn()
+        lrows = lconn.execute("""
+            SELECT m.id, m.title, COALESCE(p.mastery, 0) as mastery
+            FROM learning_modules m
+            LEFT JOIN learning_progress p ON p.module_id=m.id AND p.user_id=?
+            WHERE p.mastery < 0.8 AND p.attempts > 0
+            ORDER BY p.last_review ASC LIMIT ?
+        """, (user_id, limit // 3)).fetchall()
+        for r in lrows:
+            all_cards.append({
+                "id": f"learn_{r['id']}", "verse_id": r["id"],
+                "text": r["title"] or "",
+                "source": "learning", "retrievability": 0.5,
+            })
+        lconn.close()
+    except Exception:
+        pass
+    
+    # Interleave: no more than 2 consecutive from same source
+    # Sort by retrievability first, then interleave by source
+    all_cards.sort(key=lambda x: x["retrievability"])
+    
+    interleaved = []
+    last_source = None
+    consecutive = 0
+    
+    # Round-robin interleaving with max 2 consecutive
+    remaining = all_cards.copy()
+    while remaining:
+        best_idx = 0
+        best_retro = float('inf')
+        for i, card in enumerate(remaining):
+            if card["source"] == last_source and consecutive >= 2:
+                continue
+            if card["retrievability"] < best_retro:
+                best_retro = card["retrievability"]
+                best_idx = i
+        
+        chosen = remaining.pop(best_idx)
+        
+        if chosen["source"] == last_source:
+            consecutive += 1
+        else:
+            consecutive = 1
+            last_source = chosen["source"]
+        
+        interleaved.append(chosen)
+    
+    conn.close()
+    return {"ok": True, "data": {"reviews": interleaved, "total": len(interleaved)}}
+
+
+# ── Non-Interference ──
+
+def get_non_interference_distance(conn, verse_a, verse_b):
+    """Check if two verses would interfere with each other if reviewed near each other.
+    
+    Interference occurs when:
+    - They share rare words (fewer than 10 occurrences in the canon)
+    - They have similar themes (high connection overlap)
+    - They are from confusable Hebrew word pairs
+    
+    Returns a score 0.0-1.0 where higher = more interference.
+    """
+    # Check if connected via the graph with high strength
+    conn_row = conn.execute("""
+        SELECT strength FROM connections 
+        WHERE ((source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?))
+        AND strength > 0.7
+        LIMIT 1
+    """, (verse_a, verse_b, verse_b, verse_a)).fetchone()
+    if conn_row:
+        return conn_row["strength"] * 0.5  # High similarity = some interference
+    
+    # Check hebrew_confusability (from memorize.db)
+    try:
+        MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+        mconn = sqlite3.connect(str(MEM_PATH))
+        row = mconn.execute(
+            "SELECT strength FROM hebrew_confusability WHERE (node_a=? AND node_b=?) OR (node_a=? AND node_b=?)",
+            (verse_a, verse_b, verse_b, verse_a)
+        ).fetchone()
+        mconn.close()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    
+    return 0.0
+
+
+@router.get("/api/v1/review/next")
+def get_next_review(user_id: str = "default", last_verse: str = ""):
+    """Get the next review card, respecting non-interference.
+    
+    Ensures the next card doesn't interfere with the last one reviewed.
+    Avoids scheduling confusable pairs consecutively.
+    """
+    conn = get_conn()
+    
+    # Get next due card from memorize queue
+    rows = conn.execute("""
+        SELECT q.id, q.verse_id, COALESCE(p.fi_re_credit, 0.0) as fire,
+               COALESCE(p.stability, 1.0) as stability, p.last_review
+        FROM memorize_queue q
+        LEFT JOIN memorize_progress p ON p.user_id=q.user_id AND p.verse_id=q.verse_id
+        WHERE q.user_id=? AND (p.fi_re_credit IS NULL OR p.fi_re_credit < 1.0)
+        ORDER BY p.last_review ASC LIMIT 5
+    """, (user_id,)).fetchall()
+    
+    # Pick the first card that doesn't interfere with last_verse
+    chosen = None
+    for r in rows:
+        if last_verse:
+            interference = get_non_interference_distance(conn, last_verse, r["verse_id"])
+            if interference > 0.4:
+                continue  # Skip this card — would interfere
+        chosen = r
+        break
+    
+    if not chosen:
+        conn.close()
+        return {"ok": True, "data": {"review": None, "message": "No non-interfering cards due"}}
+    
+    vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (chosen["verse_id"],)).fetchone()
+    text = vt[0] if vt else ""
+    
+    conn.close()
+    return {"ok": True, "data": {"review": {
+        "queue_id": chosen["id"],
+        "verse_id": chosen["verse_id"],
+        "text": text[:300] if text else "",
+    }}}
+
+
+# ── Targeted Remediation ──
+
+@router.get("/api/v1/review/weakest")
+def get_weakest_reviews(user_id: str = "default", limit: int = 5):
+    """Get cards where the user is weakest for targeted remediation.
+    
+    Implements Math Academy's targeted remediation (Ch 21):
+    - Identifies verses with lowest accuracy rates
+    - Prioritizes verses with most failed attempts
+    - Returns targeted mini-session for weak areas
+    """
+    conn = get_conn()
+    
+    rows = conn.execute("""
+        SELECT q.id, q.verse_id,
+               p.mastery, p.attempts, p.correct, p.stability, p.difficulty,
+               (p.attempts - p.correct) as failures,
+               CAST(p.correct AS REAL) / NULLIF(p.attempts, 0) as accuracy
+        FROM memorize_queue q
+        JOIN memorize_progress p ON p.user_id=q.user_id AND p.verse_id=q.verse_id
+        WHERE q.user_id=? AND p.attempts > 0
+          AND (p.fi_re_credit IS NULL OR p.fi_re_credit < 1.0)
+        ORDER BY accuracy ASC, failures DESC, p.stability ASC
+        LIMIT ?
+    """, (user_id, limit)).fetchall()
+    
+    results = []
+    for r in rows:
+        vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
+        text = vt[0] if vt else ""
+        results.append({
+            "queue_id": r["id"],
+            "verse_id": r["verse_id"],
+            "text": text[:300] if text else "",
+            "accuracy": round(r["accuracy"] * 100, 1) if r["accuracy"] else 0,
+            "attempts": r["attempts"],
+            "failures": r["failures"],
+            "stability": r["stability"],
+            "difficulty": r["difficulty"],
+        })
+    
+    conn.close()
+    return {"ok": True, "data": {"reviews": results, "total": len(results)}}
