@@ -108,23 +108,23 @@
 
 | # | Task | Source | Effort | Status |
 |---|------|--------|--------|--------|
-| 3.1 | FIRe: add `fi_re_credit` column to cards table | F1.1 | 30m | ❌ |
-| 3.2 | FIRe: on card review, compute credit for all connected verses (graph query) | F1.2 | 3h | ❌ |
-| 3.3 | FIRe: credit ≥ 1.0 knocks out due review (extends interval) | F1.3 | 2h | ❌ |
-| 3.4 | FIRe: credit decay over time | F1.4 | 1h | ❌ |
-| 3.5 | Repetition compression — combine related due cards into one review | F2 | 4h | ❌ |
-| 3.6 | Palace-guided review ordering | F3 | 4h | ❌ |
-| 3.7 | Automatic verse selection based on graph centrality | F4 | 3h | ❌ |
-| 3.8 | Connection-aware difficulty estimation | F5 | 3h | ❌ |
+| 3.1 | FIRe: `fi_re_credit` column in memorize_progress | F1.1 | 30m | ✅ |
+| 3.2 | FIRe: on review, propagate credit to connected verses via graph | F1.2 | 3h | ✅ |
+| 3.3 | FIRe: credit ≥ 1.0 knocks out due review (extends interval) | F1.3 | 2h | ✅ |
+| 3.4 | FIRe: credit decay over time (10%/day) | F1.4 | 1h | ✅ |
+| 3.5 | Repetition compression — connected due cards grouped together | F2 | 4h | ✅ |
+| 3.6 | Palace-guided review ordering | F3 | 4h | ✅ |
+| 3.7 | Graph centrality suggestion (`/api/v1/memorize/suggest`) | F4 | 3h | ✅ |
+| 3.8 | Connection-aware difficulty estimation | F5 | 3h | ✅ |
 | 3.9 | Hebrew verb conjugation drills frontend (`HebrewVerbDrill.jsx`) | hebrew-plan | 4h | ✅ |
-| 3.10 | Mukdam u'Meuchar expansion (more cases from Talmud + narrative analysis) | rabbinic-plan | 3h | ❌ |
-| 3.11 | Sefirotic mapping — keyword → sefirah, agent judgments | rabbinic-plan | 4h | ❌ |
-| 3.12 | Decay model for overdue reviews (summer slide) | implementation-review 2c | 3h | ❌ |
-| 3.13 | Multi-mode FIRe (abstract to support hebrew_knowledge + scripture_knowledge + memorization) | implementation-review | 8h | ❌ |
-| 3.14 | Macro-interleaving across works | implementation-review | 3h | ✅ (Hebrew within-area interleaving) |
-| — | Literary pattern detection — 6 types built (chiasmus micro/meso/macro, inclusio, word links, parallelism, formula markers, acrostics) | new | 8h | ✅ |
-| — | Additional patterns documented for later (leitwort, type-scenes, servant-tyrant parallelism, covenant formula, tabernacle pattern, numerical patterns, janus parallelism, whole-book macro-chiasm) | new | 18h | 📝 documented |
-| 3.15 | Student-topic learning speeds calibration | implementation-review | 3h | ❌ |
+| 3.10 | Mukdam u'Meuchar expansion | rabbinic-plan | 3h | ❌ |
+| 3.11 | Sefirotic mapping | rabbinic-plan | 4h | ❌ |
+| 3.12 | Decay model for overdue reviews (summer slide) | implementation-review | 3h | ✅ (included in FIRe) |
+| 3.13 | Multi-mode FIRe | implementation-review | 8h | ⏳ partial |
+| 3.14 | Macro-interleaving across works | implementation-review | 3h | ✅ |
+| — | Literary pattern detection — 6 types built | new | 8h | ✅ |
+| — | Additional patterns documented | new | 18h | 📝 |
+| 3.15 | Student-topic learning speeds calibration | implementation-review | 3h | ⏳ partial (seeded from connections) |
 
 ---
 
