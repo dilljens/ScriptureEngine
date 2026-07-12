@@ -2982,6 +2982,62 @@ def truth_score(
     return {"ok": True, "data": result}
 
 
+# ─── Joseph Smith Teachings Search ───
+
+@app.get("/api/v1/js/search")
+def search_js(q: str = "", limit: int = 20, year: int = 0):
+    """Search Joseph Smith's teachings/discourses by keyword."""
+    conn = get_db()
+    
+    if not q.strip():
+        rows = conn.execute(
+            "SELECT id, title, source, year, length(content) as content_len FROM js_texts ORDER BY id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    else:
+        # Use FTS5 if available, fall back to LIKE
+        try:
+            rows = conn.execute("""
+                SELECT j.id, j.title, j.source, j.year, length(j.content) as content_len
+                FROM js_texts_fts f JOIN js_texts j ON j.id = f.rowid
+                WHERE js_texts_fts MATCH ?
+                ORDER BY rank LIMIT ?
+            """, (q, limit)).fetchall()
+        except Exception:
+            rows = conn.execute(
+                "SELECT id, title, source, year, length(content) as content_len FROM js_texts WHERE content LIKE ? ORDER BY id LIMIT ?",
+                (f"%{q}%", limit)
+            ).fetchall()
+    
+    if year > 0:
+        rows = [r for r in rows if r["year"] == year]
+    
+    results = []
+    for r in rows:
+        results.append({
+            "id": r["id"],
+            "title": (r["title"] or "")[:200],
+            "source": r["source"],
+            "year": r["year"],
+            "content_length": r["content_len"],
+        })
+    
+    total = conn.execute("SELECT COUNT(*) FROM js_texts").fetchone()[0]
+    conn.close()
+    return {"ok": True, "data": {"results": results, "total": total, "matched": len(results)}}
+
+
+@app.get("/api/v1/js/text/{text_id}")
+def get_js_text(text_id: int):
+    """Get full text of a Joseph Smith discourse."""
+    conn = get_db()
+    row = conn.execute("SELECT id, title, content, source, year FROM js_texts WHERE id=?", (text_id,)).fetchone()
+    conn.close()
+    if not row:
+        return {"ok": False, "error": "Text not found"}
+    return {"ok": True, "data": dict(row)}
+
+
 # ─── Daily Verse / Maintenance Mode ───
 
 @app.get("/api/v1/verse-of-day")

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import CardQueue from './CardQueue'
+import PassageReader from './PassageReader'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 
 /**
@@ -38,6 +39,8 @@ export default function HebrewLearnView({ onOpenLesson }) {
   const [showVerbDrill, setShowVerbDrill] = useState(false)
   const [showHebrewReview, setShowHebrewReview] = useState(false)
   const [hebrewReviewCards, setHebrewReviewCards] = useState([])
+  const [showPassageReader, setShowPassageReader] = useState(false)
+  const [passageInput, setPassageInput] = useState('gen.1.1')
   const [quickMode, setQuickMode] = useState(false)
   const [quickQuestions, setQuickQuestions] = useState([])
   const [quickIdx, setQuickIdx] = useState(0)
@@ -114,6 +117,36 @@ export default function HebrewLearnView({ onOpenLesson }) {
   for (const n of filtered) {
     if (!byLevel[n.level]) byLevel[n.level] = []
     byLevel[n.level].push(n)
+  }
+
+  // Passage reader mode
+  if (showPassageReader) {
+    return (
+      <div>
+        <div className="max-w-4xl mx-auto px-6 pt-4">
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={() => setShowPassageReader(false)}
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0">
+              ← Back to Curriculum
+            </button>
+            <input type="text" value={passageInput}
+              onChange={e => setPassageInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') setShowPassageReader(true) }}
+              placeholder="e.g. gen.22.1-19 or isa.55"
+              className="flex-1 max-w-xs px-2 py-1 rounded text-xs border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400" />
+            <button onClick={() => {
+              // Force re-render by toggling key
+              setShowPassageReader(false)
+              setTimeout(() => setShowPassageReader(true), 50)
+            }}
+              className="px-2 py-1 rounded text-xs bg-blue-600 text-white hover:bg-blue-700 cursor-pointer font-medium transition-colors">
+              Load
+            </button>
+          </div>
+        </div>
+        <PassageReader key={passageInput} passageId={passageInput} />
+      </div>
+    )
   }
 
   // Verb drill mode
@@ -281,6 +314,10 @@ export default function HebrewLearnView({ onOpenLesson }) {
         <button onClick={startQuickSession}
           className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           ⏱ 5-min quick
+        </button>
+        <button onClick={() => setShowPassageReader(true)}
+          className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          📖 Read Passage
         </button>
         <button onClick={() => setShowVerbDrill(true)}
           className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
