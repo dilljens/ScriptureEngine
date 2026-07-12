@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
 import { lessonToCards } from '../lib/card-factory'
 
@@ -21,8 +21,43 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
   const [selectedWord, setSelectedWord] = useState(null)
   const [showCards, setShowCards] = useState(false)
   const [practiceCards, setPracticeCards] = useState([])
+  const [audioData, setAudioData] = useState({})
+  const audioRef = useRef(null)
+  const [playingVerse, setPlayingVerse] = useState(null)
 
-  // Parse passage ID
+  // Fetch audio data for all verses in passage
+  useEffect(() => {
+    if (!verses.length) return
+    const fetchAudio = async () => {
+      const ad = {}
+      // Only fetch audio for first 3 verses initially to be efficient
+      for (const v of verses.slice(0, 3)) {
+        try {
+          const r = await fetch(`/api/v1/read-along/${v.id}`)
+          const d = await r.json()
+          if (d.ok && d.data?.audio_url) ad[v.id] = d.data
+        } catch {}
+      }
+      setAudioData(ad)
+    }
+    fetchAudio()
+  }, [verses])
+
+  const playVerse = (verseId) => {
+    const info = audioData[verseId]
+    if (info?.audio_url && info.audio_source === 'schmueloff') {
+      if (playingVerse === verseId && audioRef.current) {
+        audioRef.current.pause()
+        setPlayingVerse(null)
+        return
+      }
+      const audio = new Audio(info.audio_url)
+      audioRef.current = audio
+      audio.onended = () => setPlayingVerse(null)
+      setPlayingVerse(verseId)
+      audio.play().catch(() => {})
+    }
+  }
   const passageInfo = useMemo(() => {
     if (!passageId) return null
     const parts = passageId.split('.')
@@ -236,12 +271,25 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
         </div>
       </div>
 
-      {/* English side-by-side */}
+      {/* English side-by-side with audio */}
       <details className="mt-3">
         <summary className="text-xs text-neutral-400 cursor-pointer hover:text-neutral-600">Show English</summary>
         <div className="mt-2 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
           {verses.map((v, i) => (
-            <p key={i} className="mb-1">{v.text_english}</p>
+            <p key={i} className="mb-1 flex items-start gap-2">
+              <span className="flex-1">{v.text_english}</span>
+              {audioData[v.id] && (
+                <button onClick={() => playVerse(v.id)}
+                  className={`shrink-0 mt-0.5 text-[10px] px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                    playingVerse === v.id
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                      : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-500 hover:text-neutral-700'
+                  }`}
+                  title={playingVerse === v.id ? 'Stop' : `Play ${v.text_hebrew ? 'Hebrew audio' : ''}`}>
+                  {playingVerse === v.id ? '⏹' : '🔊'}
+                </button>
+              )}
+            </p>
           ))}
         </div>
       </details>

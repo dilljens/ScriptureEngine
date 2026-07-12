@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -8,20 +8,32 @@ import remarkGfm from 'remark-gfm'
  *
  * Inspired by Daily Dose of Hebrew.
  * Shows verse with word-by-word breakdown, gematria, connections.
- * Perfect for 2-minute daily review.
+ * Plays real audio from Schmueloff recordings when available,
+ * falls back to browser TTS.
  */
 export default function DailyVerse({ onNavigate }) {
   const [verse, setVerse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [speaking, setSpeaking] = useState(false)
+  const [audioInfo, setAudioInfo] = useState(null)
+  const audioRef = useRef(null)
 
   const loadVerse = async () => {
     setLoading(true)
+    setAudioInfo(null)
     try {
       const r = await fetch('/api/v1/verse-of-day')
       const d = await r.json()
-      if (d.ok) setVerse(d.data)
+      if (d.ok) {
+        setVerse(d.data)
+        // Also fetch audio info for this verse
+        try {
+          const ar = await fetch(`/api/v1/read-along/${d.data.verse_id}`)
+          const ad = await ar.json()
+          if (ad.ok) setAudioInfo(ad.data)
+        } catch {}
+      }
     } catch {}
     setLoading(false)
   }
@@ -29,9 +41,38 @@ export default function DailyVerse({ onNavigate }) {
   useEffect(() => { loadVerse() }, [])
 
   const handleSpeak = () => {
-    if (!verse?.text_hebrew || !window.speechSynthesis) return
+    if (!verse?.text_hebrew) return
+
+    // If real audio is available, use it
+    if (audioInfo?.audio_url && (audioInfo.audio_source === 'schmueloff' || audioInfo.word_timestamps?.length > 0)) {
+      if (speaking && audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+        setSpeaking(false)
+        return
+      }
+      const audio = new Audio(audioInfo.audio_url)
+      audioRef.current = audio
+      audio.onended = () => setSpeaking(false)
+      audio.onerror = () => {
+        // Fallback to TTS if audio fails
+        useTTS()
+      }
+      setSpeaking(true)
+      audio.play().catch(() => useTTS())
+      return
+    }
+
+    // Fallback: browser TTS
+    useTTS()
+  }
+
+  const useTTS = () => {
+    if (!window.speechSynthesis) return
     if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return }
-    const utterance = new SpeechSynthesisUtterance(verse.text_hebrew.replace(/[/\u0591-\u05bd\u05bf\u05c1-\u05c7]/g, ''))
+    const utterance = new SpeechSynthesisUtterance(
+      (verse?.text_hebrew || '').replace(/[/\u0591-\u05bd\u05bf\u05c1-\u05c7]/g, '')
+    )
     utterance.lang = 'he-IL'
     utterance.rate = 0.8
     utterance.onend = () => setSpeaking(false)
