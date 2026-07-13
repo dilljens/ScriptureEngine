@@ -8,8 +8,12 @@ Two fixes:
      from verses where it appears (TF-IDF style frequency analysis)
 """
 
-import sys, os, re, json, unicodedata
+import os
+import re
+import sys
+import unicodedata
 from collections import Counter, defaultdict
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -30,16 +34,16 @@ def strip_hebrew_marks(text):
 
 def run():
     conn = get_db()
-    
+
     # ── Fix 1: Add hebrew_plain column and populate ──
     print("Fix 1: Adding hebrew_plain column...", flush=True)
-    
+
     # Check if column exists
     cols = [r[1] for r in conn.execute("PRAGMA table_info(lexicon)").fetchall()]
     if 'hebrew_plain' not in cols:
         conn.execute("ALTER TABLE lexicon ADD COLUMN hebrew_plain TEXT DEFAULT ''")
         print("  Created hebrew_plain column")
-    
+
     # Populate hebrew_plain for all entries
     rows = conn.execute("SELECT lemma, hebrew FROM lexicon WHERE hebrew != ''").fetchall()
     updated = 0
@@ -50,29 +54,28 @@ def run():
             updated += 1
     conn.commit()
     print(f"  Populated hebrew_plain for {updated} entries")
-    
+
     # ── Fix 2: Populate word_english via frequency analysis ──
     print("\nFix 2: Building English glosses from verse text...", flush=True)
-    
+
     # Step 1: For each lemma, get all English words from verses where it appears
     # Use the lemma→verse mapping
-    lemma_verse_words = defaultdict(Counter)
-    total_lemma_verse_pairs = 0
-    
+    defaultdict(Counter)
+
     rows = conn.execute("""
         SELECT g.lemma, g.verse_id
         FROM gematria g
         WHERE g.lemma IS NOT NULL AND g.lemma != ''
           AND g.lemma NOT LIKE '%/%'  -- Skip prefixed lemmas
     """).fetchall()
-    
+
     print(f"  Processing {len(rows)} lemma-verse pairs...", flush=True)
-    
+
     # Group by lemma, collect verse IDs
     lemma_verses = defaultdict(set)
     for r in rows:
         lemma_verses[r[0]].add(r[1])
-    
+
     # Compute background word frequencies across ALL English verses
     print("  Computing background word frequencies...", flush=True)
     background = Counter()
@@ -80,55 +83,54 @@ def run():
     for v in all_verses:
         words = re.findall(r"[a-zA-Z']+", (v[0] or '').lower())
         background.update(w for w in words if len(w) > 2)
-    
+
     total_background = sum(background.values())
-    
+
     # Process each lemma — find most distinctive English word using TF-IDF
     stop_words = {'the', 'and', 'of', 'to', 'in', 'that', 'he', 'shall',
                   'unto', 'for', 'his', 'is', 'it', 'with', 'my', 'not',
                   'be', 'him', 'from', 'they', 'all', 'are', 'as', 'you',
                   'were', 'them', 'been', 'their', 'will', 'when', 'who',
                   'than', 'upon', 'into', 'thy', 'thou', 'hath', 'thee',
-                  'there', 'have', 'your', 'which', 'this', 'were',
-                  'her', 'she', 'its', 'then', 'out', 'was', 'said', 'had',
+                  'there', 'have', 'your', 'which', 'this', 'her', 'she', 'its', 'then', 'out', 'was', 'said', 'had',
                   'an', 'no', 'we', 'but', 'every', 'may', 'so', 'can',
                   'now', 'went', 'after', 'come', 'did', 'also', 'let',
-                  'yet', 'even', 'any', 'nor', 'any'}
-    
+                  'yet', 'even', 'any', 'nor'}
+
     lemma_gloss = {}
     processed = 0
     stop_word_set = set(stop_words)
-    
+
     for lemma, verses in lemma_verses.items():
         if len(verses) < 3:
             continue  # Skip very rare lemmas
-        
+
         verse_ids = list(verses)
         placeholders = ",".join("?" for _ in verse_ids)
-        
+
         eng_rows = conn.execute(f"""
             SELECT text_english FROM verses
             WHERE id IN ({placeholders})
         """, verse_ids).fetchall()
-        
+
         # Count words in lemma's verses
         lemma_word_count = Counter()
         for er in eng_rows:
             text = er[0] or ''
             words = re.findall(r"[a-zA-Z']+", text.lower())
             lemma_word_count.update(w for w in words if len(w) > 2 and w not in stop_word_set)
-        
+
         if not lemma_word_count:
             continue
-        
+
         # Use PMI (Pointwise Mutual Information) weighted by frequency:
-        # score = log(observed / expected) * observed 
+        # score = log(observed / expected) * observed
         # This rewards words that are both frequent AND distinctive,
         # without the rare-word bias of pure TF-IDF.
         lemma_total = sum(lemma_word_count.values())
         if lemma_total == 0:
             continue
-        
+
         scored = []
         for word, count in lemma_word_count.items():
             expected = (background.get(word, 1) / total_background) * lemma_total
@@ -139,19 +141,19 @@ def run():
             # Score = ratio * count (balance distinctiveness with frequency)
             score = ratio * count
             scored.append((score, count, word))
-        
+
         if not scored:
             continue
-        
+
         scored.sort(reverse=True)
         best = scored[0]
-        
+
         gloss = best[2]  # Lowercase word
-        
+
         # Capitalize proper nouns
         proper_nouns = {'lord', 'god', 'king', 'moses', 'david', 'solomon',
                        'jesus', 'christ', 'israel', 'egypt', 'jerusalem',
-                       'zion', 'babylon', 'sinai', 'zion', 'sabbath',
+                       'zion', 'babylon', 'sinai', 'sabbath',
                        'passover', 'tabernacle', 'temple', 'altar',
                        'covenant', 'ark', 'mercy', 'cherub', 'prophet',
                        'priest', 'levite', 'pharaoh', 'hebrew'}
@@ -159,19 +161,19 @@ def run():
             gloss = gloss.upper() if gloss in ('lord', 'god') else gloss.capitalize()
         elif len(gloss) > 2:
             gloss = gloss.capitalize()
-        
+
         lemma_gloss[lemma] = (gloss, best[1], len(verses))
         processed += 1
-        
+
         if processed % 500 == 0:
             print(f"    {processed} lemmas processed...", flush=True)
         processed += 1
-        
+
         if processed % 500 == 0:
             print(f"    {processed} lemmas processed...", flush=True)
-    
+
     # Step 2: Write glosses to gematria.word_english
-    # We'll store the primary gloss in a new table rather than 
+    # We'll store the primary gloss in a new table rather than
     # updating 305K rows. Create a lemma_to_english table.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS lemma_gloss (
@@ -182,9 +184,9 @@ def run():
         )
     """)
     conn.execute("DELETE FROM lemma_gloss")
-    
-    glosses = [(l, g, f, vc) for l, (g, f, vc) in lemma_gloss.items()]
-    
+
+    glosses = [(lemma, g, f, vc) for lemma, (g, f, vc) in lemma_gloss.items()]
+
     batch = []
     for lemma, gloss, freq, vc in glosses:
         if gloss:
@@ -200,22 +202,22 @@ def run():
             INSERT OR IGNORE INTO lemma_gloss (lemma, english_gloss, frequency, verse_count)
             VALUES (?, ?, ?, ?)
         """, batch)
-    
+
     conn.commit()
-    
+
     # Show some results
     print(f"\n  Created lemma_gloss table with {len(glosses)} entries")
-    
+
     # Sample a few
     print("\n  Sample glosses:")
     for lemma in ['3068', '430', '1697', '7225', '1289']:
         row = conn.execute("SELECT english_gloss, frequency FROM lemma_gloss WHERE lemma=?", (lemma,)).fetchone()
         if row:
             print(f"    {lemma}: {row[0]} (freq={row[1]})")
-    
+
     # ── Fix 2b: Modify search_lexicon to use lemma_gloss ──
     # Already done in lib/lexicon/__init__.py
-    
+
     conn.close()
     print("\nDone.")
 

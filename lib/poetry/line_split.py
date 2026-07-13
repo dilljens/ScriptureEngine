@@ -91,13 +91,13 @@ def split_english(text):
 
     # Validate the full result: max 6 lines
     if 2 <= len(result) <= 6:
-        word_counts = [len(l.split()) for l in result]
+        word_counts = [len(line.split()) for line in result]
         if all(w >= 2 for w in word_counts) and _is_balanced_split(result):
             return result
 
     # Too many lines from two-level split — use only the punctuation split
     if len(major) >= 2:
-        word_counts = [len(l.split()) for l in major]
+        word_counts = [len(line.split()) for line in major]
         if all(w >= 2 for w in word_counts) and _is_balanced_split(major):
             return major
 
@@ -106,7 +106,7 @@ def split_english(text):
     if len(parts) >= 2:
         valid = [p.strip() for p in parts if _is_valid_line(p)]
         if 2 <= len(valid) <= 6 and _is_balanced_split(valid):
-            word_counts = [len(l.split()) for l in valid]
+            word_counts = [len(line.split()) for line in valid]
             if all(w >= 2 for w in word_counts):
                 return valid
 
@@ -176,7 +176,7 @@ def split_verse(text_english, text_hebrew):
     if len(en_lines) == len(he_lines):
         return [
             {"english": en.strip(), "hebrew": he.strip()}
-            for en, he in zip(en_lines, he_lines)
+            for en, he in zip(en_lines, he_lines, strict=False)
         ]
 
     # Use English lines with Hebrew duplicated across each
@@ -257,7 +257,7 @@ def _is_balanced_split(lines):
     """
     if len(lines) < 2:
         return True
-    word_counts = [len(l.split()) for l in lines]
+    word_counts = [len(line.split()) for line in lines]
     max_w = max(word_counts)
     min_w = min(word_counts)
 
@@ -297,10 +297,10 @@ def _align_by_merge(more_lines, fewer_lines, hebrew_first=False):
     if hebrew_first:
         return [
             {"english": en.strip(), "hebrew": he.strip()}
-            for he, en in zip(merged, fewer_lines)
+            for he, en in zip(merged, fewer_lines, strict=False)
         ]
     else:
         return [
             {"english": en.strip(), "hebrew": he.strip()}
-            for en, he in zip(merged, fewer_lines)
+            for en, he in zip(merged, fewer_lines, strict=False)
         ]

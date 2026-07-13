@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { getWikiArticle, getWikiBrowse, getWikiSearch } from '../api'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 
@@ -209,6 +210,7 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
         prose-blockquote:text-neutral-500 dark:prose-blockquote:text-neutral-400 prose-blockquote:border-l-neutral-300 dark:prose-blockquote:border-l-neutral-600">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
           components={createComponents({
             onOpenVerse: handleWikiVerse,
             customComponents: {

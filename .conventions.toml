@@ -1,0 +1,95 @@
+# ─── Scripture Engine Convention Rules ──────────────────────────────────
+# Checked by the convention-checker plugin (real-time on edit) and the
+# /check-conventions command (bulk scan).
+#
+# severity = "error" → blocks the edit (must fix before committing)
+# severity = "warn"  → advisory (appended to tool output)
+#
+# This project already uses Ruff for Python linting — these rules cover
+# what Ruff doesn't: cross-language patterns, React conventions, and
+# project-specific agreements.
+# ────────────────────────────────────────────────────────────────────────
+
+# ─── Python ─────────────────────────────────────────────────────────────
+# Heavy Python codebase: lib/, generators/, tools/, web/, scripts/
+
+[checks.no-bare-except]
+pattern = "except\\s*:"
+path_filter = "**/*.py"
+not_pattern = "/tests/"
+message = "Never use bare except: — catch specific exceptions"
+severity = "error"
+
+[checks.no-print-prod]
+pattern = "^\\s*print\\("
+path_filter = "**/*.py"
+not_pattern = "/(tests|scripts|generators|tools|data)/"
+line_not_pattern = "logger\\.|logging\\.|flush=True|# ponytail:|# debug"
+message = "Use logging instead of print() in production code"
+severity = "warn"
+
+[checks.no-mutable-defaults]
+pattern = "def \\w+\\([^)]*=\\[\\s*\\]|def \\w+\\([^)]*=\\{\\s*\\}"
+path_filter = "**/*.py"
+not_pattern = "/tests/"
+message = "Avoid mutable default arguments — use None and assign inside function"
+severity = "warn"
+
+# ─── JavaScript / React (JSX) ──────────────────────────────────────────
+# React + Vite frontend at frontend/src/
+
+[checks.no-console-log]
+pattern = "console\\.(log|warn|error)\\("
+path_filter = "**/frontend/src/**/*.js*"
+not_pattern = "/debug\\.|/ErrorBoundary"
+line_not_pattern = "// ponytail:|import\\.meta\\.env\\.DEV"
+message = "Use a toast notification or logger instead of console.*"
+severity = "warn"
+
+# ─── Go ─────────────────────────────────────────────────────────────────
+# SRS microservice at backend/go-srs/
+
+[checks.go-no-panic]
+pattern = "panic\\("
+path_filter = "**/*.go"
+not_pattern = "/(tests?|cmd/)/"
+message = "Avoid panic() in lib code — return errors instead"
+severity = "error"
+
+# ─── Cross-language ─────────────────────────────────────────────────────
+
+[checks.no-todo-left]
+pattern = "TODO|FIXME|HACK|XXX"
+path_filter = "**/*.{py,go}"
+not_pattern = "/(node_modules|__pycache__|\\.venv|target)/"
+line_not_pattern = "# TODO:|# ponytail:"
+message = "Resolve or track TODO/FIXME/HACK before committing"
+severity = "warn"
+
+[checks.no-todo-left-js]
+pattern = "TODO|FIXME|HACK|XXX"
+path_filter = "**/frontend/src/**/*.js*"
+not_pattern = "/(node_modules)/"
+line_not_pattern = "// TODO:|// ponytail:"
+message = "Resolve or track TODO/FIXME/HACK before committing"
+severity = "warn"
+
+[checks.no-debugger]
+pattern = "debugger"
+path_filter = "**/frontend/src/**/*.js*"
+message = "Remove debugger statement before committing"
+severity = "error"
+
+[checks.no-secrets-env]
+pattern = "."
+path_filter = "*.env"
+file_not_pattern = "^$"
+message = "Secrets file (.env) detected — ensure .gitignore covers this"
+severity = "error"
+
+[checks.no-secrets-key]
+pattern = "."
+path_filter = "*.key"
+file_not_pattern = "^$"
+message = "Key file detected — ensure .gitignore covers this"
+severity = "error"

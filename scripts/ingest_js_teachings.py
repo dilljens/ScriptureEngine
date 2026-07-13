@@ -8,7 +8,11 @@ After ingestion, connections to scripture can be added via
 tools/js_sources.py or the existing prophetic_quote mechanism.
 """
 
-import sys, os, re, json, sqlite3
+import json
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from lib.db import get_db
 
@@ -97,15 +101,15 @@ JST_TEACHINGS = [
 def fetch_wikisource_text(url):
     """Fetch raw wikitext from a Wikisource page via action=raw."""
     import urllib.request
-    
+
     # Extract page title from URL
     page_match = re.search(r'wiki/(.+)$', url)
     if not page_match:
         return None
-    
+
     page_title = page_match.group(1)
     raw_url = f"https://en.wikisource.org/w/index.php?title={page_title}&action=raw"
-    
+
     try:
         req = urllib.request.Request(raw_url, headers={"User-Agent": "scriptureengine/1.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -120,20 +124,20 @@ def extract_text_from_wikitext(raw):
     """Extract readable text from wikitext markup."""
     if not raw:
         return ""
-    
+
     text = raw
-    
+
     # Remove templates {{...}} (recursive)
     while re.search(r'\{\{[^}]*\}\}', text):
         text = re.sub(r'\{\{[^}]*\}\}', '', text)
-    
+
     # Remove references <ref>...</ref>
     text = re.sub(r'<ref[^>]*>.*?</ref>', '', text, flags=re.DOTALL)
     text = re.sub(r'<ref[^>]*/>', '', text)
-    
+
     # Remove HTML comments
     text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
-    
+
     # Remove wiki markup
     text = re.sub(r"'''", '', text)     # bold
     text = re.sub(r"''", '', text)      # italic
@@ -141,20 +145,20 @@ def extract_text_from_wikitext(raw):
     text = re.sub(r'\[\[[^\]|]*\|([^\]]*)\]\]', r'\1', text)  # [[target|text]]
     text = re.sub(r'\[https?://[^\]]+\]', '', text)  # [http links]
     text = re.sub(r'\[https?://[^\]]+\s([^\]]*)\]', r'\1', text)  # [http text]
-    
+
     # Remove headers/section markers
     text = re.sub(r'^=+\s*.*?\s*=+\s*$', '', text, flags=re.MULTILINE)
-    
+
     # Remove {{pagenum|N}} markers
     text = re.sub(r'\{\{pagenum\|[^}]*\}\}', '', text)
-    
+
     # Remove ---- horizontal rules
     text = re.sub(r'^-{4,}\s*$', '', text, flags=re.MULTILINE)
-    
+
     # Clean up whitespace
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = text.strip()
-    
+
     return text
 
 
@@ -162,41 +166,42 @@ def main():
     conn = get_db()
     count_ingested = 0
     count_failed = 0
-    
+    count_connections = 0
+
     for source in JST_TEACHINGS:
         ref_id = source["ref_id"]
         print(f"\n[{ref_id}] {source['title'][:60]}...")
-        
+
         # Check if already ingested
         existing = conn.execute("SELECT 1 FROM js_sources WHERE ref_id=?", (ref_id,)).fetchone()
         if existing:
-            print(f"  Already exists, skipping.")
+            print("  Already exists, skipping.")
             count_ingested += 1
             continue
-        
+
         # Fetch text
         url = source.get("url", "")
         if not url:
-            print(f"  No URL, skipping.")
+            print("  No URL, skipping.")
             count_failed += 1
             continue
-        
-        print(f"  Fetching from Wikisource...")
+
+        print("  Fetching from Wikisource...")
         raw = fetch_wikisource_text(url)
         if not raw:
-            print(f"  Failed to fetch, skipping.")
+            print("  Failed to fetch, skipping.")
             count_failed += 1
             continue
-        
+
         # Extract clean text
         text = extract_text_from_wikitext(raw)
         if len(text) < 50:
             print(f"  Extracted text too short ({len(text)} chars), trying direct fetch...")
             # Try direct page text
             text = raw[:5000]  # fallback to raw
-        
+
         print(f"  Extracted {len(text)} characters")
-        
+
         # Store in database
         try:
             conn.execute("""
@@ -213,19 +218,19 @@ def main():
             print(f"  DB error: {e}")
             count_failed += 1
             continue
-        
+
         conn.commit()
         print(f"  ✅ Ingested ({len(text)} chars)")
-    
+
     print(f"\n{'='*50}")
     print(f"Ingested: {count_ingested}")
     print(f"Failed: {count_failed}")
     print(f"Connections: {count_connections}")
-    
+
     # Stats
     total = conn.execute("SELECT COUNT(*) FROM js_sources").fetchone()[0]
     print(f"\nTotal JS sources: {total}")
-    
+
     conn.close()
 
 

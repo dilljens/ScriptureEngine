@@ -9,8 +9,9 @@ Imports each scroll as a "book" and each scroll-line as a "verse".
 Usage: python3 scripts/import_dss_texts.py
 """
 
-import sys, os, json, re, time
-from collections import defaultdict
+import json
+import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
@@ -72,8 +73,7 @@ def build_fragmentary_list():
 
 def load_tf(tf_dir):
     """Load a TF column file, return dict node_id -> value."""
-    result = {}
-    filepath = os.path.join(tf_dir + '/tf/2.0', tf_dir if tf_dir.endswith('.tf') else tf_dir)
+    os.path.join(tf_dir + '/tf/2.0', tf_dir if tf_dir.endswith('.tf') else tf_dir)
     # No, we need a different approach. Let the caller pass the full path.
     raise NotImplementedError("Use text-fabric library instead")
 
@@ -90,8 +90,8 @@ def main():
     sys.stdout.flush()
 
     from tf.app import use
-    A = use("ETCBC/dss:latest", hoist=globals(), quiet=True)
-    print(f"  Loaded! {len(F.otype.s('word'))} word nodes available")
+    use("ETCBC/dss:latest", hoist=globals(), quiet=True)
+    print(f"  Loaded! {len(F.otype.s('word'))} word nodes available")  # noqa: F821
     sys.stdout.flush()
 
     # Step 2: Build scroll name mapping
@@ -100,8 +100,8 @@ def main():
 
     # scroll name -> node_id
     scroll_index = {}
-    for node in F.otype.s('scroll'):
-        name = F.scroll.v(node)
+    for node in F.otype.s('scroll'):  # noqa: F821
+        name = F.scroll.v(node)  # noqa: F821
         if name and name.strip():
             scroll_index[name.strip()] = node
 
@@ -142,18 +142,18 @@ def main():
             continue
 
         # Count words and lines
-        fragments = L.d(scroll_node, otype='fragment')
+        fragments = L.d(scroll_node, otype='fragment')  # noqa: F821
         word_count = 0
         line_count = 0
         line_texts = []
 
         for frag_node in fragments:
-            fragment_name = F.fragment.v(frag_node) or ''
-            for line_node in L.d(frag_node, otype='line'):
-                line_num = F.line.v(line_node) or ''
+            fragment_name = F.fragment.v(frag_node) or ''  # noqa: F821
+            for line_node in L.d(frag_node, otype='line'):  # noqa: F821
+                line_num = F.line.v(line_node) or ''  # noqa: F821
                 words = []
-                for word_node in L.d(line_node, otype='word'):
-                    text = F.glyph.v(word_node) or F.g_cons.v(word_node) or ''
+                for word_node in L.d(line_node, otype='word'):  # noqa: F821
+                    text = F.glyph.v(word_node) or F.g_cons.v(word_node) or ''  # noqa: F821
                     if text:
                         words.append(text)
                     word_count += 1

@@ -8,9 +8,10 @@ If a pattern detector finds the same number of connections in null text
 as in real text, the pattern is not statistically significant.
 """
 
+import logging
 import random
-import os
-from collections import Counter
+
+logger = logging.getLogger(__name__)
 
 # Hebrew letter frequency in the Bible (approximate, from WLC)
 HEBREW_LETTER_FREQ = {
@@ -27,15 +28,15 @@ AVG_WORD_LENGTH = 4.5
 
 def generate_shuffled_words(conn, book_ids=None, ratio=0.1):
     """Generate shuffled-word-order null text.
-    
+
     Takes actual Hebrew words from the Bible (or a subset), shuffles
     their order while preserving total word count and book structure.
-    
+
     Args:
         conn: database connection
         book_ids: list of book IDs to sample from (None = all)
         ratio: fraction of total words to include (0.1 = 10% ≈ 30K words)
-    
+
     Returns:
         list of shuffled word strings
     """
@@ -47,21 +48,21 @@ def generate_shuffled_words(conn, book_ids=None, ratio=0.1):
         placeholders = ",".join("?" for _ in book_ids)
         query += f" JOIN verses v ON v.id = gematria.verse_id WHERE v.book_id IN ({placeholders})"
         params.extend(book_ids)
-    
+
     rows = conn.execute(query, params).fetchall()
-    
+
     # Extract words
     words = []
     for r in rows:
         w = r["word_hebrew"].strip()
         if w:
             words.append(w)
-    
+
     # Sample if needed
     if ratio < 1.0:
         sample_size = max(1000, int(len(words) * ratio))
         words = random.sample(words, sample_size)
-    
+
     # Shuffle
     random.shuffle(words)
     return words
@@ -69,61 +70,61 @@ def generate_shuffled_words(conn, book_ids=None, ratio=0.1):
 
 def generate_random_hebrew(num_words=30000, seed=42):
     """Generate random Hebrew-like text.
-    
+
     Uses the same letter frequency distribution as the real Bible
     but with random sequences that form no meaningful words.
-    
+
     Args:
         num_words: number of random words to generate
         seed: random seed for reproducibility
-    
+
     Returns:
         list of randomly generated Hebrew word strings
     """
     random.seed(seed)
-    
+
     # Build weighted letter list
     letters = list(HEBREW_LETTER_FREQ.keys())
     weights = list(HEBREW_LETTER_FREQ.values())
-    
+
     words = []
     for _ in range(num_words):
         # Generate a word of random Hebrew-like length
         word_len = max(1, int(random.gauss(AVG_WORD_LENGTH, 1.5)))
         word = "".join(random.choices(letters, weights=weights, k=word_len))
         words.append(word)
-    
+
     return words
 
 
 def generate_and_store(conn):
     """Generate both null texts and store them for revalidation.
-    
+
     Used by the validation script. Stores as reference.
     Returns (shuffled_words, random_words) for use in tests.
     """
-    print("  Generating shuffled-word null text...", flush=True)
+    logger.info("Generating shuffled-word null text...")
     shuffled = generate_shuffled_words(conn, ratio=0.1)
-    
-    print(f"  Generated {len(shuffled)} shuffled words", flush=True)
-    
-    print("  Generating random-letter null text...", flush=True)
+
+    logger.info("Generated %s shuffled words", len(shuffled))
+
+    logger.info("Generating random-letter null text...")
     random_words = generate_random_hebrew(num_words=30000)
-    
-    print(f"  Generated {len(random_words)} random Hebrew words", flush=True)
-    
+
+    logger.info("Generated %s random Hebrew words", len(random_words))
+
     return shuffled, random_words
 
 
 def count_matches_in_null(null_type, all_words, test_function, **kwargs):
     """Count how many 'connections' a function finds in null text.
-    
+
     Args:
         null_type: 'shuffled' or 'random'
         all_words: list of null text word strings
         test_function: function(word_list, **kwargs) -> count
         **kwargs: additional args to pass to test_function
-    
+
     Returns:
         count of patterns found in null text
     """

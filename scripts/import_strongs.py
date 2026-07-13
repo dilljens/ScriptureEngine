@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Import Strong's Hebrew and Greek definitions into the lexicon table."""
 
-import sys
 import os
+import sys
 import unicodedata
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import xml.etree.ElementTree as ET
+
 from lib.db import get_db
 from lib.lexicon import init_lexicon_tables
 

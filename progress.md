@@ -1,34 +1,49 @@
-# Progress: Knowledge Consolidation System
+# Progress: Full Codebase Audit
 
-## Build Complete
+## Session 2026-07-13 — COMPLETE
 
-### Final System Status (Sefaria import still running)
+### Track A: Convention Fixes ✅
+| Phase | Before | After | What |
+|-------|--------|-------|------|
+| A1 | 8 errors | 0 | Bare excepts in generators (8 files) |
+| A2 | 73 errors | 0 | Bare excepts in lib/web/scripts/data (30+ files) |
+| A3 | 47 warnings | 0 | print() → logging in web routes + lib code |
+| A4 | 4 warnings | 0 | console.log → DEV guard in frontend |
+| A5 | 1 error | 0 | Go panic → log.Fatalf |
 
-| Metric | Value |
-|--------|-------|
-| **Total connections** | **1,452,109** |
-| Jewish tradition | 70,458 (+68,086 from baseline) |
-| Christian tradition | 28,690 |
-| LDS tradition | 27,442 |
-| Multiple traditions | 402,000 |
-| Textual/linguistic (none) | 923,519 |
+### Track B: Static Analysis ✅
+| Phase | Before | After | What |
+|-------|--------|-------|------|
+| B1 | 5969 errors | 2023 (style only) | 3725 auto-fixed (safe + unsafe) |
+| B2 | bug counts | 0 | F821(23), F601(10), B023(10), B904(4), B015(2), E741(24), B007(9), etc. |
+| B3 | n/a | assessed | MyPy: 1855 errors, 91% annotation-noise, ~150 real issues deferred |
 
-### All Systems Built
+Real bugs found and fixed: undefined names, duplicate dict keys, closure-captured loop variables, exception chain breaks, useless comparisons, bare KeyboardInterrupt catches.
 
-| System | Status | Details |
-|--------|--------|---------|
-| **Graph visualization** | ✅ | KnowledgeGraphView with force-directed layout, layer filters, search, TG/BD nodes |
-| **Graph API** | ✅ | explore, search, centrality, explain, provenance endpoints |
-| **TG/BD integration** | ✅ | 677 TG topics, 47 BD entries, 31K+ verse→TG connections |
-| **Hub notes** | ✅ | 14 curated paths (88 steps), API + frontend |
-| **Assessment** | ✅ | 200 deep questions (text/analysis/consistency), open-ended LLM grading |
-| **Connection explanations** | ✅ | 22 templates for all connection types |
-| **Tradition provenance** | ✅ | 1.4M connections labeled by tradition, shown in graph tooltips |
-| **Consistency clusters** | ✅ | 41 thematic clusters showing multi-witness themes |
-| **Hebrew attestations** | ✅ | 152+ real verse examples in Hebrew lessons |
-| **Sefaria Jewish import** | 🔄 | Running — 70,458 connections so far (Rashi, Talmud, Zohar, Midrash) |
-| **72 Names of God** | ✅ | 15,589 hidden name connections ||
+### Track C: Test Suite Health ✅
+| Test | Result | Time |
+|------|--------|------|
+| test_verses.py | 14/14 pass | 30s |
+| test_search.py | (included above) | — |
+| test_graph.py | 10/10 pass | 40s |
+| test_db_schema.py | 13/13 pass | 66s (PRAGMA integrity_check slow) |
+| test_openapi_snapshot.py | 1/1 pass | 0.17s (0 FastAPI warnings) |
+| scripts/test_graph_regression.py | pass | <60s |
+| Go tests (FSRS + FIRE) | 30/30 pass | <0.01s |
 
-### Still Running
-- `sefaria_links.py` (PID 178606) — importing all Tanakh books
-- After completion: run `python3 scripts/migrate_tradition_labels.py` to update labels
+### Track D: Runtime Verification ✅
+| Component | Result |
+|-----------|--------|
+| API server smoke tests | 7/7 endpoints 200 |
+| Frontend build | Clean, 5.60s |
+| Go vet | Clean |
+| Structural health | Quality signal 0.4468 (no degradation) |
+
+### Net Changes
+- 129 convention violations → 0
+- 5969 Ruff errors → 2023 (style-only, all real bugs fixed)
+- FastAPI lifespan deprecation fixed
+- Duplicate route handlers removed
+- `.conventions.toml` created to prevent regression
+- Go: 1 panic → log.Fatalf, 30 Go tests passing
+- Frontend: console.log guarded with DEV checks

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Seed connections from 16 temple/scholars scholars."""
 
-import json, sys, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 

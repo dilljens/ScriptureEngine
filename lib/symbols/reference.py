@@ -1,7 +1,8 @@
 """Symbol reference table — seed data and database operations."""
 
-import json
-from ..db import get_db, add_connection
+import contextlib
+
+from ..db import add_connection
 
 # === SEED DATA: ~80 known scriptural symbols ===
 
@@ -279,7 +280,6 @@ SEED_TYPOLOGY = [
 def seed_symbol_tables(conn):
     """Populate the symbols and symbol_occurrences tables with seed data.
     Safe to run multiple times (uses INSERT OR IGNORE)."""
-    from ..db import add_connection
 
     count_s = 0
     count_o = 0
@@ -295,7 +295,7 @@ def seed_symbol_tables(conn):
             count_s += 1
 
     # Insert apocalyptic occurrences
-    for sym_name, book, verse, note in SEED_APOCALYPTIC:
+    for sym_name, _book, verse, note in SEED_APOCALYPTIC:
         # Get the symbol ID
         row = conn.execute("SELECT id FROM symbols WHERE name = ?", (sym_name,)).fetchone()
         if not row:
@@ -314,14 +314,12 @@ def seed_symbol_tables(conn):
             WHERE symbol_id = ? AND verse_id != ?
         """, (sid, verse)).fetchall()
         for sib in siblings:
-            try:
+            with contextlib.suppress(Exception):
                 add_connection(conn, verse, sib["verse_id"],
                               layer="symbolic", type_name="apocalyptic_creature",
                               subtype=sym_name, strength=0.7,
                               discovered_by="algorithm",
                               metadata={"symbol": sym_name})
-            except Exception:
-                pass
 
     # Insert typology
     for t in SEED_TYPOLOGY:
@@ -332,7 +330,7 @@ def seed_symbol_tables(conn):
         count_t += 1
 
         # Create symbolic connections for each typology pair
-        try:
+        with contextlib.suppress(Exception):
             add_connection(conn, t[2], t[3],
                           layer="symbolic", type_name="person_type" if t[0] in [
                               "Adam", "Eve", "Melchizedek", "Moses", "David", "Jonah",
@@ -342,8 +340,6 @@ def seed_symbol_tables(conn):
                           strength=0.85,
                           discovered_by="algorithm",
                           metadata={"type": t[0], "antitype": t[1]})
-        except Exception:
-            pass
 
     conn.commit()
     return {"symbols": count_s, "occurrences": count_o, "typology": count_t}

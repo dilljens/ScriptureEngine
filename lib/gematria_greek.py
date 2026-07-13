@@ -8,7 +8,6 @@ Computes numerical values for Greek text:
 """
 
 import re
-from functools import lru_cache
 
 # Standard Greek isopsephy (α=1, β=2, ... ω=800)
 STANDARD_MAP = {

@@ -6,15 +6,14 @@ raw quality_level thresholds. Uses a simple SQL WHERE filter
 instead of computed star ratings.
 """
 
-import sys
 import json
-import time
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib.db import get_db, SCHEMA_SQL
 from lib.connections.pardes import get_pardes_level_for_type
+from lib.db import SCHEMA_SQL, get_db
 
 BLOOM_MAP = {
     "p'shat": "remember",

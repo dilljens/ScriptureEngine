@@ -41,7 +41,7 @@ CONFUSABLE_PAIRS = [
     ("dalet", "resh", "similar shapes"),
     ("zayin", "tsade", "similar shapes"),
     ("gimel", "nun", "similar shapes"),
-    
+
     # Vowels — auditory confusion
     ("vowel_patah", "vowel_qamats", "both A sounds, length distinction"),
     ("vowel_segol", "vowel_tsere", "both E sounds, length distinction"),
@@ -49,7 +49,7 @@ CONFUSABLE_PAIRS = [
     ("vowel_holam", "vowel_holam_vav", "same O sound, with/without vav"),
     ("vowel_shuruq", "vowel_qubuts", "both U sounds, length distinction"),
     ("vowel_sheva_na", "vowel_sheva_nah", "vocal vs silent sheva — identical appearance"),
-    
+
     # Grammar — conceptual confusion
     ("qal_perfect", "qal_imperfect", "same stem, different aspect"),
     ("perfect_3ms", "imperfect_3ms", "3ms in two aspects"),
@@ -63,7 +63,7 @@ CONFUSABLE_PAIRS = [
 
 def main():
     conn = sqlite3.connect(str(MEM_DB))
-    
+
     # Create confusability table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS hebrew_confusability (
@@ -76,10 +76,10 @@ def main():
             FOREIGN KEY (node_b) REFERENCES hebrew_nodes(id)
         )
     """)
-    
+
     # Clear existing
     conn.execute("DELETE FROM hebrew_confusability")
-    
+
     count = 0
     for a, b, reason in CONFUSABLE_PAIRS:
         # Check both nodes exist
@@ -95,10 +95,10 @@ def main():
             "INSERT INTO hebrew_confusability (node_a, node_b, reason, strength) VALUES (?, ?, ?, 0.7)",
             (a, b, reason))
         count += 1
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"Created {count} confusability pairs in hebrew_confusability table")
 
 

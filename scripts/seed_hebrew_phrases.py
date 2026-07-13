@@ -202,24 +202,24 @@ Also: יוֹם יְהוָה = "The Day of YHWH" — a key prophetic concept of d
 def main():
     conn = sqlite3.connect(str(MEM_DB))
     conn.execute("PRAGMA foreign_keys=OFF")
-    
+
     new_nodes = 0
     new_items = 0
-    
+
     for lesson in PHRASE_LESSONS:
         lid = lesson["id"]
-        
+
         existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing:
             print(f"  SKIP {lid}: practice items already exist")
             continue
-        
+
         conn.execute(
             "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'phrase', ?)",
             (lid, lesson['title'], lesson['level'], lesson['explanation'][:100])
         )
         new_nodes += 1
-        
+
         content = {
             "node_id": lid,
             "title": lesson['title'],
@@ -232,34 +232,34 @@ def main():
             "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
-        
+
         # Practice items
-        def add(q, opts, ans, qtype="multiple_choice"):
+        def add(q, opts, ans, qtype="multiple_choice", lid=lid):
             opts_j = json.dumps(opts, ensure_ascii=False) if opts else ""
             conn.execute("INSERT INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
                         (lid, qtype, q, opts_j, ans, 0.5))
             nonlocal new_items
             new_items += 1
-        
+
         # Basic recognition
         title = lesson['title']
         hebrew_part = title.split('—')[0].strip()
         english_part = title.split('—')[1].strip() if '—' in title else ''
-        
+
         add(f"What does '{hebrew_part}' mean?", [english_part, "The end", "God is great", "Peace"],
             english_part if english_part else hebrew_part)
         add(f"Translate: {hebrew_part}", [english_part, "Hello", "Goodbye", "Amen"],
             english_part if english_part else hebrew_part)
-        
+
         # Key point recall
         for kp in lesson['key_points'][:3]:
             add(f"Complete: {kp.split('=')[0].strip()} = ?", ["—", "—", "—", "—"], kp, "recall")
-        
+
         print(f"  CREATED {lid}: {lesson['title']}")
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"\n✓ Done! Created {new_nodes} phrase lessons, {new_items} items")
 
 

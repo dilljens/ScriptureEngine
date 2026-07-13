@@ -9,7 +9,6 @@ Usage:
     explanation = explain("direct_quotation", {"source": "gen.1.1", "target": "john.1.1"})
 """
 
-import json
 
 # ── Connection type metadata ──
 CONNECTION_TYPE_LABELS = {
@@ -59,11 +58,11 @@ def fmt_verse(vid):
 
 def explain(conn_type, meta):
     """Generate a human-readable explanation for a connection.
-    
+
     Args:
         conn_type: string like "direct_quotation", "same_lemma", etc.
         meta: dict with connection metadata (source, target, strength, etc.)
-    
+
     Returns:
         string explanation, or None if template can't handle this type
     """

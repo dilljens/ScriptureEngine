@@ -8,8 +8,8 @@ This expands to:
 """
 
 from collections import defaultdict
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 SACRED_VALUES = {7, 10, 12, 40, 50, 70, 100, 120, 400, 1000, 613}
 

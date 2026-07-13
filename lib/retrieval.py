@@ -5,7 +5,7 @@ For the initial build, uses SQLite-based full-text search.
 Embeddings can be added later with sentence-transformers.
 """
 
-from .db import get_db, search_verses as db_search_verses
+from .db import search_verses as db_search_verses
 
 
 def search_text(conn, query, book_id=None, limit=20):
@@ -15,7 +15,7 @@ def search_text(conn, query, book_id=None, limit=20):
 
 def get_verse_context(conn, book_id, chapter, verse, context_verses=3):
     """Get a verse with its surrounding context."""
-    from .db import get_chapter, get_verse
+    from .db import get_chapter
 
     verses = get_chapter(conn, book_id, chapter)
     if not verses:
@@ -44,7 +44,6 @@ def get_verse_context(conn, book_id, chapter, verse, context_verses=3):
 
 def search_by_pattern(conn, pattern_type, book_id=None, limit=20):
     """Search for verses that match a specific pattern type."""
-    from .db import get_db
 
     sql = """
         SELECT v.*, b.title as book_title
@@ -105,7 +104,6 @@ def search_gematria_value(conn, value, system="standard", limit=30):
 
 def search_divine_name_value(conn, divine_name, limit=30):
     """Find verses whose gematria matches a divine name value."""
-    from .db import get_db
     from .gematria import DIVINE_NAMES
 
     name_map = {d["name"].lower(): d for d in DIVINE_NAMES}

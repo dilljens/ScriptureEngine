@@ -7,7 +7,7 @@ SBL-style scholarly transliteration for polytonic Greek via biblical-translitera
 import re
 import unicodedata
 
-from biblical_transliteration import GreekTransliterator, GreekOptions, GreekScheme
+from biblical_transliteration import GreekOptions, GreekScheme, GreekTransliterator
 
 # ── Shared engine ──────────────────────────────────────────────
 _GRK_TRANSLITERATOR = GreekTransliterator(

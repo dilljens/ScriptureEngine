@@ -10,9 +10,13 @@ Endpoints:
   GET  /api/v1/memorize/review          — get due reviews
   POST /api/v1/memorize/review/{id}    — submit a review rating
 """
-import json, sqlite3, time, datetime, math, random
+import contextlib
+import datetime
+import math
+import sqlite3
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -49,10 +53,8 @@ def get_conn():
         )
     """)
     # Add fi_re_credit column if missing (for existing DBs)
-    try:
+    with contextlib.suppress(Exception):
         conn.execute("ALTER TABLE memorize_progress ADD COLUMN fi_re_credit REAL DEFAULT 0.0")
-    except Exception:
-        pass
     return conn
 
 
@@ -63,14 +65,14 @@ FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
 
 def compute_learning_speed(conn, user_id, verse_id):
     """Compute student-topic learning speed from performance history.
-    
+
     Formula (per Math Academy Ch 29):
       speed = correct_ratio / avg_difficulty_penalty
-      
+
     Where:
       correct_ratio = correct / max(attempts, 1)
       avg_difficulty_penalty = avg_difficulty / 5.0  (centered at default)
-      
+
     Returns a float where:
       > 1.0 = fast learning (longer intervals)
       = 1.0 = average learning
@@ -80,16 +82,16 @@ def compute_learning_speed(conn, user_id, verse_id):
         "SELECT attempts, correct, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
         (user_id, verse_id)
     ).fetchone()
-    
+
     if not prog or prog["attempts"] < 2:
         return 1.0  # Not enough data — default to average
-    
+
     correct_ratio = prog["correct"] / max(prog["attempts"], 1)
     difficulty_penalty = prog["difficulty"] / 5.0
-    
+
     # Speed: higher accuracy = faster; higher difficulty = slower
     speed = (correct_ratio * 1.5) / max(difficulty_penalty, 0.5)
-    
+
     # Clamp to reasonable range
     return max(0.3, min(3.0, speed))
 
@@ -98,7 +100,7 @@ def _fsrs_initial_stability(rating):
 
 def _fsrs_next_interval(stability, request_retention=0.9, learning_speed=1.0):
     """Compute next review interval, adjusted for student-topic learning speed.
-    
+
     Per Math Academy Ch 29: speed governs how quickly the student moves
     through the spaced repetition process.
     - Fast learner (speed > 1.0): longer intervals
@@ -150,57 +152,57 @@ def get_connected_verses(conn, verse_id, limit=30):
 
 def compute_fire_credit(conn, verse_id, rating, decay_days=7):
     """Compute FIRe credit (success) or penalty (failure) and propagate.
-    
+
     TWO-WAY FIRe:
     SUCCESS (rating >= 3): credit flows DOWNWARD from complex → simpler
       - Reviewing John 1:1 gives credit to Gen 1:1 (simpler, quoted verse)
       - When fi_re_credit >= 1.0, next review is skipped (knocked out)
-    
+
     FAILURE (rating < 3): penalty flows UPWARD from simpler → complex
       - Failing Gen 1:1 penalizes John 1:1 (complex, depends on Gen 1:1)
       - Stability is reduced, credit is reduced
-    
+
     Connection strength: from graph (0.0-1.0)
     Complexity proxy: verses with MORE connections are MORE complex
     """
     # Get connections
     connections = get_connected_verses(conn, verse_id)
-    
+
     # Count connections of the reviewed verse (complexity proxy)
     reviewed_count = conn.execute("""
-        SELECT COUNT(*) as c FROM connections 
+        SELECT COUNT(*) as c FROM connections
         WHERE (source_verse=? OR target_verse=?) AND deprecated=0
     """, (verse_id, verse_id)).fetchone()["c"]
-    
+
     now = datetime.datetime.now()
-    
+
     for c in connections:
         cv = c["connected"]
         if cv == verse_id:
             continue
-        
+
         conn_strength = (c["strength"] or 0.5) * (c["confidence"] or 0.5)
         if conn_strength < 0.01:
             continue
-        
+
         # Determine direction: is reviewed verse simpler or more complex?
         cv_count = conn.execute("""
-            SELECT COUNT(*) as c FROM connections 
+            SELECT COUNT(*) as c FROM connections
             WHERE (source_verse=? OR target_verse=?) AND deprecated=0
         """, (cv, cv)).fetchone()["c"]
-        
+
         # Get existing progress for connected verse
         prog = conn.execute(
             "SELECT fi_re_credit, stability, difficulty, last_review FROM memorize_progress WHERE user_id='default' AND verse_id=?",
             (cv,)
         ).fetchone()
-        
+
         if not prog:
             continue
-        
+
         existing_credit = prog["fi_re_credit"] or 0.0
         existing_stability = prog["stability"] or 1.0
-        
+
         # Decay existing credit (summer slide: accelerate if overdue)
         if prog["last_review"]:
             try:
@@ -211,16 +213,16 @@ def compute_fire_credit(conn, verse_id, rating, decay_days=7):
                 slide_factor = 1.0 + (days_since / 30.0)  # 1x at 0 days, 2x at 30 days, etc.
                 decay_rate = math.pow(0.9, days_since * slide_factor)
                 existing_credit *= decay_rate
-            except:
+            except Exception:
                 pass
-        
+
         if rating >= 3:
             # ── SUCCESS: Credit flow complex → simpler ──
             rating_factor = 0.3 if rating == 3 else 0.5
             credit = min(0.5, conn_strength * rating_factor * 0.3)
             if credit < 0.01:
                 continue
-            
+
             new_credit = min(1.0, existing_credit + credit)
             conn.execute(
                 "UPDATE memorize_progress SET fi_re_credit=? WHERE user_id='default' AND verse_id=?",
@@ -232,18 +234,18 @@ def compute_fire_credit(conn, verse_id, rating, decay_days=7):
             # (has more connections than the reviewed verse)
             if cv_count <= reviewed_count:
                 continue  # Don't penalize simpler verses when failing complex ones
-            
+
             penalty_factor = 1.0 if rating == 1 else 0.3  # Again=full, Hard=partial
             penalty = min(0.5, conn_strength * penalty_factor * 0.5)
             if penalty < 0.01:
                 continue
-            
+
             # Reduce stability: stability /= (1 + penalty)
             new_stability = existing_stability / (1.0 + penalty)
-            
+
             # Reduce credit
             new_credit = max(0.0, existing_credit - penalty)
-            
+
             conn.execute(
                 "UPDATE memorize_progress SET stability=?, fi_re_credit=? WHERE user_id='default' AND verse_id=?",
                 (round(new_stability, 2), round(new_credit, 3), cv)
@@ -252,16 +254,16 @@ def compute_fire_credit(conn, verse_id, rating, decay_days=7):
 
 def get_connection_difficulty(conn, verse_id):
     """Estimate verse difficulty from graph centrality.
-    
+
     Verses with more connections are more memorable (lower difficulty).
     Verses with fewer connections are harder to remember (higher difficulty).
     Returns a difficulty value (1.0-10.0).
     """
     count = conn.execute("""
-        SELECT COUNT(*) as c FROM connections 
+        SELECT COUNT(*) as c FROM connections
         WHERE (source_verse=? OR target_verse=?) AND deprecated=0
     """, (verse_id, verse_id)).fetchone()["c"]
-    
+
     # Map: 0 connections → difficulty 8.0 (very hard)
     #       100+ connections → difficulty 2.0 (very easy)
     if count >= 100:
@@ -286,13 +288,13 @@ def get_graph_centrality(conn, limit=5):
     """
     rows = conn.execute("""
         SELECT source_verse as verse_id, COUNT(*) as conn_count
-        FROM connections 
+        FROM connections
         WHERE deprecated=0 AND source_verse LIKE '%.%.%'
         GROUP BY source_verse
         ORDER BY conn_count DESC
         LIMIT ?
     """, (limit,)).fetchall()
-    
+
     # Filter to verses not already in queue
     results = []
     for r in rows:
@@ -325,15 +327,17 @@ def list_queue(user_id: str = "default"):
         WHERE m.user_id=?
         ORDER BY m.added_at DESC
     """, (user_id,)).fetchall()
-    
+
     # Fetch verse text for each
     verses = []
     for r in rows:
-        vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
+        vt = conn.execute("SELECT text_english, text_hebrew, text_greek FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
         verses.append({
             "id": r["id"],
             "verse_id": r["verse_id"],
-            "text": vt[0][:300] if vt and vt[0] else "",
+            "text_english": vt["text_english"][:300] if vt and vt["text_english"] else "",
+            "text_hebrew": vt["text_hebrew"][:300] if vt and vt["text_hebrew"] else "",
+            "text_greek": vt["text_greek"][:300] if vt and vt["text_greek"] else "",
             "added_at": r["added_at"],
             "mastery": r["mastery"],
             "attempts": r["attempts"],
@@ -342,7 +346,7 @@ def list_queue(user_id: str = "default"):
             "stability": r["stability"],
             "difficulty": r["difficulty"],
         })
-    
+
     conn.close()
     return {"ok": True, "data": {"verses": verses, "total": len(verses)}}
 
@@ -353,17 +357,17 @@ def add_to_queue(body: dict):
     conn = get_conn()
     verse_id = body.get("verse_id", "")
     user_id = body.get("user_id", "default")
-    
+
     if not verse_id:
         conn.close()
         raise HTTPException(400, "verse_id required")
-    
+
     # Verify verse exists
     vt = conn.execute("SELECT id FROM verses WHERE id=?", (verse_id,)).fetchone()
     if not vt:
         conn.close()
         raise HTTPException(404, f"Verse not found: {verse_id}")
-    
+
     try:
         conn.execute("""
             INSERT OR IGNORE INTO memorize_queue (user_id, verse_id)
@@ -378,9 +382,9 @@ def add_to_queue(body: dict):
         """, (user_id, verse_id, difficulty))
         conn.commit()
         added = True
-    except:
+    except Exception:
         added = False
-    
+
     conn.close()
     return {"ok": True, "data": {"verse_id": verse_id, "added": added, "initial_difficulty": difficulty if 'difficulty' in dir() else 5.0}}
 
@@ -397,21 +401,37 @@ def remove_from_queue(item_id: int, user_id: str = "default"):
 
 @router.post("/api/v1/memorize/queue/batch")
 def add_chapter_to_queue(body: dict):
-    """Add all verses in a chapter to the memorize queue."""
+    """Add verses to the memorize queue — by chapter or by verse range.
+
+    For a full chapter: send { book: "gen", chapter: 1 }
+    For a verse range:  send { book: "gen", chapter: 1, verse_start: 1, verse_end: 5 }
+    For a single verse: send { book: "gen", chapter: 1, verse_start: 1 }
+    """
     conn = get_conn()
     book = body.get("book", "")
     chapter = body.get("chapter", 0)
+    verse_start = body.get("verse_start")
+    verse_end = body.get("verse_end")
     user_id = body.get("user_id", "default")
-    
+
     if not book or not chapter:
         conn.close()
         raise HTTPException(400, "book and chapter required")
-    
-    verses = conn.execute(
-        "SELECT id FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
-        (book, chapter)
-    ).fetchall()
-    
+
+    if verse_start:
+        # Add a specific verse range
+        sql = "SELECT id FROM verses WHERE book_id=? AND chapter=? AND verse>=?"
+        params = [book, chapter, verse_start]
+        if verse_end:
+            sql += " AND verse<=?"
+            params.append(verse_end)
+        sql += " ORDER BY verse"
+    else:
+        sql = "SELECT id FROM verses WHERE book_id=? AND chapter=? ORDER BY verse"
+        params = [book, chapter]
+
+    verses = conn.execute(sql, params).fetchall()
+
     added_count = 0
     for v in verses:
         try:
@@ -424,18 +444,22 @@ def add_chapter_to_queue(body: dict):
                 VALUES (?, ?)
             """, (user_id, v["id"]))
             added_count += 1
-        except:
+        except Exception:
             pass
-    
+
     conn.commit()
     conn.close()
-    return {"ok": True, "data": {"chapter": f"{book}.{chapter}", "verses_added": added_count}}
+    return {"ok": True, "data": {
+        "book": book, "chapter": chapter,
+        "verse_start": verse_start, "verse_end": verse_end,
+        "verses_added": added_count,
+    }}
 
 
 @router.get("/api/v1/memorize/review")
 def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = False, palace_order: bool = False):
     """Get due reviews from the memorize queue, ordered by urgency.
-    
+
     Features:
     - FIRe knock-out: cards with fi_re_credit >= 1.0 are skipped (extend interval)
     - Connection-aware difficulty: shown in response
@@ -444,7 +468,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
     """
     conn = get_conn()
     now = datetime.datetime.now()
-    
+
     rows = conn.execute("""
         SELECT q.id, q.verse_id,
                COALESCE(p.mastery, 0) as mastery,
@@ -460,7 +484,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
         ORDER BY p.last_review ASC
         LIMIT ?
     """, (user_id, limit * 2)).fetchall()  # Fetch extra for FIRe knock-out filtering
-    
+
     reviews = []
     knocked_out = 0
     for r in rows:
@@ -481,21 +505,21 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
                     (next_review, user_id, r["verse_id"])
                 )
             continue
-        
+
         # Compute retrievability
         if r["last_review"]:
             try:
                 last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
                 days = (now - last).total_seconds() / 86400.0
                 ret = math.exp(-days / r["stability"]) if r["stability"] > 0 else 1.0
-            except:
+            except Exception:
                 ret = 0.5
         else:
             ret = 0.0  # Never reviewed — most urgent
-        
+
         vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
         text = vt[0] if vt else ""
-        
+
         reviews.append({
             "queue_id": r["id"],
             "verse_id": r["verse_id"],
@@ -507,10 +531,10 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
             "fi_re_credit": round(fire_credit, 3),
             "retrievability": round(ret, 3),
         })
-    
+
     # Sort by retrievability (most forgotten first)
     reviews.sort(key=lambda x: x["retrievability"])
-    
+
     # Palace-guided ordering: if enabled, order by memory palace loci
     if palace_order:
         try:
@@ -524,7 +548,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
             """).fetchall()
             palace_map = {r["verse_id"]: r for r in loci_rows}
             mconn.close()
-            
+
             # Add palace info and sort: palace-ordered first, then retrievability
             for r in reviews:
                 pi = palace_map.get(r["verse_id"])
@@ -552,7 +576,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
                 if j in used: continue
                 # Check if connected via graph
                 conn_check = conn.execute("""
-                    SELECT 1 FROM connections 
+                    SELECT 1 FROM connections
                     WHERE (source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?)
                     LIMIT 1
                 """, (r["verse_id"], reviews[j]["verse_id"], reviews[j]["verse_id"], r["verse_id"])).fetchone()
@@ -562,7 +586,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
             compressed.append(group)
         # Flatten: connected cards appear consecutively
         reviews = [c for g in compressed for c in g]
-    
+
     conn.commit()  # Save FIRe knock-out updates
     conn.close()
     return {"ok": True, "data": {"reviews": reviews, "due": len(reviews), "knocked_out": knocked_out}}
@@ -573,25 +597,25 @@ def submit_review(queue_id: int, body: dict):
     """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy)."""
     user_id = body.get("user_id", "default")
     rating = max(1, min(4, body.get("rating", 3)))
-    
+
     conn = get_conn()
     item = conn.execute(
         "SELECT verse_id FROM memorize_queue WHERE id=? AND user_id=?",
         (queue_id, user_id)
     ).fetchone()
-    
+
     if not item:
         conn.close()
         raise HTTPException(404, "Queue item not found")
-    
+
     verse_id = item["verse_id"]
-    
+
     # Get current progress
     prog = conn.execute(
         "SELECT mastery, attempts, correct, stability, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
         (user_id, verse_id)
     ).fetchone()
-    
+
     if prog:
         a, c = prog["attempts"], prog["correct"]
         stability = max(1.0, prog["stability"])
@@ -600,41 +624,39 @@ def submit_review(queue_id: int, body: dict):
         a, c = 0, 0
         stability = _fsrs_initial_stability(rating)
         difficulty = 5.0
-    
+
     # FSRS update with student-topic learning speed
     learning_speed = compute_learning_speed(conn, user_id, verse_id)
-    
+
     # Adjust difficulty by learning speed (Math Academy Ch 29):
     # Fast learners get lower effective difficulty, slow learners higher
     speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
-    
+
     new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, rating)
-    
+
     # Apply learning speed to interval
     interval = max(1, round(base_interval * learning_speed))
-    
+
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     next_review = (datetime.datetime.now() + datetime.timedelta(days=interval)).strftime("%Y-%m-%d")
-    
+
     a += 1
     c += 1 if rating >= 3 else 0
     mastery = min(1.0, c / max(a, 1))
-    
+
     conn.execute("""
-        INSERT OR REPLACE INTO memorize_progress 
+        INSERT OR REPLACE INTO memorize_progress
             (user_id, verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review)
         VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?)
     """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review))
-    
+
     # FIRe credit propagation: successful reviews give credit to connected verses
-    try:
+    with contextlib.suppress(Exception):
         compute_fire_credit(conn, verse_id, rating)
-    except Exception:
-        pass  # FIRe is non-critical
-    
+
     conn.commit()
     conn.close()
-    
+
     return {"ok": True, "data": {
         "verse_id": verse_id, "mastery": round(mastery, 3),
         "stability": round(new_s, 2), "difficulty": round(new_d, 2),
@@ -646,7 +668,7 @@ def submit_review(queue_id: int, body: dict):
 @router.get("/api/v1/memorize/suggest")
 def suggest_verses(limit: int = 5, user_id: str = "default"):
     """Suggest verses to memorize based on graph centrality.
-    
+
     Finds well-connected verses not yet in the queue — these are
     high-value verses that will unlock many connections.
     """
@@ -661,7 +683,7 @@ def suggest_verses(limit: int = 5, user_id: str = "default"):
 @router.get("/api/v1/review/interleaved")
 def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
     """Get interleaved reviews from ALL areas: memorize + hebrew + learn.
-    
+
     Implements Math Academy's macro-interleaving (Ch 19):
     - Pulls due cards from memorize queue, hebrew review queue, and learn review
     - Interleaves them: no more than 2 consecutive from same area
@@ -669,7 +691,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
     """
     now = datetime.datetime.now()
     all_cards = []
-    
+
     # 1. Memorize cards
     conn = get_conn()
     rows = conn.execute("""
@@ -692,14 +714,14 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
                 last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
                 days = (now - last).total_seconds() / 86400.0
                 retro = math.exp(-days / r["stability"]) if r["stability"] > 0 else 1.0
-            except:
+            except Exception:
                 retro = 0.5
         all_cards.append({
             "id": f"mem_{r['id']}", "verse_id": r["verse_id"],
             "text": (vt[0] or "")[:200] if vt else "",
             "source": "memorize", "retrievability": round(retro, 3),
         })
-    
+
     # 2. Hebrew review cards (from memorize.db)
     try:
         MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
@@ -723,7 +745,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
         mconn.close()
     except Exception:
         pass
-    
+
     # 3. Learn module review cards
     try:
         lconn = get_conn()
@@ -743,15 +765,15 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
         lconn.close()
     except Exception:
         pass
-    
+
     # Interleave: no more than 2 consecutive from same source
     # Sort by retrievability first, then interleave by source
     all_cards.sort(key=lambda x: x["retrievability"])
-    
+
     interleaved = []
     last_source = None
     consecutive = 0
-    
+
     # Round-robin interleaving with max 2 consecutive
     remaining = all_cards.copy()
     while remaining:
@@ -763,17 +785,17 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
             if card["retrievability"] < best_retro:
                 best_retro = card["retrievability"]
                 best_idx = i
-        
+
         chosen = remaining.pop(best_idx)
-        
+
         if chosen["source"] == last_source:
             consecutive += 1
         else:
             consecutive = 1
             last_source = chosen["source"]
-        
+
         interleaved.append(chosen)
-    
+
     conn.close()
     return {"ok": True, "data": {"reviews": interleaved, "total": len(interleaved)}}
 
@@ -782,24 +804,24 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
 
 def get_non_interference_distance(conn, verse_a, verse_b):
     """Check if two verses would interfere with each other if reviewed near each other.
-    
+
     Interference occurs when:
     - They share rare words (fewer than 10 occurrences in the canon)
     - They have similar themes (high connection overlap)
     - They are from confusable Hebrew word pairs
-    
+
     Returns a score 0.0-1.0 where higher = more interference.
     """
     # Check if connected via the graph with high strength
     conn_row = conn.execute("""
-        SELECT strength FROM connections 
+        SELECT strength FROM connections
         WHERE ((source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?))
         AND strength > 0.7
         LIMIT 1
     """, (verse_a, verse_b, verse_b, verse_a)).fetchone()
     if conn_row:
         return conn_row["strength"] * 0.5  # High similarity = some interference
-    
+
     # Check hebrew_confusability (from memorize.db)
     try:
         MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
@@ -813,19 +835,19 @@ def get_non_interference_distance(conn, verse_a, verse_b):
             return row[0]
     except Exception:
         pass
-    
+
     return 0.0
 
 
 @router.get("/api/v1/review/next")
 def get_next_review(user_id: str = "default", last_verse: str = ""):
     """Get the next review card, respecting non-interference.
-    
+
     Ensures the next card doesn't interfere with the last one reviewed.
     Avoids scheduling confusable pairs consecutively.
     """
     conn = get_conn()
-    
+
     # Get next due card from memorize queue
     rows = conn.execute("""
         SELECT q.id, q.verse_id, COALESCE(p.fi_re_credit, 0.0) as fire,
@@ -835,7 +857,7 @@ def get_next_review(user_id: str = "default", last_verse: str = ""):
         WHERE q.user_id=? AND (p.fi_re_credit IS NULL OR p.fi_re_credit < 1.0)
         ORDER BY p.last_review ASC LIMIT 5
     """, (user_id,)).fetchall()
-    
+
     # Pick the first card that doesn't interfere with last_verse
     chosen = None
     for r in rows:
@@ -845,14 +867,14 @@ def get_next_review(user_id: str = "default", last_verse: str = ""):
                 continue  # Skip this card — would interfere
         chosen = r
         break
-    
+
     if not chosen:
         conn.close()
         return {"ok": True, "data": {"review": None, "message": "No non-interfering cards due"}}
-    
+
     vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (chosen["verse_id"],)).fetchone()
     text = vt[0] if vt else ""
-    
+
     conn.close()
     return {"ok": True, "data": {"review": {
         "queue_id": chosen["id"],
@@ -866,14 +888,14 @@ def get_next_review(user_id: str = "default", last_verse: str = ""):
 @router.get("/api/v1/review/weakest")
 def get_weakest_reviews(user_id: str = "default", limit: int = 5):
     """Get cards where the user is weakest for targeted remediation.
-    
+
     Implements Math Academy's targeted remediation (Ch 21):
     - Identifies verses with lowest accuracy rates
     - Prioritizes verses with most failed attempts
     - Returns targeted mini-session for weak areas
     """
     conn = get_conn()
-    
+
     rows = conn.execute("""
         SELECT q.id, q.verse_id,
                p.mastery, p.attempts, p.correct, p.stability, p.difficulty,
@@ -886,7 +908,7 @@ def get_weakest_reviews(user_id: str = "default", limit: int = 5):
         ORDER BY accuracy ASC, failures DESC, p.stability ASC
         LIMIT ?
     """, (user_id, limit)).fetchall()
-    
+
     results = []
     for r in rows:
         vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (r["verse_id"],)).fetchone()
@@ -901,6 +923,6 @@ def get_weakest_reviews(user_id: str = "default", limit: int = 5):
             "stability": r["stability"],
             "difficulty": r["difficulty"],
         })
-    
+
     conn.close()
     return {"ok": True, "data": {"reviews": results, "total": len(results)}}

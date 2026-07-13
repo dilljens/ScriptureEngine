@@ -14,7 +14,11 @@ Run:  ./run.sh cleanup                  (no AI review, time-based only)
       ./run.sh cleanup --dry-run        (preview only)
 """
 
-import sys, os, json, datetime
+import datetime
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -59,10 +63,10 @@ Valid judgments:
 Connection {i + 1}:
   From: {c['source_verse']} ({c['source_book']})
   Text: {c['source_text'][:200]}
-  
+
   To: {c['target_verse']} ({c['target_book']})
   Text: {c['target_text'][:200]}
-  
+
   Type: {c['layer']}/{c['type']}
   Detected by: {c.get('discovered_by', 'algorithm')}
 
@@ -76,7 +80,7 @@ Respond ONLY with a JSON array: [{"connection": 1, "judgment": "valid", "reasoni
 
 def review_via_llm(connections, api_key=None, api_url=None, model=None):
     """Send connections to an LLM for review.
-    
+
     If no API key is set, writes a batch file for manual review instead.
     """
     if not api_key:
@@ -98,14 +102,15 @@ def review_via_llm(connections, api_key=None, api_url=None, model=None):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         path = f"/tmp/connection_review_{timestamp}.json"
         with open(path, "w") as f:
-            json.dump({"connections": batch, "instructions": 
+            json.dump({"connections": batch, "instructions":
                        "Set 'judgment' to 'valid', 'invalid', or 'uncertain' for each connection, then run: ./run.sh cleanup --apply-review " + path},
                       f, indent=2, ensure_ascii=False)
         return {"mode": "file", "path": path, "count": len(connections)}
 
     # API-based review
-    import urllib.request, urllib.error
-    
+    import urllib.error
+    import urllib.request
+
     prompt = build_review_prompt(connections)
     payload = json.dumps({
         "model": model or os.environ.get("LLM_MODEL", "deepseek-v4-flash"),
@@ -113,7 +118,7 @@ def review_via_llm(connections, api_key=None, api_url=None, model=None):
         "temperature": 0.1,
         "max_tokens": 2000,
     }).encode()
-    
+
     req = urllib.request.Request(
         api_url or os.environ.get("LLM_API_URL", "https://api.commandcode.ai/provider/v1/chat/completions"),
         data=payload,
@@ -122,7 +127,7 @@ def review_via_llm(connections, api_key=None, api_url=None, model=None):
             "Authorization": f"Bearer {api_key}",
         },
     )
-    
+
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read())
@@ -135,24 +140,24 @@ def review_via_llm(connections, api_key=None, api_url=None, model=None):
                 return {"mode": "api", "judgments": judgments, "count": len(judgments)}
     except Exception as e:
         return {"mode": "error", "error": str(e)}
-    
+
     return {"mode": "error", "error": "No JSON found in LLM response"}
 
 
 def apply_judgments(conn, judgments, batch_size=50):
     """Apply AI judgments to connections.
-    
+
     valid → promote to probable
     invalid → deprecate
     uncertain → leave as speculative (extend lifecycle)
     """
     stats = {"promoted": 0, "deprecated": 0, "uncertain": 0}
-    
+
     for j in judgments:
         conn_id = j.get("connection", j.get("id"))
         judgment = j.get("judgment", "").lower()
         reasoning = j.get("reasoning", "")
-        
+
         if judgment == "valid":
             conn.execute("""
                 UPDATE connections SET
@@ -162,7 +167,7 @@ def apply_judgments(conn, judgments, batch_size=50):
                 WHERE id = ?
             """, (reasoning[:200], conn_id))
             stats["promoted"] += 1
-        
+
         elif judgment == "invalid":
             conn.execute("""
                 UPDATE connections SET
@@ -171,7 +176,7 @@ def apply_judgments(conn, judgments, batch_size=50):
                 WHERE id = ?
             """, (reasoning[:200], conn_id))
             stats["deprecated"] += 1
-        
+
         else:  # uncertain
             # Reset timer — give it another 30 days
             conn.execute("""
@@ -181,7 +186,7 @@ def apply_judgments(conn, judgments, batch_size=50):
                 WHERE id = ?
             """, (conn_id,))
             stats["uncertain"] += 1
-    
+
     conn.commit()
     return stats
 
@@ -206,7 +211,7 @@ def cleanup(conn, dry_run=False):
     stats = {"deprecated": 0, "pruned": 0, "promoted": 0, "uncertain": 0}
 
     # Auto-promote with enough confirmations
-    result = conn.execute("""
+    conn.execute("""
         UPDATE connections
         SET quality_level = 'probable', deprecation_reason = ''
         WHERE quality_level = 'speculative' AND confirmation_count >= 3
@@ -214,7 +219,7 @@ def cleanup(conn, dry_run=False):
     stats["promoted"] = conn.total_changes or 0
 
     # Deprecate old rejected connections
-    result = conn.execute("""
+    conn.execute("""
         DELETE FROM connections
         WHERE deprecated = 1 AND created_at < datetime('now', '-90 days')
     """)
@@ -236,7 +241,7 @@ def main():
     args = parser.parse_args()
 
     conn = get_db()
-    
+
     print("=" * 60)
     print("  SYSTEM DREAMING — Connection Graph Cleanup")
     print("=" * 60)
@@ -278,9 +283,9 @@ def main():
                 # No API key — write batch file
                 result = review_via_llm(eligible)
                 if result["mode"] == "file":
-                    print(f"  No LLM_API_KEY set.")
+                    print("  No LLM_API_KEY set.")
                     print(f"  Review file written to: {result['path']}")
-                    print(f"  Edit the judgments field in that file, then run:")
+                    print("  Edit the judgments field in that file, then run:")
                     print(f"    ./run.sh cleanup --apply-review {result['path']}")
         print()
 

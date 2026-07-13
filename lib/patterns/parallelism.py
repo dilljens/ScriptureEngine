@@ -9,7 +9,6 @@ Detects 15+ parallelism types:
 """
 
 import re
-from collections import Counter
 
 # Markers
 ANTITHETIC_MARKERS = {"but", "yet", "however", "nevertheless", "rather", "nor", "neither"}
@@ -118,7 +117,7 @@ def detect_rhetorical_pair(text_a, text_b):
 
 def classify_parallelism(verse_a, verse_b):
     """Classify the type of parallelism between two verses.
-    
+
     Returns (type_name, confidence, evidence).
     """
     tokens_a = tokenize(verse_a)
@@ -129,7 +128,7 @@ def classify_parallelism(verse_a, verse_b):
     overlap = word_overlap(tokens_a, tokens_b)
     a_antithetic = contains_any(verse_a, ANTITHETIC_MARKERS)
     b_antithetic = contains_any(verse_b, ANTITHETIC_MARKERS)
-    a_synthetic = contains_any(verse_a, SYNTHETIC_MARKERS)
+    contains_any(verse_a, SYNTHETIC_MARKERS)
     b_synthetic = contains_any(verse_b, SYNTHETIC_MARKERS)
 
     # 1. Numerical parallelism (highest priority — specific formula)
@@ -186,11 +185,11 @@ def classify_parallelism(verse_a, verse_b):
 
 def detect_parallelisms(verses, context_size=1):
     """Detect parallelisms between adjacent verses.
-    
+
     Args:
         verses: list of dicts with 'text_english' key
         context_size: how many verses apart to check
-    
+
     Returns list of detected parallelisms.
     """
     texts = [v.get("text_english", "") for v in verses if v.get("text_english")]
@@ -223,14 +222,14 @@ def detect_parallelisms(verses, context_size=1):
 
 def detect_inclusio_in_passage(verses, window=10):
     """Run inclusio detection across a passage.
-    
+
     Checks if the first N verses share keywords with the last N verses.
     """
     if len(verses) < 6:
         return None
 
     # Check various passage sizes (skip very short ones)
-    for passage_len in range(6, min(len(verses), 50), 2):
+    for _passage_len in range(6, min(len(verses), 50), 2):
         first_verses = verses[:3]
         last_verses = verses[-3:]
         result = detect_inclusio(first_verses, last_verses)

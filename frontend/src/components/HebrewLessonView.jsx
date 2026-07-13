@@ -1,6 +1,56 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
 
+/** Split text on scripture references like gen.1.1, exo.3.14 or Gen 1:1, Exo 3:14 */
+function renderTextWithRefs(text, onNavigate) {
+  if (!text) return text
+  // Match both formats: gen.1.1 and Gen 1:1
+  const parts = text.split(/(\b[a-z]{2,6})\.(\d+)\.(\d+)\b/gi)
+  if (parts.length === 1) {
+    // Try colon format
+    const parts2 = text.split(/(\b[a-z]{2,6})\s+(\d+):(\d+)\b/gi)
+    if (parts2.length === 1) return text
+    const elements = []
+    for (let i = 0; i < parts2.length; i++) {
+      if (i % 4 === 0) elements.push(parts2[i])
+      else if (i % 4 === 1) {
+        const book = parts2[i]
+        const ch = parts2[i + 1]
+        const vs = parts2[i + 2]
+        elements.push(
+          <button key={i}
+            onClick={() => onNavigate?.(`${book}.${ch}`)}
+            className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
+            title={`Open ${book}.${ch}`}>
+            {book} {ch}:{vs}
+          </button>
+        )
+        i += 2
+      }
+    }
+    return elements.length > 0 ? <>{elements}</> : text
+  }
+  const elements = []
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 4 === 0) elements.push(parts[i])
+    else if (i % 4 === 1) {
+      const book = parts[i]
+      const ch = parts[i + 1]
+      const vs = parts[i + 2]
+      elements.push(
+        <button key={i}
+          onClick={() => onNavigate?.(`${book}.${ch}`)}
+          className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
+          title={`Open ${book}.${ch}`}>
+          {book}.{ch}.{vs}
+        </button>
+      )
+      i += 2
+    }
+  }
+  return elements.length > 0 ? <>{elements}</> : text
+}
+
 /**
  * HebrewLessonView — timed drills + targeted remediation + micro-scaffolding.
  *
@@ -60,7 +110,7 @@ function getTimeLimit(q) {
   return Math.round(base + readingBonus + optionBonus + answerBonus)
 }
 
-export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
+export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize = 5 }) {
   const [node, setNode] = useState(null)
   const [practice, setPractice] = useState([])
   const [lessonContent, setLessonContent] = useState(null)
@@ -343,10 +393,50 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
         {node.description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{node.description}</p>}
       </div>
 
-      {/* Lesson content */}
-      {batch === 0 && lessonContent && Object.keys(submitted).length === 0 && (
-        <div className="mb-6 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap max-h-60 overflow-y-auto">
-          {lessonContent}
+      {/* Lesson content — explanation, key points, worked examples */}
+      {batch === 0 && node?.lesson && Object.keys(submitted).length === 0 && (
+        <div className="mb-6 space-y-4">
+          {/* Explanation */}
+          {node.lesson.explanation && (
+            <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
+              <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+                {renderTextWithRefs(node.lesson.explanation, onNavigate)}
+              </p>
+            </div>
+          )}
+          {/* Key Points */}
+          {node.lesson.key_points?.length > 0 && (
+            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2 block">Key Points</span>
+              <ul className="space-y-1">
+                {node.lesson.key_points.map((kp, i) => (
+                  <li key={i} className="text-xs text-neutral-700 dark:text-neutral-300 flex items-start gap-2">
+                    <span className="text-blue-500 mt-0.5 shrink-0">•</span>
+                    <span>{renderTextWithRefs(kp, onNavigate)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* Worked Examples */}
+          {node.lesson.worked_examples?.length > 0 && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2 block">💡 Worked Examples</span>
+              {node.lesson.worked_examples.map((we, i) => (
+                <div key={i} className="mb-3 last:mb-0">
+                  <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 mb-1">Q: {we.question}</p>
+                  <div className="space-y-0.5 ml-2">
+                    {(we.steps || []).map((step, si) => (
+                      <p key={si} className="text-[11px] text-neutral-600 dark:text-neutral-400">{renderTextWithRefs(step, onNavigate)}</p>
+                    ))}
+                  </div>
+                  {we.answer && (
+                    <p className="text-[11px] text-green-700 dark:text-green-300 mt-1 font-medium">{renderTextWithRefs(we.answer, onNavigate)}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -366,7 +456,11 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
             {node.verse_attestations.map((att, i) => (
               <div key={i} className="p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-green-200 dark:border-green-700">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[10px] font-mono font-medium text-green-700 dark:text-green-300">{att.verse_id}</span>
+                  <button onClick={() => onNavigate?.(att.verse_id)}
+                    className="text-[10px] font-mono font-medium text-green-700 dark:text-green-300 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer hover:underline transition-colors"
+                    title={`Open ${att.verse_id}`}>
+                    {att.verse_id}
+                  </button>
                   {att.attestation_type && (
                     <span className="text-[8px] px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
                       {att.attestation_type.replace(/_/g, ' ')}
@@ -379,7 +473,7 @@ export default function HebrewLessonView({ nodeId, onBack, batchSize = 5 }) {
                   </p>
                 )}
                 {att.explanation && (
-                  <p className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5">{att.explanation}</p>
+                  <p className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5">{renderTextWithRefs(att.explanation, onNavigate)}</p>
                 )}
               </div>
             ))}

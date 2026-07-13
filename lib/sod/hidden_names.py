@@ -7,7 +7,6 @@ in the letter sequence of other words.
 
 from ..gematria import extract_consonants
 
-
 # Divine names to search for as hidden patterns
 DIVINE_NAMES = {
     "יהוה": "YHWH",
@@ -20,7 +19,7 @@ DIVINE_NAMES = {
 
 def find_hidden_names_in_word(word):
     """Check if a Hebrew word contains a hidden divine name.
-    
+
     Returns list of (name, position, meaning) tuples.
     """
     cons = extract_consonants(word)
@@ -46,9 +45,9 @@ def find_across_word_patterns(words):
     cons_words = [extract_consonants(w) for w in words if extract_consonants(w)]
     if not cons_words:
         return []
-    
+
     results = []
-    
+
     # Check: last + first across adjacent words
     for i in range(len(cons_words) - 1):
         combined = cons_words[i][-1] + cons_words[i + 1][0]
@@ -61,7 +60,7 @@ def find_across_word_patterns(words):
                     "meaning": meaning,
                     "words": f"{cons_words[i][-1]} + {cons_words[i+1][0]}",
                 })
-    
+
     # Check: every other letter across words (skip-letter pattern)
     for skip in (1, 2, 3):
         all_letters = "".join(cons_words)
@@ -74,24 +73,23 @@ def find_across_word_patterns(words):
                     "meaning": meaning,
                     "in_sequence": selected[:40],
                 })
-    
+
     return results
 
 
 def find_divine_name_gematria_matches(conn, verse_id):
     """For a given verse, check if gematria values match divine names.
-    
+
     Uses the existing gematria data to find hidden divine name
     value matches in the verse's words.
     """
-    from ..db import get_db
     from ..gematria import find_divine_name_matches
-    
+
     words = conn.execute("""
         SELECT word_hebrew, value_standard FROM gematria
         WHERE verse_id = ? ORDER BY word_index
     """, (verse_id,)).fetchall()
-    
+
     results = []
     for w in words:
         matches = find_divine_name_matches(w["value_standard"])
@@ -102,5 +100,5 @@ def find_divine_name_gematria_matches(conn, verse_id):
                 "divine_name": m["name"],
                 "hebrew": m["hebrew"],
             })
-    
+
     return results

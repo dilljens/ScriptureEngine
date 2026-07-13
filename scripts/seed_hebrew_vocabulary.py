@@ -18,10 +18,7 @@ Usage:
 
 import argparse
 import json
-import os
-import random
 import sqlite3
-import sys
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent
@@ -33,7 +30,7 @@ def get_top_words(count=500, cutoff=10):
     """Get top N Hebrew words by frequency from the lexicon."""
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    
+
     rows = conn.execute("""
         SELECT DISTINCT
             l.lemma,
@@ -45,9 +42,9 @@ def get_top_words(count=500, cutoff=10):
             l.frequency as lex_freq,
             COALESCE(lg.english_gloss, l.lemma, '') as gloss
         FROM lexicon l
-        LEFT JOIN lemma_gloss lg ON 
+        LEFT JOIN lemma_gloss lg ON
             l.lemma = lg.lemma
-            OR (instr(l.lemma, '/') > 0 AND 
+            OR (instr(l.lemma, '/') > 0 AND
                 substr(l.lemma, instr(l.lemma, '/') + 1) = lg.lemma)
         WHERE l.lemma NOT IN ('b', 'c', 'd', 'H', 'G', 'l', 'm', 'k', 'H')
           AND l.frequency > ?
@@ -56,7 +53,7 @@ def get_top_words(count=500, cutoff=10):
         LIMIT ?
     """, (cutoff, count * 2)).fetchall()
     conn.close()
-    
+
     # Deduplicate by hebrew_word
     seen = set()
     words = []
@@ -83,7 +80,7 @@ def get_top_words(count=500, cutoff=10):
         })
         if len(words) >= count:
             break
-    
+
     return words
 
 
@@ -99,7 +96,7 @@ def find_verse_example(hebrew_word):
         LIMIT 1
     """, (f'%{hebrew_word}%',)).fetchone()
     conn.close()
-    
+
     if row:
         return (row[0], row[1], row[2])
     return None
@@ -127,7 +124,7 @@ def clean_for_id(w):
 def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_data):
     """Generate practice items for a vocabulary lesson."""
     items = []
-    
+
     # 1. Recognition: multiple choice — "Which word means X?"
     options_list = []
     common_words = ["יהוה", "אלהים", "ישראל", "בראשית", "ויאמר", "כי", "אשר", "על", "את", "לא"]
@@ -140,7 +137,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
     # If not enough distractors, use the word itself
     while len(options_list) < 3:
         options_list.append(clean_for_id(hebrew_word) if len(options_list) % 2 == 0 else "יהוה")
-    
+
     items.append({
         "question_type": "multiple_choice",
         "question_text": f"What does '{hebrew_word}' mean?",
@@ -149,7 +146,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
         "difficulty": 0.3,
         "explanation": f"'{hebrew_word}' means '{gloss}'."
     })
-    
+
     # 2. Recognition reverse: "Which Hebrew word means X?"
     items.append({
         "question_type": "multiple_choice",
@@ -159,7 +156,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
         "difficulty": 0.4,
         "explanation": f"'{gloss}' is '{hebrew_word}' in Hebrew."
     })
-    
+
     # 3. Transliteration practice
     if transliteration:
         items.append({
@@ -170,12 +167,11 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
             "difficulty": 0.5,
             "explanation": f"'{hebrew_word}' is pronounced '{transliteration}'."
         })
-    
+
     # 4. Cloze from verse example
     if verse_data:
         ref, heb_text, eng_text = verse_data
         # Blank out the target word from the Hebrew text
-        import re
         # Try to find and blank the exact word
         blanked_heb = heb_text.replace(hebrew_word, "______")
         if blanked_heb == heb_text:
@@ -185,7 +181,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
                 if clean_target in strip_cantillation(w) or strip_cantillation(w) in clean_target:
                     blanked_heb = heb_text.replace(w, "______")
                     break
-        
+
         if "______" in blanked_heb:
             items.append({
                 "question_type": "cloze",
@@ -195,7 +191,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
                 "difficulty": 0.6,
                 "explanation": f"The word '{hebrew_word}' means '{gloss}'. From {ref}."
             })
-            
+
             # 5. Sentence forming (English→Hebrew)
             items.append({
                 "question_type": "typing",
@@ -205,7 +201,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
                 "difficulty": 0.7,
                 "explanation": f"The Hebrew word is '{hebrew_word}' ({transliteration or gloss})."
             })
-    
+
     # 6. Recall: give gloss, type Hebrew
     items.append({
         "question_type": "recall",
@@ -215,7 +211,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
         "difficulty": 0.8,
         "explanation": f"The Hebrew word for '{gloss}' is '{hebrew_word}'."
     })
-    
+
     # 7. Root identification
     if root:
         items.append({
@@ -226,7 +222,7 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
             "difficulty": 0.7,
             "explanation": f"The root of '{hebrew_word}' is {root}."
         })
-    
+
     return items
 
 
@@ -236,18 +232,18 @@ def main():
     parser.add_argument("--db", default=str(MEM_DB), help="Path to memorize.db")
     parser.add_argument("--min-frequency", type=int, default=10, help="Minimum word frequency")
     args = parser.parse_args()
-    
+
     mem_db = Path(args.db)
-    
+
     # Get top words
     print(f"Fetching top {args.count} Hebrew words...")
     words = get_top_words(args.count, args.min_frequency)
     print(f"  Got {len(words)} words (frequency range: {words[0]['frequency']} - {words[-1]['frequency']})")
-    
+
     # Connect to memorize.db
     conn = sqlite3.connect(str(mem_db))
     conn.execute("PRAGMA foreign_keys=OFF")
-    
+
     # Ensure tables exist
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS hebrew_nodes (
@@ -274,38 +270,38 @@ def main():
             explanation TEXT DEFAULT ''
         );
     """)
-    
+
     # Get existing word lessons (category='word') to find the max level
     existing = conn.execute("SELECT COUNT(*) FROM hebrew_nodes WHERE category='word'").fetchone()[0]
     print(f"  Existing word lessons: {existing}")
     start_level = 4  # word level
-    
+
     new_nodes = 0
     new_items = 0
-    
+
     for i, w in enumerate(words):
         lid = make_lesson_id(w['hebrew'], i)
-        
+
         # Skip if practice items already exist for this node
         existing_items = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing_items:
             continue
-        
+
         # Find a verse example
         verse_data = find_verse_example(w['hebrew'])
-        
+
         # Create node
         title = f"{w['hebrew']} — {w['gloss']}"
         desc = w.get('definition', f"Frequency: {w['frequency']}x | Root: {w['root'] or '—'}")
         if len(desc) > 200:
             desc = desc[:200] + '...'
-        
+
         conn.execute(
             "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'word', ?)",
             (lid, title, start_level, desc)
         )
         new_nodes += 1
-        
+
         # Create lesson content
         content = {
             "node_id": lid,
@@ -323,7 +319,7 @@ def main():
             "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
-        
+
         # Generate practice items
         items = generate_practice_items(
             w['hebrew'], w['gloss'], w['transliteration'],
@@ -335,21 +331,21 @@ def main():
                 (lid, item['question_type'], item['question_text'], item['options_json'], item['correct_answer'], item['difficulty'], item['explanation'])
             )
             new_items += 1
-        
+
         if (i + 1) % 100 == 0:
             conn.commit()
             print(f"  Progress: {i+1}/{len(words)} lessons...")
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"\n✓ Done! Created {new_nodes} new word lessons with {new_items} practice items")
     print(f"  Total vocabulary lessons now: {existing + new_nodes}")
 
     # Count by type
     conn2 = sqlite3.connect(str(mem_db))
     counts = conn2.execute("SELECT question_type, COUNT(*) FROM hebrew_practice_items GROUP BY question_type ORDER BY COUNT(*) DESC").fetchall()
-    print(f"\nPractice items by type:")
+    print("\nPractice items by type:")
     for t, c in counts:
         print(f"  {t}: {c}")
     conn2.close()

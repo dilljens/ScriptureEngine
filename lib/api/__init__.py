@@ -16,49 +16,63 @@ Adding a new tool:
   3. It's immediately available as MCP tool + HTTP API endpoint
 """
 
-from lib.api.verse import lookup_verse, passage_guide, study_verse
-from lib.api.versions import list_versions, get_verse_text
-from lib.api.interlinear import get_interlinear
-from lib.api.search import search_text, search_xlingual
-from lib.api.gematria import gematria_lookup
-from lib.api.connections import get_connections, get_intertext, get_pardes, compare_verses, research_topic
-from lib.api.sod import hidden_patterns
-from lib.api.graph import (
-    graph_path,
-    graph_reachable,
-    graph_hubs,
-    graph_entities,
-    graph_shared_entities,
-    graph_entity_network,
-    graph_centrality,
-    graph_stats,
-    graph_context,
-    entity_deep,
+from lib.api.assessment import get_progress, start_assessment, submit_answer
+from lib.api.connections import (
+    compare_verses,
+    get_connections,
+    get_intertext,
+    get_pardes,
+    research_topic,
 )
-from lib.api.info import get_stats
-from lib.api.study import (
-    create_guide, add_step, remove_step, reorder_steps, bulk_update_steps,
-    update_guide, get_guide, list_guides, suggest_path,
-    export_json, export_html, export_markdown, import_json,
-    publish_study, get_published, list_published, fork_published,
-)
-from lib.api.strongs import strongs_lookup
-from lib.api.disagreements import get_disagreements, list_disagreements
 from lib.api.consensus import get_consensus
-from lib.api.assessment import start_assessment, submit_answer, get_progress
-from lib.api.sources import get_sources_for_verse, get_sources_by_scholar, list_scholars
 from lib.api.conversations import (
-    create_session,
-    get_session,
-    list_sessions,
-    update_session,
-    delete_session,
     add_message,
-    add_messages_batch,
+    create_session,
+    delete_session,
+    get_session,
     list_connections,
-    add_connection,
+    list_sessions,
     promote_connection,
 )
+from lib.api.disagreements import get_disagreements
+from lib.api.gematria import gematria_lookup
+from lib.api.graph import (
+    entity_deep,
+    graph_centrality,
+    graph_context,
+    graph_entities,
+    graph_entity_network,
+    graph_hubs,
+    graph_path,
+    graph_reachable,
+    graph_shared_entities,
+    graph_stats,
+)
+from lib.api.info import get_stats
+from lib.api.interlinear import get_interlinear
+from lib.api.search import search_text, search_xlingual
+from lib.api.sod import hidden_patterns
+from lib.api.sources import get_sources_by_scholar, get_sources_for_verse, list_scholars
+from lib.api.strongs import strongs_lookup
+from lib.api.study import (
+    add_step,
+    bulk_update_steps,
+    create_guide,
+    export_html,
+    export_json,
+    fork_published,
+    get_guide,
+    get_published,
+    import_json,
+    list_guides,
+    list_published,
+    publish_study,
+    remove_step,
+    suggest_path,
+    update_guide,
+)
+from lib.api.verse import lookup_verse, passage_guide, study_verse
+from lib.api.versions import get_verse_text, list_versions
 
 # ─── Registry ───
 
@@ -929,7 +943,8 @@ def _hebrew_lessons(conn=None, category=""):
 
 def _hebrew_lesson(conn=None, node_id=""):
     """Get full lesson content for a Hebrew concept node."""
-    import sqlite3, json
+    import json
+    import sqlite3
     from pathlib import Path
     db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
     if not db.exists():
@@ -948,7 +963,7 @@ def _hebrew_lesson(conn=None, node_id=""):
     if lesson:
         try:
             result["content"] = json.loads(lesson["content"]) if lesson["content"].startswith("{") else lesson["content"]
-        except:
+        except (json.JSONDecodeError, ValueError):
             result["content"] = lesson["content"]
     result["practice_items"] = [dict(p) for p in practices]
     result["prerequisites"] = [dict(p) for p in prereqs]
@@ -984,19 +999,21 @@ register(
 
 def _hebrew_quiz(conn=None, category="consonant", count=5):
     """Generate Hebrew knowledge quiz questions from the practice items database.
-    
+
     Returns quiz questions suitable for interactive rendering.
     By default returns consonant (aleph-bet) questions.
     """
-    import sqlite3, json, random
+    import json
+    import random
+    import sqlite3
     from pathlib import Path
     db = Path(__file__).parent.parent.parent / "data" / "memorize.db"
     if not db.exists():
         return {"questions": [], "total": 0, "note": "Hebrew lesson DB not found"}
-    
+
     conn = sqlite3.connect(str(db))
     conn.row_factory = sqlite3.Row
-    
+
     # Get all consonants with their glyph from descriptions
     nodes = conn.execute("""
         SELECT n.id, n.title, n.category, n.level, n.description,
@@ -1008,16 +1025,16 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
         ORDER BY RANDOM()
         LIMIT ?
     """, (category, count * 3)).fetchall()  # extra for diversity
-    
+
     conn.close()
-    
+
     if not nodes:
         return {"questions": [], "total": 0}
-    
+
     # Build quiz questions
     questions = []
     seen_nodes = set()
-    
+
     for n in nodes:
         if len(questions) >= count:
             break
@@ -1025,10 +1042,10 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
         if nid in seen_nodes:
             continue
         seen_nodes.add(nid)
-        
+
         options = json.loads(n['options_json']) if n['options_json'] else []
         correct = n['correct_answer']
-        
+
         # Determine the correct answer (index for choice types, text for production types)
         correct_answer_val = correct
         if n['question_type'] in ('multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification'):
@@ -1038,7 +1055,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
                     correct_idx = i
                     break
             correct_answer_val = correct_idx
-        
+
         questions.append({
             "node_id": nid,
             "question": n['question_text'],
@@ -1050,7 +1067,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             "nodeTitle": n['title'],
             "questionType": n['question_type'],
         })
-    
+
     # If we have less than count, add simple letter-name quiz questions
     if len(questions) < count:
         conn2 = sqlite3.connect(str(db))
@@ -1063,7 +1080,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             tuple(seen_nodes) + (count - len(questions),) if seen_nodes else (category, count - len(questions))
         ).fetchall()
         conn2.close()
-        
+
         for r in remaining:
             if len(questions) >= count:
                 break
@@ -1077,7 +1094,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
                 "nodeTitle": r['title'],
                 "questionType": "letter_name",
             })
-    
+
     random.shuffle(questions)
     return {"questions": questions[:count], "total": len(questions)}
 

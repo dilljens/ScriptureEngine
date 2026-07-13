@@ -3,7 +3,7 @@
 
 Uses research-backed grammar instruction approach:
 1. EXPLAIN → rule explanation
-2. SHOW → paradigm/pattern display  
+2. SHOW → paradigm/pattern display
 3. EXAMPLE → verse examples
 4. RECOGNIZE → identify in context
 5. PRODUCE → generate correct form
@@ -522,7 +522,7 @@ The infinitive absolute is a hallmark of Biblical Hebrew style and appears frequ
 
 1. IMPERATIVE — direct command (2nd person only)
    • קְטֹל = "Kill!" (ms)
-   • קִטְלִי = "Kill!" (fs)  
+   • קִטְלִי = "Kill!" (fs)
    • קִטְלוּ = "Kill!" (mp)
 
 2. JUSSIVE — indirect command/wish (3rd person, often with ו)
@@ -848,7 +848,7 @@ Key: English drops the resumptive pronoun ('the man THAT I spoke to ___'), but H
 def main():
     conn = sqlite3.connect(str(MEM_DB))
     conn.execute("PRAGMA foreign_keys=OFF")
-    
+
     # Ensure tables
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS hebrew_nodes (
@@ -868,27 +868,27 @@ def main():
             target_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
             edge_type TEXT DEFAULT 'prerequisite');
     """)
-    
+
     new_nodes = 0
     new_items = 0
     new_edges = 0
-    
+
     for lesson in GRAMMAR_LESSONS:
         lid = lesson["id"]
-        
+
         # Skip if practice items already exist for this node
         existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing:
             print(f"  SKIP {lid}: practice items already exist")
             continue
-        
+
         # Create node
         conn.execute(
             "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, ?, ?)",
             (lid, lesson["title"], lesson["level"], lesson["category"], lesson["description"])
         )
         new_nodes += 1
-        
+
         # Create lesson content
         content = {
             "node_id": lid,
@@ -904,7 +904,7 @@ def main():
             "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
-        
+
         # Create practice items
         for item in lesson["practice"]:
             opts = json.dumps(item.get("opts", []), ensure_ascii=False) if item.get("opts") else ""
@@ -913,7 +913,7 @@ def main():
                 (lid, item["type"], item["q"], opts, item["ans"], 0.5, "")
             )
             new_items += 1
-        
+
         # Create prerequisite edges
         for pid in lesson.get("prerequisites", []):
             # Check if prerequisite exists
@@ -929,14 +929,14 @@ def main():
                         (pid, lid)
                     )
                     new_edges += 1
-        
+
         print(f"  CREATED {lid}: {lesson['title']} (L{lesson['level']}, {len(lesson['practice'])} items)")
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"\n✓ Done! Created {new_nodes} new grammar lessons, {new_items} practice items, {new_edges} prerequisite edges")
-    
+
     # Summary
     conn2 = sqlite3.connect(str(MEM_DB))
     total = conn2.execute("SELECT COUNT(*) FROM hebrew_nodes WHERE category='grammar'").fetchone()[0]

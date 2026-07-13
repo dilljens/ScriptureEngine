@@ -8,6 +8,7 @@ Connections are created in the 'symbolic' layer with type='type_antitype'.
 """
 
 import json
+
 from lib.db import add_connection
 
 # ─── Classic Typological Pairs ───
@@ -74,15 +75,15 @@ TYPES = [
 def run(conn, book_ids=None):
     """Create typology connections."""
     count = 0
-    metadata = json.dumps({"generator": "typology", "tag": "typology"}, ensure_ascii=False)
-    
+    json.dumps({"generator": "typology", "tag": "typology"}, ensure_ascii=False)
+
     for (name, ts, te, ats, ate, subtype, strength, confidence, note) in TYPES:
         # Check if already exists
-        existing = conn.execute(
+        conn.execute(
             "SELECT COUNT(*) FROM connections WHERE layer='symbolic' AND type='type_antitype' AND subtype=?",
             (subtype,)
         ).fetchone()[0]
-        
+
         # Create connection from type's start verse to antitype's start verse
         try:
             add_connection(conn, ts, ats,
@@ -99,9 +100,9 @@ def run(conn, book_ids=None):
                               "tag": "typology",
                           }, ensure_ascii=False))
             count += 1
-        except Exception as e:
+        except Exception:
             pass
-    
+
     conn.commit()
     print(f"  Typology: {count} type/antitype pairs")
     return count

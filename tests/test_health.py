@@ -1,5 +1,7 @@
 """Health endpoint tests — run against live server."""
-import os, pytest
+import os
+
+import pytest
 
 # Skip if not running against live server
 SKIP_REASON = "Set SCRIPTURE_TEST_LIVE=1 to run health tests against live server"

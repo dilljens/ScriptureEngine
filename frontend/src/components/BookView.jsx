@@ -14,11 +14,36 @@ const CHAPTER_COUNTS = {
   '1ne':22, '2ne':33, jacob:7, enos:1, jarom:1, omni:1, wom:1,
   mosiah:29, alma:63, hel:16, '3ne':30, '4ne':1, morm:9, ether:15, moro:10,
   moses:8, abraham:5, jsm:1, jsh:1, aoff:1,
+  // DSS
+  '1QS':1, '1QSa':1, '1QSb':1, '1QM':1, '1QHa':1,
+  '1QpHab':1, '11Q13':1, '11Q19':1, '11Q20':1, 'CD':1,
+  '4Q400':20, '4Q401':1, '4Q402':1, '4Q403':1, '4Q404':1,
+  '4Q405':1, '4Q406':1, '4Q407':1,
+  '4Q174':1, '4Q246':1, '4Q521':1,
+  '4Q266':1, '4Q267':1, '4Q268':1, '4Q269':1, '4Q270':1,
+  '4Q271':1, '4Q272':1, '4Q273':1,
+  '4Q394':1, '4Q395':1, '4Q396':1, '4Q397':1, '4Q398':1, '4Q399':1,
+  '1Qisaa':1, '1Q20':1, bookgiants:1, visamram:1, tkohath:2,
+  // Pseudepigrapha
+  '1en':108, '2en':68, '3bar':17, '4bar':9,
+  '1adae':79, '2adae':22, apabr:32, apelj:5,
+  apsed:1, apjosh:24, ascis:11, asmos:12,
+  azar:1, balin:2, jasher:91, jub:50,
+  nathan:3, '5psdav':5, gad:23, grkest:16,
+  rechab:22, janjam:1, josasen:29, ladjac:8,
+  livprop:23, odessol:42, psssol:18,
+  tabr:20, tisaac:13, tjacob:13, tjob:12,
+  tsol:1, ahikar:7,
+  treub:2, tsimeon:3, tlevi:5, tjudah:4,
+  tdan:2, tnaph:2, tgad:2, tasher:1,
+  tiss:2, tzeb:2, tjos:2, tbenj:2,
+  // Expanded Canon
+  '1her':4, '2her':12, '3her':9, apet:17, barn:21, gnic:23,
 }
 
 function getMaxChapter(bookId) {
   if (bookId?.startsWith('dc')) return 1
-  return CHAPTER_COUNTS[bookId] || 50
+  return CHAPTER_COUNTS[bookId] || 1
 }
 
 export default function BookView({ bookId }) {
@@ -78,7 +103,7 @@ export default function BookView({ bookId }) {
           placeholder="chapter #" />
       </div>
       {search && <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">Jump to chapter: <strong>{search}</strong> <kbd className="text-[10px] font-mono bg-blue-100 dark:bg-blue-900/50 px-1 rounded ml-1">Enter</kbd></p>}
-      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-15 gap-1.5">
+      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1.5">
         {filtered.map(ch => <button key={ch} onClick={() => goToChapter(currentTab?.id, bookId, ch)}
           className={`px-2 py-1.5 rounded text-xs font-mono text-center transition-all cursor-pointer ${search && String(ch).startsWith(search) ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-400 text-blue-700 dark:text-blue-300 border-2 shadow-sm' : 'text-neutral-600 dark:text-neutral-400 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300'}`}>{ch}</button>)}
       </div>

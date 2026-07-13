@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Ingest Joseph Smith Translation (JST) into the textual connection layer."""
-import sys, os, re
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 JST_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "joseph-smith-translation", "bible-jst.txt")
 KJV_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "joseph-smith-translation", "bible-kjv.txt")
@@ -53,7 +56,7 @@ def main():
                 if not bid: continue
                 raw[name][f"{bid}.{int(m.group(2))}.{int(m.group(3))}"] = parts[1].strip()
     print(f"  KJV: {len(raw['kjv'])} JST: {len(raw['jst'])}", flush=True)
-    
+
     count = 0; same = 0
     for vid in sorted(set(raw['kjv']) & set(raw['jst'])):
         k = raw['kjv'][vid]; j = raw['jst'][vid]
@@ -67,10 +70,11 @@ def main():
                 discovered_by="algorithm",
                 metadata={"jst": j[:300], "kjv": k[:300]})
             count += 1
-        except: pass
+        except Exception:
+            pass
         if count % 300 == 0:
             conn.commit(); print(f"  {count}...", flush=True)
-    
+
     conn.commit()
     t = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='textual'").fetchone()["c"]
     print(f"\n  JST changes: {count}, Identical/punct: {same}, Textual layer total: {t}")

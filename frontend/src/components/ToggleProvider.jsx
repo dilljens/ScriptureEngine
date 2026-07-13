@@ -45,7 +45,8 @@ export function ToggleProvider({ children }) {
 
   // Search scope — which works and layers the LLM should use
   const [searchWorks, setSearchWorks] = useState({
-    ot: true, nt: true, bom: true, dc: true, pgp: true, dss: true,
+    ot: true, nt: true, bom: true, dc: true, pgp: true,
+    dss: true, apoc: true, pseu: true, expanded: true,
   })
   const [searchLayers, setSearchLayers] = useState({
     linguistic: true, intertextual: true, structural: true, interpretive: true,
@@ -229,6 +230,9 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
             <ScopeRow label="Doctrine &amp; Covenants" id="dc" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Pearl of Great Price" id="pgp" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Dead Sea Scrolls" id="dss" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Apocrypha" id="apoc" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Pseudepigrapha" id="pseu" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Expanded Canon" id="expanded" value={searchWorks} setter={setSearchWorks} />
 
             {/* Language */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Language</div>

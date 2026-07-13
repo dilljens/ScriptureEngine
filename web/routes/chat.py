@@ -1,16 +1,20 @@
 """LLM Chat proxy with function calling."""
-import json, os, sys, httpx
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+
+import httpx
+from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
 
 BASE_DIR = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from lib.db import get_db
-from lib.api import call_tool, list_tools
+from lib.api import call_tool
 from lib.api.staging import stage_connection, stage_study
+from lib.db import get_db
 
 router = APIRouter()
 
@@ -21,7 +25,6 @@ DEEPSEEK_BASE = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-v4-flash"
 
 # Reusable HTTP client for DeepSeek API calls (avoids creating a new connection each time)
-import httpx
 _http_client = httpx.AsyncClient(timeout=600.0)  # 10 min — DeepSeek thinking mode can take 8+ min
 
 # Pricing per 1M tokens (deepseek-v4-flash)
@@ -82,7 +85,7 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "query": {"type": "string", "description": "Search term (e.g., 'atonement', 'covenant', 'Son of Man')"},
                     "book": {"type": "string", "description": "Optional book filter. Use 'dc' for all D&C sections, '1en' for 1 Enoch, '1QS' for Community Rule. NOT needed for broad searches."},
-                    "works": {"type": "array", "items": {"type": "string", "enum": ["ot", "nt", "bom", "dc", "pgp", "dss", "apoc", "pseu"]}, "description": "Optional: filter by specific works (e.g., ['ot','nt']). NOT needed for broad searches."},
+                    "works": {"type": "array", "items": {"type": "string", "enum": ["ot", "nt", "bom", "dc", "pgp", "dss", "apoc", "pseu", "expanded"]}, "description": "Optional: filter by specific works (e.g., ['ot','nt']). NOT needed for broad searches."},
                     "limit": {"type": "integer", "default": 25, "description": "Results per call (max 50). Default 25 is enough to see results from multiple works."},
                 },
                 "required": ["query"],
@@ -692,7 +695,6 @@ async def llm_chat(body: ChatRequest):
     if not DEEPSEEK_API_KEY:
         return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
 
-    import httpx
     # from lib.api import call_tool, list_tools
     # from lib.api.staging import stage_connection, stage_study
     # from lib.db import get_db
@@ -837,7 +839,7 @@ async def llm_chat(body: ChatRequest):
         ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
 
         # Run read-only tools in parallel
-        async def run_ro(tc):
+        async def run_ro(tc, conn=conn):
             fn_name = tc["function"]["name"]
             try:
                 fn_args = json.loads(tc["function"]["arguments"])

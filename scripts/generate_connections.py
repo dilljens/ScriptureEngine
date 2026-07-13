@@ -8,14 +8,14 @@ Usage:
   python3 scripts/generate_connections.py --name "Linguistic"  # Run specific generator
 """
 
-import sys
 import os
+import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db
 from lib.connections.types import LAYERS
+from lib.db import get_db
 
 
 def print_header(text):

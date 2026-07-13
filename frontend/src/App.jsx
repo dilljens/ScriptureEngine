@@ -31,6 +31,11 @@ import ChapterView from './components/ChapterView'
 import AuthButton from './components/AuthButton'
 const HubNoteView = React.lazy(() => import('./components/HubNoteView'))
 const MemorizeView = React.lazy(() => import('./components/MemorizeView'))
+const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'))
+const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
+const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
+const WikiArticleViewer = React.lazy(() => import('./components/WikiArticleViewer'))
+const LearnView = React.lazy(() => import('./components/LearnView'))
 import TileDashboard from './components/TileDashboard'
 import SubjectTabBar from './components/SubjectTabBar'
 import useAgentControl from './useAgentControl'
@@ -210,6 +215,10 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
     'bom': 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
     'dc': 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20',
     'pgp': 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20',
+    'dss': 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20',
+    'apoc': 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20',
+    'pseu': 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20',
+    'expanded': 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20',
   }
 
   const workHeaderColors = {
@@ -218,6 +227,10 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
     'bom': 'bg-green-50/50 dark:bg-green-900/10 text-green-700 dark:text-green-300',
     'dc': 'bg-purple-50/50 dark:bg-purple-900/10 text-purple-700 dark:text-purple-300',
     'pgp': 'bg-pink-50/50 dark:bg-pink-900/10 text-pink-700 dark:text-pink-300',
+    'dss': 'bg-yellow-50/50 dark:bg-yellow-900/10 text-yellow-700 dark:text-yellow-300',
+    'apoc': 'bg-rose-50/50 dark:bg-rose-900/10 text-rose-700 dark:text-rose-300',
+    'pseu': 'bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300',
+    'expanded': 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-300',
   }
 
   // Get the currently selected result (not a header)
@@ -594,7 +607,14 @@ function AppInner() {
       const wT = bookData?.works?.find(w => w.id === wId)?.title || wId
       updateTab(currentTab.id, { view: 'work', viewRef: wId, label: wT })
     } else if (viewLevel === 'work') {
-      updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
+      // Preserve work ID in viewRef so LibraryView knows where you came from
+      const wId = viewRef || nav?.flat[nav.idx]?.workId || 'ot'
+      const wT = bookData?.works?.find(w => w.id === wId)?.title || wId
+      const firstBook = bookData?.works?.find(w => w.id === wId)?.books?.[0]?.id
+      updateTab(currentTab.id, {
+        view: 'library', viewRef: wId, label: 'Library',
+        ...(firstBook ? { book: firstBook } : {}),
+      })
     } else if (viewLevel === 'library') {
       updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
     }
@@ -607,7 +627,11 @@ function AppInner() {
     } else if (viewLevel === 'library') {
       const targetWorkId = viewRef || bookData?.works?.find(w => w.books?.some(b => b.id === book))?.id || bookData?.works?.[0]?.id || 'ot'
       const wT = bookData?.works?.find(w => w.id === targetWorkId)?.title || targetWorkId
-      updateTab(currentTab.id, { view: 'work', viewRef: targetWorkId, label: wT })
+      const firstBook = bookData?.works?.find(w => w.id === targetWorkId)?.books?.[0]?.id
+      updateTab(currentTab.id, {
+        view: 'work', viewRef: targetWorkId, label: wT,
+        ...(firstBook ? { book: firstBook } : {}),
+      })
     } else if (viewLevel === 'work') {
       if (viewRef === 'dc') {
         // D&C: skip book level, go directly to chapter view
@@ -788,8 +812,9 @@ function AppInner() {
   }, [currentTab?.id, updateTab])
 
   const openLibraryView = useCallback(() => {
-    updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
-  }, [currentTab?.id, updateTab])
+    const wId = viewRef || bookData?.works?.find(w => w.books?.some(b => b.id === book))?.id || null
+    updateTab(currentTab?.id, { view: 'library', viewRef: wId, label: 'Library' })
+  }, [currentTab?.id, updateTab, viewRef, book, bookData])
 
   // ── Split-pane reading ──
   const [showSplitPicker, setShowSplitPicker] = useState(false)
@@ -872,7 +897,6 @@ function AppInner() {
 
   const renderMainContent = () => {
     if (showHebrewDiagnostic) {
-      const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'))
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading diagnostic...</div>}>
           <HebrewDiagnostic onComplete={() => { setShowHebrewDiagnostic(false); setShowHebrewLearn(true) }} />
@@ -880,7 +904,6 @@ function AppInner() {
       )
     }
     if (hebrewLessonId !== null) {
-      const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
           <HebrewLessonView nodeId={hebrewLessonId} onBack={() => setHebrewLessonId(null)} />
@@ -895,7 +918,6 @@ function AppInner() {
       )
     }
     if (showHebrewLearn) {
-      const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading curriculum...</div>}>
           <HebrewLearnView onOpenLesson={(nodeId) => setHebrewLessonId(nodeId)} />
@@ -952,7 +974,6 @@ function AppInner() {
     }
     // Wiki view — render WikiArticleViewer
     if (viewLevel === 'wiki') {
-      const WikiArticleViewer = React.lazy(() => import('./components/WikiArticleViewer'))
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading wiki...</div>}>
           <WikiArticleViewer
@@ -966,7 +987,6 @@ function AppInner() {
 
     // HubNote tab view
     if (viewLevel === 'hubnote') {
-      const HubNoteView = React.lazy(() => import('./components/HubNoteView'))
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading study path...</div>}>
           <HubNoteView hubId={viewRef} onNavigate={(v) => { const p = v.split('.'); if (p.length >= 2) handleChatNavigate?.(p[0], parseInt(p[1])||1) }} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
@@ -974,9 +994,33 @@ function AppInner() {
       )
     }
 
-    // Hebrew view
+    // Hebrew view — if viewRef is set, show lesson; otherwise show curriculum
     if (viewLevel === 'hebrew') {
-      const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
+      if (viewRef && typeof viewRef === 'string' && !viewRef.startsWith('heb-')) {
+        const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
+        return (
+          <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
+            <HebrewLessonView
+              nodeId={viewRef}
+              onBack={(fallbackNodeId) => {
+                if (currentTab?.id) {
+                  if (fallbackNodeId) {
+                    updateTab(currentTab.id, { viewRef: fallbackNodeId, label: `Hebrew: ${fallbackNodeId}` })
+                  } else {
+                    updateTab(currentTab.id, { viewRef: null, label: 'Biblical Hebrew' })
+                  }
+                }
+              }}
+              onNavigate={(verseId) => {
+                const parts = verseId.split('.')
+                if (parts.length >= 2) {
+                  handleChatNavigate?.(parts[0], parseInt(parts[1]) || 1)
+                }
+              }}
+            />
+          </Suspense>
+        )
+      }
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading Hebrew...</div>}>
           <HebrewLearnView onOpenLesson={(nodeId) => {
@@ -988,7 +1032,6 @@ function AppInner() {
 
     // Learn view
     if (viewLevel === 'learn') {
-      const LearnView = React.lazy(() => import('./components/LearnView'))
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading learn...</div>}>
           <LearnView userId={userId} onBack={() => {}} />
@@ -1382,13 +1425,6 @@ function AppInner() {
           })}
         </div>
       )}
-
-      {/* Mobile: FAB — New Chat */}
-      <button onClick={() => { openChatTab(); setShowMobileMenu(false) }}
-        className="sm:hidden fixed bottom-20 right-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 active:bg-blue-800 transition-all active:scale-95 cursor-pointer"
-        title="New Chat">
-        <PlusIcon />
-      </button>
 
       {/* Mobile: Bottom Navigation — hidden when uiVisible is false (immersion mode) */}
       <MobileBottomNav activeTab={mobileActiveTab} visible={uiVisible} onTab={(tab) => {

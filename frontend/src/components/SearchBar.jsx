@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { searchVerses, semanticSearch } from '../api'
 import { parseAndFuzzy } from '../refParser'
+import VersePreviewCard from './VersePreviewCard'
 
 // Map book IDs to their parent work ID
 function bookToWork(bookId, bookData) {
@@ -30,7 +31,9 @@ const WORK_COLORS = {
   'dc': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
   'pgp': 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
   'dss': 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-  'ch': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
+  'apoc': 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300',
+  'pseu': 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+  'expanded': 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
 }
 
 function highlightText(text, query) {
@@ -119,10 +122,12 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
     if (trimmed) {
       const books = bookData?.works?.flatMap?.(w => w.books?.map?.(b => ({ bookId: b.id, bookTitle: b.title, workId: w.id, workLabel: w.title, searchText: `${b.title} ${b.id} ${w.title}` }))) || []
       const parsed = parseAndFuzzy(trimmed, books)
-      // Check for navigate (ref) results
-      if (parsed.type === 'navigate' && parsed.results?.[0]?.book) {
-        const r = parsed.results[0]
-        setRefResult({ book: r.book, chapter: r.chapter, label: r.label || `${r.book} ${r.chapter}`, newTab: r.newTab || false, verses: r.verses || null })
+      // Check for navigate (ref) results — show ALL matches as a dropdown
+      if (parsed.type === 'navigate' && parsed.results?.length > 0) {
+        setRefResult(parsed.results.map(r => ({
+          book: r.book, chapter: r.chapter, label: r.label || `${r.book} ${r.chapter}`,
+          newTab: r.newTab || false, verses: r.verses || null, score: r.score || 0,
+        })))
       } else {
         setRefResult(null)
       }
@@ -185,11 +190,14 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
   }
 
   const works = bookData?.works || []
-  const refItem = refResult ? [{ _type: 'ref', ref: refResult.label, book: refResult.book, chapter: refResult.chapter, verses: refResult.verses }] : []
+  const refItems = Array.isArray(refResult) && refResult.length > 0
+    ? [{ _type: 'ref_header' }, ...refResult.map((r, i) => ({ _type: 'ref', ref: r.label, book: r.book, chapter: r.chapter, verses: r.verses, newTab: r.newTab, _refIdx: i }))]
+    : []
   const cmdItem = cmdResult ? cmdResult.results?.map((r, i) => ({ ...r, _type: 'cmd', _cmdIdx: i })) || [] : []
   const allResults = [
-    ...refItem,
+    ...refItems,
     ...cmdItem,
+    ...(results.length > 0 && refItems.length > 0 ? [{ _type: 'search_header' }] : []),
     ...results.map(r => ({ ...r, _type: 'fts' })),
     ...(showSemantic && semanticResults.length > 0 ? [{ _type: 'semantic_header' }, ...semanticResults.map(r => ({ ...r, _type: 'semantic' }))] : []),
   ]
@@ -211,7 +219,7 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
             if (e.key === 'ArrowUp') { e.preventDefault(); setSel(i => Math.max(i - 1, 0)) }
             if (e.key === 'Enter' && allResults[sel]) {
               const item = allResults[sel]
-              if (item._type === 'semantic_header') return
+              if (item._type === 'semantic_header' || item._type === 'ref_header' || item._type === 'search_header') return
               if (item._type === 'ref') {
                 onNavigate?.(item.book, item.chapter, item.verses)
                 setShowDropdown(false)
@@ -258,26 +266,45 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
             </div>
           )}
           {/* Divider after ref result */}
-          {refResult && results.length > 0 && (
+          {Array.isArray(refResult) && refResult.length > 0 && results.length > 0 && (
             <div className="border-t border-neutral-100 dark:border-neutral-700 mx-2" />
           )}
           {allResults.map((r, i) => {
+            if (r._type === 'ref_header') {
+              return <div key="ref-header" className="px-4 py-1.5 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">📍 Navigate</div>
+            }
+            if (r._type === 'search_header') {
+              return <div key="search-header" className="border-t border-neutral-100 dark:border-neutral-700 mx-2" />
+            }
             if (r._type === 'semantic_header') {
               return <div key="semantic-h" className="px-4 py-2 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono border-t border-neutral-100 dark:border-neutral-700">✦ Semantic matches</div>
             }
             if (r._type === 'ref') {
               return (
-                <button key="ref-result"
-                  onClick={() => { onNavigate?.(r.book, r.chapter, r.verses); setShowDropdown(false); setQuery('') }}
-                  onMouseEnter={() => setSel(i)}
-                  className={`w-full text-left px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${
-                    i === sel ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50 border-l-2 border-transparent'
-                  }`}>
-                  <span className="text-xs shrink-0">📖</span>
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Go to {r.ref}</span>
-                  {r.verses?.length > 0 && <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">✦{r.verses.length}</span>}
-                  <span className="ml-auto text-[9px] text-neutral-400 dark:text-neutral-500">↵ jump</span>
-                </button>
+                <div key={`ref-${r._refIdx}`} className="border-b border-neutral-100 dark:border-neutral-700 last:border-b-0">
+                  <button
+                    onClick={() => { onNavigate?.(r.book, r.chapter, r.verses); setShowDropdown(false); setQuery('') }}
+                    onMouseEnter={() => setSel(i)}
+                    className={`w-full text-left px-4 py-2.5 flex items-center gap-2 cursor-pointer transition-colors ${
+                      i === sel ? 'bg-blue-100 dark:bg-blue-900/30 border-l-2 border-blue-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50 border-l-2 border-transparent'
+                    }`}>
+                    <span className="text-xs shrink-0">📖</span>
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{r.ref}</span>
+                    {r.verses?.length > 0 && <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">✦{r.verses.length}</span>}
+                    <span className="ml-auto text-[9px] text-neutral-400 dark:text-neutral-500">↵ jump</span>
+                  </button>
+                  {/* Inline verse preview */}
+                  {r.book && r.chapter && (
+                    <div className="px-4 pb-2">
+                      <VersePreviewCard
+                        refs={r.verses?.length > 0 ? r.verses.map(v => `${r.book}.${r.chapter}.${v}`) : `${r.book}.${r.chapter}`}
+                        onNavigate={(b, c) => { onNavigate?.(b, c); setShowDropdown(false); setQuery('') }}
+                        maxHeight="8rem"
+                        compact
+                      />
+                    </div>
+                  )}
+                </div>
               )
             }
             if (r._type === 'cmd') {

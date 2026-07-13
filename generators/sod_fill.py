@@ -12,6 +12,7 @@ Targets types with < 10 connections:
 """
 
 import json
+
 from lib.db import add_connection
 
 META = json.dumps({"generator": "sod_fill"}, ensure_ascii=False)
@@ -167,7 +168,7 @@ def run(conn, book_ids=None):
                                       "generator": "sod_fill"
                                   }, ensure_ascii=False))
                     count += 1
-                except Exception as e:
+                except Exception:
                     pass
         conn.commit()
         total += count

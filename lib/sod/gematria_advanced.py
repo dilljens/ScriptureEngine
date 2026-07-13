@@ -7,7 +7,7 @@ Detects patterns in:
   - Letter-count gematria: total letters in a verse
 """
 
-from ..gematria import extract_consonants, compute_standard
+from ..gematria import compute_standard, extract_consonants
 
 
 def substring_gematria(word, start=0, length=None):
@@ -21,7 +21,7 @@ def substring_gematria(word, start=0, length=None):
 
 def skip_letter_gematria(word, skip=2):
     """Compute gematria of every Nth letter.
-    
+
     skip=2: take letters 0, 2, 4, 6...
     skip=3: take letters 0, 3, 6, 9...
     """
@@ -32,7 +32,7 @@ def skip_letter_gematria(word, skip=2):
 
 def first_letter_gematria(words):
     """Compute gematria of the first letter of each word.
-    
+
     This is a common pattern — the first letters of a verse
     sometimes form a word with meaningful gematria.
     """
@@ -68,14 +68,14 @@ def last_letter_gematria(words):
 
 def analyze_verse_gematria(hebrew_text):
     """Comprehensive gematria analysis of a verse.
-    
+
     Returns all hidden numerical patterns found.
     """
     words = hebrew_text.split()
     cons_words = [extract_consonants(w) for w in words if extract_consonants(w)]
-    
+
     patterns = []
-    
+
     # Total letters in verse
     total_letters = sum(len(w) for w in cons_words)
     patterns.append({
@@ -83,7 +83,7 @@ def analyze_verse_gematria(hebrew_text):
         "value": total_letters,
         "note": f"Total consonants in verse: {total_letters}",
     })
-    
+
     # Word count
     word_count = len(cons_words)
     patterns.append({
@@ -91,7 +91,7 @@ def analyze_verse_gematria(hebrew_text):
         "value": word_count,
         "note": f"Words in verse: {word_count}",
     })
-    
+
     # First letter gematria
     fl = first_letter_gematria(words)
     patterns.append({
@@ -99,7 +99,7 @@ def analyze_verse_gematria(hebrew_text):
         "value": fl["total"],
         "note": f"First letter gematria: {fl['total']} ({fl['first_letters']})",
     })
-    
+
     # Last letter gematria
     ll = last_letter_gematria(words)
     patterns.append({
@@ -107,7 +107,7 @@ def analyze_verse_gematria(hebrew_text):
         "value": ll["total"],
         "note": f"Last letter gematria: {ll['total']} ({ll['last_letters']})",
     })
-    
+
     # Check if word count is a sacred number
     from ..gematria import is_sacred_number
     if is_sacred_number(word_count):
@@ -116,7 +116,7 @@ def analyze_verse_gematria(hebrew_text):
             "value": word_count,
             "note": f"{word_count} is a sacred number",
         })
-    
+
     # Check if letter count is a sacred number
     if is_sacred_number(total_letters):
         patterns.append({
@@ -124,5 +124,5 @@ def analyze_verse_gematria(hebrew_text):
             "value": total_letters,
             "note": f"{total_letters} is a sacred number",
         })
-    
+
     return patterns

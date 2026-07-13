@@ -8,15 +8,22 @@ Usage: python3 verse.py '{"book": "gen", "chapter": 1, "verse": 1}'
        python3 verse.py '{"reference": "Genesis 1:1"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 # Add project to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, DEFAULT_DB_PATH, get_verse, get_gematria_for_verse, get_verse_gematria_total, get_connections_by_layer
-from lib.hebrew_util import rtl_mark, transliterate, clean_hebrew as ch
+from lib.db import (
+    get_connections_by_layer,
+    get_db,
+    get_gematria_for_verse,
+    get_verse,
+    get_verse_gematria_total,
+)
+from lib.hebrew_util import clean_hebrew as ch
+from lib.hebrew_util import rtl_mark, transliterate
 
 
 def parse_reference(ref):
@@ -102,7 +109,7 @@ def lookup(book, chapter, verse):
     connections = get_connections_by_layer(conn, verse_id)
 
     # Detailed connection view per layer with quality
-    from lib.controls.calibration import get_quality_stars, get_quality_color
+    from lib.controls.calibration import get_quality_color, get_quality_stars
     connection_detail = {}
     for layer, conns in connections.items():
         connection_detail[layer] = {
@@ -113,9 +120,9 @@ def lookup(book, chapter, verse):
             t = c["type"]
             if t not in connection_detail[layer]["types"]:
                 connection_detail[layer]["types"][t] = []
-            
+
             quality = c.get("quality_level", "suggested")
-            
+
             connection_detail[layer]["types"][t].append({
                 "target": c.get("target_verse", ""),
                 "subtype": c.get("subtype", ""),
@@ -170,10 +177,7 @@ def lookup(book, chapter, verse):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     if "reference" in args:
         ref = args["reference"]

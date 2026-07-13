@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Fix 4: Generate Greek isopsephy connections — same pattern as Hebrew gematria."""
-import sys, os, time
+import os
+import sys
 from collections import defaultdict
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
+
 
 def _batch_insert(conn, batch):
     if not batch:
@@ -45,11 +48,11 @@ for val, verses in value_groups.items():
     size = len(verses)
     if size < 2 or size > 15:
         continue
-    
+
     processed += 1
     verse_list = sorted(verses)
     strength = min(0.8, 0.3 + 0.05 * (15 - size))
-    
+
     for i in range(len(verse_list)):
         for j in range(i + 1, len(verse_list)):
             batch.append((
@@ -67,5 +70,5 @@ if batch:
     _batch_insert(conn, batch)
 
 print(f"  Greek isopsephy: {count} connections from {processed} value groups")
-print(f"  Done.")
+print("  Done.")
 conn.close()

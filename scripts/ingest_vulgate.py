@@ -8,10 +8,13 @@ comparison with the KJV English text.
 Usage:  python3 scripts/ingest_vulgate.py
 """
 
-import sys, os, json, urllib.request
+import json
+import os
+import sys
+import urllib.request
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
-
 
 # Vulgate book name -> project book ID mapping
 BOOK_MAP = {
@@ -65,7 +68,7 @@ def create_textual_variants_table(conn):
 
 def map_psalm_chapter(vulgate_ch):
     """Map Vulgate Psalm numbering to KJV numbering.
-    
+
     Vulgate follows LXX numbering which differs from MT/KJV.
     Vulgate 1-8 = KJV 1-8
     Vulgate 9 = KJV 9+10 (combined)
@@ -123,13 +126,12 @@ def map_daniel_chapter(vulgate_ch):
 
 def get_chapter_mapper(book_id):
     """Get the chapter mapping function for a book."""
-    if book_id == 'psa':
-        return map_psalm_chapter
-    elif book_id == 'esth':
-        return map_esther_chapter
-    elif book_id == 'dan':
-        return map_daniel_chapter
-    return lambda ch: [int(ch)]
+    mappers = {
+        'psa': map_psalm_chapter,
+        'esth': map_esther_chapter,
+        'dan': map_daniel_chapter,
+    }
+    return mappers.get(book_id, lambda ch: [int(ch)])
 
 
 def download_vulgate():
@@ -197,7 +199,7 @@ def ingest_vulgate(conn, data):
                             """, (verse_id, text))
                             total += 1
                             total_in_book += 1
-                        except Exception as e:
+                        except Exception:
                             pass
 
         if total_in_book > 0:

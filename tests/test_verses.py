@@ -1,5 +1,4 @@
 """Tests for verse lookup endpoints."""
-import pytest
 
 
 class TestVerseLookup:

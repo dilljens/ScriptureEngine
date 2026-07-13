@@ -16,7 +16,6 @@ and CLI.
 import json
 from collections import defaultdict
 
-
 # ─── Connection Graph Traversal ───
 
 
@@ -70,7 +69,7 @@ def _cte_find_path(conn, start, end, max_depth=3, layers=None):
     """Recursive CTE path finding — finds the shortest path."""
     layer_filter = ""
     if layers:
-        placeholders = ",".join(f"'{l}'" for l in layers)
+        placeholders = ",".join(f"'{layer}'" for layer in layers)
         layer_filter = f"AND c.layer IN ({placeholders})"
 
     rows = conn.execute(
@@ -143,7 +142,7 @@ def graph_reachable(conn, verse, max_depth=3, layers=None, limit=100):
     """
     layer_filter = ""
     if layers:
-        placeholders = ",".join(f"'{l}'" for l in layers)
+        placeholders = ",".join(f"'{layer}'" for layer in layers)
         layer_filter = f"AND c.layer IN ({placeholders})"
 
     rows = conn.execute(
@@ -504,7 +503,7 @@ def graph_context(conn, verse, depth=2, layers=None, limit=20):
 
     Returns: dict with structured context
     """
-    parts = verse.split(".")
+    verse.split(".")
     context = {
         "verse": verse,
         "depth": depth,
@@ -526,7 +525,7 @@ def graph_context(conn, verse, depth=2, layers=None, limit=20):
     layer_filter = ""
     params = [verse, depth]
     if layers:
-        placeholders = ",".join(f"'{l}'" for l in layers)
+        placeholders = ",".join(f"'{layer}'" for layer in layers)
         layer_filter = f" AND c.layer IN ({placeholders})"
 
     rows = conn.execute(

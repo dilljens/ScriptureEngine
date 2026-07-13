@@ -10,7 +10,8 @@ Usage:
     python3 scripts/seed_disagreements.py --dry-run   # preview only
 """
 
-import sys, sqlite3, os, json
+import sqlite3
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent

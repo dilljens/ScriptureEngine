@@ -247,3 +247,13 @@ The codebase wiki at `docs/wiki/` documents the project architecture, convention
 - **`plans/`** — Architecture proposals and planning docs
 
 For code-level questions about structure, standards, or how to add/modify tools, check the wiki first.
+
+## Skills
+
+Project-specific diagnostic skills available via `/skill <name>`:
+
+| Skill | When to Use |
+|-------|-------------|
+| `consistency-check` | After adding/removing works — verifies all color/label/map files are in sync |
+| `deploy-validation` | Before deploying — checks .env format, SQLite PRAGMAs, Tailwind classes, nginx syntax |
+

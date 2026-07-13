@@ -17,9 +17,8 @@ This is a specific form of synonymous parallelism where:
 """
 
 import re
-from collections import defaultdict
-from ..gematria import extract_consonants
 
+from ..gematria import extract_consonants
 
 # Known semantic pair categories for linked-word detection
 SEMANTIC_PAIRS = {
@@ -101,33 +100,33 @@ def get_semantic_tag(word):
 
 def find_linked_word_pairs(text_a, text_b):
     """Find linked word pairs in two parallel texts.
-    
+
     For each word in text_a, check if the corresponding position
     in text_b has a word from the same semantic pair category.
-    
+
     Returns list of (word_a, word_b, category, pair_type) tuples.
     """
     words_a = re.findall(r"[a-zA-Z']+", text_a.lower())
     words_b = re.findall(r"[a-zA-Z']+", text_b.lower())
-    
+
     linked_pairs = []
     matched_a = set()
     matched_b = set()
-    
+
     # Check each word in text_a against words in text_b
     for i, wa in enumerate(words_a):
         tag_a = get_semantic_tag(wa)
         if not tag_a or i in matched_a:
             continue
-        
+
         for j, wb in enumerate(words_b):
             if j in matched_b:
                 continue
-            
+
             tag_b = get_semantic_tag(wb)
             if not tag_b:
                 continue
-            
+
             # Same category, same pair = linked
             if tag_a[0] == tag_b[0] and tag_a[1] == tag_b[1]:
                 linked_pairs.append({
@@ -141,19 +140,19 @@ def find_linked_word_pairs(text_a, text_b):
                 matched_a.add(i)
                 matched_b.add(j)
                 break
-    
+
     return linked_pairs
 
 
 def find_linked_words_in_passage(verses):
     """Find linked word pairs across adjacent parallel verses.
-    
+
     Looks for the Isaiah 1:3 pattern where semantically paired words
     appear in corresponding positions.
     """
     texts = [v.get("text_english", "") for v in verses if v.get("text_english")]
     results = []
-    
+
     for i in range(len(texts) - 1):
         pairs = find_linked_word_pairs(texts[i], texts[i + 1])
         if pairs:
@@ -163,7 +162,7 @@ def find_linked_words_in_passage(verses):
                 "linked_pairs": pairs,
                 "count": len(pairs),
             })
-    
+
     return results
 
 
@@ -177,7 +176,7 @@ GILIADI_KEYWORDS = [
     ("אביר ישראל", "Mighty One of Israel"),
     ("מלך ישראל", "King of Israel"),
     ("גאל", "Redeemer"),
-    
+
     # Thematic keywords
     ("שאר", "remnant"),
     ("ציון", "Zion"),
@@ -190,7 +189,7 @@ GILIADI_KEYWORDS = [
     ("ברית", "covenant"),
     ("חסד", "lovingkindness/mercy"),
     ("אמת", "truth/faithfulness"),
-    
+
     # Structural markers
     ("כי", "for/because (structural pivot marker)"),
     ("לכן", "therefore (conclusion marker)"),
@@ -201,31 +200,31 @@ GILIADI_KEYWORDS = [
 
 def find_giliadi_catchwords(conn, book_id="isa"):
     """Find Giliadi-style keywords in Isaiah.
-    
+
     Tracks where each keyword appears and connects verses
     that share the same thematic keyword.
     """
-    from ..db import get_db, add_connection
-    
+    from ..db import add_connection
+
     count = 0
     for heb, meaning in GILIADI_KEYWORDS:
         # Build a consonant-only search pattern
         cons_only = extract_consonants(heb)
         if not cons_only:
             continue
-        
+
         # Search through gematria table
         like_pattern = f"%{'%'.join(cons_only)}%" if len(cons_only) > 1 else f"%{cons_only}%"
-        
+
         rows = conn.execute("""
             SELECT DISTINCT g.verse_id FROM gematria g
             JOIN verses v ON v.id = g.verse_id
             WHERE v.book_id = ? AND g.word_hebrew LIKE ?
             LIMIT 30
         """, (book_id, like_pattern)).fetchall()
-        
+
         verses = [r["verse_id"] for r in rows]
-        
+
         # Connect using hub-and-spoke to avoid N² explosion
         if len(verses) >= 2:
             hub = verses[0]
@@ -248,23 +247,23 @@ def find_giliadi_catchwords(conn, book_id="isa"):
                         conn.commit()
                 except Exception:
                     pass
-    
+
     return count
 
 
 def generate_linked_word_connections(conn, book_ids=None):
     """Generate linked-word connections for all books.
-    
+
     Detects semantically paired words in parallel verses and
     creates keyword_linking connections.
     """
-    from ..db import get_db, add_connection
-    
+    from ..db import add_connection
+
     if book_ids is None:
         book_ids = [r["book_id"] for r in conn.execute(
             "SELECT DISTINCT book_id FROM verses WHERE text_english != ''"
         ).fetchall()]
-    
+
     count = 0
     for bid in book_ids[:5]:  # Limit to 5 books to avoid explosion
         rows = conn.execute("""
@@ -272,16 +271,16 @@ def generate_linked_word_connections(conn, book_ids=None):
             WHERE book_id = ? AND text_english != ''
             ORDER BY chapter, verse
         """, (bid,)).fetchall()
-        
+
         verses = [dict(r) for r in rows]
         link_results = find_linked_words_in_passage(verses)
-        
+
         for lr in link_results:
             idx_a = lr["verse_a_index"]
             idx_b = lr["verse_b_index"]
             if idx_a >= len(verses) or idx_b >= len(verses):
                 continue
-            
+
             for pair in lr["linked_pairs"]:
                 try:
                     add_connection(conn, verses[idx_a]["id"], verses[idx_b]["id"],
@@ -300,6 +299,6 @@ def generate_linked_word_connections(conn, book_ids=None):
                     count += 1
                 except Exception:
                     pass
-    
+
     conn.commit()
     return count

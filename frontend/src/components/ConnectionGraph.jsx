@@ -33,6 +33,10 @@ const WORK_COLORS = {
   bom: '#16a34a',
   dc: '#7c3aed',
   pgp: '#db2777',
+  dss: '#ca8a04',
+  apoc: '#e11d48',
+  pseu: '#6366f1',
+  expanded: '#0d9488',
 }
 
 function guessWorkFromRef(ref) {
@@ -40,12 +44,22 @@ function guessWorkFromRef(ref) {
   const ot = ['gen','exo','lev','num','deu','josh','judg','ruth','1sam','2sam','1kgs','2kgs','1chr','2chr','ezra','neh','esth','job','psa','prov','eccl','song','isa','jer','lam','ezek','dan','hos','joel','amos','obad','jonah','mic','nah','hab','zeph','hag','zech','mal']
   const nt = ['matt','mark','luke','john','acts','rom','1cor','2cor','gal','eph','phil','col','1thes','2thes','1tim','2tim','titus','philem','heb','james','1pet','2pet','1john','2john','3john','jude','rev']
   const bom = ['1ne','2ne','jacob','enos','jarom','omni','wom','mosiah','alma','hel','3ne','4ne','morm','ether','moro']
-  const dc_prefixes = ['dc']
+  const apoc = ['tob','jdt','esga','wis','sir','bar','s3y','sus','bel','man','1esd','2esd','1ma','2ma','psa151']
+  const pgp = ['moses','abraham','jsm','jsh','aoff']
+  const pseu = ['1en','2en','3bar','4bar','1adae','2adae','apabr','apelj','apsed','apjosh','ascis','asmos','azar','balin','jasher','jub','nathan','5psdav','gad','grkest','rechab','janjam','josasen','ladjac','livprop','odessol','psssol','tabr','tisaac','tjacob','tjob','tsol','ahikar','treub','tsimeon','tlevi','tjudah','tdan','tnaph','tgad','tasher','tiss','tzeb','tjos','tbenj']
+  const expanded = ['1her','2her','3her','apet','barn','gnic']
   if (ot.includes(book)) return 'ot'
   if (nt.includes(book)) return 'nt'
   if (bom.includes(book)) return 'bom'
-  if (dc_prefixes.some(p => book.startsWith(p))) return 'dc'
-  return 'pgp'
+  if (apoc.includes(book)) return 'apoc'
+  if (pgp.includes(book)) return 'pgp'
+  if (pseu.includes(book)) return 'pseu'
+  if (expanded.includes(book)) return 'expanded'
+  if (book.startsWith('dc')) return 'dc'
+  // DSS books are identified by their numeric/alphanumeric IDs
+  const dss_patterns = /^(1QS|1QSa|1QSb|1QM|1QHa|1QpHab|11Q13|11Q19|11Q20|CD|4Q|1Qisaa|1Q20|bookgiants|visamram|tkohath)/
+  if (dss_patterns.test(book)) return 'dss'
+  return 'ot'
 }
 
 function shortenRef(ref) {

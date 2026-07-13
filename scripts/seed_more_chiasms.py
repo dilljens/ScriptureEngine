@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Expand known chiasms with more documented patterns from Giliadi, Welch, and scholarship."""
 
-import sys, os, json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection, add_known_chiasm
+import json
+import os
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from lib.db import add_connection, add_known_chiasm, get_db
 
 ADDITIONAL_CHIASMS = [
     # === GILEADI: Isaiah patterns ===
@@ -58,7 +60,7 @@ ADDITIONAL_CHIASMS = [
         "layers": [],
         "notes": "Three-part linear chiastic structure: Trouble at Home (1-39) → Exile Abroad (40-54) → Happy Homecoming (55-66), resembling Egyptian narrative patterns."
     },
-    
+
     # === WELCH: More Book of Mormon chiasms ===
     {
         "scholar": "Welch", "reference": "Chiasmus in Mosiah 3",
@@ -84,7 +86,7 @@ ADDITIONAL_CHIASMS = [
         "layers": [],
         "notes": "Nephi's vision chiasm: church of the Lamb (1-4) → great and abominable church (5-10) → power over the saints (11-14) → PIVOT → power of the Lamb (15-17) → sealed book (18-24) → plain things (25-30)."
     },
-    
+
     # === CLASSIC OT CHIASMS (Multiple scholars) ===
     # Joshua — the conquest narrative
     {
@@ -148,7 +150,7 @@ def main():
     print("=" * 60)
     print("  EXPANDED CHIASMS — 15 patterns added")
     print("=" * 60)
-    
+
     new_count = 0
     for chiasm in ADDITIONAL_CHIASMS:
         try:
@@ -168,14 +170,14 @@ def main():
             new_count += 1
         except Exception as e:
             print(f"  Error: {e}")
-    
+
     # Also create structural connections for each new chiasm
     struct_count = 0
     for chiasm in ADDITIONAL_CHIASMS:
         start = chiasm["start_verse"]
         end = chiasm["end_verse"]
         pivot = chiasm.get("pivot_verse", "")
-        
+
         if start and end and start != end:
             try:
                 add_connection(conn, start, end,
@@ -191,7 +193,7 @@ def main():
                 struct_count += 1
             except Exception:
                 pass
-        
+
         if pivot and pivot != start and pivot != end:
             try:
                 add_connection(conn, pivot, start,
@@ -204,12 +206,12 @@ def main():
                 struct_count += 1
             except Exception:
                 pass
-    
+
     conn.commit()
-    
+
     total = conn.execute("SELECT COUNT(*) as c FROM known_chiasms").fetchone()["c"]
     struct_total = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='structural' AND type='chiastic'").fetchone()["c"]
-    
+
     print(f"  Added {new_count} new known chiasms (total: {total})")
     print(f"  Added {struct_count} structural chiastic connections (total: {struct_total})")
     conn.close()

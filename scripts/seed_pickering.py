@@ -9,10 +9,11 @@ This encodes the STRUCTURAL FRAMEWORK (dates, durations, sequences) without
 reproducing their copyrighted chart artwork.
 """
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+import os
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from lib.db import add_connection, get_db
 
 # Daniel 9 timeline — the 70 weeks (shevua)
 # These connect Daniel's prophecy to Christ's ministry

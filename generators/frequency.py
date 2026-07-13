@@ -6,9 +6,7 @@ Connects verses based on shared word frequency patterns:
 """
 
 import re
-from collections import defaultdict, Counter
-from lib.db import add_connection
-
+from collections import Counter, defaultdict
 
 SACRED_NUMBERS = {7, 10, 12, 40, 50, 70, 100}
 

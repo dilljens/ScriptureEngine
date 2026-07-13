@@ -6,7 +6,8 @@ HTTP API (/api/v1/sod),
 and CLI (tools/sod.py).
 """
 
-from lib.sod import acrostic, atbash as atb, gematria_advanced, hidden_names
+from lib.sod import acrostic, gematria_advanced, hidden_names
+from lib.sod import atbash as atb
 from lib.sod.notarikon import first_letters, last_letters
 
 

@@ -1,5 +1,4 @@
 """Tests for graph exploration endpoints."""
-import pytest
 
 
 class TestGraphExplore:

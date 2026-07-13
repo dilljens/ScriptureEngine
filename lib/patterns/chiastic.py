@@ -10,7 +10,6 @@ The approach:
 """
 
 import re
-from collections import Counter
 
 
 def normalize_words(text):
@@ -29,7 +28,7 @@ def extract_key_terms(text, stopwords=None):
         "has", "have", "do", "did", "does", "shall", "will", "would",
         "could", "should", "may", "might", "can", "every", "each",
         "there", "here", "then", "than", "also", "very", "unto",
-        "upon", "into", "upon", "through", "after", "before",
+        "upon", "into", "through", "after", "before",
         "ו", "ה", "ב", "ל", "כ", "מ", "א", "את", "על",
     }
     words = normalize_words(text)

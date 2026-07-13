@@ -6,7 +6,12 @@ Cleans up duplicates, re-imports all books fresh.
 Usage: python3 scripts/import_apocrypha_api.py
 """
 
-import sys, os, json, urllib.request, time
+import json
+import os
+import sys
+import time
+import urllib.request
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -169,10 +174,10 @@ def main():
 
     # Summary of what was attempted vs what succeeded
     print(f'\nBooks: {len(APOC_BOOKS)}')
-    print(f'Note: Psalm 151 is not available on bible-api.com (skipped)')
-    print(f'Note: Some books may have fewer chapters on bible-api.com than full KJV Apocrypha')
-    print(f'      — Wisdom of Solomon has 10 chapters on API vs 19 in standard KJV')
-    print(f'      — Additions to Esther is treated as a single chapter')
+    print('Note: Psalm 151 is not available on bible-api.com (skipped)')
+    print('Note: Some books may have fewer chapters on bible-api.com than full KJV Apocrypha')
+    print('      — Wisdom of Solomon has 10 chapters on API vs 19 in standard KJV')
+    print('      — Additions to Esther is treated as a single chapter')
     print(f'{"="*50}')
 
 

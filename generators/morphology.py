@@ -12,7 +12,6 @@ Uses hub-and-spoke pattern for groups > 10 verses to avoid O(n²) explosion.
 
 from collections import defaultdict
 
-
 # Prefixes indicating content words (skip function words like prepositions,
 # conjunctions, particles, pronouns)
 CONTENT_PREFIXES = ("HV", "HN", "HA", "HD")
@@ -57,8 +56,8 @@ def run(conn, book_ids=None):
         WHERE (g.morph != '' AND ({prefix_conditions}))
     """
     if book_ids:
-        placeholders = ",".join("?" for _ in book_ids)
-        query += f" AND g.verse_id LIKE ?"
+        ",".join("?" for _ in book_ids)
+        query += " AND g.verse_id LIKE ?"
 
     rows = conn.execute(query).fetchall()
     print(f"    Processing {len(rows)} content-word morph rows...", flush=True)

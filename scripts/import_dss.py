@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Import Dead Sea Scrolls data — text variants + sectarian connections."""
 
-import sys, os, json, re
+import json
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.db import init_db
 
@@ -20,19 +24,14 @@ BOOK_MAP = {
     "jonah": "jonah", "mic": "mic", "nah": "nah", "hab": "hab", "zeph": "zeph",
     "hag": "hag", "zech": "zech", "mal": "mal",
     "genesis": "gen", "exodus": "exo", "leviticus": "lev", "numbers": "num",
-    "deuteronomy": "deu", "joshua": "josh", "judges": "judg",
-    "ruth": "ruth", "1_samuel": "1sam", "2_samuel": "2sam",
+    "deuteronomy": "deu", "joshua": "josh", "judges": "judg", "1_samuel": "1sam", "2_samuel": "2sam",
     "1_kings": "1kgs", "2_kings": "2kgs",
-    "1_chronicles": "1chr", "2_chronicles": "2chr",
-    "ezra": "ezra", "nehemiah": "neh", "esther": "esth",
-    "job": "job", "psalms": "psa", "proverbs": "prov",
+    "1_chronicles": "1chr", "2_chronicles": "2chr", "nehemiah": "neh", "esther": "esth", "psalms": "psa", "proverbs": "prov",
     "ecclesiastes": "eccl", "song_of_solomon": "song",
     "isaiah": "isa", "jeremiah": "jer", "lamentations": "lam",
-    "ezekiel": "ezek", "daniel": "dan", "hosea": "hos", "joel": "joel",
-    "amos": "amos", "obadiah": "obad", "jonah": "jonah", "micah": "mic",
+    "ezekiel": "ezek", "daniel": "dan", "hosea": "hos", "obadiah": "obad", "micah": "mic",
     "nahum": "nah", "habakkuk": "hab", "zephaniah": "zeph",
-    "haggai": "hag", "zechariah": "zech", "malachi": "mal",
-    "numbers": "num", "song_of_songs": "song",
+    "haggai": "hag", "zechariah": "zech", "malachi": "mal", "song_of_songs": "song",
 }
 
 REF_PAT = re.compile(r'(\w+)\s*[. :]?\s*(\d+)\s*[. :]?\s*(\d+)')
@@ -199,7 +198,7 @@ def import_etcbc_biblical():
 
     # Identify DSS scrolls (non-MT books)
     dss_books = set()
-    for node_id, book in book_map.items():
+    for _node_id, book in book_map.items():
         if book and not BOOK_MAP.get(book.lower()):
             # Also filter out node IDs that are obviously MT (numbered lines)
             try:
@@ -452,7 +451,7 @@ def summary():
         "SELECT COUNT(*) FROM dss_texts WHERE has_variant = 1"
     ).fetchone()[0]
     conn.close()
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  dss_texts entries:       {texts}")
     print(f"  dss_texts with variants: {variants}")
     print(f"  dss_sectarian entries:   {sect}")

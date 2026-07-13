@@ -13,14 +13,18 @@ Usage:
   ]}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_word_counts_by_chapter, get_word_counts_by_verse_range
-from lib.db import get_section_verses, get_formula_sequence
+from lib.db import (
+    get_db,
+    get_formula_sequence,
+    get_word_counts_by_chapter,
+    get_word_counts_by_verse_range,
+)
 
 
 def detect_formula_sections(schema_check):
@@ -30,10 +34,7 @@ def detect_formula_sections(schema_check):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     book = args.get("book", "")
     mode = args.get("mode", "per_chapter")

@@ -6,8 +6,7 @@ Identifies significant patterns (seven-fold, forty-days, etc.).
 """
 
 import re
-from collections import Counter, defaultdict
-
+from collections import Counter
 
 SACRED_COUNTS = {
     1: "Unique occurrence",
@@ -94,7 +93,7 @@ def find_phrases_by_pattern(corpus, pattern_type):
     results = []
     # Build a word frequency index from the corpus
     word_freq = Counter()
-    for verse_id, text in corpus:
+    for _verse_id, text in corpus:
         words = re.findall(r"[a-zA-Z']+", text.lower())
         word_freq.update(w for w in words if len(w) > 2)
 

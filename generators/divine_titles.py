@@ -7,8 +7,6 @@ theological links that word-level generators miss.
 Hebrew titles searched in text_hebrew (OT + DSS), English fallback for NT, BoM, D&C.
 """
 
-from collections import defaultdict, Counter
-from lib.db import add_connection
 
 # Divine titles: (english_name, hebrew_key, [english_keywords])
 # hebrew_key = substring to search in text_hebrew
@@ -64,7 +62,7 @@ def run(conn, book_ids=None):
     count = 0
     total_title = 0
     batch = []
-    
+
     for title_name, heb_key, eng_keys in TITLES:
         # Search Hebrew text (OT)
         heb_verses = set()
@@ -75,7 +73,7 @@ def run(conn, book_ids=None):
             ).fetchall()
             for r in rows:
                 heb_verses.add(r["id"])
-        
+
         # Search English text (NT, BoM, D&C, Apocrypha, Pseudepigrapha)
         eng_verses = set()
         for ek in eng_keys:
@@ -85,13 +83,13 @@ def run(conn, book_ids=None):
             ).fetchall()
             for r in rows:
                 eng_verses.add(r["id"])
-        
+
         all_verses = list(heb_verses | eng_verses)
         if len(all_verses) < 2:
             continue
-        
+
         total_title += 1
-        
+
         # Connect hub-style: first verse connects to all others
         # (avoids O(n²) explosion for common titles like "God of Israel")
         hub = all_verses[0]
@@ -106,16 +104,16 @@ def run(conn, book_ids=None):
                 0.5, 0.45, "algorithm",
                 f'{{"title": "{title_name}", "hebrew": "{heb_key}", "verse_count": {len(all_verses)}}}'
             ))
-        
+
         if len(batch) >= 200:
             count += len(batch)
             _flush_batch(conn, batch)
             batch = []
-    
+
     if batch:
         count += len(batch)
         _flush_batch(conn, batch)
-    
+
     print(f"  Divine Titles: {total_title} titles, {count} connections")
     return count
 

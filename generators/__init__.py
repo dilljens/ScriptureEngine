@@ -5,8 +5,6 @@ The registry discovers all generators and provides a unified runner.
 """
 
 import importlib
-import pkgutil
-from pathlib import Path
 
 # Generator registry — populated at import time
 REGISTRY = {}

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Seed G.K. Beale's temple-creation typology connections from 'The Temple and the Church's Mission' (IVP, 2004)."""
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+import os
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from lib.db import add_connection, get_db
 
 # 1. Eden as Temple
 EDEN_TEMPLE = [

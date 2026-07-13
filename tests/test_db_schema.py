@@ -1,6 +1,8 @@
 """Tests for database schema, integrity, and data consistency."""
-import sqlite3, pytest
+import sqlite3
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).parent.parent
 PROD_DB = ROOT / "data" / "processed" / "scripture.db"

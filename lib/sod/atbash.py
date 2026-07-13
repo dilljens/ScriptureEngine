@@ -13,13 +13,13 @@ ALEPH_BET = list("אבגדהוזחטיכלמנסעפצקרשת")
 
 def decode_atbash(text):
     """Decode a Hebrew word using Atbash substitution.
-    
+
     Only operates on consonants. Maps each letter to its mirror
     position in the alphabet.
-    
+
     Args:
         text: Hebrew word (with or without niqqud)
-    
+
     Returns:
         decoded word as Hebrew consonants
     """
@@ -33,11 +33,11 @@ def decode_atbash(text):
         # Extract the base letter (strip niqqud/cantillation)
         if 0x05D0 <= cp <= 0x05EA:
             letter = FINAL_MAP.get(ch, ch)  # Convert final forms to standard
-        
+
         if letter and letter in ALEPH_BET:
             idx = ALEPH_BET.index(letter)
             # Mirror position: position 0 ↔ 21, 1 ↔ 20, etc.
             mirrored = ALEPH_BET[-(idx + 1)]
             result.append(mirrored)
-    
+
     return "".join(result)

@@ -11,7 +11,13 @@ Usage:
     python3 scripts/import_js_discourses.py --dry-run
 """
 
-import sys, os, re, json, urllib.request, tempfile, subprocess
+import contextlib
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -45,7 +51,7 @@ def extract_text_from_pdf(pdf_path):
             return result.stdout
     except FileNotFoundError:
         pass
-    
+
     # Fallback: try with Python libraries
     try:
         import PyPDF2
@@ -57,7 +63,7 @@ def extract_text_from_pdf(pdf_path):
         return text
     except ImportError:
         pass
-    
+
     try:
         import pdfplumber
         text = ""
@@ -67,7 +73,7 @@ def extract_text_from_pdf(pdf_path):
         return text
     except ImportError:
         pass
-    
+
     print("  WARNING: Cannot extract PDF text. Install pdftotext or PyPDF2.")
     return ""
 
@@ -76,11 +82,11 @@ def download_and_parse(source, dry_run=False):
     """Download a source PDF and extract text chunks."""
     print(f"\n  Source: {source['name']}")
     print(f"  URL: {source['url']}")
-    
+
     if dry_run:
-        print(f"  [dry-run] Would download and process")
+        print("  [dry-run] Would download and process")
         return []
-    
+
     # Download PDF
     try:
         req = urllib.request.Request(source['url'], headers={'User-Agent': 'Mozilla/5.0'})
@@ -89,27 +95,27 @@ def download_and_parse(source, dry_run=False):
     except Exception as e:
         print(f"  ERROR downloading: {e}")
         return []
-    
+
     # Save to temp file and extract
     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
         f.write(pdf_data)
         pdf_path = f.name
-    
+
     print(f"  Downloaded {len(pdf_data)} bytes")
     text = extract_text_from_pdf(pdf_path)
-    
+
     # Clean up temp file
     os.unlink(pdf_path)
-    
+
     if not text:
         return []
-    
+
     print(f"  Extracted {len(text)} characters")
-    
+
     # Split into discourse-sized chunks
     # Typically a discourse starts with a date or heading like "1839" or "DISCOURSE"
     sections = []
-    
+
     # Try splitting by date patterns first
     date_patterns = [
         r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+,\s+\d{4}',
@@ -117,22 +123,22 @@ def download_and_parse(source, dry_run=False):
         r'DISC\s*\d+|DISCOURSE\s*\d+',
         r'HISTORY\s+OF\s+THE\s+CHURCH',
     ]
-    
+
     current_section = []
     current_title = "Untitled"
-    
+
     for line in text.split('\n'):
         line = line.strip()
         if not line:
             continue
-        
+
         # Check if this line starts a new discourse
         is_new = False
         for pat in date_patterns:
             if re.search(pat, line, re.IGNORECASE):
                 is_new = True
                 break
-        
+
         if is_new and current_section:
             content = '\n'.join(current_section)
             if len(content) > 100:  # Only keep substantial sections
@@ -142,9 +148,9 @@ def download_and_parse(source, dry_run=False):
                 })
             current_section = []
             current_title = line[:100]
-        
+
         current_section.append(line)
-    
+
     # Last section
     if current_section:
         content = '\n'.join(current_section)
@@ -153,31 +159,31 @@ def download_and_parse(source, dry_run=False):
                 "title": current_title,
                 "content": content,
             })
-    
+
     print(f"  Extracted {len(sections)} discourse sections")
     return sections
 
 
 def main():
     dry_run = "--dry-run" in sys.argv
-    
+
     print("=" * 60)
     print("Joseph Smith Discourses Import")
     print("=" * 60)
-    
+
     all_sections = []
     for source in SOURCES:
         sections = download_and_parse(source, dry_run=dry_run)
         all_sections.extend(sections)
-    
+
     if dry_run:
         print(f"\nWould import {len(all_sections)} discourse sections from {len(SOURCES)} sources")
         return
-    
+
     # Store in database
     import sqlite3
     conn = sqlite3.connect(str(DB_PATH))
-    
+
     # Create JS discourses table if needed
     conn.execute("""
         CREATE TABLE IF NOT EXISTS js_texts (
@@ -190,31 +196,29 @@ def main():
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
-    
+
     # Add FTS index for search
-    try:
+    with contextlib.suppress(Exception):
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS js_texts_fts USING fts5(
                 title, content, content=js_texts, content_rowid=id
             )
         """)
-    except Exception:
-        pass  # FTS may not be available
-    
+
     inserted = 0
     for sec in all_sections:
         # Extract year if present
         year_match = re.search(r'(18[3-5]\d)', sec['title'])
         year = int(year_match.group(1)) if year_match else None
-        
+
         conn.execute(
             "INSERT INTO js_texts (title, source, content, year) VALUES (?, ?, ?, ?)",
             (sec['title'][:200], SOURCES[0]['name'], sec['content'], year)
         )
         inserted += 1
-    
+
     conn.commit()
-    
+
     # Update FTS index
     try:
         conn.execute("""
@@ -224,9 +228,9 @@ def main():
         conn.commit()
     except Exception:
         pass
-    
+
     conn.close()
-    
+
     print(f"\nImported {inserted} discourse sections")
     print(f"Sources: {', '.join(s['name'] for s in SOURCES)}")
 

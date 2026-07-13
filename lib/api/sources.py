@@ -16,10 +16,10 @@ def _safe_json_extract(metadata, key):
 
 def get_sources_for_verse(conn, verse):
     """Get all source breakdown for a verse's connections.
-    
+
     Args:
         verse: Verse ID (gen.1.1)
-    
+
     Returns: dict with verse and sources breakdown
     """
     rows = conn.execute("""
@@ -28,15 +28,15 @@ def get_sources_for_verse(conn, verse):
         GROUP BY discovered_by
         ORDER BY c DESC
     """, (verse,)).fetchall()
-    
+
     methods = [dict(r) for r in rows] if rows else []
-    
+
     meta_rows = conn.execute("""
-        SELECT discovered_by, metadata FROM connections 
+        SELECT discovered_by, metadata FROM connections
         WHERE source_verse = ? AND metadata IS NOT NULL AND metadata != '{}'
         LIMIT 100
     """, (verse,)).fetchall()
-    
+
     scholars = {}
     for r in meta_rows:
         scholar_name = _safe_json_extract(r['metadata'], 'scholar')
@@ -47,7 +47,7 @@ def get_sources_for_verse(conn, verse):
         scholars[tag]["count"] += 1
         if source and source not in scholars[tag]["works"]:
             scholars[tag]["works"].append(source)
-    
+
     return {
         "verse": verse,
         "total_connections": sum(r["c"] for r in rows) if rows else 0,
@@ -58,24 +58,24 @@ def get_sources_for_verse(conn, verse):
 
 def get_sources_by_scholar(conn, scholar_tag=None, scholar_name=None):
     """Get all connections from a specific scholar.
-    
+
     Args:
         scholar_tag: Tag to filter by (e.g., 'morales_ascent')
         scholar_name: Scholar name to filter by
-    
+
     Returns: dict with scholar info and connections
     """
     # Fetch all rows with valid JSON metadata and extract in Python
     key = 'scholar' if scholar_name else 'tag'
     value = scholar_name or scholar_tag
-    
+
     all_rows = conn.execute("""
         SELECT source_verse, target_verse, type, layer, discovered_by, metadata
         FROM connections
         WHERE metadata LIKE '{%'
         LIMIT 10000
     """).fetchall()
-    
+
     matched = []
     seen_meta = None
     for r in all_rows:
@@ -84,18 +84,18 @@ def get_sources_by_scholar(conn, scholar_tag=None, scholar_name=None):
             matched.append(r)
             if seen_meta is None:
                 seen_meta = r['metadata']
-    
+
     if not matched:
         return {"total": 0, "error": f"No connections found for {key}={value}"}
-    
+
     meta_info = _safe_json_extract(seen_meta, 'scholar') or ''
     source_info = _safe_json_extract(seen_meta, 'source') or ''
-    
+
     types = {}
     for r in matched:
         t = r["type"]
         types[t] = types.get(t, 0) + 1
-    
+
     connections = [
         {
             "source": r["source_verse"],
@@ -106,7 +106,7 @@ def get_sources_by_scholar(conn, scholar_tag=None, scholar_name=None):
         }
         for r in matched[:50]
     ]
-    
+
     result = {"total": len(matched), "type_breakdown": types, "connections": connections}
     if meta_info:
         result["scholar"] = meta_info
@@ -118,27 +118,27 @@ def get_sources_by_scholar(conn, scholar_tag=None, scholar_name=None):
 def list_scholars(conn):
     """List all distinct scholars found in connection metadata."""
     rows = conn.execute("""
-        SELECT metadata FROM connections 
+        SELECT metadata FROM connections
         WHERE metadata LIKE '{%'
     """).fetchall()
-    
+
     scholars_map = {}
     tags_map = {}
-    
+
     for r in rows:
         try:
             obj = json.loads(r['metadata'])
         except (json.JSONDecodeError, TypeError):
             continue
-        
+
         scholar = obj.get('scholar', '')
         tag = obj.get('tag', '')
-        
+
         if scholar:
             scholars_map[scholar] = scholars_map.get(scholar, 0) + 1
         if tag:
             tags_map[tag] = tags_map.get(tag, 0) + 1
-    
+
     return {
         "scholars": [{"name": k, "connections": v} for k, v in sorted(scholars_map.items())],
         "tags": [{"tag": k, "connections": v} for k, v in sorted(tags_map.items())],

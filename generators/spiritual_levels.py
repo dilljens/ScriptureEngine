@@ -11,7 +11,6 @@ The correct framework from Giliadi's book:
 7. Jehovah            — God of Israel, the Son
 """
 
-from lib.db import add_connection
 
 # Each level: hub verse, keywords (Strong's numbers and Hebrew), strength
 LEVELS = [
@@ -131,23 +130,23 @@ LEVELS = [
 
 def run(conn, book_ids=None):
     """Classify Isaiah verses by Giliadi's 7 spiritual levels.
-    
+
     For each level, find Isaiah verses matching its keyword signatures
     and connect them to the level's hub verse.
     """
     # Clear previous incorrect levels
     conn.execute("DELETE FROM connections WHERE type='giliadi_pattern' AND subtype LIKE 'spiritual_level_%'")
     conn.commit()
-    
+
     total = 0
     batch = []
-    
+
     for level in LEVELS:
         name = level["name"]
         label = level["label"]
         hub = level["hub"]
         strength = level["strength"]
-        
+
         for kw in level["keywords"]:
             # Search by Strong's number or Hebrew text
             pattern = f"%{kw}%"
@@ -159,7 +158,7 @@ def run(conn, book_ids=None):
                   AND (g.lemma LIKE ? OR g.word_hebrew LIKE ?)
                 LIMIT 150
             """, (pattern, pattern)).fetchall()
-            
+
             for r in rows:
                 verse_id = r["verse_id"]
                 if verse_id == hub:
@@ -171,14 +170,14 @@ def run(conn, book_ids=None):
                     f'{{"level": "{name}", "label": "{label}", "ladder": "Gileadi_7_levels"}}'
                 ))
                 total += 1
-                
+
                 if len(batch) >= 200:
                     _batch_insert(conn, batch)
                     batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  Spiritual levels (corrected): {total} connections across {len(LEVELS)} levels")
     return total
 

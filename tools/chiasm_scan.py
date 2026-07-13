@@ -14,16 +14,19 @@ Usage:
   python3 chiasm_scan.py '{"book": "gen", "min_sections": 5, "max_sections": 11}'
 """
 
-import sys
 import json
 import os
-from collections import Counter
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_word_counts_by_chapter, get_formula_sequence
-from lib.db import get_keyword_distribution, find_matching_known_chiasm
-
+from lib.db import (
+    find_matching_known_chiasm,
+    get_db,
+    get_formula_sequence,
+    get_keyword_distribution,
+    get_word_counts_by_chapter,
+)
 
 # Key Hebrew theological terms for keyword analysis
 KEY_TERMS = {
@@ -165,15 +168,12 @@ def check_formula_mirror(conn, book_id):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     book = args.get("book", "")
     methods = args.get("methods", ["word_count", "keyword", "formula"])
-    min_sections = args.get("min_sections", 5)
-    max_sections = args.get("max_sections", 11)
+    args.get("min_sections", 5)
+    args.get("max_sections", 11)
 
     if not book:
         print(json.dumps({"error": "Provide book"}))
@@ -183,7 +183,6 @@ def main():
     result = {"book": book}
 
     candidates = []
-    hints = []
     keyword_hints = []
     formula_hints = []
 
@@ -203,9 +202,9 @@ def main():
     if candidates:
         best = candidates[0]
         if best["pairs"]:
-            first_pair = best["pairs"][0]
+            best["pairs"][0]
             # Try to find a matching known chiasm
-            matched = find_matching_known_chiasm(conn, "", "")
+            find_matching_known_chiasm(conn, "", "")
             # This would need verse IDs from the chapter mapping
             # For now, just note the comparison
             result["known_patterns_check"] = "Run known_patterns.py with specific verse ranges to cross-reference"

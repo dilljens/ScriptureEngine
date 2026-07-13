@@ -7,10 +7,9 @@ Known acrostic chapters: Psalm 111, 112, 119, 145; Lamentations 1-4;
 Proverbs 31:10-31; select other passages.
 """
 
-import re
 import unicodedata
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 # Hebrew alphabet in order (22 letters)
 HEBREW_ALPHABET = list("אבגדהוזחטיכלמנסעפצקרשת")
@@ -119,8 +118,7 @@ def run(conn, book_ids=None):
                     if alpha_idx < 22 and first_letters[i] == HEBREW_ALPHABET[alpha_idx]:
                         match_count += 1
 
-            if match_count >= len(first_letters) - start_idx and match_count >= 5:
-                if match_count > matched_letters:
+            if match_count >= len(first_letters) - start_idx and match_count >= 5 and match_count > matched_letters:
                     matched_letters = match_count
                     match_start = start_idx
 
@@ -130,7 +128,7 @@ def run(conn, book_ids=None):
             detected.append((book_id, chapter, verses, match_start or 0, matched_letters))
 
     # Create connections for detected acrostics
-    for book_id, chapter, verses, start, _letter_count in detected:
+    for book_id, chapter, verses, _start, _letter_count in detected:
         verse_list = [v for v in verses if extract_first_letter(v["text_hebrew"])]
 
         # Pair symmetric letter positions: Aleph↔Tav, Bet↔Shin, etc.

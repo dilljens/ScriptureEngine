@@ -7,8 +7,8 @@ Used by MCP (scripture_interlinear) and CLI.
 """
 
 from lib.db import get_verse
-from lib.hebrew_util import transliterate as heb_translit, clean_hebrew
 from lib.greek_util import transliterate as gr_translit
+from lib.hebrew_util import transliterate as heb_translit
 from lib.morphology import parse as parse_morph
 
 

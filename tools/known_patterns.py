@@ -11,20 +11,17 @@ Usage:
   python3 known_patterns.py '{"detect": {"start": "gen.6.9", "end": "gen.9.29"}}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_known_chiasms, add_known_chiasm, find_matching_known_chiasm
+from lib.db import add_known_chiasm, find_matching_known_chiasm, get_db, get_known_chiasms
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     conn = get_db()
     result = {}

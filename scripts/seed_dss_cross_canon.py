@@ -9,10 +9,12 @@ capture conceptual parallels like dualism, community-as-temple).
 Usage: python3 scripts/seed_dss_cross_canon.py
 """
 
-import sys, os, json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+import json
+import os
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from lib.db import add_connection, get_db
 
 # ─── Connection groups ──────────────────────────────────────────────
 
@@ -243,7 +245,7 @@ SON_OF_MAN_CHRIST = [
 def main():
     conn = get_db()
     count = 0
-    
+
     all_connections = CONNECTIONS + ONE_LIKE_UNTO_SON_OF_MAN + SON_OF_MAN_CHRIST
     print(f"Seeding {len(all_connections)} cross-canon connections...")
     for c in all_connections:
@@ -252,7 +254,7 @@ def main():
             "SELECT COUNT(*) FROM connections WHERE source_verse=? AND target_verse=? AND type=? AND subtype=?",
             (c["source"], c["target"], c["type"], subtype)
         ).fetchone()[0]
-        
+
         if existing == 0:
             try:
                 add_connection(conn, c["source"], c["target"],
@@ -271,7 +273,7 @@ def main():
                 print(f"  ERROR: {c['source']} → {c['target']}: {e}")
         else:
             pass  # already exists
-    
+
     conn.commit()
     print(f"  Created {count} new connections")
     print(f"  Total connections seeded: {count}")

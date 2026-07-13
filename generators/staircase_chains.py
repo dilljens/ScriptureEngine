@@ -109,7 +109,6 @@ def _detect_staircase_chains(verses, min_chain=3, max_chain=8):
 
             avg_overlap = sum(overlaps) / max(len(overlaps), 1)
             any_escalation = any(r > 1.3 for r in length_ratios)
-            has_shared = len(all_shared) > 0
 
             if avg_overlap > 0.08 and any_escalation and len(all_shared) >= 2:
                 # Calculate confidence based on strength of signals

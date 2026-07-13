@@ -77,12 +77,12 @@ https://inklomancer.com
 
 | Detail | Value |
 |--------|-------|
-| Host | Hetzner CX23 |
+| Host | OVHcloud US VPS-2 |
 | IP | `40.160.241.74` |
-| RAM | 4 GB |
-| CPU | 2 vCPUs |
-| OS | Ubuntu |
-| Cost | ~€4.49/month |
+| RAM | 8 GB |
+| CPU | 4 vCore |
+| OS | Ubuntu 26.04 LTS |
+| Disk | 75 GB NVMe |
 
 ## One-Time Server Setup
 
@@ -184,12 +184,12 @@ certbot --nginx -d inklomancer.com -d www.inklomancer.com
 | 3001 | Node.js (Inkl) | Localhost only |
 | 8443 | Daglock indexer | Localhost only |
 
-## Resources on CX23 (4GB RAM)
+## Resources on OVHcloud VPS-2 (8GB RAM)
 
 | Process | RAM |
 |---------|-----|
 | 2× uvicorn workers (cached) | ~2GB |
 | Inklomancer game server | ~300MB |
 | nginx + OS | ~500MB |
-| **Total** | **~2.8GB** |
-| **Headroom** | **~1.2GB** |
+| **Total** | ~2.8GB |
+| **Headroom** | ~5.2GB |

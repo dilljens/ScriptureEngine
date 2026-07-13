@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Run all automatic generators and report results."""
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from generators import run_all
 from lib.db import get_db

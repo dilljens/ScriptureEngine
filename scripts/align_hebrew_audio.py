@@ -14,7 +14,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -31,7 +30,7 @@ ALIGN_DIR = Path(__file__).parent.parent / "data" / "audio" / "alignments"
 
 def align_verse(audio_path: str, model, verse_id: str) -> list[dict]:
     """Transcribe and align a single verse audio file.
-    
+
     Returns list of {word, start, end, confidence} dicts.
     """
     segments, info = model.transcribe(

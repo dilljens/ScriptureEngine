@@ -1,8 +1,6 @@
 """Experimental: runs Isaiah-derived techniques on ALL canonical books.
 Tests whether Isaiah's patterns appear elsewhere. Can be pruned later."""
 
-from collections import defaultdict, Counter
-from lib.db import add_connection
 
 ALL_HEBREW = ['gen','exo','lev','num','deu','josh','judg','ruth','1sam','2sam','1kgs','2kgs','1chr','2chr','ezra','neh','esth','job','psa','prov','eccl','song','isa','jer','lam','ezek','dan','hos','joel','amos','obad','jonah','mic','nah','hab','zeph','hag','zech','mal']
 ALL_BOM = ['1ne','2ne','jacob','enos','jarom','omni','wom','mosiah','alma','hel','3ne','4ne','morm','ether','moro']
@@ -86,7 +84,7 @@ def run(conn, book_ids=None):
                 for r in rows:
                     vid = r["verse_id"]
                     batch.append((
-                        f"isa.1.2", vid, "interpretive",
+                        "isa.1.2", vid, "interpretive",
                         "giliadi_pattern", f"x_{level_name}",
                         0.3, 0.25, "algorithm",
                         f'{{"experiment": "spiritual_level", "level": "{level_name}", "book": "{book}", "match": "hebrew"}}'
@@ -97,7 +95,6 @@ def run(conn, book_ids=None):
         # English books
         for book in ALL_BOM + ALL_NT + ['dc']:
             for kw in keywords["eng"]:
-                tbl = "verses" if book != 'dc' else "verses"
                 prefix = "dc%" if book == 'dc' else book
                 if prefix == 'dc%':
                     rows = conn.execute("""
@@ -110,7 +107,7 @@ def run(conn, book_ids=None):
                 for r in rows:
                     vid = r[0]
                     batch.append((
-                        f"isa.1.2", vid, "interpretive",
+                        "isa.1.2", vid, "interpretive",
                         "giliadi_pattern", f"x_{level_name}",
                         0.25, 0.2, "algorithm",
                         f'{{"experiment": "spiritual_level", "level": "{level_name}", "book": "{book}", "match": "english"}}'

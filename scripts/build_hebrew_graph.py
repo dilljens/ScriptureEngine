@@ -9,9 +9,9 @@ Usage:
     python3 scripts/build_hebrew_graph.py --db data/memorize.db
 """
 
+import os
 import sqlite3
 import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -339,7 +339,7 @@ def build_graph(db_path="data/memorize.db"):
 
     conn.close()
 
-    print(f"Hebrew knowledge graph built:")
+    print("Hebrew knowledge graph built:")
     print(f"  Nodes: {nodes}")
     print(f"  Edges: {edge_count}")
     for lvl, cnt in levels:

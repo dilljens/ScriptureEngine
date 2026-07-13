@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
 """Populate new kabbalistic gematria value columns in the gematria table."""
-import sys, os, time
+import os
+import sys
+import time
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import contextlib
+
 from lib.db import get_db
-from lib.gematria import compute_milui, compute_kellali, compute_kidmi, compute_boneh, extract_consonants
+from lib.gematria import (
+    compute_boneh,
+    compute_kellali,
+    compute_kidmi,
+    compute_milui,
+    extract_consonants,
+)
 
 conn = get_db()
 
 # Ensure columns exist
 for col in ['value_milui', 'value_kellali', 'value_kidmi', 'value_boneh']:
-    try:
+    with contextlib.suppress(Exception):
         conn.execute(f'ALTER TABLE gematria ADD COLUMN {col} INTEGER DEFAULT 0')
-    except Exception:
-        pass
 
 rows = conn.execute("SELECT id, word_hebrew FROM gematria WHERE word_hebrew IS NOT NULL AND word_hebrew != ''").fetchall()
 t0 = time.time()

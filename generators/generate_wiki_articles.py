@@ -13,16 +13,15 @@ Usage:
     python3 generators/generate_wiki_articles.py --enrich           # + Wikipedia/Wikidata
 """
 
-import sqlite3
 import json
-import os
-import sys
 import re
-import urllib.request
-import urllib.parse
+import sqlite3
+import sys
 import time
-from pathlib import Path
+import urllib.parse
+import urllib.request
 from collections import defaultdict
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
 DB_PATH = PROJECT_ROOT / "data" / "processed" / "scripture.db"
@@ -100,7 +99,7 @@ Difficulty is derived from connection confidence: `difficulty = 1.0 - confidence
 
 def get_knowledge_stats(conn, entity_id=None, book_id=None, layer=None):
     """Get knowledge item statistics for entities, books, or layers.
-    
+
     Uses efficient JOIN-based queries instead of IN-subqueries.
     """
     from_clause = "FROM knowledge_items ki"
@@ -130,7 +129,7 @@ def get_knowledge_stats(conn, entity_id=None, book_id=None, layer=None):
     if entity_id:
         # For entity stats, use a single optimized query
         rows = conn.execute(f"""
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN ki.star_rating = 5 THEN 1 ELSE 0 END) as star_5,
                 SUM(CASE WHEN ki.star_rating = 4 THEN 1 ELSE 0 END) as star_4,
@@ -191,17 +190,17 @@ def get_knowledge_stats(conn, entity_id=None, book_id=None, layer=None):
         ).fetchone()["c"]
         if stats["total"] == 0:
             return stats
-        
+
         by_star_rows = conn.execute(
             f"SELECT star_rating, COUNT(*) as c {from_clause} {where_clause} GROUP BY star_rating ORDER BY star_rating DESC", params
         ).fetchall()
         stats["by_star"] = {r["star_rating"]: r["c"] for r in by_star_rows}
-        
+
         by_pardes_rows = conn.execute(
             f"SELECT pa_r_de_s_level, COUNT(*) as c {from_clause} {where_clause} GROUP BY pa_r_de_s_level", params
         ).fetchall()
         stats["by_pardes"] = {r["pa_r_de_s_level"]: r["c"] for r in by_pardes_rows}
-        
+
         diff = conn.execute(
             f"SELECT MIN(difficulty) as mn, MAX(difficulty) as mx, AVG(difficulty) as av {from_clause} {where_clause}", params
         ).fetchone()
@@ -210,7 +209,7 @@ def get_knowledge_stats(conn, entity_id=None, book_id=None, layer=None):
             "max": round(diff["mx"], 2) if diff["mx"] else 0,
             "avg": round(diff["av"], 2) if diff["av"] else 0,
         }
-        
+
         top = conn.execute(
             f"""
             SELECT ki.verse_id, ki.target_verse, ki.connection_type, ki.star_rating,
@@ -490,7 +489,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
 
     # Get works distribution
     works_dist = conn.execute(
-        f"""
+        """
         SELECT w.title, COUNT(*) as c
         FROM verse_entities ve
         JOIN verses v ON v.id = ve.verse_id
@@ -607,7 +606,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
     kstats = get_knowledge_stats(conn, entity_id=entity_id)
     if kstats["total"] > 0:
         lines.append("## Knowledge Assessment\n")
-        
+
         # Star distribution
         lines.append("### Quality Distribution\n")
         lines.append(f"This entity appears in **{kstats['total']:,}** knowledge items (assessment-quality connections).\n")
@@ -620,7 +619,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
                 pct = cnt / kstats["total"] * 100 if kstats["total"] else 0
                 lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} | {pct:.1f}% |")
             lines.append("")
-        
+
         # PaRDeS distribution
         by_pardes = kstats.get("by_pardes", {})
         if by_pardes:
@@ -634,18 +633,18 @@ def generate_entity_article(conn, entity_id, enrich=False):
                 if cnt:
                     lines.append(f"| **{level.title()}** | {cnt:,} | {bloom_map.get(level, '')} |")
             lines.append("")
-        
+
         # Difficulty range
         diff = kstats.get("difficulty", {})
         if diff.get("avg"):
             lines.append("### Difficulty Range\n")
-            lines.append(f"| Measure | Value |")
-            lines.append(f"|---------|-------|")
+            lines.append("| Measure | Value |")
+            lines.append("|---------|-------|")
             lines.append(f"| Average | {diff['avg']:.2f} |")
             lines.append(f"| Minimum | {diff['min']:.2f} |")
             lines.append(f"| Maximum | {diff['max']:.2f} |")
             lines.append("")
-        
+
         # Featured top items
         top_items = kstats.get("top_items", [])
         if top_items:
@@ -653,7 +652,7 @@ def generate_entity_article(conn, entity_id, enrich=False):
             lines.append("The highest-quality connections involving this entity:\n")
             for item in top_items[:5]:
                 src = item["source_text"][:80] if item["source_text"] else ""
-                tgt = item["target_text"][:80] if item["target_text"] else ""
+                item["target_text"][:80] if item["target_text"] else ""
                 lines.append(f"- **{item['connection_type']}**: :verse[{item['verse_id']}] → :verse[{item['target_verse']}]")
                 lines.append(f"  {'★' * item['star_rating']} | {item['pa_r_de_s_level'].title()} | Bloom: {item['bloom_level'].title()} | Difficulty: {item['difficulty']:.2f}")
                 if src:
@@ -780,7 +779,7 @@ def generate_book_article(conn, book_id):
     if kstats["total"] > 0:
         lines.append("## Knowledge Assessment\n")
         lines.append(f"This book has **{kstats['total']:,}** knowledge items (assessment-quality connections).\n")
-        
+
         by_star = kstats.get("by_star", {})
         if by_star:
             lines.append("| Stars | Count |")
@@ -790,7 +789,7 @@ def generate_book_article(conn, book_id):
                 if cnt:
                     lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} |")
             lines.append("")
-        
+
         top_items = kstats.get("top_items", [])
         if top_items:
             lines.append("### Featured Connections\n")
@@ -830,7 +829,7 @@ def generate_work_article(conn, work_id):
     book_patterns = [f"{b['id']}.%" for b in books]
     total_c = 0
     if book_patterns:
-        clauses = " OR ".join(f"source_verse LIKE ?" for _ in books)
+        clauses = " OR ".join("source_verse LIKE ?" for _ in books)
         total_c = conn.execute(
             f"SELECT COUNT(*) as c FROM connections WHERE {clauses}",
             book_patterns,
@@ -856,7 +855,7 @@ def generate_work_article(conn, work_id):
 
     # Top entities
     top_ents = conn.execute(
-        f"""
+        """
         SELECT el.english_name, el.entity_type, COUNT(*) as c
         FROM verse_entities ve
         JOIN entity_links el ON el.entity_id = ve.entity_id
@@ -876,7 +875,7 @@ def generate_work_article(conn, work_id):
             lines.append(f"- {icon_e} **{r['english_name']}** — {r['c']} mentions")
         lines.append("")
 
-    lines.append(f"---\n*Generated from the Scripture Knowledge Engine*")
+    lines.append("---\n*Generated from the Scripture Knowledge Engine*")
     return {
         "id": work_id,
         "title": work["title"],
@@ -927,7 +926,7 @@ def generate_layer_article(conn, layer_name):
     if kstats["total"] > 0:
         lines.append("## Knowledge Assessment\n")
         lines.append(f"There are **{kstats['total']:,}** knowledge items in this layer.\n")
-        
+
         by_star = kstats.get("by_star", {})
         if by_star:
             lines.append("### Quality Distribution\n")
@@ -938,7 +937,7 @@ def generate_layer_article(conn, layer_name):
                 if cnt:
                     lines.append(f"| {'★' * star}{'☆' * (5 - star)} | {cnt:,} |")
             lines.append("")
-        
+
         by_pardes = kstats.get("by_pardes", {})
         if by_pardes:
             lines.append("### PaRDeS Distribution\n")
@@ -950,7 +949,7 @@ def generate_layer_article(conn, layer_name):
                 if cnt:
                     lines.append(f"| {level.title()} | {cnt:,} | {bloom_map2.get(level, '')} |")
             lines.append("")
-        
+
         diff = kstats.get("difficulty", {})
         if diff.get("avg"):
             lines.append("### Difficulty\n")

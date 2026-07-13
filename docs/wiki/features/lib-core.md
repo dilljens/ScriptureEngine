@@ -1,32 +1,46 @@
 # Core Library — lib/
 
-The `lib/` directory contains all shared logic: database, connection types, gematria, PaRDeS, symbols, ant-hallucination controls, and the tool registry.
+The `lib/` directory contains all shared logic: database, connection types, gematria, PaRDeS, symbols, anti-hallucination controls, the tool registry, conversation sessions, Hebrew curriculum, and assessment engine.
 
 ## Architecture
 
 ```
   lib/
   ├── db.py                 — SQLite schema + operations
-  ├── gematria.py           — Hebrew gematria computation
+  ├── gematria.py           — Hebrew gematria computation (standard, ordinal, reduced, milui, kellali, kidmi, boneh)
   ├── gematria_greek.py     — Greek isopsephy computation
+  ├── poetry/               — Hebrew poetry line splitting
   │
   ├── api/                   — Shared tool registry
-  │   ├── __init__.py       — TOOL_REGISTRY + register() + list_tools() + call_tool()
-  │   ├── verse.py          — lookup_verse, passage_guide
+  │   ├── __init__.py       — TOOL_REGISTRY (60 tools) + register() + list_tools() + call_tool()
+  │   ├── verse.py          — lookup_verse, passage_guide, verse_text
   │   ├── search.py         — search_text, search_xlingual
   │   ├── gematria.py       — gematria_lookup
-  │   ├── connections.py    — get_connections, get_intertext, get_pardes
-  │   ├── graph.py          — graph_path, graph_reachable, graph_hubs, ...
+  │   ├── connections.py    — get_connections, get_intertext, get_pardes, get_compare
+  │   ├── graph.py          — graph_path, graph_reachable, graph_hubs, graph_entities,
+  │   │                       graph_entity_network, graph_shared_entities, graph_centrality, graph_stats, graph_context
   │   ├── sod.py            — hidden_patterns
-  │   ├── study.py          — create_guide, add_step, get_guide, suggest_path
-  │   └── info.py           — get_stats
+  │   ├── study.py          — create, add_step, get, list, suggest, update, remove_step,
+  │   │                       export_json, export_html, publish, import_json, fork, bulk_update
+  │   ├── info.py           — get_stats, get_versions, get_tools
+  │   ├── conversations.py  — Chat session persistence (create, get, list, delete, add_message, list_connections, promote_connection)
+  │   ├── sources.py        — Source provenance (by_verse, by_scholar, list_scholars)
+  │   ├── strongs.py        — Strong's definition lookup
+  │   ├── interlinear.py    — Word-by-word interlinear analysis
+  │   ├── consensus.py      — Ecumenical consensus data
+  │   ├── disagreements.py  — Contradictory readings across traditions
+  │   ├── assessment.py     — Adaptive quiz (start, answer, progress)
+  │   ├── research.py       — Multi-hop thematic research
+  │   ├── entity.py         — Deep entity dive
+  │   └── staging.py        — Staging/approval tools
+  │   └── versions.py       — List available Bible text versions
   │
   ├── lexicon/
   │   └── __init__.py       — Lexicon builder, search, root families, concordance, collocations
   │
   ├── connections/
-  │   ├── types.py          — Layer definitions (10 layers, 88 types)
-  │   └── pardes.py         — PaRDeS level mapping
+  │   ├── types.py          — Layer definitions (11 layers, 128 types)
+  │   └── pardes.py         — PaRDeS level mapping (P'shat, Remez, Drash, Sod)
   │
   ├── controls/
   │   ├── calibration.py    — Quality levels + emoji mapping
@@ -39,12 +53,20 @@ The `lib/` directory contains all shared logic: database, connection types, gema
   │   ├── acrostic.py       — Acrostic detection
   │   ├── gematria_advanced.py — Advanced gematria patterns
   │   ├── hidden_names.py   — Hidden name detection
-  │   └── notarikon.py      — Notarikon (acronym) extraction
+  │   ├── notarikon.py      — Notarikon (acronym) extraction
+  │   └── temurah.py        — Temurah ciphers (Albam, Atbah, Avgad)
   │
-  └── symbols/
-      ├── reference.py      — Symbol seed data (~80 symbols) + typology
-      ├── shared_symbols.py — Symbol occurrence matching
-      └── typology.py       — Type/antitype connection generator
+  ├── symbols/
+  │   ├── reference.py      — Symbol seed data (~80 symbols) + typology
+  │   ├── shared_symbols.py — Symbol occurrence matching
+  │   └── typology.py       — Type/antitype connection generator
+  │
+  ├── sefaria/               — Jewish tradition (Sefaria) integration
+  │   └── mapper.py         — Sefaria reference mapping (387K+ connections: Rashi, Ramban, Talmud, Zohar, Midrash)
+  │
+  └── assessment/
+      ├── engine.py         — Adaptive assessment engine (IRT-style)
+      └── grading.py        — LLM-graded open-ended question evaluation
 ```
 
 ## Key Functions
@@ -55,7 +77,7 @@ The `lib/` directory contains all shared logic: database, connection types, gema
 | `add_connection()` | `db.py` | Insert/upsert a connection |
 | `get_connections()` | `db.py` | Get connections for a verse |
 | `compute_all()` | `gematria.py` | Compute standard/ordinal/reduced gematria |
-| `list_tools()` | `api/__init__.py` | List all MCP/HTTP tools |
+| `list_tools()` | `api/__init__.py` | List all 60 MCP/HTTP tools |
 | `call_tool()` | `api/__init__.py` | Dispatch to any registered tool |
 | `get_pardes_level()` | `connections/pardes.py` | Map layer+type to PaRDeS level |
 | `build_lexicon()` | `lexicon/__init__.py` | Build lexicon table from gematria data |
@@ -88,19 +110,36 @@ Located in `lib/controls/`:
 
 ## Tool Registry Pattern
 
-The `lib/api/__init__.py` `TOOL_REGISTRY` is the **single source of truth** for all 23 tools (22 MCP tools + info endpoint):
+The `lib/api/__init__.py` `TOOL_REGISTRY` is the **single source of truth** for all **60 tools**:
 - Both MCP server (`mcp_server.py`) and HTTP API (`web/server.py`) consume it
 - Adding a new tool = one registration + one function
 - Each tool has: `name`, `description`, `inputSchema` (JSON Schema)
+- Tools are discovered from `lib/api/*.py` modules, not manually listed
+
+## Hebrew Assessment Engine
+
+`lib/assessment/` contains the adaptive assessment system:
+- **engine.py**: IRT-style adaptive quiz (start → question → answer → next)
+- **grading.py**: LLM-graded open-ended questions with 4-dimension rubric
+- Integrates with `web/routes/assessment.py` for HTTP API
+
+## Sefaria Integration
+
+`lib/sefaria/mapper.py` maps connections between scripture verses and Jewish tradition sources:
+- **387K+ connections** from Rashi, Ramban, Talmud, Zohar, Midrash
+- Each connection tagged with `tradition: jewish` and `tradition: multiple` where applicable
 
 ## Path Scope
 
 - `lib/db.py` — schema + all DB operations
-- `lib/api/` — tool registry (consumed by MCP + HTTP)
+- `lib/api/` — tool registry (consumed by MCP + HTTP), 60 tools
 - `lib/lexicon/` — word dictionary, roots, collocations, concordance
-- `lib/connections/` — type definitions + PaRDeS
+- `lib/connections/` — type definitions (11 layers, 128 types) + PaRDeS
 - `lib/controls/` — anti-hallucination
-- `lib/sod/` — hidden pattern detection
+- `lib/sod/` — hidden pattern detection (atbash, acrostics, temurah, notarikon)
 - `lib/symbols/` — symbol data + typology
 - `lib/gematria.py` / `lib/gematria_greek.py` — numerical computation
+- `lib/assessment/` — adaptive engine + LLM grading
+- `lib/sefaria/` — Jewish tradition integration
+- `lib/poetry/` — Hebrew poetry splitting
 - `scripts/ingest_vulgate.py` — Latin Vulgate textual variant ingestion

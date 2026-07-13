@@ -7,7 +7,7 @@ which tradition(s) recognize this connection.
 Objective connections (verifiable from the text itself) get tradition='none'.
 Interpretive connections get tagged with their specific tradition.
 """
-import sqlite3, sys, os, time
+import sqlite3
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent / "data" / "processed" / "scripture.db"
@@ -100,15 +100,15 @@ DEFAULT_LABEL = ("none", "linguistic", 0.3, "Connection type not explicitly cate
 
 def main():
     conn = sqlite3.connect(str(DB_PATH))
-    
+
     # Get total
     total = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
     print(f"Total connections to label: {total:,}")
-    
+
     # Get unique type values
     types = conn.execute("SELECT DISTINCT type FROM connections WHERE deprecated=0 ORDER BY type").fetchall()
     print(f"Unique connection types: {len(types)}")
-    
+
     # Count by type
     for r in types:
         ct = r[0]
@@ -116,16 +116,15 @@ def main():
         label_info = TYPE_LABELS.get(ct, DEFAULT_LABEL)
         trad, herm = label_info[0], label_info[1]
         print(f"  {count:>8,} × {ct:35s} → {trad:15s} ({herm})")
-    
+
     # Update in batches
     updated = 0
-    batch_size = 50000
-    
+
     for r in types:
         ct = r[0]
         label_info = TYPE_LABELS.get(ct, DEFAULT_LABEL)
         tradition, hermeneutic, consensus, note = label_info
-        
+
         # Handle connections that already have a non-NULL hermeneutic
         if hermeneutic:
             conn.execute("""
@@ -137,35 +136,35 @@ def main():
                 UPDATE connections SET tradition=?, consensus_score=?, tradition_note=?
                 WHERE deprecated=0 AND type=? AND (tradition IS NULL OR tradition='none')
             """, (tradition, consensus, note, ct))
-        
+
         affected = conn.total_changes
         updated += affected
         conn.commit()
-    
+
     # Verify
     untagged = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0 AND (tradition IS NULL OR tradition='none')").fetchone()[0]
     tagged = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0 AND tradition NOT NULL AND tradition != 'none'").fetchone()[0]
     total_now = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
-    
+
     print(f"\n{'='*60}")
-    print(f"Labeling complete:")
+    print("Labeling complete:")
     print(f"  Updated: {updated:,}")
     print(f"  Still untagged (tradition='none'): {untagged:,}")
     print(f"  Tagged with specific tradition: {tagged:,}")
     print(f"  Total active: {total_now:,}")
-    
+
     # Show distribution by tradition
     dist = conn.execute("""
-        SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt 
-        FROM connections WHERE deprecated=0 
+        SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt
+        FROM connections WHERE deprecated=0
         GROUP BY t ORDER BY cnt DESC
     """).fetchall()
-    
-    print(f"\nDistribution by tradition:")
+
+    print("\nDistribution by tradition:")
     for t, cnt in dist:
         pct = cnt / total_now * 100
         print(f"  {t:25s}: {cnt:>8,} ({pct:5.1f}%)")
-    
+
     conn.close()
 
 

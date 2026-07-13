@@ -3,8 +3,8 @@ Label interpretive connections with hermeneutic category.
 Adds `hermeneutic` column and maps subtypes → faith / historical_critical / both.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -135,7 +135,7 @@ def main():
 
     faith_count = counts.get("faith", 0)
     hc_count = counts.get("historical_critical", 0)
-    both_count = counts.get("both", 0)
+    counts.get("both", 0)
     print(f"Labeled {updated} connections: {faith_count} faith, {hc_count} historical_critical")
     conn.close()
 

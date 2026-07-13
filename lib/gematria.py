@@ -83,10 +83,7 @@ def strip_cantillation(text):
     for ch in text:
         cp = ord(ch)
         # Keep Hebrew letters (consonants + final forms)
-        if 0x05D0 <= cp <= 0x05EA or 0x05EF <= cp <= 0x05F2:
-            result.append(ch)
-        # Keep vowel points, dagesh, shin/sin dot, rafe
-        elif 0x05B0 <= cp <= 0x05C7:
+        if 0x05D0 <= cp <= 0x05EA or 0x05EF <= cp <= 0x05F2 or 0x05B0 <= cp <= 0x05C7:
             result.append(ch)
         # Skip everything else (cantillation marks, meteg, maqaf, etc.)
         else:
@@ -134,19 +131,6 @@ def compute_gadol(word):
     for ch in extract_consonants(word):
         total += GADOL_MAP.get(ch, 0)
     return total
-
-
-def compute_all(word):
-    """Compute all gematria values for a word."""
-    cons = extract_consonants(word)
-    if not cons:
-        return {"standard": 0, "ordinal": 0, "reduced": 0, "mispar_gadol": 0}
-    return {
-        "standard": compute_standard(cons),
-        "ordinal": compute_ordinal(cons),
-        "reduced": compute_reduced(cons),
-        "mispar_gadol": compute_gadol(cons),
-    }
 
 
 @lru_cache(maxsize=10000)
@@ -249,7 +233,7 @@ LETTER_NAMES = {
 
 def compute_milui(word):
     """Mispar Milui/Shemi — spell out each letter name and sum.
-    
+
     For each letter, look up its full name spelling, compute the standard
     gematria of that spelling, and sum them.
     """
@@ -264,7 +248,7 @@ def compute_milui(word):
 
 def compute_kellali(word):
     """Mispar HaKellali — standard value + number of letters.
-    
+
     This gives weight to the count of letters as well as their values.
     """
     cons = extract_consonants(word)
@@ -274,7 +258,7 @@ def compute_kellali(word):
 
 def compute_kidmi(word):
     """Mispar Kidmi — triangular numbers.
-    
+
     For each letter with value n, add the sum of 1+2+...+n instead of n.
     For example, if aleph=1, kidmi_aleph = 1. If bet=2, kidmi_bet = 1+2 = 3.
     """
@@ -289,7 +273,7 @@ def compute_kidmi(word):
 
 def compute_boneh(word):
     """Mispar Boneh — standard + ordinal.
-    
+
     Building number — adds the two simplest systems together.
     """
     cons = extract_consonants(word)

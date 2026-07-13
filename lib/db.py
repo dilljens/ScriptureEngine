@@ -2,9 +2,8 @@
 Scripture Knowledge Engine — Database schema and operations.
 """
 
-import sqlite3
 import json
-import os
+import sqlite3
 from pathlib import Path
 
 # Default database path
@@ -20,6 +19,7 @@ def get_db(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
@@ -33,6 +33,7 @@ def get_db_vec(db_path=None):
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA cache_size = -8000")
+    conn.execute("PRAGMA busy_timeout = 5000")
     conn.execute("PRAGMA trusted_schema=ON")  # Required for extension loading
     conn.enable_load_extension(True)
     sqlite_vec.load(conn)
@@ -125,6 +126,20 @@ CREATE TABLE IF NOT EXISTS connections (
     metadata TEXT DEFAULT '{}',
     hermeneutic TEXT DEFAULT NULL,
     UNIQUE(source_verse, target_verse, layer, type, subtype)
+);
+
+-- Disagreements / contradictions between connections
+CREATE TABLE IF NOT EXISTS disagreements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    connection_a_id INTEGER NOT NULL REFERENCES connections(id),
+    connection_b_id INTEGER NOT NULL REFERENCES connections(id),
+    verse_pair TEXT NOT NULL,
+    conflict_score REAL DEFAULT 0.5,
+    conflict_type TEXT DEFAULT 'contradictory',
+    resolution TEXT DEFAULT 'unresolved',
+    resolved_by TEXT DEFAULT '',
+    resolved_at TEXT DEFAULT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Frequency / word occurrence data
@@ -618,7 +633,7 @@ def verse_id(book, chapter, verse):
 
 def resolve_verse_id(conn, book, chapter, verse):
     """Try all known verse ID patterns for a (book, chapter, verse) triple.
-    
+
     Returns (verse_id, row) or (None, None).
     Works for standard works (gen.1.1), DSS dss-prefixed IDs, etc.
     """
@@ -627,23 +642,22 @@ def resolve_verse_id(conn, book, chapter, verse):
     row = conn.execute("SELECT * FROM verses WHERE id=?", (vid,)).fetchone()
     if row:
         return vid, dict(row)
-    
+
     # DSS format: dss.{book}.{chapter}.{verse}
     dss_vid = f"dss.{book}.{chapter}.{verse}"
     # But DSS lines have chapter=1 always, so book.line = book.1.line
     # The DSS verse ID is actually: dss.{book}.1.{line}, and line=verse param
     # Let's check: dss.{book}.{chapter}.{verse}
-    if chapter == 1 or True:  # Try with the given params
+    if True:  # Try with the given params
         row2 = conn.execute("SELECT * FROM verses WHERE id=?", (dss_vid,)).fetchone()
         if row2:
             return dss_vid, dict(row2)
-    
+
     # Try just dss.{book}.{verse} (old import format where chapter was implicit)
     # Some older DSS imports used dss.{book}.{line} format
-    old_dss_vid = f"dss.{book}.{verse}"
     # But that would be dss.1QS.1 where 1 is the verse/line
     # Already covered above
-    
+
     return None, None
 
 
@@ -686,7 +700,7 @@ def insert_gematria(conn, verse_id, word_index, word_hebrew, word_english="",
 
 def get_verse(conn, book, chapter, verse):
     """Look up a single verse by book, chapter, verse.
-    
+
     Supports all works — standard (gen.1.1), DSS (dss.1QS.1), etc.
     Tries multiple ID patterns:
       1. {book}.{chapter}.{verse}      — standard (gen.1.1)
@@ -698,7 +712,7 @@ def get_verse(conn, book, chapter, verse):
         f"dss.{book}.{chapter}.{verse}",           # dss with chapter
         f"dss.{book}.{verse}",                     # dss without chapter
     ]
-    
+
     for vid in patterns:
         row = conn.execute("""
             SELECT v.*, b.title as book_title, b.work_id
@@ -708,7 +722,7 @@ def get_verse(conn, book, chapter, verse):
         """, (vid,)).fetchone()
         if row:
             return dict(row)
-    
+
     return None
 
 
@@ -797,7 +811,7 @@ def add_connection(conn, source_verse, target_verse, layer, type_name,
         """, (source_verse, target_verse, layer, type_name, subtype,
               strength, confidence, discovered_by, meta_json))
         conn.commit()
-    except sqlite3.IntegrityError as e:
+    except sqlite3.IntegrityError:
         # Missing verse reference -- skip gracefully
         pass
 
@@ -1048,7 +1062,7 @@ def get_keyword_distribution(conn, book_id, terms, scope="chapter"):
 
 def get_section_verses(conn, start_verse, end_verse):
     """Get all verses in a section, with Hebrew word counts.
-    
+
     Uses proper numeric chapter/verse comparison instead of string IDs.
     """
     parts_s = start_verse.split(".")
@@ -1086,7 +1100,7 @@ def get_section_verses(conn, start_verse, end_verse):
 
 def compare_sections(conn, start_a, end_a, start_b, end_b):
     """Compare two sections and return overlap metrics.
-    
+
     Args can be verse IDs (e.g., "gen.19.1") or chapter ranges
     (e.g., "gen.19" for entire chapter 19).
     """

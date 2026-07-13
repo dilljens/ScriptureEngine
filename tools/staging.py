@@ -12,15 +12,21 @@ Usage:
   python3 tools/staging.py '{"action": "stats"}'
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from lib.db import get_db
 from lib.api.staging import (
-    approve_connection, approve_study,
-    reject_connection, reject_study,
-    list_staging_connections, list_staging_studies,
+    approve_connection,
+    approve_study,
+    list_staging_connections,
+    list_staging_studies,
     promote_all_connections,
+    reject_connection,
+    reject_study,
 )
+from lib.db import get_db
 
 conn = get_db()
 

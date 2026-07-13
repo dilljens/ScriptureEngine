@@ -16,9 +16,16 @@ Question types:
   6. Hub Note Analysis — hub note steps, ask about the connection between steps
 """
 
-import json, os, random, re, sys, sqlite3
+import json
+import logging
+import os
+import random
+import sqlite3
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-from lib.assessment.items_old import FULL_BOOK_NAMES, fmt_ref, truncate_text
+logger = logging.getLogger(__name__)
+from lib.assessment.items_old import fmt_ref, truncate_text
 
 CANONICAL_BOOKS = {
     'gen','exo','lev','num','deu','josh','judg','ruth',
@@ -199,7 +206,7 @@ class DeepQuestionGenerator:
                 if item:
                     item["tier"] = self._assign_tier(item)
                     items.append(item)
-            except:
+            except Exception:
                 continue
 
         random.shuffle(items)
@@ -303,7 +310,7 @@ class DeepQuestionGenerator:
         """Show 2-3 passages on the same theme. Ask what theme they develop together."""
         # Pick a hub note or TG topic with several passages
         topic = self.conn.execute("""
-            SELECT slug, name FROM topical_guide 
+            SELECT slug, name FROM topical_guide
             WHERE verse_count BETWEEN 8 AND 30
             ORDER BY RANDOM() LIMIT 1
         """).fetchone()
@@ -423,20 +430,20 @@ class DeepQuestionGenerator:
 
     def _gen_consistency(self):
         """Show a theme taught across multiple passages — 'consistency through witnesses.'
-        
-        This is the most powerful question type: it shows that a teaching isn't from 
+
+        This is the most powerful question type: it shows that a teaching isn't from
         one isolated verse but is CONFIRMED by multiple witnesses across scripture.
         """
         # Pick a random thematic cluster
         cluster = self.conn.execute("""
-            SELECT id, theme, description, source_tradition FROM thematic_clusters 
+            SELECT id, theme, description, source_tradition FROM thematic_clusters
             ORDER BY RANDOM() LIMIT 1
         """).fetchone()
         if not cluster:
             return None
-        
+
         cid, theme, desc, trad = cluster
-        
+
         # Get 3-5 verses from the cluster
         verses = self.conn.execute("""
             SELECT m.verse_id, v.text_english, m.contribution
@@ -446,29 +453,29 @@ class DeepQuestionGenerator:
             ORDER BY m.sort_order
             LIMIT 5
         """, (cid,)).fetchall()
-        
+
         if len(verses) < 3:
             return None
-        
+
         verse_lines = "\n".join(
             f"• “{truncate_text(v[1], 120)}” — {fmt_ref(v[0])}"
             for v in verses
         )
-        
+
         # Get distractor themes from other clusters
         others = self.conn.execute("""
             SELECT theme FROM thematic_clusters WHERE id != ? ORDER BY RANDOM() LIMIT 3
         """, (cid,)).fetchall()
-        
+
         options = [theme] + [r[0] for r in others]
         random.shuffle(options)
-        
+
         # Determine the tier
         if trad == "multiple":
-            explanation = f"This theme is taught across multiple passages in scripture. The consistency across these witnesses strengthens it as a core biblical teaching."
+            explanation = "This theme is taught across multiple passages in scripture. The consistency across these witnesses strengthens it as a core biblical teaching."
         else:
             explanation = f"These passages all develop the theme of **{theme}**. The {trad} tradition sees this consistency as confirming the doctrine."
-        
+
         return {
             "type": "multiple_choice",
             "tier": "consistency",
@@ -518,12 +525,12 @@ def build_deep_questions(count=200):
                 explanation[:500],
             ))
             stored += 1
-        except:
+        except Exception:
             pass
 
     conn.commit()
     conn.close()
-    print(f"Generated {len(items)} deep questions, stored {stored}")
+    logger.info("Generated %s deep questions, stored %s", len(items), stored)
     return stored
 
 

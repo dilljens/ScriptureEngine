@@ -10,8 +10,7 @@ Avraham Giliadi's methodology:
 This module implements the word-count mirroring detection algorithm.
 """
 
-from collections import defaultdict
-from ..db import get_db, get_word_counts_by_chapter, get_word_counts_by_verse_range
+from ..db import get_word_counts_by_chapter
 
 
 def detect_word_count_chiasms(conn, book_id, methods=("chapter", "even_divide", "sliding")):
@@ -133,10 +132,7 @@ def _scan_word_count_mirror(word_counts, labels, method_name=""):
         if a > 0 and b > 0:
             ratio = max(a, b) / max(min(a, b), 1)
             # Score: 1.0 at perfect match, 0.0 at 1.25 ratio
-            if ratio <= 1.25:
-                pair_score = max(0, 1.0 - (ratio - 1.0) * 4)
-            else:
-                pair_score = 0
+            pair_score = max(0, 1.0 - (ratio - 1.0) * 4) if ratio <= 1.25 else 0
         else:
             pair_score = 0
             ratio = 0

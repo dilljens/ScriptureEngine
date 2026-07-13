@@ -2,7 +2,8 @@
 
 import math
 import random
-from .models import BLIM, KnowledgeState
+
+from .models import BLIM
 
 
 class AssessmentEngine:

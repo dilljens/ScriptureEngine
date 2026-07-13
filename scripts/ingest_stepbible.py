@@ -8,9 +8,12 @@ TAHOT: Translators Amalgamated Hebrew OT
   Hebrew text with manuscript corrections and variant annotations.
 """
 
-import sys, os, re
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 STEP_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "STEPBible-Data")
 OT_DIR = os.path.join(STEP_DIR, "Translators Amalgamated OT+NT")
@@ -45,26 +48,26 @@ def parse_tagnt_line(line):
     parts = line.strip().split('\t')
     if len(parts) < 7:
         return None
-    
+
     # Parse reference
     ref = parts[0]
     m = re.match(r'^(\w+)\.(\d+)\.(\d+)#(\d+)=(\S+)$', ref)
     if not m:
         return None
-    
+
     book_code = m.group(1)
     chapter = int(m.group(2))
     verse = int(m.group(3))
     word_type = m.group(5)  # e.g. "NKO", "NK(O)", "N(K)O", etc.
-    
+
     book_id = STEP_TO_OUR.get(book_code)
     if not book_id:
         return None
-    
+
     vid = f"{book_id}.{chapter}.{verse}"
     greek = parts[2] if len(parts) > 2 else ""
     english = parts[3] if len(parts) > 3 else ""
-    
+
     # Determine which editions have this word from the word type
     # N = Nestlé-Aland, K = Textus Receptus/KJV, O = Other editions
     # Upper case = significant difference, lower case = minor/spelling difference
@@ -72,10 +75,10 @@ def parse_tagnt_line(line):
     has_na = 'N' in word_type.replace('(','').replace(')','')
     has_tr = 'K' in word_type.replace('(','').replace(')','')
     has_other = 'O' in word_type.replace('(','').replace(')','')
-    
+
     # Determine variant significance
     is_variant = not (has_na and has_tr and has_other)
-    
+
     return {
         "vid": vid,
         "greek": greek,
@@ -95,18 +98,18 @@ def ingest_tagnt(conn):
         "TAGNT Mat-Jhn - Translators Amalgamated Greek NT - STEPBible.org CC-BY.txt",
         "TAGNT Act-Rev - Translators Amalgamated Greek NT - STEPBible.org CC-BY.txt",
     ]
-    
+
     verse_variants = {}  # vid → list of variant words
     total_words = 0
     variant_words = 0
-    
+
     for fname in tagnt_files:
         fpath = os.path.join(OT_DIR, fname)
         if not os.path.exists(fpath):
             print(f"  File not found: {fname}", flush=True)
             continue
-        
-        with open(fpath, 'r') as f:
+
+        with open(fpath) as f:
             for line in f:
                 parsed = parse_tagnt_line(line)
                 if not parsed:
@@ -118,10 +121,10 @@ def ingest_tagnt(conn):
                     if vid not in verse_variants:
                         verse_variants[vid] = []
                     verse_variants[vid].append(parsed)
-    
+
     print(f"  Parsed {total_words} words, {variant_words} variant words", flush=True)
     print(f"  {len(verse_variants)} verses with variants", flush=True)
-    
+
     # Create textual connections per verse with variants
     count = 0
     for vid, variants in verse_variants.items():
@@ -129,11 +132,11 @@ def ingest_tagnt(conn):
         na_only = any(v["na_only"] for v in variants)
         tr_only = any(v["tr_only"] for v in variants)
         has_significant = any(
-            v["word_type"] != v["word_type"].lower() 
+            v["word_type"] != v["word_type"].lower()
             and '(' not in v["word_type"]
             for v in variants
         )
-        
+
         # Classify the type of variant
         if na_only and tr_only:
             vtype = "textual_variant"  # both traditions have unique words
@@ -143,11 +146,11 @@ def ingest_tagnt(conn):
             vtype = "textual_variant"  # TR/KJV adds words not in NA
         else:
             vtype = "textual_variant"
-        
+
         # Sample to avoid too many connections per verse (max 5)
         sample_variants = variants[:5]
         strength = 0.7 if has_significant else 0.4
-        
+
         try:
             add_connection(conn, vid, vid,
                           layer="textual",
@@ -169,26 +172,26 @@ def ingest_tagnt(conn):
             count += 1
         except Exception:
             pass
-        
+
         if count % 500 == 0:
             conn.commit()
-    
+
     conn.commit()
     return count
 
 
 def main():
     conn = get_db()
-    
+
     print("=" * 60)
     print("STEPBible Ingestion — TAGNT + TAHOT")
     print("=" * 60)
-    
+
     # Step 1: TAGNT
     print("\n--- NT Variants (TAGNT) ---", flush=True)
     tagnt_count = ingest_tagnt(conn)
     print(f"  TAGNT connections: {tagnt_count}", flush=True)
-    
+
     # Step 2: TAHOT (Hebrew OT corrections)
     print("\n--- OT Variants (TAHOT) ---", flush=True)
     tahot_files = [f for f in os.listdir(OT_DIR) if f.startswith("TAHOT")]
@@ -227,10 +230,10 @@ def main():
                     tahot_count += 1
                 except Exception:
                     pass
-    
+
     conn.commit()
     print(f"  TAHOT connections: {tahot_count}", flush=True)
-    
+
     # Summary
     total = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='textual'").fetchone()["c"]
     print(f"\n  Textual layer total: {total}")

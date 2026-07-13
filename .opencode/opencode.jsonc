@@ -5,7 +5,15 @@
       "type": "local",
       "command": ["python3", "/home/dillon/_code/scriptureengine/mcp_server.py"],
       "enabled": true
+    },
+    "lsp": {
+      "type": "local",
+      "command": ["python3", "/home/dillon/.config/oh-my-agent/mcp/lsp-mcp/server.py"],
+      "enabled": true
     }
   },
-  "instructions": ["/home/dillon/_code/scriptureengine/.opencode/AGENTS.md"]
+  "instructions": [
+    "/home/dillon/_code/scriptureengine/.opencode/AGENTS.md",
+    "/home/dillon/_code/scriptureengine/.opencode/agents/"
+  ]
 }

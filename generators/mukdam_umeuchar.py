@@ -7,7 +7,6 @@ anomaly.
 """
 
 import json
-from lib.db import add_connection
 
 CASES = [
     ("gen.38.1", "gen.39.1",

@@ -13,14 +13,14 @@ Usage:
   python3 layers.py '{"compare": {"verse_a": "gen.1.1", "verse_b": "john.1.1", "layers": ["intertextual", "symbolic"]}}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db
 from lib.connections.types import LAYERS
+from lib.db import get_db
 
 
 def get_verse_layers(conn, verse_id, layer_filter=None, min_strength=0):
@@ -74,7 +74,7 @@ def get_verse_layers(conn, verse_id, layer_filter=None, min_strength=0):
 
     # Compute averages
     for layer_data in by_layer.values():
-        for t, tdata in layer_data["types"].items():
+        for _t, tdata in layer_data["types"].items():
             strengths = [c["strength"] for c in tdata["connections"]]
             tdata["strength_avg"] = round(sum(strengths) / max(len(strengths), 1), 2)
 
@@ -132,7 +132,7 @@ def get_layer_stats(conn):
     # Unpopulated layers
     all_layers = list(LAYERS.keys())
     populated = set(stats.keys())
-    stats["layers_unpopulated"] = [l for l in all_layers if l not in populated]
+    stats["layers_unpopulated"] = [layer for layer in all_layers if layer not in populated]
 
     return stats
 
@@ -161,8 +161,8 @@ def compare_verses(conn, verse_a, verse_b, layer_filter=None):
         "verse_a": verse_a,
         "verse_b": verse_b,
         "shared_layers": shared,
-        "verse_a_layers": {l: d["total"] for l, d in layers_a.items()},
-        "verse_b_layers": {l: d["total"] for l, d in layers_b.items()},
+        "verse_a_layers": {layer: d["total"] for layer, d in layers_a.items()},
+        "verse_b_layers": {layer: d["total"] for layer, d in layers_b.items()},
     }
 
 

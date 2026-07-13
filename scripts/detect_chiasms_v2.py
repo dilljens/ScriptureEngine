@@ -14,13 +14,17 @@ Key improvements over v1:
 - Captures thematic/conceptual chiasms (like Alma 36)
 """
 
-import sys, os, re, math, json, time
+import json
+import math
+import sys
+import time
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from collections import Counter
-from statistics import median
-from lib.db import get_db
 import sqlite3
+from statistics import median
+
+from lib.db import get_db
 
 # ── Embedding model (loaded once) ──
 
@@ -41,7 +45,7 @@ def compute_similarity_matrix(verses):
     texts = [v["text"][:512] for v in verses]  # Truncate to 512 chars for efficiency
     model = get_model()
     embeddings = model.encode(texts, show_progress_bar=False)
-    
+
     n = len(embeddings)
     matrix = [[0.0] * n for _ in range(n)]
     for i in range(n):
@@ -52,7 +56,7 @@ def compute_similarity_matrix(verses):
             ej = embeddings[j]
             norm_j = math.sqrt(sum(x*x for x in ej))
             if norm_j == 0: continue
-            dot = sum(a*b for a, b in zip(ei, ej))
+            dot = sum(a*b for a, b in zip(ei, ej, strict=False))
             sim = dot / (norm_i * norm_j)
             matrix[i][j] = sim
             matrix[j][i] = sim
@@ -60,24 +64,24 @@ def compute_similarity_matrix(verses):
 
 def detect_chiasms(verses, min_window=3, max_window=15, z_threshold=2.5):
     """Detect chiastic patterns using neural embedding contrast scoring.
-    
+
     For each window of odd length 2*window+1 centered on a pivot verse:
       - Score = avg(mirror_pairs) - avg(non_pairs)
       - Significance via modified Z-score (MAD-based)
     """
     if len(verses) < 7:
         return []
-    
+
     n = len(verses)
     matrix = compute_similarity_matrix(verses)
     raw_scores = []
     candidates = []
-    
+
     for window in range(min_window, min(max_window + 1, n // 2)):
         for pivot in range(window, n - window):
             pair_scores = []
             non_pair_scores = []
-            
+
             for d in range(1, window + 1):
                 left = pivot - d
                 right = pivot + d
@@ -85,22 +89,22 @@ def detect_chiasms(verses, min_window=3, max_window=15, z_threshold=2.5):
                     break
                 s = matrix[left][right]
                 pair_scores.append(s)
-                
+
                 # Non-pair baseline
                 for dd in range(1, window + 1):
                     if dd != d:
                         rr = pivot + dd
                         if rr < n:
                             non_pair_scores.append(matrix[left][rr])
-            
+
             if not pair_scores or not non_pair_scores:
                 continue
-            
+
             avg_pairs = sum(pair_scores) / len(pair_scores)
             avg_non = sum(non_pair_scores) / len(non_pair_scores)
             score = avg_pairs - avg_non
             raw_scores.append(score)
-            
+
             if score > 0.01:
                 pairs = []
                 for d in range(1, window + 1):
@@ -112,7 +116,7 @@ def detect_chiasms(verses, min_window=3, max_window=15, z_threshold=2.5):
                             "right": verses[right]["id"],
                             "similarity": round(matrix[left][right], 3),
                         })
-                
+
                 candidates.append({
                     "pivot": verses[pivot]["id"],
                     "start": verses[pivot - window]["id"],
@@ -122,19 +126,19 @@ def detect_chiasms(verses, min_window=3, max_window=15, z_threshold=2.5):
                     "pairs": pairs,
                     "matched_pairs": len(pairs),
                 })
-    
+
     if not raw_scores:
         return []
-    
+
     # Modified Z-score
     med = median(raw_scores)
     abs_devs = [abs(s - med) for s in raw_scores]
     mad = median(abs_devs) if abs_devs else 0.001
     if mad == 0: mad = 0.001
-    
+
     for c in candidates:
         c["z_score"] = 0.6745 * (c["score"] - med) / mad
-    
+
     results = [c for c in candidates if c["z_score"] >= z_threshold]
     results.sort(key=lambda r: -r["z_score"])
     return results
@@ -143,16 +147,16 @@ def detect_chiasms(verses, min_window=3, max_window=15, z_threshold=2.5):
 def scan_book(conn, book_id, work_id):
     """Scan a single book."""
     verses = conn.execute(
-        """SELECT id, text_english FROM verses 
-           WHERE book_id=? AND text_english IS NOT NULL 
+        """SELECT id, text_english FROM verses
+           WHERE book_id=? AND text_english IS NOT NULL
            ORDER BY CAST(chapter AS INTEGER), CAST(verse AS INTEGER)""",
         (book_id,)
     ).fetchall()
-    
+
     vlist = [{"id": v["id"], "text": v["text_english"]} for v in verses]
     if len(vlist) < 15:
         return []
-    
+
     results = detect_chiasms(vlist)
     for r in results:
         r["book"] = book_id
@@ -164,14 +168,14 @@ def main():
     t0 = time.time()
     conn = get_db()
     conn.row_factory = sqlite3.Row
-    
+
     # Focus on books with known chiasms
     book_focus = {
         "bom": ["1ne", "2ne", "alma", "mosiah", "hel", "3ne", "ether"],
         "ot": ["gen", "exo", "isa", "psa"],
         "nt": ["matt", "luke", "john"],
     }
-    
+
     all_candidates = []
     for work_id, book_ids in book_focus.items():
         print(f"\nScanning {work_id}...", flush=True)
@@ -181,23 +185,23 @@ def main():
             elapsed = time.time() - t1
             print(f"  {bid}: {len(candidates)} candidates ({elapsed:.1f}s)", flush=True)
             all_candidates.extend(candidates)
-    
+
     all_candidates.sort(key=lambda r: -r["z_score"])
-    
+
     print(f"\n{'='*60}")
     print(f"Total candidates: {len(all_candidates)}")
     print(f"Time: {time.time()-t0:.1f}s")
     print(f"{'='*60}")
-    
+
     # Top 30
-    print(f"\nTop candidates:")
+    print("\nTop candidates:")
     for c in all_candidates[:30]:
         print(f"  {c['work']}.{c['book']}: {c['start']} → {c['end']}")
         print(f"    pivot={c['pivot']}, z={c['z_score']:.2f}, pairs={c['matched_pairs']}")
         # Show first 3 pairs
         for p in c['pairs'][:3]:
             print(f"      {p['left']} ↔ {p['right']} (sim={p['similarity']})")
-    
+
     # Check Alma 36 specifically
     alma36 = [c for c in all_candidates if c["book"] == "alma" and "36" in c.get("start","") and "36" in c.get("end","")]
     print(f"\n{'='*60}")
@@ -209,14 +213,14 @@ def main():
             for p in c['pairs']:
                 print(f"    {p['left']} ↔ {p['right']} (sim={p['similarity']})")
     else:
-        print(f"❌ Alma 36 NOT found")
+        print("❌ Alma 36 NOT found")
         # Show what the best alma candidates are
         alma_cands = [c for c in all_candidates if c["book"] == "alma"][:5]
         if alma_cands:
-            print(f"  Best Alma candidates instead:")
+            print("  Best Alma candidates instead:")
             for c in alma_cands:
                 print(f"    {c['start']} → {c['end']} (z={c['z_score']:.2f})")
-    
+
     # Store
     conn.execute("PRAGMA foreign_keys=OFF")
     stored = 0
@@ -230,12 +234,12 @@ def main():
         ).fetchone()
         if existing:
             continue
-        
+
         conn.execute(
-            """INSERT OR IGNORE INTO known_chiasms 
-               (book_id, start_verse, end_verse, pivot_verse, chiasm_type, scholar, 
+            """INSERT OR IGNORE INTO known_chiasms
+               (book_id, start_verse, end_verse, pivot_verse, chiasm_type, scholar,
                 confidence, discovered_by, notes, reference)
-               VALUES (?, ?, ?, ?, 'neural_contrast', 'algorithm_v2', 
+               VALUES (?, ?, ?, ?, 'neural_contrast', 'algorithm_v2',
                        ?, 'algorithm', ?, ?)""",
             (c["book"], c["start"], c["end"], c["pivot"],
              min(c["z_score"] / 10.0, 1.0),
@@ -243,11 +247,11 @@ def main():
              ref)
         )
         stored += 1
-    
+
     conn.commit()
     conn.execute("PRAGMA foreign_keys=ON")
     conn.close()
-    
+
     print(f"\nStored {stored} new chiasms in known_chiasms")
 
 

@@ -17,10 +17,13 @@ Usage:
   ./run.sh link_entities          # after adding to run.sh
 """
 
-import sys, os, re
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, DEFAULT_DB_PATH
+from lib.db import get_db
 
 
 def get_entity_name_variants(row):
@@ -83,7 +86,6 @@ def main():
 
         for vid, text_en, text_he, text_gr in verse_batch:
             match_confidence = 0.0
-            matched_variant = ""
 
             for variant in variants:
                 if not variant:
@@ -98,7 +100,6 @@ def main():
                         conf = 0.7  # exact English word match is strong
                         if conf > match_confidence:
                             match_confidence = conf
-                            matched_variant = "english"
                     else:
                         # Also check for partial word match (e.g., "Abraham" in "Abraham's")
                         partial_pattern = re.compile(re.escape(v_lower), re.IGNORECASE)
@@ -106,7 +107,6 @@ def main():
                             conf = 0.5  # partial match is weaker
                             if conf > match_confidence:
                                 match_confidence = conf
-                                matched_variant = "english_partial"
 
                 elif text_en and len(variant.split()) > 1:
                     # Multi-word name — exact phrase match
@@ -115,23 +115,18 @@ def main():
                         conf = 0.8  # multi-word exact phrase is very strong
                         if conf > match_confidence:
                             match_confidence = conf
-                            matched_variant = "english_phrase"
 
                 # Hebrew exact match (already consonantal)
-                if text_he and variant and any('\u0590' <= c <= '\u05FF' for c in variant):
-                    if variant in text_he:
-                        conf = 0.85  # Hebrew text match is strong
-                        if conf > match_confidence:
-                            match_confidence = conf
-                            matched_variant = "hebrew"
+                if text_he and variant and any('\u0590' <= c <= '\u05FF' for c in variant) and variant in text_he:
+                    conf = 0.85  # Hebrew text match is strong
+                    if conf > match_confidence:
+                        match_confidence = conf
 
                 # Greek exact match
-                if text_gr and variant and any('\u0370' <= c <= '\u03FF' for c in variant):
-                    if variant in text_gr:
-                        conf = 0.75  # Greek text match
-                        if conf > match_confidence:
-                            match_confidence = conf
-                            matched_variant = "greek"
+                if text_gr and variant and any('\u0370' <= c <= '\u03FF' for c in variant) and variant in text_gr:
+                    conf = 0.75  # Greek text match
+                    if conf > match_confidence:
+                        match_confidence = conf
 
             if match_confidence > 0:
                 try:

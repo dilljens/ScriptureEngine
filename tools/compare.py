@@ -6,21 +6,18 @@ Compare two scripture passages side by side.
 Usage: python3 compare.py '{"verse_a": "gen.1.1", "verse_b": "john.1.1"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db, get_gematria_for_verse, get_verse_gematria_total
-from lib.gematria import find_divine_name_matches, SACRED_NUMBERS
+from lib.gematria import SACRED_NUMBERS, find_divine_name_matches
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     verse_a = args.get("verse_a", "")
     verse_b = args.get("verse_b", "")

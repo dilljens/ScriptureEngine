@@ -7,9 +7,9 @@ Usage: python3 intertext.py '{"verse": "isa.6.1"}'
        python3 intertext.py '{"verse": "isa.6.1", "direction": "both"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -18,10 +18,7 @@ from lib.retrieval import get_intertextual_chain
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     verse_id = args.get("verse", "")
     direction = args.get("direction", "both")

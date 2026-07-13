@@ -5,11 +5,11 @@ Saves every message, extracts verse references, detects connections
 (both retrieved from the graph and newly discovered by the LLM).
 """
 
+import contextlib
 import json
 import re
 import uuid
 from datetime import datetime
-
 
 # ─── Verse Reference Extraction ───
 
@@ -24,7 +24,7 @@ BOOK_ALIASES = {
     "joshua": "josh", "josh": "josh",
     "judges": "judg", "judg": "judg",
     "ruth": "ruth",
-    "1samuel": "1sam", "1sam": "1sam", "1sam": "1sam",
+    "1samuel": "1sam", "1sam": "1sam",
     "2samuel": "2sam", "2sam": "2sam",
     "1kings": "1kgs", "1kgs": "1kgs",
     "2kings": "2kgs", "2kgs": "2kgs",
@@ -156,7 +156,7 @@ def _extract_text_refs(text, seen):
 
     # Find book/chapter/verse patterns
     # Look for patterns like: "Genesis 1:1", "isa 55:6", "1 Nephi 3:7"
-    for i, (word, ws, we) in enumerate(word_positions):
+    for i, (word, _ws, we) in enumerate(word_positions):
         # Check if this word starts a "Chapter:Verse" or "Chapter:verse" pattern
         cv_match = REF_CHAPTER_VERSE.match(word)
         if not cv_match:
@@ -190,7 +190,7 @@ def _extract_text_refs(text, seen):
 
 def extract_verse_refs(text):
     """Extract verse references from text.
-    
+
     Returns list of {"verse_id": str, "context": str} dicts.
     Supports: gen.1.1, gen 1:1, Genesis 1:1, 1ne 3:7, etc.
     """
@@ -357,7 +357,7 @@ def delete_session(conn, session_id):
 
 def add_message(conn, session_id, role, content, metadata=None):
     """Add a message to a session. Auto-extracts verse refs.
-    
+
     If metadata contains a "connections" key, those are also saved.
     """
     metadata = metadata or {}
@@ -375,13 +375,11 @@ def add_message(conn, session_id, role, content, metadata=None):
     valid_refs = validate_refs(conn, raw_refs)
 
     for ref in valid_refs:
-        try:
+        with contextlib.suppress(Exception):
             conn.execute("""
                 INSERT OR IGNORE INTO conversation_refs (session_id, message_id, verse_id, context, confidence)
                 VALUES (?, ?, ?, ?, ?)
             """, (session_id, message_id, ref["verse_id"], ref["context"], 1.0))
-        except Exception:
-            pass  # Gracefully skip invalid refs
 
     # Handle connections from metadata
     connections = metadata.get("connections", [])

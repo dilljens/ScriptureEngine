@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 import CardQueue from './CardQueue'
 import { lessonToCards } from '../lib/card-factory'
@@ -218,7 +219,7 @@ export default function LearnView({ userId = 'default', onBack }) {
             prose-strong:text-neutral-800 dark:prose-strong:text-neutral-200
             prose-code:text-[11px] prose-code:bg-neutral-100 dark:prose-code:bg-neutral-800 prose-code:px-1 prose-code:rounded
             p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700 max-h-80 overflow-y-auto">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
               {preprocess(currentModule.lesson_content || '')}
             </ReactMarkdown>
           </div>
@@ -245,7 +246,7 @@ export default function LearnView({ userId = 'default', onBack }) {
           <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">📖 Related Wiki Articles</h3>
             <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
                 {preprocess(currentModule.related_wiki || '')}
               </ReactMarkdown>
             </div>

@@ -9,13 +9,16 @@ and CLI (tools/verse.py).
 import json
 import unicodedata
 from collections import defaultdict
-from lib.db import get_connections_by_layer, get_gematria_for_verse, get_verse_gematria_total
-from lib.controls.calibration import get_quality_stars, get_quality_color
-from lib.hebrew_util import transliterate, rtl_mark, strip_cantillation, clean_hebrew as clean_heb
-from lib.greek_util import transliterate as greek_translit, clean_greek
-from lib.morphology import parse as parse_morph
-from lib.lexicon import normalize_lemma
+
 from lib.api.consensus import get_consensus
+from lib.controls.calibration import get_quality_color, get_quality_stars
+from lib.db import get_connections_by_layer, get_gematria_for_verse, get_verse_gematria_total
+from lib.greek_util import clean_greek
+from lib.greek_util import transliterate as greek_translit
+from lib.hebrew_util import clean_hebrew as clean_heb
+from lib.hebrew_util import rtl_mark, transliterate
+from lib.lexicon import normalize_lemma
+from lib.morphology import parse as parse_morph
 
 
 def lookup_verse(conn, book, chapter, verse, version=None):
@@ -61,7 +64,7 @@ def lookup_verse(conn, book, chapter, verse, version=None):
                 heb_map[raw] = base
     if heb_map:
         all_bases = list(set(heb_map.values()))
-        placeholders = ",".join("?" for _ in all_bases)
+        ",".join("?" for _ in all_bases)
         # Search both numeric and H-prefixed forms
         search_terms = []
         for b in all_bases:
@@ -102,9 +105,9 @@ def lookup_verse(conn, book, chapter, verse, version=None):
             if row and row["definition"]:
                 gk_defs[gk_lemma] = row["definition"]
         for w in greek_words:
-            l = w.get("lemma", "")
-            if l in gk_defs:
-                w["definition"] = gk_defs[l][:100]
+            lemma = w.get("lemma", "")
+            if lemma in gk_defs:
+                w["definition"] = gk_defs[lemma][:100]
 
     # Morphology parsing for gematria_words and greek_words
     for w in gematria_words:
@@ -267,7 +270,7 @@ def study_verse(conn, verse, max_reachable=10):
 
     from lib.api.graph import graph_entities, graph_reachable
     from lib.api.sources import get_sources_for_verse
-    from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
+    from lib.connections.pardes import get_pardes_level
 
     # Add entities
     entities = graph_entities(conn, verse, min_confidence=0.3)
@@ -303,7 +306,7 @@ def study_verse(conn, verse, max_reachable=10):
         # Count by quality level across all connection types
         quality_counts = defaultdict(int)
         for layer_data in base["connections"].values():
-            for type_name, type_conns in layer_data.get("types", {}).items():
+            for _type_name, type_conns in layer_data.get("types", {}).items():
                 for c in type_conns:
                     q = c.get("quality", {}).get("level", "suggested")
                     quality_counts[q] += 1

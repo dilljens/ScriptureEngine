@@ -48,7 +48,9 @@ The canonical JSON format for a study:
 }
 """
 
-import json, uuid, re, textwrap
+import json
+import re
+import uuid
 from datetime import datetime
 
 
@@ -92,11 +94,11 @@ def _get_connections_from(conn, verse_id, limit=5):
 
 def _enrich_step(conn, step):
     """Add verse text, book title, and full graph path data to a step.
-    
+
     Args:
         conn: DB connection
         step: dict with at least {verse, [connection_from, connection_type, ...]}
-    
+
     Returns: enriched step dict
     """
     verse_text, book_title = _get_verse_text(conn, step["verse"])
@@ -175,12 +177,12 @@ def _steps_from_db(conn, guide_id):
 
 def _build_study_json(conn, guide_id, from_db=False):
     """Build the canonical JSON blob for a study guide.
-    
+
     Args:
         guide_id: Study guide ID
         from_db: If True, always read from the steps table (ignore content_json cache).
                  Use this when the steps have been modified and content_json is stale.
-    
+
     Normally pulls from the content_json column (preferred),
     otherwise builds from the legacy study_guide_steps table.
     """
@@ -228,7 +230,7 @@ def _summarize_graph(steps):
             hubs.add(c.get("to", ""))
     return {
         "total_connections": total,
-        "unique_layers": sorted(l for l in all_layers if l),
+        "unique_layers": sorted(layer for layer in all_layers if layer),
         "hub_verses": sorted(h for h in hubs if h)[:20],
     }
 
@@ -238,14 +240,14 @@ def _summarize_graph(steps):
 
 def update_guide(conn, guide_id, title=None, description=None, theme=None, seed_verse=None):
     """Update study guide metadata.
-    
+
     Args:
         guide_id: Study guide ID
         title: New title (or None to keep)
         description: New description
         theme: New theme
         seed_verse: New seed verse
-    
+
     Returns: dict with guide_id
     """
     fields = {}
@@ -253,24 +255,24 @@ def update_guide(conn, guide_id, title=None, description=None, theme=None, seed_
     if description is not None: fields["description"] = description
     if theme is not None: fields["theme"] = theme
     if seed_verse is not None: fields["seed_verse"] = seed_verse
-    
+
     if fields:
         sets = ", ".join(f"{k} = ?" for k in fields)
         vals = list(fields.values())
         vals.append(guide_id)
         conn.execute(f"UPDATE study_guides SET {sets}, updated_at = datetime('now') WHERE id = ?", vals)
         conn.commit()
-    
+
     return {"guide_id": guide_id}
 
 
 def remove_step(conn, guide_id, step_number):
     """Remove a step from a study guide.
-    
+
     Args:
         guide_id: Study guide ID
         step_number: Step number to remove
-    
+
     Returns: dict confirming removal
     """
     conn.execute(
@@ -296,11 +298,11 @@ def remove_step(conn, guide_id, step_number):
 
 def reorder_steps(conn, guide_id, step_order):
     """Reorder steps in a study guide.
-    
+
     Args:
         guide_id: Study guide ID
         step_order: List of step IDs in the new order
-    
+
     Returns: dict with guide_id
     """
     for i, step_id in enumerate(step_order):
@@ -315,14 +317,14 @@ def reorder_steps(conn, guide_id, step_order):
 
 def bulk_update_steps(conn, guide_id, steps):
     """Replace all steps of a study guide.
-    
+
     Deletes existing steps and inserts the new ones.
     Handles re-numbering automatically.
-    
+
     Args:
         guide_id: Study guide ID
         steps: List of step dicts
-    
+
     Returns: dict with guide_id, step_count
     """
     conn.execute("DELETE FROM study_guide_steps WHERE study_guide_id = ?", (guide_id,))
@@ -412,7 +414,7 @@ def add_step(conn, guide_id, step_number, verse_id, title="", explanation="",
             choices_json = excluded.choices_json
     """, (guide_id, step_number, verse_id, title, explanation,
           connection_from, connection_type, connection_layer, choices_json))
-    
+
     # Sync content_json
     _sync_content_json(conn, guide_id)
     conn.commit()
@@ -494,9 +496,7 @@ def suggest_path(conn, seed_verse, theme=""):
         weighted = []
         for c in direct:
             score = c["strength"]
-            if theme == "angel_of_the_lord" and "malach" in (c.get("type", "") or "").lower():
-                score *= 1.5
-            elif theme == "covenant" and "covenant" in (c.get("type", "") or "").lower():
+            if theme == "angel_of_the_lord" and "malach" in (c.get("type", "") or "").lower() or theme == "covenant" and "covenant" in (c.get("type", "") or "").lower():
                 score *= 1.5
             weighted.append((score, dict(c)))
         weighted.sort(key=lambda x: -x[0])
@@ -559,7 +559,7 @@ def export_json(conn, guide_id, from_db=False):
 
 def import_json(conn, json_str, created_by="user"):
     """Import a study from a JSON string.
-    
+
     Creates a new study guide with all steps populated from the JSON.
     Supports the scripture-study-v1 format.
 

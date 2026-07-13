@@ -1,9 +1,9 @@
 """Study guide routes — thematic + user + published."""
-import json, os
+import json
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -17,15 +17,43 @@ def get_db():
 
 # Study API functions — imported at module level so route functions can use them
 from lib.api.study import (
-    create_guide, get_guide, list_guides, update_guide as study_update,
-    add_step as study_add_step, remove_step as study_remove_step,
-    reorder_steps as study_reorder, bulk_update_steps as study_bulk_update,
-    export_json as study_export_json,
-    export_html as study_export_html, import_json as study_import_json,
-    publish_study as study_publish, get_published as study_get_published,
-    list_published as study_list_published, fork_published as study_fork,
+    add_step as study_add_step,
 )
-
+from lib.api.study import (
+    bulk_update_steps as study_bulk_update,
+)
+from lib.api.study import (
+    create_guide,
+    get_guide,
+    list_guides,
+)
+from lib.api.study import (
+    export_html as study_export_html,
+)
+from lib.api.study import (
+    export_json as study_export_json,
+)
+from lib.api.study import (
+    fork_published as study_fork,
+)
+from lib.api.study import (
+    get_published as study_get_published,
+)
+from lib.api.study import (
+    import_json as study_import_json,
+)
+from lib.api.study import (
+    list_published as study_list_published,
+)
+from lib.api.study import (
+    publish_study as study_publish,
+)
+from lib.api.study import (
+    remove_step as study_remove_step,
+)
+from lib.api.study import (
+    update_guide as study_update,
+)
 
 # ─── Thematic Study Guides ───
 
@@ -256,7 +284,6 @@ def download_published_study_json(slug: str):
     if not result:
         return {"ok": False, "error": f"Published study '{slug}' not found"}
     from fastapi.responses import Response
-    import json
     return Response(content=json.dumps(result, indent=2, ensure_ascii=False),
                     media_type="application/json",
                     headers={"Content-Disposition": f'attachment; filename="{slug}.json"'})

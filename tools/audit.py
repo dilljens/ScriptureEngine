@@ -10,22 +10,25 @@ Usage:
   python3 audit.py '{"connection_id": 12345}'
 """
 
-import sys, json, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db
 from lib.controls.calibration import QUALITY_LEVELS
+from lib.db import get_db
 
 
 def audit_connection(conn, c):
     """Build a full audit report for one connection."""
     r = dict(c)
-    
+
     quality = r.get("quality_level", "unknown")
     qinfo = QUALITY_LEVELS.get(quality, {
         "label": quality, "emoji": "❓", "color": "#999",
     })
-    
+
     report = {
         "id": r["id"],
         "type": r["type"],
@@ -55,7 +58,7 @@ def audit_connection(conn, c):
         "deprecation_reason": r.get("deprecation_reason", ""),
         "metadata": r.get("metadata", "{}"),
     }
-    
+
     # Get verse texts
     for vid_key in ("source_verse", "target_verse"):
         vid = r[vid_key]
@@ -64,7 +67,7 @@ def audit_connection(conn, c):
         """, (vid,)).fetchone()
         if vrow:
             report[f"{vid_key}_text"] = vrow["text_english"][:200]
-    
+
     return report
 
 

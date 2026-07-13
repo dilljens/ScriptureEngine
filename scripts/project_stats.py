@@ -11,8 +11,8 @@ Usage:
     python3 scripts/project_stats.py --check    # Check if DB is available
 """
 
-import sqlite3
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -54,7 +54,7 @@ def count_http_endpoints():
     content = server_path.read_text()
     # Count app-level endpoints
     app_routes = re.findall(r'@app\.(?:get|post|put|delete|patch)\(', content)
-    
+
     # Count router-level endpoints
     routes_dir = PROJECT_ROOT / "web" / "routes"
     router_routes = 0
@@ -62,103 +62,103 @@ def count_http_endpoints():
         for rf in sorted(routes_dir.glob("*.py")):
             rc = rf.read_text()
             router_routes += len(re.findall(r'@router\.(?:get|post|put|delete|patch)\(', rc))
-    
+
     return len(app_routes) + router_routes, len(app_routes), router_routes
 
 
 def query_db(conn):
     """Query all statistics from the live database."""
     stats = {}
-    
+
     # Total connections
     row = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()
     stats["total_connections"] = row["c"]
-    
+
     # Unique source verses
     row = conn.execute("SELECT COUNT(DISTINCT source_verse) as c FROM connections").fetchone()
     stats["unique_source_verses"] = row["c"]
-    
+
     # Unique target verses
     row = conn.execute("SELECT COUNT(DISTINCT target_verse) as c FROM connections").fetchone()
     stats["unique_target_verses"] = row["c"]
-    
+
     # Layers + counts
     layers = conn.execute(
         "SELECT layer, COUNT(*) as c FROM connections GROUP BY layer ORDER BY c DESC"
     ).fetchall()
     stats["layers"] = {r["layer"]: r["c"] for r in layers}
     stats["layer_count"] = len(layers)
-    
+
     # Connection types
     types = conn.execute(
         "SELECT type, COUNT(*) as c FROM connections GROUP BY type ORDER BY c DESC"
     ).fetchall()
     stats["connection_types"] = {r["type"]: r["c"] for r in types}
     stats["type_count"] = len(types)
-    
+
     # Subtypes
     subtypes = conn.execute(
         "SELECT subtype, COUNT(*) as c FROM connections WHERE subtype IS NOT NULL AND subtype != '' GROUP BY subtype ORDER BY c DESC"
     ).fetchall()
     stats["subtype_count"] = len(subtypes)
     stats["subtypes"] = {r["subtype"]: r["c"] for r in subtypes[:20]}  # top 20
-    
+
     # Quality distribution
     quality = conn.execute(
         "SELECT quality_level, COUNT(*) as c FROM connections GROUP BY quality_level ORDER BY quality_level"
     ).fetchall()
     stats["quality_distribution"] = {str(r["quality_level"]): r["c"] for r in quality}
-    
+
     # Total verses
     row = conn.execute("SELECT COUNT(*) as c FROM verses").fetchone()
     stats["total_verses"] = row["c"]
-    
+
     # Verses by work
     works = conn.execute("""
-        SELECT w.id, w.title, COUNT(*) as c 
-        FROM verses v 
-        JOIN books b ON b.id = v.book_id 
-        JOIN works w ON w.id = b.work_id 
-        GROUP BY w.id 
+        SELECT w.id, w.title, COUNT(*) as c
+        FROM verses v
+        JOIN books b ON b.id = v.book_id
+        JOIN works w ON w.id = b.work_id
+        GROUP BY w.id
         ORDER BY w.id
     """).fetchall()
     stats["verses_by_work"] = {r["title"]: r["c"] for r in works}
     stats["work_count"] = len(works)
-    
+
     # Books
     row = conn.execute("SELECT COUNT(*) as c FROM books").fetchone()
     stats["total_books"] = row["c"]
-    
+
     # Entities
     row = conn.execute("SELECT COUNT(*) as c FROM entity_links").fetchone()
     stats["total_entities"] = row["c"]
-    
+
     # Verse-entity links
     try:
         row = conn.execute("SELECT COUNT(*) as c FROM verse_entities").fetchone()
         stats["verse_entity_links"] = row["c"]
     except sqlite3.OperationalError:
         stats["verse_entity_links"] = 0
-    
+
     # Gematria
     row = conn.execute("SELECT COUNT(*) as c FROM gematria").fetchone()
     stats["hebrew_gematria_entries"] = row["c"]
-    
+
     row = conn.execute("SELECT COUNT(*) as c FROM gematria_greek").fetchone()
     stats["greek_isopsephy_entries"] = row["c"]
-    
+
     # Passage guides
     row = conn.execute("SELECT COUNT(*) as c FROM passage_guides").fetchone()
     stats["passage_guides"] = row["c"]
-    
+
     # Study guides
     row = conn.execute("SELECT COUNT(*) as c FROM study_guides").fetchone()
     stats["study_guides"] = row["c"]
-    
+
     # Published studies
     row = conn.execute("SELECT COUNT(*) as c FROM published_studies").fetchone()
     stats["published_studies"] = row["c"]
-    
+
     return stats
 
 
@@ -168,7 +168,7 @@ def print_report(stats):
     print("  SCRIPTURE KNOWLEDGE ENGINE — Project Statistics")
     print("=" * 60)
     print()
-    
+
     # Connection graph
     print("── Connection Graph ──")
     print(f"  Total connections:    {stats['total_connections']:,}")
@@ -178,17 +178,17 @@ def print_report(stats):
     print(f"  Connection types:     {stats['type_count']}")
     print(f"  Subtypes:             {stats['subtype_count']}")
     print()
-    
+
     print("  Connections by layer:")
     for layer, count in sorted(stats['layers'].items(), key=lambda x: -x[1]):
         print(f"    {layer:20s}  {count:>10,}")
     print()
-    
+
     print("  Quality distribution:")
     for level, count in stats['quality_distribution'].items():
         print(f"    Level {level:12s}  {count:>10,}")
     print()
-    
+
     # Verses
     print("── Verses ──")
     print(f"  Total verses: {stats['total_verses']:,}")
@@ -198,26 +198,26 @@ def print_report(stats):
     for work, count in stats['verses_by_work'].items():
         print(f"    {work:30s}  {count:>6,}")
     print()
-    
+
     # Entities
     print("── Entities ──")
     print(f"  Entity definitions: {stats['total_entities']}")
     print(f"  Verse-entity links: {stats['verse_entity_links']:,}")
     print()
-    
+
     # Gematria
     print("── Gematria ──")
     print(f"  Hebrew gematria entries:   {stats['hebrew_gematria_entries']:,}")
     print(f"  Greek isopsephy entries:   {stats['greek_isopsephy_entries']:,}")
     print()
-    
+
     # Guides
     print("── Study Guides ──")
     print(f"  Passage guides:  {stats['passage_guides']:,}")
     print(f"  Study guides:    {stats['study_guides']:,}")
     print(f"  Published:       {stats['published_studies']:,}")
     print()
-    
+
     # Tools
     print("── MCP / HTTP Tools ──")
     print(f"  Registered MCP tools:     {stats['tool_count']}")
@@ -275,11 +275,11 @@ if __name__ == "__main__":
     # Always count tools and endpoints (no DB needed)
     tool_count, tool_names = count_tools()
     http_total, http_app, http_routes = count_http_endpoints()
-    
+
     if "--check" in sys.argv:
         print(json.dumps({"available": db_available(), "db_path": str(DEFAULT_DB_PATH)}))
         sys.exit(0)
-    
+
     if db_available():
         conn = get_conn()
         stats = query_db(conn)
@@ -287,10 +287,10 @@ if __name__ == "__main__":
         stats["source"] = "live_db"
     else:
         print(f"NOTE: Database not found at {DEFAULT_DB_PATH}", file=sys.stderr)
-        print(f"Using fallback stats from AGENTS.md (approximate)\n", file=sys.stderr)
+        print("Using fallback stats from AGENTS.md (approximate)\n", file=sys.stderr)
         stats = get_fallback_stats()
         stats["source"] = "fallback_agents_md"
-    
+
     stats["tool_count"] = tool_count
     stats["tool_names"] = tool_names
     stats["http_endpoints"] = http_total
@@ -299,12 +299,12 @@ if __name__ == "__main__":
     stats["generator_count"] = len(list(PROJECT_ROOT.glob("generators/*.py"))) - 1  # exclude __init__
     stats["cli_tool_count"] = len(list(PROJECT_ROOT.glob("tools/*.py"))) - 1
     stats["script_count"] = len(list(PROJECT_ROOT.glob("scripts/*.py")))
-    
+
     if "--json" in sys.argv:
         print(json.dumps(stats, indent=2, default=str))
     else:
         print_report(stats)
-    
+
     # Summary line for easy parsing
     print(f"SUMMARY: {stats['total_connections']:,} connections · {stats['layer_count']} layers · {stats['type_count']} types · "
           f"{stats['total_verses']:,} verses · {stats['work_count']} works · "

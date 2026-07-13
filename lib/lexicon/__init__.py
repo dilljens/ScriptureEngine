@@ -12,8 +12,7 @@ for the initial build. LLM-defined definitions are added in a later phase.
 
 import json
 import re
-from collections import Counter, defaultdict
-from ..db import get_db
+from collections import defaultdict
 
 # ─── Lexicon Tables ───
 
@@ -71,7 +70,7 @@ def init_lexicon_tables(conn):
 
 def normalize_lemma(raw_lemma):
     """Strip prefixes to get base Strong's number.
-    
+
     Handles:
       'c/853' → '853', 'd/776' → '776' (letter + slash)
       'H430' → '430', 'G2316' → '2316' (Strong's letter prefix)
@@ -94,9 +93,9 @@ def normalize_lemma(raw_lemma):
 
 def extract_root(hebrew_word):
     """Extract likely triconsonantal root from a Hebrew word.
-    
+
     Heuristic: takes the last 3-4 consonants (most Hebrew roots are 3-4
-    letters at the end of the word). Does NOT strip prefixes, as that 
+    letters at the end of the word). Does NOT strip prefixes, as that
     requires proper morphological analysis.
     """
     if not hebrew_word:
@@ -115,26 +114,26 @@ def extract_root(hebrew_word):
 
 def build_lexicon(conn):
     """Build the lexicon table from the gematria table.
-    
+
     Algorithmic only — extracts lemmas, Hebrew, frequencies, morphology.
     Definitions are added later by LLM.
-    
+
     Returns stats dict.
     """
     stats = {"lemmas": 0, "collocations": 0}
-    
+
     # Ensure tables exist
     init_lexicon_tables(conn)
-    
+
     # Clear existing data for rebuild
     conn.execute("DELETE FROM lexicon")
     conn.execute("DELETE FROM word_collocations")
     conn.commit()
-    
+
     # ── Step 1: Extract unique lemmas with Hebrew, English, morphology ──
-    
+
     rows = conn.execute("""
-        SELECT 
+        SELECT
             lemma,
             word_hebrew,
             word_english,
@@ -148,20 +147,20 @@ def build_lexicon(conn):
         GROUP BY lemma
         ORDER BY occurrence_count DESC
     """).fetchall()
-    
+
     batch = []
     for r in rows:
         raw_lemma = r["lemma"]
         base_lemma = normalize_lemma(raw_lemma)
         hebrew = (r["word_hebrew"] or "").strip()
-        english = (r["word_english"] or "").strip()
+        (r["word_english"] or "").strip()
         morph = (r["morph"] or "").strip()
         freq = r["occurrence_count"]
-        book_count = r["book_count"]
-        
+        r["book_count"]
+
         # Extract root from Hebrew
         root = extract_root(hebrew)
-        
+
         batch.append((
             base_lemma, hebrew, "",    # lemma, hebrew, transliteration
             "",                        # part_of_speech
@@ -177,33 +176,33 @@ def build_lexicon(conn):
             0,                         # reviewed
             "{}",                      # metadata
         ))
-        
+
         if len(batch) >= 500:
             _insert_lexicon_batch(conn, batch)
             batch = []
-    
+
     if batch:
         _insert_lexicon_batch(conn, batch)
-    
+
     stats["lemmas"] = len(batch)  # approximate, actual count from SQL
-    
+
     # ── Step 2: Count actual inserted lemmas ──
     stats["lemmas"] = conn.execute("SELECT COUNT(*) as c FROM lexicon").fetchone()["c"]
-    
+
     # ── Step 3: Compute per-book frequency ──
     _update_book_frequencies(conn)
-    
+
     # ── Step 4: Build collocations (co-occurring lemmas within verses) ──
     stats["collocations"] = _build_collocations(conn)
-    
+
     conn.commit()
     return stats
 
 
 def _insert_lexicon_batch(conn, batch):
     conn.executemany("""
-        INSERT OR IGNORE INTO lexicon 
-            (lemma, hebrew, transliteration, part_of_speech, root_letters, 
+        INSERT OR IGNORE INTO lexicon
+            (lemma, hebrew, transliteration, part_of_speech, root_letters,
              semantic_domain, definition, definition_source,
              frequency, frequency_per_book, books_list, morphology,
              ai_generated, reviewed, metadata)
@@ -220,13 +219,13 @@ def _update_book_frequencies(conn):
         JOIN verses v ON v.id = g.verse_id
         GROUP BY l.lemma, v.book_id
     """).fetchall()
-    
+
     by_lemma = defaultdict(dict)
     books_by_lemma = defaultdict(set)
     for r in rows:
         by_lemma[r["lemma"]][r["book_id"]] = r["c"]
         books_by_lemma[r["lemma"]].add(r["book_id"])
-    
+
     for lemma, book_counts in by_lemma.items():
         freq_json = json.dumps(book_counts)
         books_str = ",".join(sorted(books_by_lemma[lemma]))
@@ -238,15 +237,15 @@ def _update_book_frequencies(conn):
 
 def _build_collocations(conn, min_cooccurrence=3):
     """Build word collocations — lemmas that co-occur in the same verse.
-    
+
     Only includes co-occurrences that appear at least min_cooccurrence times
     to avoid noise.
     """
     count = 0
-    
+
     # Find co-occurring lemma pairs within verses
     rows = conn.execute("""
-        SELECT g1.lemma as lemma_a, g2.lemma as lemma_b, 
+        SELECT g1.lemma as lemma_a, g2.lemma as lemma_b,
                v.book_id, COUNT(*) as co_count
         FROM gematria g1
         JOIN gematria g2 ON g2.verse_id = g1.verse_id AND g2.lemma < g1.lemma
@@ -257,7 +256,7 @@ def _build_collocations(conn, min_cooccurrence=3):
         HAVING co_count >= ?
         ORDER BY co_count DESC
     """, (min_cooccurrence,)).fetchall()
-    
+
     batch = []
     for r in rows:
         a = normalize_lemma(r["lemma_a"])
@@ -269,10 +268,10 @@ def _build_collocations(conn, min_cooccurrence=3):
             if len(batch) >= 500:
                 _insert_collocation_batch(conn, batch)
                 batch = []
-    
+
     if batch:
         _insert_collocation_batch(conn, batch)
-    
+
     return count
 
 
@@ -290,13 +289,13 @@ def get_lexicon_entry(conn, lemma):
     """, (lemma,)).fetchone()
     if not row:
         return None
-    
+
     entry = dict(row)
     try:
         entry["frequency_per_book"] = json.loads(entry.get("frequency_per_book", "{}"))
     except (json.JSONDecodeError, TypeError):
         entry["frequency_per_book"] = {}
-    
+
     # Get collocations
     collocations = conn.execute("""
         SELECT word_a, word_b, book_id, frequency FROM word_collocations
@@ -305,13 +304,13 @@ def get_lexicon_entry(conn, lemma):
         LIMIT 20
     """, (lemma, lemma)).fetchall()
     entry["collocations"] = [dict(r) for r in collocations]
-    
+
     return entry
 
 
 def search_lexicon(conn, query, limit=20):
     """Search lexicon by lemma (Strong's number), Hebrew text, or English word.
-    
+
     Searches across:
     - Lemma number: '3068' → YHWH
     - Hebrew text: 'יהוה' → matches both niqqud and plain
@@ -320,7 +319,7 @@ def search_lexicon(conn, query, limit=20):
     query = query.strip()
     if not query:
         return []
-    
+
     # Try English search via lemma_gloss table first
     eng_rows = conn.execute("""
         SELECT l.lemma, l.hebrew, l.transliteration, l.part_of_speech,
@@ -333,10 +332,10 @@ def search_lexicon(conn, query, limit=20):
     """, (f"%{query}%", limit)).fetchall()
     if eng_rows:
         return [dict(r) for r in eng_rows]
-    
+
     # Search by lemma or Hebrew (including niqqud-stripped)
     rows = conn.execute("""
-        SELECT l.lemma, l.hebrew, l.transliteration, l.part_of_speech, 
+        SELECT l.lemma, l.hebrew, l.transliteration, l.part_of_speech,
                l.root_letters, l.frequency, l.semantic_domain,
                lg.english_gloss
         FROM lexicon l
@@ -344,7 +343,7 @@ def search_lexicon(conn, query, limit=20):
         WHERE l.lemma = ? OR l.hebrew LIKE ? OR l.hebrew_plain LIKE ? OR l.lemma LIKE ?
         LIMIT ?
     """, (query, f"%{query}%", f"%{query}%", f"%{query}%", limit)).fetchall()
-    
+
     return [dict(r) for r in rows]
 
 

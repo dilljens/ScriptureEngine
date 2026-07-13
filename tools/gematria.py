@@ -8,16 +8,20 @@ Usage: python3 gematria.py '{"word": "יהוה"}'
        python3 gematria.py '{"value": 26, "system": "standard"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_gematria_for_verse, find_matching_gematria
-from lib.gematria import (compute_all, find_divine_name_matches,
-                          is_sacred_number, DIVINE_NAMES,
-                          get_divine_names_table, SACRED_NUMBERS)
+from lib.db import find_matching_gematria, get_db, get_gematria_for_verse
+from lib.gematria import (
+    SACRED_NUMBERS,
+    compute_all,
+    find_divine_name_matches,
+    get_divine_names_table,
+    is_sacred_number,
+)
 from lib.hebrew_util import rtl_mark, transliterate
 
 
@@ -140,10 +144,7 @@ def value_search(value, system="standard", limit=30):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     if "word" in args:
         result = word_lookup(args["word"])

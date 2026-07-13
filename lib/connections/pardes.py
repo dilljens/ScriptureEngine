@@ -195,7 +195,7 @@ for _layer, _types in TYPE_PARDES.items():
 
 def get_pardes_level_for_type(type_name):
     """Get the PaRDeS level for a connection type name alone.
-    
+
     Since every connection type belongs to exactly one layer in TYPE_PARDES,
     this is safe for all defined types. Unknown types default to 'p'shat'.
     """
@@ -204,10 +204,10 @@ def get_pardes_level_for_type(type_name):
 
 def get_connections_by_level(conn_by_layer):
     """Group connection summary by PaRDeS level instead of layer.
-    
+
     Args:
         conn_by_layer: dict from get_connections_by_layer() or similar
-    
+
     Returns:
         {level_name: {count, types, connections_by_type}}
     """
@@ -218,7 +218,7 @@ def get_connections_by_level(conn_by_layer):
         "sod": _empty_level("sod"),
         "unmapped": _empty_level(None),
     }
-    
+
     for layer_name, layer_data in conn_by_layer.items():
         if isinstance(layer_data, dict) and "types" in layer_data:
             # From get_all_layers_for_verse format
@@ -241,7 +241,7 @@ def get_connections_by_level(conn_by_layer):
                 result[level]["count"] += 1
                 if layer_name not in result[level]["layers"]:
                     result[level]["layers"].append(layer_name)
-    
+
     return result
 
 
@@ -260,13 +260,12 @@ def _empty_level(level_name):
 
 def get_layer_stats(conn):
     """Get statistics about connections grouped by PaRDeS level."""
-    from ..db import get_db
     rows = conn.execute("""
         SELECT layer, type, COUNT(*) as c
         FROM connections
         GROUP BY layer, type
     """).fetchall()
-    
+
     stats = {
         "p'shat": _empty_level("p'shat"),
         "remez": _empty_level("remez"),
@@ -274,7 +273,7 @@ def get_layer_stats(conn):
         "sod": _empty_level("sod"),
         "unmapped": _empty_level(None),
     }
-    
+
     for r in rows:
         level = get_pardes_level(r["layer"], r["type"])
         if level not in stats:
@@ -282,5 +281,5 @@ def get_layer_stats(conn):
         stats[level]["count"] += r["c"]
         if r["type"] not in stats[level]["types"]:
             stats[level]["types"].append(r["type"])
-    
+
     return stats

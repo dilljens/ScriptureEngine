@@ -12,15 +12,14 @@ Usage:
   python3 guided_study.py '{"action": "build_tab", "guide_id": 1, "tab_name": "Angel of the Lord"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db
 from lib.connections.graph import find_all_paths, get_connections
-from lib.connections.types import LAYERS
+from lib.db import get_db
 
 
 def create(conn, title, description="", theme="", seed_verse="", created_by="ai"):
@@ -176,7 +175,7 @@ def suggest_path(conn, seed, theme="", max_steps=10):
 
 def build_tab(conn, guide_id, tab_name, parent_tab_id=None):
     """Create a custom tab linked to a study guide."""
-    from lib.db import create_custom_tab, add_tab_content
+    from lib.db import add_tab_content, create_custom_tab
 
     # Create the tab
     tab_id = create_custom_tab(conn, tab_name, parent_id=parent_tab_id,
@@ -195,10 +194,7 @@ def build_tab(conn, guide_id, tab_name, parent_tab_id=None):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     conn = get_db()
     action = args.get("action", "list")

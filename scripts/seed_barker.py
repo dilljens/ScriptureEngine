@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Seed interpretive connections from Margaret Barker's Temple Theology."""
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 INTERPRETATIONS = [
     # Divine Council — angels as sons of God
@@ -86,9 +88,9 @@ def main():
     print("=" * 60)
     print("  Margaret Barker — Temple Theology")
     print("=" * 60)
-    
+
     count = 0
-    for source, target, tradition, typ, note in INTERPRETATIONS:
+    for source, target, tradition, _typ, note in INTERPRETATIONS:
         try:
             add_connection(conn, source, target, layer="interpretive",
                           type_name=INTERP_TYPES.get(tradition, "rabbinic_midrash"),
@@ -99,7 +101,7 @@ def main():
             count += 1
         except Exception:
             pass
-    
+
     conn.commit()
     interp_total = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='interpretive'").fetchone()["c"]
     print(f"  Added {count} Barker connections")

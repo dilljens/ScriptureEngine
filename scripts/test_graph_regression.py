@@ -8,7 +8,7 @@ Usage:
     python3 scripts/test_graph_regression.py
     python3 scripts/test_graph_regression.py --verbose
 """
-import sys, os, json
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -132,7 +132,7 @@ def run_all(verbose=False):
         """)
     }
     if verbose:
-        print(f"\n  Tradition distribution:")
+        print("\n  Tradition distribution:")
         for t, c in sorted(trad_dist.items(), key=lambda x: -x[1]):
             pct = c / total * 100
             print(f"    {t}: {c:,} ({pct:.1f}%)")
@@ -145,7 +145,7 @@ def run_all(verbose=False):
         for f in failures:
             print(f"     ✗ {f}")
     else:
-        print(f"\n  ✅ All graph regression checks passed")
+        print("\n  ✅ All graph regression checks passed")
 
     conn.close()
     return len(failures)

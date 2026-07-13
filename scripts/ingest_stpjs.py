@@ -6,7 +6,11 @@ Extracts ~11,000 scripture cross-references from the book and populates:
   - js_scripture_refs: each reference mapped to a verse in our DB
 """
 
-import sys, os, re, json
+import json
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from lib.db import get_db
 
@@ -57,7 +61,7 @@ BOOK_MAP = {
     "Zech": "zech",
     "Mal": "mal",
     # NT
-    "Matt": "matt", "Matt.": "matt", "Matt": "matt",
+    "Matt": "matt", "Matt.": "matt",
     "Mark": "mark",
     "Luke": "luke",
     "John": "john",
@@ -114,26 +118,26 @@ def lookup_book(abbrev):
     if abbrev in BOOK_MAP:
         bid = BOOK_MAP[abbrev]
         return bid, bid == "dc"
-    
+
     # Try with trailing period stripped
     if abbrev.endswith('.'):
         stripped = abbrev[:-1]
         if stripped in BOOK_MAP:
             bid = BOOK_MAP[stripped]
             return bid, bid == "dc"
-    
+
     # Try without spaces
     no_space = abbrev.replace(' ', '')
     if no_space in BOOK_MAP:
         bid = BOOK_MAP[no_space]
         return bid, bid == "dc"
-    
+
     return None, False
 
 
 def _expand_verse_range(verse_part):
     """Expand a verse range like '44-48' or '12,14' into a list of ints.
-    
+
     Handles: '44-48', '12,14', '12-15', '1,3,5', '1214' (if sep_omitted=True detected).
     Returns list of verse ints.
     """
@@ -154,7 +158,7 @@ def _expand_verse_range(verse_part):
 
 def parse_verse_ref(ref_text):
     """Parse a reference like 'Gen. 1:1' or 'D&C 132:19' into verse ID(s).
-    
+
     Handles:
       - Single: 'Gen. 1:1' → [gen.1.1]
       - Range:  'Alma 5:12-14' → [alma.5.12, alma.5.13, alma.5.14]
@@ -163,11 +167,11 @@ def parse_verse_ref(ref_text):
       - Chapter-only: 'Abraham 3' → [abraham.3.1]
       - D&C: 'D&C 132:19' → [dc132.132.19]
       - D&C (no verse): 'Sec. 88' → [dc88.88.1]
-    
+
     Returns (list_of_verse_ids, is_valid) tuple.
     """
     ref_text = ref_text.strip()
-    
+
     # D&C format: "D&C 132:19" or "D&C 98:12,15" or "Sec. 88"
     dc_match = re.match(r'(?:D&C|Sec)\s*\.?\s*(\d+)(?:[:.](\d[\d,;.\-\s]*\d|\d))?', ref_text)
     if dc_match:
@@ -180,7 +184,7 @@ def parse_verse_ref(ref_text):
             if verses:
                 return [f"dc{section}.{section}.{v}" for v in verses], True
         return [f"dc{section}.{section}.1"], True
-    
+
     # Standard format: "Book Ch:V" — with optional number prefix (e.g., "1 Chr. 13:9-10")
     m = re.match(r'((?:[12]\s*)?[A-Za-z][A-Za-z\s.]+?)\s*(\d+):([\d,\-.\s]+)', ref_text)
     if m:
@@ -202,7 +206,7 @@ def parse_verse_ref(ref_text):
             if is_dc:
                 return [f"dc{chapter}.{chapter}.{v}"], True
             return [f"{bid}.{chapter}.{v}"], True
-    
+
     # Try just "Book Ch" (no verse) — with number prefix
     m2 = re.match(r'((?:[12]\s*)?[A-Za-z][A-Za-z\s.]+?)\s*(\d+)$', ref_text)
     if m2:
@@ -213,61 +217,61 @@ def parse_verse_ref(ref_text):
             if is_dc:
                 return [f"dc{chapter}.{chapter}.1"], True
             return [f"{bid}.{chapter}.1"], True
-    
+
     return [], False
 
 
 def extract_all_refs(text):
     """Extract all scripture references from the extracted text.
-    
+
     Returns a set of (verse_id, original_ref) tuples.
     """
     refs = set()
-    
+
     lines = text.split('\n')
     skip_until_content = True
-    
+
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        
+
         # Skip front matter
         if skip_until_content:
             if line == "TEACHINGS" or "Title Page of The Book of Mormon" in line:
                 skip_until_content = False
             continue
-        
+
         # Remove leading footnote markers: "1. Alma 24:14" or "1 Acts 2:41" or "12. Alma 5:12"
         clean_line = re.sub(r'^\d+\.?\s*', '', line).strip()
-        
+
         # Skip short lines that aren't refs
         if len(clean_line) < 3:
             continue
-        
+
         # Find all book references in this line
         # Capture compound ranges too: "Alma 5:12-14", "D&C 98:12,15", "1 Chr. 13:9-10"
         for m in re.finditer(
             # D&C: D&C 132:19 or D&C 98:12,15
             r'(?:D&C|Sec)\s*\.?\s*\d+(?::[\d,\-.\s]+)?|'
-            # Standard: Gen. 1:1, Alma 5:12-14, 1 Chr. 13:9-10  
+            # Standard: Gen. 1:1, Alma 5:12-14, 1 Chr. 13:9-10
             r'(?:[12]\s*)?[A-Z][a-z]+\.?\s*(?:\d+)(?::[\d,\-.\s]+)?',
             clean_line
         ):
             raw_ref = m.group(0).strip()
-            
+
             # Clean up trailing punctuation/semicolons
             raw_ref = re.sub(r'[;,.\s]+$', '', raw_ref)
-            
+
             # Skip if this looks like a page number or date
             if re.match(r'^\d+$', raw_ref):
                 continue
-            
+
             verse_ids, valid = parse_verse_ref(raw_ref)
             if valid and verse_ids:
                 for vid in verse_ids:
                     refs.add((vid, raw_ref))
-    
+
     return refs
 
 
@@ -276,18 +280,18 @@ def main():
     if not os.path.exists(TEXT_PATH):
         print("Extracting PDF text...")
         os.system(f"pdftotext '{PDF_PATH}' {TEXT_PATH}")
-    
+
     with open(TEXT_PATH) as f:
         text = f.read()
-    
+
     print(f"Loaded {len(text):,} characters")
-    
+
     conn = get_db()
-    
+
     # Create a single source entry for the book
     book_title = "Scriptural Teachings of the Prophet Joseph Smith"
     source_ref = "js.stpjs"
-    
+
     existing = conn.execute("SELECT 1 FROM js_sources WHERE ref_id=?", (source_ref,)).fetchone()
     if not existing:
         # Extract first ~5000 chars as a sample of the text
@@ -304,26 +308,25 @@ def main():
         ))
         conn.commit()
         print(f"Created source entry: {source_ref}")
-    
+
     # Extract all scripture references
     print("Extracting scripture references...")
     refs = extract_all_refs(text)
     print(f"Found {len(refs)} unique scripture references")
-    
+
     # Filter to only those that exist in our verses table
     valid_refs = []
     for verse_id, raw_ref in refs:
         exists = conn.execute("SELECT 1 FROM verses WHERE id=?", (verse_id,)).fetchone()
         if exists:
             valid_refs.append((verse_id, raw_ref))
-    
+
     print(f"  {len(valid_refs)} match known verses")
-    
+
     # Insert into js_scripture_refs
     count_inserted = 0
     count_skipped = 0
-    batch = []
-    
+
     for verse_id, raw_ref in valid_refs:
         try:
             conn.execute("""
@@ -333,26 +336,26 @@ def main():
             count_inserted += 1
         except Exception:
             count_skipped += 1
-        
+
         if count_inserted % 1000 == 0:
             conn.commit()
             print(f"  ... {count_inserted} inserted")
-    
+
     conn.commit()
-    
-    print(f"\nResults:")
+
+    print("\nResults:")
     print(f"  Source: {source_ref} ({book_title})")
     print(f"  Total references extracted: {len(refs)}")
     print(f"  Valid (matching DB verses): {len(valid_refs)}")
     print(f"  Inserted into js_scripture_refs: {count_inserted}")
     print(f"  Skipped (duplicates): {count_skipped}")
-    
+
     # Stats
     total_refs = conn.execute("SELECT COUNT(*) FROM js_scripture_refs").fetchone()[0]
     total_sources = conn.execute("SELECT COUNT(*) FROM js_sources").fetchone()[0]
     print(f"\nTotal js_sources: {total_sources}")
     print(f"Total js_scripture_refs: {total_refs}")
-    
+
     conn.close()
 
 

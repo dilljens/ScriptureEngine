@@ -7,7 +7,7 @@ and CLI (tools/gematria.py).
 """
 
 from lib.gematria import compute_all, find_divine_name_matches
-from lib.hebrew_util import rtl_mark, transliterate, clean_hebrew as ch
+from lib.hebrew_util import rtl_mark, transliterate
 
 
 def gematria_lookup(conn, word=None, value=None, system="standard"):

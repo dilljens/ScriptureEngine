@@ -10,9 +10,6 @@ Works in two modes:
   2. English phrase matching (NT, BoM, D&C) — uses text_english LIKE queries
 """
 
-import re
-from collections import defaultdict, Counter
-from lib.db import add_connection
 
 # ─── Key Hebrew Phrases (manually curated, high significance) ───
 # Format: (english_name, hebrew_phrase_compact)
@@ -220,7 +217,7 @@ def _search_hebrew_phrase(conn, phrase_compact):
     # Create a LIKE pattern that allows any whitespace/maqqef between letters
     # "בן אדם" -> "%בן%אדם%"
     like_pattern = "%" + "%".join(phrase_compact.split()) + "%"
-    
+
     rows = conn.execute(
         "SELECT id FROM verses WHERE text_hebrew LIKE ? AND has_hebrew = 1 LIMIT 500",
         (like_pattern,)
@@ -242,7 +239,7 @@ def run(conn, book_ids=None):
     total = 0
     title_count = 0
     batch = []
-    
+
     # ── Hebrew phrases (OT + DSS) ──
     print("  Scanning Hebrew phrases...", end=' ', flush=True)
     heb_count = 0
@@ -254,7 +251,7 @@ def run(conn, book_ids=None):
             for i in range(1, min(len(verses), 51)):
                 batch.append((
                     verses[0], verses[i],
-                    "linguistic", "keyword_linking", f"hebrew_phrase",
+                    "linguistic", "keyword_linking", "hebrew_phrase",
                     0.5, 0.4, "algorithm",
                     f'{{"phrase": "{name}", "hebrew": "{phrase}", "occurrences": {len(verses)}}}'
                 ))
@@ -263,13 +260,13 @@ def run(conn, book_ids=None):
                 total += len(batch)
                 _flush(conn, batch)
                 batch = []
-    
+
     if batch:
         total += len(batch)
         _flush(conn, batch)
         batch = []
     print(f"{heb_count} connections from {title_count} phrases")
-    
+
     # ── English phrases (NT, BoM, D&C, Apocrypha, Pseudepigrapha) ──
     print("  Scanning English phrases...", end=' ', flush=True)
     eng_count = 0
@@ -281,7 +278,7 @@ def run(conn, book_ids=None):
             for i in range(1, min(len(verses), 51)):
                 batch.append((
                     verses[0], verses[i],
-                    "linguistic", "keyword_linking", f"english_phrase",
+                    "linguistic", "keyword_linking", "english_phrase",
                     0.45, 0.35, "algorithm",
                     f'{{"phrase": "{phrase}", "occurrences": {len(verses)}}}'
                 ))
@@ -290,13 +287,13 @@ def run(conn, book_ids=None):
                 total += len(batch)
                 _flush(conn, batch)
                 batch = []
-    
+
     if batch:
         total += len(batch)
         _flush(conn, batch)
         batch = []
     print(f"{eng_count} connections from {eng_title_count} English phrases")
-    
+
     print(f"  Total phrase matches: {total}")
     return total
 

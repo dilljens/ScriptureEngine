@@ -9,7 +9,6 @@ to its respective actor hub verse, with context from parallel lines
 to disambiguate servant vs tyrant usage.
 """
 
-from lib.db import add_connection
 
 # ─── PSEUDONYM ACTOR HUBS ───
 SERVANT_HUB = "isa.42.1"       # Defining verse: "Behold my servant"
@@ -18,7 +17,7 @@ TYRANT_HUB = "isa.10.5"        # Defining verse: "Hail the Assyrian, rod of my a
 # ─── TWIN PAIR PSEUDONYMS ───
 # Each pair: (name, servant_strongs, tyrant_strongs, servant_verses, tyrant_verses)
 TWIN_PAIRS = [
-    ("Hand", ["3027", "3225"], ["3027", "3225"], 
+    ("Hand", ["3027", "3225"], ["3027", "3225"],
      ["isa.11.11", "isa.49.22", "isa.51.16", "isa.62.8"],
      ["isa.5.25", "isa.10.5", "isa.47.6", "isa.64.7"]),
     ("Ensign", ["5251"], ["5251"],
@@ -86,20 +85,20 @@ SINGLE_PSEUDONYMS = {
 
 def run(conn, book_ids=None):
     """Create pseudonym twin-pair connections in Isaiah.
-    
+
     For each pseudonym, links occurrences to their actor hub
     (servant or tyrant), with the context from the parallel line
     determining which actor.
     """
     total = 0
     batch = []
-    
+
     # Clear previous runs
     conn.execute("DELETE FROM connections WHERE subtype IN ('pseudonym_servant', 'pseudonym_tyrant', 'pseudonym_single')")
     conn.commit()
-    
+
     # ── Twin Pairs ──
-    for name, servant_ss, tyrant_ss, s_verses, t_verses in TWIN_PAIRS:
+    for name, _servant_ss, _tyrant_ss, s_verses, t_verses in TWIN_PAIRS:
         # Servant connections
         for v in s_verses:
             batch.append((
@@ -109,7 +108,7 @@ def run(conn, book_ids=None):
                 f'{{"pseudonym": "{name}", "actor": "servant", "hub_defining": "{SERVANT_HUB}"}}'
             ))
             total += 1
-        
+
         # Tyrant connections
         for v in t_verses:
             batch.append((
@@ -119,15 +118,15 @@ def run(conn, book_ids=None):
                 f'{{"pseudonym": "{name}", "actor": "tyrant", "hub_defining": "{TYRANT_HUB}"}}'
             ))
             total += 1
-        
+
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     # ── Single-Actor Pseudonyms ──
     for actor, pseudonyms in SINGLE_PSEUDONYMS.items():
         hub = SERVANT_HUB if actor == "servant" else TYRANT_HUB
-        for name, strongs, verses in pseudonyms:
+        for name, _strongs, verses in pseudonyms:
             for v in verses:
                 batch.append((
                     hub, v,
@@ -136,14 +135,14 @@ def run(conn, book_ids=None):
                     f'{{"pseudonym": "{name}", "actor": "{actor}", "hub_defining": "{hub}"}}'
                 ))
                 total += 1
-                
+
                 if len(batch) >= 200:
                     _batch_insert(conn, batch)
                     batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  Pseudonym system: {total} connections ({len(TWIN_PAIRS)} twin-pairs, {sum(len(v) for v in SINGLE_PSEUDONYMS.values())} single-actor)")
     return total
 

@@ -17,7 +17,6 @@ Known acrostics in the Hebrew Bible:
 
 from ..gematria import extract_consonants
 
-
 # Hebrew alphabet in order
 ALEPH_BET = list("אבגדהוזחטיכלמנסעפצקרשת")
 
@@ -30,16 +29,16 @@ def get_first_hebrew_letter(text):
 
 def detect_acrostic(verses):
     """Detect if a list of verses forms a Hebrew alphabetical acrostic.
-    
+
     Args:
         verses: list of dicts with 'text_hebrew' or 'id' keys
-    
+
     Returns:
         dict with acrostic info, or None
     """
     if len(verses) < 5:
         return None
-    
+
     # Extract first Hebrew letter from each verse
     first_letters = []
     for v in verses:
@@ -51,15 +50,15 @@ def detect_acrostic(verses):
             first_letters.append(fl)
         else:
             first_letters.append(None)
-    
+
     if len(first_letters) < 5:
         return None
-    
+
     # Check: standard 22-verse alphabetical acrostic
     for start in range(max(0, len(first_letters) - 22 + 1)):
         segment = first_letters[start:start + 22]
         if None not in segment:
-            matches = sum(1 for i, letter in enumerate(segment) 
+            matches = sum(1 for i, letter in enumerate(segment)
                          if i < len(ALEPH_BET) and letter == ALEPH_BET[i])
             if matches >= 20:  # 20+ out of 22 matches
                 end = start + 22
@@ -72,7 +71,7 @@ def detect_acrostic(verses):
                     "letters_found": segment[:22],
                     "confidence": round(matches / 22, 2),
                 }
-    
+
     # Check: Psalm 119 style (22 stanzas × 8 verses)
     if len(first_letters) >= 176:  # 22 × 8
         for stanza_size in (8, 16):
@@ -80,13 +79,13 @@ def detect_acrostic(verses):
             total = stanza_size * stanza_count
             if len(first_letters) < total:
                 continue
-            
+
             matches = 0
             for s in range(stanza_count):
                 idx = s * stanza_size
                 if idx < len(first_letters) and first_letters[idx] == ALEPH_BET[s]:
                     matches += 1
-            
+
             if matches >= 18:
                 return {
                     "type": "stanza_acrostic",
@@ -95,23 +94,22 @@ def detect_acrostic(verses):
                     "total": stanza_count,
                     "confidence": round(matches / stanza_count, 2),
                 }
-    
+
     return None
 
 
 def scan_book_for_acrostics(conn, book_id):
     """Scan an entire book for acrostic patterns."""
-    from ..db import get_db
-    
+
     rows = conn.execute("""
         SELECT id, chapter, verse, text_hebrew
         FROM verses
         WHERE book_id = ? AND has_hebrew = 1
         ORDER BY chapter, verse
     """, (book_id,)).fetchall()
-    
+
     verses = [dict(r) for r in rows]
-    
+
     # Check whole book
     result = detect_acrostic(verses)
     if result:
@@ -121,7 +119,7 @@ def scan_book_for_acrostics(conn, book_id):
         result["start_verse"] = f"{start_v['chapter']}:{start_v['verse']}"
         result["end_verse"] = f"{end_v['chapter']}:{end_v['verse']}"
         return result
-    
+
     # Check per-chapter
     chapters = {}
     for v in verses:
@@ -129,7 +127,7 @@ def scan_book_for_acrostics(conn, book_id):
         if ch not in chapters:
             chapters[ch] = []
         chapters[ch].append(v)
-    
+
     for ch, ch_verses in sorted(chapters.items()):
         result = detect_acrostic(ch_verses)
         if result:
@@ -145,7 +143,7 @@ def scan_book_for_acrostics(conn, book_id):
                 "confidence": result["confidence"],
                 "letters_found": result.get("letters_found", [])[:15],
             }
-    
+
     # Check for acrostics starting at later verse positions (like Prov 31:10-31)
     # This handles acrostics embedded within chapters
     for ch, ch_verses in sorted(chapters.items()):
@@ -169,5 +167,5 @@ def scan_book_for_acrostics(conn, book_id):
                     "confidence": result["confidence"],
                     "letters_found": result.get("letters_found", [])[:15],
                 }
-    
+
     return None

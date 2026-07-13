@@ -6,9 +6,11 @@ Events overlap in an ABC/BCD/CDE chain — each event connects to the next,
 and events appear in multiple combinations creating the domino effect.
 """
 
-import sys, os, json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 # Gileadi's 30 Ancient Types of End-Time Events
 # (event_name, key_verse_for_type, end_time_fulfillment_verse, domino_to_next)
@@ -82,21 +84,21 @@ def main():
     print("  GILEADI'S 30 DOMINO EVENTS")
     print("=" * 60)
     print()
-    
+
     count = 0
-    
+
     print("--- Event List ---")
-    for i, event in enumerate(DOMINO_EVENTS):
+    for _i, event in enumerate(DOMINO_EVENTS):
         name, type_verse, end_verse, connect_to, note = event
         print(f"  {name:45s} {type_verse:15s}")
     print()
-    
+
     # Create connections
     print("--- Creating Domino Chain Connections ---")
-    
+
     for i, event in enumerate(DOMINO_EVENTS):
         name, type_verse, end_verse, connect_to, note = event
-        
+
         # Connect the ancient type to its end-time fulfillment
         try:
             add_connection(conn, type_verse, end_verse,
@@ -114,7 +116,7 @@ def main():
             count += 1
         except Exception:
             pass
-        
+
         # Connect this event to the next (domino chain: domino N → domino N+1)
         if i < len(DOMINO_EVENTS) - 1:
             next_name = DOMINO_EVENTS[i + 1][0]
@@ -135,9 +137,9 @@ def main():
                 count += 1
             except Exception:
                 pass
-    
+
     conn.commit()
-    
+
     # Stats
     chrono = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='chronological'").fetchone()["c"]
     total = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()["c"]

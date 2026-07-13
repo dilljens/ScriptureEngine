@@ -7,11 +7,14 @@ Usage:
   python3 scripts/update_guides.py --since "2026-01-01"  # only verses updated since date
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db
-from lib.connections.pardes import get_pardes_level
 import argparse
+
+from lib.db import get_db
 
 
 def get_changed_verses(conn, since=None):
@@ -134,7 +137,7 @@ def main():
     args = parser.parse_args()
 
     conn = get_db()
-    
+
     # Ensure table exists
     conn.execute("""
         CREATE TABLE IF NOT EXISTS passage_guides (

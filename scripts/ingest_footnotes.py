@@ -12,11 +12,19 @@ Usage:
 Uses concurrent requests for speed.
 """
 
-import sys, os, json, re, time, urllib.request, urllib.error
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, DEFAULT_DB_PATH
+import contextlib
+
+from lib.db import get_db
 
 API_BASE = "https://www.churchofjesuschrist.org/study/api/v3/language-pages/type/content?lang=eng&uri=/scriptures"
 
@@ -292,14 +300,12 @@ def store_footnotes(conn, book_id, chapter, result):
                 if ref.get("type") == "scripture":
                     target = _resolve_scripture_ref(ref.get("href", ""))
                     if target:
-                        try:
+                        with contextlib.suppress(Exception):
                             conn.execute("""
                                 INSERT OR IGNORE INTO cross_references
                                     (source_verse, target_verse, footnote_id, confidence)
                                 VALUES (?, ?, ?, ?)
                             """, (verse_ref, target, fn_id, 1.0))
-                        except Exception:
-                            pass
 
     return count
 

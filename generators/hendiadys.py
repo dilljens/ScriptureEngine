@@ -9,8 +9,6 @@ for coordinated X-and-Y patterns where both words exist in the same verse.
 
 import re
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Known biblical hendiadys pairs (from biblical scholarship)
 # Format: (word_a, word_b) — normalized lowercase
@@ -108,7 +106,7 @@ def run(conn, book_ids=None):
 
         # Check forward patterns
         abd = PATTERN.findall(text_lower)
-        for match in abd:
+        for _match in abd:
             # Need to figure out which hendiadys pair this matches
             for a, b in KNOWN_HENDIADYS:
                 pattern = a.strip() + " and " + b.strip()
@@ -118,7 +116,7 @@ def run(conn, book_ids=None):
 
         # Check reversed patterns
         revd = PATTERN_REVERSED.findall(text_lower)
-        for match in revd:
+        for _match in revd:
             for b, a in KNOWN_HENDIADYS:
                 pattern = b.strip() + " and " + a.strip()
                 if pattern in text_lower:

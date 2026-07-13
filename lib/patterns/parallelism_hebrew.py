@@ -12,9 +12,6 @@ detected via Hebrew morphological analysis from our WLC data.
 """
 
 import re
-from collections import defaultdict
-from ..db import get_db
-
 
 # Known merismatic pairs (opposites that together mean "everything")
 MERISMATIC_PAIRS = [
@@ -131,7 +128,6 @@ def detect_numerical_parallelism(conn, book_id, limit=30):
     for r in rows:
         # Identify which number pair is used
         text = r["text_english"]
-        import re
         nums = re.findall(r'\b(three|four|five|six|seven|eight|two|ten|one|two|3|4|5|6|7|8|2|10|1|2)\b', text.lower())
         results.append({
             "verse_id": r["id"],
@@ -196,7 +192,6 @@ def detect_hendiadys(conn, book_id, limit=30):
 
     # We'll return candidates and let the AI (DeepSeek) classify them
     results = []
-    import re
     for r in rows:
         matches = re.findall(r'(\w+)\s+and\s+(\w+)', r["text_english"])
         for m in matches:

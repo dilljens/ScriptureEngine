@@ -7,10 +7,9 @@ Tracks sequences of structural formulas across a book to identify:
 - Formula density patterns (where formulas cluster)
 """
 
-import re
-from collections import defaultdict, Counter
-from ..db import get_db, get_formula_sequence
+from collections import Counter, defaultdict
 
+from ..db import get_formula_sequence
 
 # Formula type categories
 FORMULA_CATEGORIES = {

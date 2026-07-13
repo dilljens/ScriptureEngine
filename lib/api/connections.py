@@ -8,12 +8,13 @@ and CLI (tools/connections.py, tools/intertext.py, tools/pardes.py).
 
 import json
 from collections import defaultdict
+
+from lib.connections.pardes import (
+    LEVELS as PARDES_LEVELS,
+)
 from lib.connections.pardes import (
     get_pardes_level,
-    LEVELS as PARDES_LEVELS,
-    get_connections_by_level,
 )
-from lib.connections.types import LAYERS as CONNECTION_LAYERS
 
 CONNECTION_TYPE_MAP = {
     "linguistic": "Linguistic",
@@ -152,7 +153,7 @@ def research_topic(conn, seed_verse, theme="", max_depth=3, layers=None, max_ver
 
     layer_filter = ""
     if layers:
-        placeholders = ",".join(f"'{l}'" for l in layers)
+        placeholders = ",".join(f"'{layer}'" for layer in layers)
         layer_filter = f" AND c.layer IN ({placeholders})"
 
     while queue and len(collected) < max_verses:
@@ -279,7 +280,7 @@ def compare_verses(conn, verse_a, verse_b, max_path_depth=4):
 
     Returns: dict with comparison results
     """
-    from lib.api.graph import graph_path, graph_entities, graph_shared_entities
+    from lib.api.graph import graph_path, graph_shared_entities
     from lib.api.verse import lookup_verse
     from lib.connections.pardes import get_pardes_level
 
@@ -330,8 +331,8 @@ def compare_verses(conn, verse_a, verse_b, max_path_depth=4):
     types_b = {(r["layer"], r["type"]): r["c"] for r in conns_b}
     overlap = set(types_a.keys()) & set(types_b.keys())
     result["connection_overlap"] = [
-        {"layer": l, "type": t, "count_a": types_a[(l, t)], "count_b": types_b[(l, t)]}
-        for l, t in sorted(overlap)
+        {"layer": layer, "type": typ, "count_a": types_a[(layer, typ)], "count_b": types_b[(layer, typ)]}
+        for layer, typ in sorted(overlap)
     ]
 
     # 5. PaRDeS summary

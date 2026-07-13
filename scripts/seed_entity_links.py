@@ -5,11 +5,12 @@ Populates the entity_links table with known name mappings.
 Links Strong's numbers across Hebrew and Greek for unified search.
 """
 
-import sys, os, re
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db
-
 
 # Known Strong's Hebrew ↔ Strong's Greek equivalences
 # Format: (entity_id, type, english, hebrew, hebrew_strongs, greek, greek_strongs)
@@ -111,33 +112,33 @@ def main():
     print("=" * 60)
     print("  Entity Alignment — Seed Data")
     print("=" * 60)
-    
+
     count = 0
     for entry in STRONGS_LINKS:
         entity_id, entity_type, english, hebrew, heb_strongs, greek, grk_strongs = entry
-        
+
         # Check if already exists
         existing = conn.execute("""
             SELECT id FROM entity_links WHERE entity_id = ?
         """, (entity_id,)).fetchone()
-        
+
         if not existing:
             conn.execute("""
                 INSERT INTO entity_links (entity_id, entity_type, english_name, hebrew_name, hebrew_strongs, greek_name, greek_strongs)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (entity_id, entity_type, english, hebrew, heb_strongs, greek, grk_strongs))
             count += 1
-    
+
     conn.commit()
     print(f"  {count} entity links seeded")
-    
+
     # Show stats
     total = conn.execute("SELECT COUNT(*) as c FROM entity_links").fetchone()["c"]
     types = conn.execute("SELECT entity_type, COUNT(*) as c FROM entity_links GROUP BY entity_type").fetchall()
     print(f"  Total entities: {total}")
     for r in types:
         print(f"    {r['entity_type']}: {r['c']}")
-    
+
     conn.close()
 
 

@@ -15,14 +15,13 @@ Usage:
   }'
 """
 
-import sys
 import json
 import os
-from collections import Counter
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, compare_sections, get_section_verses
+from lib.db import compare_sections, get_db
 
 
 def compare_by_chapters(conn, book_id, chap_start_a, chap_end_a, chap_start_b, chap_end_b):
@@ -47,10 +46,7 @@ def compare_by_chapters(conn, book_id, chap_start_a, chap_end_a, chap_start_b, c
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     conn = get_db()
     result = {}

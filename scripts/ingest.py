@@ -5,17 +5,15 @@ into the SQLite knowledge base.
 """
 
 import json
-import xml.etree.ElementTree as ET
 import sys
-import os
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from lib.db import init_db, get_db, insert_verse, insert_gematria, add_connection
-from lib.gematria import compute_all, compute_verse_gematria, DIVINE_NAMES
-from lib.connections.types import LAYERS, ALL_TYPES
+from lib.db import add_connection, init_db, insert_gematria, insert_verse
+from lib.gematria import DIVINE_NAMES, compute_all
 
 # Paths
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -221,7 +219,7 @@ def ingest_hebrew_ot(conn, filepath, book_id):
                 insert_gematria(conn, vid, w["index"], w["word"],
                                lemma=w["lemma"], morph=w["morph"], values=values)
                 count += 1
-            except Exception as e:
+            except Exception:
                 skipped += 1
 
     conn.commit()
@@ -544,7 +542,7 @@ def compute_verse_gematria_totals(conn):
 
     count = 0
     for r in rows:
-        vid = r["verse_id"]
+        r["verse_id"]
         # Store as metadata in the gematria table? Or we can add a verse_gematria table.
         # For now, just count
         count += 1
@@ -594,7 +592,7 @@ def main():
     heb_count = conn.execute("SELECT COUNT(*) as c FROM verses WHERE has_hebrew=1").fetchone()["c"]
     gem_count = conn.execute("SELECT COUNT(*) as c FROM gematria").fetchone()["c"]
     conn_count = conn.execute("SELECT COUNT(*) as c FROM connections").fetchone()["c"]
-    print(f"Summary:")
+    print("Summary:")
     print(f"  Verses:          {verse_count}")
     print(f"  With Hebrew:     {heb_count}")
     print(f"  Gematria words:  {gem_count}")

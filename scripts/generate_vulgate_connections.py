@@ -9,10 +9,14 @@ Two passes:
 Usage:  python3 scripts/generate_vulgate_connections.py
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
 from collections import defaultdict
+
+from lib.db import add_connection, get_db
 
 
 def _batch_insert(conn, batch):
@@ -28,15 +32,15 @@ def _batch_insert(conn, batch):
 
 def run_systematic(conn):
     """Create vulgate_variant connections for all Vulgate verses.
-    
+
     Per-book hub-and-spoke: first verse in a book with a Vulgate variant
     becomes the hub; all other variant verses in that book connect to it.
     """
     print("  Generating systematic vulgate_variant connections...", flush=True)
-    
+
     # Delete existing systematic connections
     conn.execute("""
-        DELETE FROM connections 
+        DELETE FROM connections
         WHERE type = 'vulgate_variant' AND discovered_by = 'algorithm'
     """)
     conn.commit()
@@ -155,7 +159,7 @@ def main():
     print(f"\n  Total vulgate_variant connections: {total:,}")
     print(f"    Systematic: {sys_total:,}")
     print(f"    Curated: {cur_total}")
-    print(f"  Done.")
+    print("  Done.")
 
     conn.close()
 

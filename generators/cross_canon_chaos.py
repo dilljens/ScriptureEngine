@@ -31,10 +31,10 @@ def run(conn, book_ids=None):
     """Search non-Isaiah books for chaos motif keywords."""
     total = 0
     batch = []
-    
+
     conn.execute("DELETE FROM connections WHERE subtype IN ('cross_canon_chaos')")
     conn.commit()
-    
+
     for name, strongs, eng_keywords, desc in CHAOS_MOTIFS:
         # ── Hebrew OT Prophets ──
         for strong in strongs:
@@ -46,7 +46,7 @@ def run(conn, book_ids=None):
                     WHERE v.book_id = ? AND g.lemma LIKE ?
                     LIMIT 15
                 """, (book, f"%{strong}%")).fetchall()
-                
+
                 for r in rows:
                     vid = r["verse_id"]
                     if vid.startswith("isa."):
@@ -61,7 +61,7 @@ def run(conn, book_ids=None):
                     if len(batch) >= 200:
                         _batch_insert(conn, batch)
                         batch = []
-        
+
         # ── English BoM ──
         for keyword in eng_keywords:
             for book in BOM_BOOKS:
@@ -70,7 +70,7 @@ def run(conn, book_ids=None):
                     WHERE book_id = ? AND text_english LIKE ?
                     LIMit 15
                 """, (book, f"%{keyword}%")).fetchall()
-                
+
                 for r in rows:
                     vid = r["id"]
                     batch.append((
@@ -83,14 +83,14 @@ def run(conn, book_ids=None):
                     if len(batch) >= 200:
                         _batch_insert(conn, batch)
                         batch = []
-            
+
             # D&C
             rows = conn.execute("""
                 SELECT id FROM verses
                 WHERE book_id LIKE 'dc%' AND text_english LIKE ?
                 LIMIT 15
             """, (f"%{keyword}%",)).fetchall()
-            
+
             for r in rows:
                 vid = r["id"]
                 batch.append((
@@ -103,10 +103,10 @@ def run(conn, book_ids=None):
                 if len(batch) >= 200:
                     _batch_insert(conn, batch)
                     batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  Cross-canon chaos: {total} connections from {len(CHAOS_MOTIFS)} motifs")
     return total
 

@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Import a Bible translation (HTML per-chapter format) into text_resources."""
 
-import sys, os, re, glob, html
+import glob
+import html
+import os
+import re
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.db import get_db
 
@@ -41,7 +46,7 @@ def strip_tags(text):
     return TAG_RE.sub('', text)
 
 def extract_verses_from_html(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, encoding='utf-8') as f:
         content = f.read()
 
     main_match = re.search(r'<div class="main">(.*?)(?=<ul class=\'tnav\'|<div class="footnote")', content, re.DOTALL)

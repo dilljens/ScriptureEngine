@@ -171,6 +171,11 @@ RAM cache on startup          → web/server.py         → dict in memory (~500
 | Add self-referencing cross-canon quotations | `scripts/generate_self_references.py` |
 | Ingest variant texts | `scripts/ingest_vulgate.py` → `textual_variants` table |
 | Add ingest source | `scripts/ingest.py` |
+| Add Hebrew audio | `web/routes/audio.py` + `frontend/src/components/*Audio*.*` |
+| Add literary pattern detector | `scripts/detect_chiasms*.py` + `scripts/detect_mukdam_umeuchar.py` |
+| Import JS discourses | `scripts/import_js_discourses.py` |
+| Import JST version | `scripts/import_jst_version.py` |
+| Add disagreement seed data | `scripts/seed_disagreements.py` |
 
 ## PaRDeS Levels
 
@@ -264,18 +269,26 @@ All plans consolidated in [plans/](plans/):
 |------|-------------|
 | [Knowledge Assessment Plan](plans/knowledge-assessment-plan.md) | 3-track plan: Language tools, Truth-seeking, Assessment engine |
 | [Study Sharing Plan](plans/study-sharing-plan.md) | ✅ Completed — study publish/fork/export |
+| [Hebrew Teaching Plan](plans/hebrew-teaching-plan.md) | Full curriculum using Math Academy Way principles |
 
 ## Staleness
 
 | Domain | Last Updated | Status |
 |--------|-------------|--------|
-| Index | 2026-06-21 | UPDATED — Frontend docs, API endpoints, Playwright tests, connection panel |
-| Standards | 2026-06-16 | FRESH |
-| Features/web | 2026-06-21 | UPDATED — added `?context=N` param, new endpoints |
-| Features/lib | 2026-06-17 | FRESH |
-| Features/generators | 2026-06-17 | UPDATED — 35 generators, Rabbinic Kal v'Chomer + Mukdam u'Meuchar added |
-| Features/frontend | 2026-06-21 | NEW — React app, connection panel, footnote tooltip, VersePreviewCard, Playwright tests |
-| Plans | 2026-07-07 | UPDATED — P1-P5 + F1 built, MVP v0.1 shipped (15 files) |
-| Generators | 2026-06-22 | UPDATED — 36 generators, Temple Themes sod + JST full ingest |
-| Connection types | 2026-06-22 | UPDATED — 128 types, 96.9% populated, JST types added |
-| JS teachings | 2026-06-22 | NEW — js_sources table, js_scripture_refs, FTS search, tools/js_teachings.py |
+| Index | 2026-07-13 | UPDATED — new feature pages, glossary terms, MEMORY.md |
+| Standards | 2026-06-16 | AGING |
+| Features/web-api | 2026-07-11 | FRESH |
+| Features/lib-core | 2026-07-13 | FRESH |
+| Features/generators | 2026-07-13 | FRESH |
+| Features/mcp-server | 2026-07-13 | FRESH |
+| Features/sources | 2026-07-10 | FRESH |
+| Features/hebrew-audio | 2026-07-13 | FRESH |
+| Features/literary-patterns | 2026-07-13 | FRESH |
+| Features/js-discourses-jst | 2026-07-13 | FRESH |
+| Features/truth-seeking | 2026-07-13 | FRESH |
+| Features/memorization | 2026-07-13 | NEW — FSRS-5 verse queue, FIRe, repetition compression |
+| Features/assessment | 2026-07-13 | NEW — adaptive quiz, LLM-graded, student-topic speeds |
+| Features/learn | 2026-07-13 | NEW — Math Academy Way courses, 26 modules |
+| Plans | 2026-07-12 | UPDATED — Phase 3 FIRe, palace, centrality, compression |
+| Connection types | 2026-07-12 | UPDATED — JST types (jst_change, jst_addition) |
+| JS teachings | 2026-07-12 | UPDATED — 945 discourses imported, full JST version |

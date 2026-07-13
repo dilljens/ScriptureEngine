@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 
 /**
  * CardRenderer — renders the front of a learning card based on its type.
@@ -279,7 +280,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
     return (
       <div className="space-y-3">
         <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
             {preprocess(question || '')}
           </ReactMarkdown>
         </div>
@@ -323,7 +324,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
         )}
         {explanation && (
           <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
               {preprocess(explanation)}
             </ReactMarkdown>
           </div>
@@ -347,7 +348,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
 
       {/* Question text */}
       <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-4 whitespace-pre-wrap">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
           {preprocess(question || '')}
         </ReactMarkdown>
       </div>

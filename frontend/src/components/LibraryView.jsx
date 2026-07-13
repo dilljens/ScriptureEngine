@@ -4,7 +4,8 @@ import { useTabs } from '../tabContext'
 export const WORK_LABEL = {
   'ot': 'Old Testament', 'nt': 'New Testament', 'bom': 'Book of Mormon',
   'dc': 'Doctrine & Covenants', 'pgp': 'Pearl of Great Price',
-  'dss': 'Dead Sea Scrolls', 'ch': 'Church History',
+  'dss': 'Dead Sea Scrolls', 'apoc': 'Apocrypha',
+  'pseu': 'Pseudepigrapha', 'expanded': 'Expanded Canon',
 }
 
 const workCardColors = {
@@ -13,8 +14,10 @@ const workCardColors = {
   'bom': { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', hover: 'hover:bg-green-100 dark:hover:bg-green-900/30', badge: 'bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300', icon: '📖' },
   'dc': { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', hover: 'hover:bg-purple-100 dark:hover:bg-purple-900/30', badge: 'bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300', icon: '⚡' },
   'pgp': { bg: 'bg-pink-50 dark:bg-pink-900/20', border: 'border-pink-200 dark:border-pink-800', hover: 'hover:bg-pink-100 dark:hover:bg-pink-900/30', badge: 'bg-pink-100 dark:bg-pink-800 text-pink-700 dark:text-pink-300', icon: '💎' },
-  'dss': { bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-800', hover: 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30', badge: 'bg-yellow-100 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-300', icon: '📜' },
-  'ch': { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', hover: 'hover:bg-orange-100 dark:hover:bg-orange-900/30', badge: 'bg-orange-100 dark:bg-orange-800 text-orange-700 dark:text-orange-300', icon: '🏛️' },
+  'dss': { bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-800', hover: 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30', badge: 'bg-yellow-100 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-300', icon: '🏺' },
+  'apoc': { bg: 'bg-rose-50 dark:bg-rose-900/20', border: 'border-rose-200 dark:border-rose-800', hover: 'hover:bg-rose-100 dark:hover:bg-rose-900/30', badge: 'bg-rose-100 dark:bg-rose-800 text-rose-700 dark:text-rose-300', icon: '📚' },
+  'pseu': { bg: 'bg-indigo-50 dark:bg-indigo-900/20', border: 'border-indigo-200 dark:border-indigo-800', hover: 'hover:bg-indigo-100 dark:hover:bg-indigo-900/30', badge: 'bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300', icon: '🔮' },
+  'expanded': { bg: 'bg-teal-50 dark:bg-teal-900/20', border: 'border-teal-200 dark:border-teal-800', hover: 'hover:bg-teal-100 dark:hover:bg-teal-900/30', badge: 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300', icon: '⛪' },
 }
 
 export default function LibraryView({ bookData, onNavigate }) {
@@ -33,8 +36,8 @@ export default function LibraryView({ bookData, onNavigate }) {
       // Jump straight to the first section/chapter
       goToBook(currentTab?.id, w.books[0].id, w.title || workId)
     } else {
-      // Show book list (WorkView)
-      ctxGoToWork(currentTab?.id, w.id, w.title || w.id)
+      // Show book list (WorkView) — pass first book ID so breadcrumb works
+      ctxGoToWork(currentTab?.id, w.id, w.title || w.id, w.books?.[0]?.id)
     }
   }
 

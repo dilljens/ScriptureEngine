@@ -2,11 +2,12 @@
 
 All connection discovery algorithms live in `generators/`. Each generator creates typed connections between verses in the `connections` table.
 
-**44 generators** registered (41 algorithmic + 3 manual), generating across all 11 layers.
+**45 generators** registered (41 algorithmic + 4 manual/curation), generating across all 11 layers.
 
 See also `scripts/ingest_lxx_swete.py` (LXX Septuagint variants, 8,601 connections),
 `scripts/ingest_stepbible.py` (STEPBible TAGNT/TAHOT textual variants, 4,950 connections),
-and `scripts/import_dss.py` (Dead Sea Scrolls variants, 4,603 connections).
+`scripts/import_dss.py` (Dead Sea Scrolls variants, 4,603 connections),
+and `scripts/import_jst_version.py` (JST full text, 8,796 connections).
 
 ## Architecture
 
@@ -48,15 +49,22 @@ generators/
   ├── cross_canon_chaos.py              — Chaos/de-creation motifs in non-Isaiah books
   ├── experiment_cross_canon.py         — All Isaiah methods × all canonical books (experimental)
   ├── hendiadys.py                      — Known hendiadys pairs (X and Y)
+  ├── temple_themes.py                  — Temple themes sod (Living Water, Throne, Veil, Creation, Center)
+  ├── sod.py                            — Hidden sod-level connections
   #
-  # External data — ingested, then compared
-  ├── morphology.py                     — WLC/Treebank morph codes
+  # Rabbinic generators
+  ├── kal_vchomer.py                    — Rabbinic Kal v'Chomer (light/heavy) hermeneutic
+  ├── mukdam_umeuchar.py                — Rabbinic Mukdam u'Meuchar (early/late, non-chronological)
+  #
+  # Wiki article generation
+  ├── generate_wiki_articles.py         — Generates wiki articles from connection graph + text
 ```
 
 ```
   #
   # Textual variant ingestion (generates connections)
   ├── scripts/ingest_vulgate.py         → textual_variants table → vulgate_variant connections
+  ├── scripts/ingest_jst_version.py     → JST version + jst_change/jst_addition connections (8,796)
   #
   # Self-referencing cross-canon quotation generator
   ├── scripts/generate_self_references.py  → direct_quotation for BoM→Isaiah, D&C→OT, etc.
@@ -64,7 +72,7 @@ generators/
 
 ## Agent-Driven Connection Types (no generator module needed)
 
-For 13 connection types, connections are authored directly by the agent reading the text (no API, no external cost):
+For 14 connection types, connections are authored directly by the agent reading the text (no API, no external cost):
 
 ```
 data/agent_connections/
@@ -88,7 +96,7 @@ Each contains judgments with source/target verses, confidence scores, and human-
 
 ## Generator Count
 
-As of 2026-06-22: **36 generators** registered (34 algorithmic `automatic=True`, 2 needing curation `automatic=False`). Plus 2 standalone ingest scripts for JST full text and JS teachings corpus. Plus 13 agent-judged connection types supplementing with reasoned connections.
+As of 2026-07-13: **45 generators** registered (41 algorithmic `automatic=True`, 4 needing curation `automatic=False`). Plus standalone ingest scripts for JST full text (8,796 connections), JS discourses (945 texts), and Vulgate variants (33,082 connections). Plus 14 agent-judged connection types.
 
 ## Generator Contract
 
@@ -108,7 +116,7 @@ GENERATOR_DEFS = [
         "requires": "gematria table",
         "description": "...",
     },
-    # ...
+    # ... 45 entries total
 ]
 ```
 
@@ -142,10 +150,26 @@ python3 scripts/seed_bom_crossrefs.py           # Book of Mormon cross-reference
 python3 scripts/spread_pseudonyms.py            # Spread pseudonyms across canon
 python3 scripts/build_lexicon.py                # Build lexicon table from gematria
 
+# Literary pattern detection (new — July 2026)
+python3 scripts/detect_chiasms.py               # Algorithmic chiasm detection v1
+python3 scripts/detect_chiasms_v2.py            # Refined scoring
+python3 scripts/detect_chiasms_v3.py            # Final version with confidence calibration
+python3 scripts/detect_chiasms_final.py         # Production-ready output
+python3 scripts/detect_mukdam_umeuchar.py       # Chronological reordering detection
+python3 scripts/detect_all_patterns.py          # Unified pipeline (chiasm + inclusio + more)
+
+# JS Discourses + JST import (new — July 2026)
+python3 scripts/import_js_discourses.py         # 945 JS discourses from TEV001-945 PDF corpus
+python3 scripts/import_jst_version.py           # Full JST version + 8,796 connections
+
+# Truth-seeking / disagreements
+python3 scripts/seed_disagreements.py           # Contradictory readings across traditions
+
 # Post-processing (run after generators)
 python3 scripts/precompute_guides.py            # Rebuild passage guide cache
 python3 scripts/cleanup_connections.py          # Agent review & quality cleanup
 python3 scripts/validate_connections.py         # Integrity checks
+scripts/evaluate_questions.py                   # Question quality evaluation
 ```
 
 ## Standalone Scripts (non-registered)
@@ -179,7 +203,7 @@ python3 scripts/validate_connections.py         # Integrity checks
 | Numerical — Gematria Factor | numerical | Yes |
 | Numerical — Gematria Sum Relationship | numerical | Yes |
 | Geographic — Location | geographic | No |
-| Geographic — Subtypes (journey, wilderness, exile, etc.) | geographic | Yes |
+| Geographic — Subtypes | geographic | Yes |
 | Chronological — Time Periods | chronological | Yes |
 | Chronological — Time Markers | chronological | Yes |
 | Chronological — Feast Connections | chronological | Yes |
@@ -194,8 +218,18 @@ python3 scripts/validate_connections.py         # Integrity checks
 | Experimental — All Isaiah Methods Cross-Canon | interpretive, linguistic | Yes |
 | Interpretive — Tradition Connections | interpretive | No |
 | Rabbinic — Kal v'Chomer (Light/Heavy) | interpretive | Yes |
-| Rabbinic — Mukdam u'Meuchar (Non-Chronological) | interpretive | Yes |
+| Rabbinic — Mukdam u'Meuchar | interpretive | Yes |
 | Temple Themes — Living Water, Throne, Veil, Creation, Center | sod | Yes |
+| Sod — Hidden Connections | sod | Yes |
+| Rabbinic — Midrashic Patterns | interpretive | Yes |
+| Symbolic — Temple Typology | symbolic | Yes |
+| Textual — Vulgate Variants | textual | Yes |
+| Textual — JST Changes | textual | Yes |
+| Textual — JST Additions | textual | Yes |
+| Textual — Dead Sea Scrolls Variants | textual | No |
+| Wiki — Article Generator | N/A | Yes |
+| Rabbinic — Notarikon (acronym) | sod | Yes |
+| Numerological — Sacred Geometry | numerical | Yes |
 
 ## Adding a New Generator
 
@@ -208,6 +242,9 @@ python3 scripts/validate_connections.py         # Integrity checks
 ## Path Scope
 
 - `generators/__init__.py` — registry
-- `generators/*.py` — individual generators
+- `generators/*.py` — individual generators (45 total)
 - `scripts/generate_connections.py` — CLI runner
 - `scripts/precompute_guides.py` — rebuilds materialized cache
+- `scripts/import_jst_version.py` — JST import
+- `scripts/import_js_discourses.py` — JS discourses import
+- `scripts/detect_chiasms*.py` — Literary pattern detection

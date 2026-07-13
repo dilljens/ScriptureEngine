@@ -7,8 +7,6 @@ rare Hebrew word, which often indicates a meaningful intertextual link.
 """
 
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Skip very common lemmas that would create too many noisy connections
 COMMON_LEMMAS = {
@@ -17,14 +15,14 @@ COMMON_LEMMAS = {
     "H3117", "H776", "H8064", "H4325", "H784",  # water, fire, etc.
     "H376", "H1320", "H5315",  # man, flesh, soul
     "H559", "H1961", "H6213", "H1980",  # said, was, did, went
-    "H559", "H7200", "H8085", "H3045",  # said, saw, heard, knew
+    "H7200", "H8085", "H3045",  # said, saw, heard, knew
     "H5375", "H5414", "H7760",  # lift, put, set
-    "H1696", "H1697",  # speak, word
+    "H1696", # speak, word
     "H7725", "H7971",  # return, send
-    "H3117", "H3118",  # day, daily
-    "H3068", "H3069", "H430",  # YHWH, Elohim (too common)
-    "H3478", "H1121",  # Israel, children
-    "H6440", "H5921", "H413",  # face, upon, to
+    "H3118",  # day, daily
+    # YHWH, Elohim (too common)
+    # Israel, children
+    "H413",  # face, upon, to
 }
 
 

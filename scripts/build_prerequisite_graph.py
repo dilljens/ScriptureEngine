@@ -7,9 +7,12 @@ with prerequisite edges based on PaRDeS level hierarchy.
 Uses Python dicts for the cross-layer join — avoids heavy SQL JOINs.
 """
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from collections import defaultdict
+
 from lib.db import get_db
 
 
@@ -37,7 +40,7 @@ def build_graph():
     edge_sources = {"cross": 0}
 
     # For each verse-pair, connect shallower → deeper levels
-    for pair, items in pair_to_items.items():
+    for _pair, items in pair_to_items.items():
         if len(items) < 2:
             continue
 

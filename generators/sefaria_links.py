@@ -13,8 +13,15 @@ Usage:
 API docs: https://developers.sefaria.org
 Rate limit: generous, but we add 150ms delay between requests.
 """
-import sys, os, json, re, time, sqlite3, urllib.request, urllib.error
+import json
+import os
+import sqlite3
+import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 BASE_DIR = Path(__file__).parent.parent
@@ -125,71 +132,71 @@ def categorize_link(link):
     """Categorize a Sefaria link and return (category, confidence, link_type) or None if skip."""
     category = str(link.get("category", "") or "")
     collective = str(link.get("collectiveTitle", "") or link.get("ref", "") or "")
-    
+
     # Match on collectiveTitle first (e.g., "Rashi", "Ramban", "Talmud")
     matched = None
     for known_cat in MAJOR_CATEGORIES:
         if known_cat.lower() in collective.lower() or known_cat.lower() in category.lower():
             matched = known_cat
             break
-    
+
     # Also check by category directly
     if not matched and category in MAJOR_CATEGORIES:
         matched = category
-    
+
     if not matched:
         return None  # Skip minor/unknown commentators
-    
+
     confidence = MAJOR_CATEGORIES[matched]
     link_type = CATEGORY_TYPE_MAP.get(matched, "rabbinic_midrash")
-    
+
     return (matched, confidence, link_type)
 
 
 def process_book(book_id, conn, dry_run=False, max_verses=0):
     """Fetch and store Sefaria links for all verses in a book."""
     import random
-    
+
     sef_book = ENGINE_TO_SEFARIA.get(book_id)
     if not sef_book:
         print(f"  Unknown book: {book_id}")
         return 0
-    
+
     chapter_count = TANAKH_BOOKS.get(book_id, 10)
     total_connections = 0
     verses_processed = 0
     now = time.strftime('%Y-%m-%d')
-    
+
     for ch in range(1, chapter_count + 1):
         # Get verse count for this chapter
         verse_count = conn.execute(
             "SELECT COUNT(*) FROM verses WHERE book_id=? AND chapter=?",
             (book_id, ch)
         ).fetchone()[0]
-        
+
         if verse_count == 0:
             continue
-        
+
         for vs in range(1, verse_count + 1):
             if max_verses and verses_processed >= max_verses:
                 return total_connections
-            
+
             sef_ref = f"{sef_book} {ch}:{vs}"
             verse_id = f"{book_id}.{ch}.{vs}"
-            
+
             # Fetch links
             links = fetch_links(sef_ref)
-            
+
             for link in links:
                 cat_info = categorize_link(link)
                 if not cat_info:
                     continue
-                
+
                 category, confidence, link_type = cat_info
-                
+
                 # The anchorRef is the base verse
                 anchor = link.get("anchorRef", "")
-                
+
                 if not dry_run:
                     target_ref = f"sefaria:{category}:{random.randint(1, 1000000)}"
                     # Store the commentary reference as a connection
@@ -221,21 +228,21 @@ def process_book(book_id, conn, dry_run=False, max_verses=0):
                             now,
                         ))
                         total_connections += 1
-                    except:
+                    except Exception:
                         pass
                 else:
                     total_connections += 1
-            
+
             verses_processed += 1
-            
+
             if verses_processed % 10 == 0:
                 print(f"    [{book_id}] {verses_processed} verses, {total_connections} links")
                 if not dry_run:
                     conn.commit()
-            
+
             # Rate limit: 150ms between requests
             time.sleep(0.15)
-    
+
     return total_connections
 
 
@@ -246,23 +253,23 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max verses per book")
     parser.add_argument("--dry-run", action="store_true", help="Count only, no inserts")
     args = parser.parse_args()
-    
+
     conn = sqlite3.connect(str(DB_PATH))
-    
+
     # Determine which books to process
     if args.books:
         book_ids = [b.strip() for b in args.books.split(",") if b.strip()]
     else:
         book_ids = list(TANAKH_BOOKS.keys())
-    
+
     # Filter to only known books
     book_ids = [b for b in book_ids if b in ENGINE_TO_SEFARIA]
-    
+
     if not book_ids:
         print("No valid books specified. Available: " + ", ".join(ENGINE_TO_SEFARIA.keys()))
         conn.close()
         return
-    
+
     total = 0
     for book_id in book_ids:
         sef_book = ENGINE_TO_SEFARIA[book_id]
@@ -273,12 +280,12 @@ def main():
         if not args.dry_run:
             conn.commit()
         print(f"  {sef_book}: {book_total} connections")
-    
+
     print(f"\n{'='*60}")
     print(f"Total connections: {total}")
     if args.dry_run:
         print("DRY RUN — no data written. Remove --dry-run to import.")
-    
+
     conn.close()
 
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Seed ~25 connections following Michael Heiser's divine council theology."""
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 CONNECTIONS = [
     # 1. Divine council

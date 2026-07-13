@@ -16,10 +16,11 @@ Scholarly connections (Sod layer, Barker/Orlov):
   - The Angel of YHWH who appears in human form
 """
 
-import sys, os, json
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lib.db import init_db, add_connection
+import os
+import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lib.db import add_connection, init_db
 
 # ─── Connections ───
 # Each entry: (source, target, layer, type_name, subtype, strength, confidence, discovered_by, metadata)

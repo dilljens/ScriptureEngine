@@ -10,7 +10,6 @@ across different traditions:
 
 from lib.db import add_connection
 
-
 # Known interpretive connections
 # Format: (source_verse, target_verse, tradition, type_name, note)
 INTERPRETATIONS = [
@@ -23,7 +22,7 @@ INTERPRETATIONS = [
      "Midrash Rabba notes the plural 'let us make man' — rabbinic tradition often interprets this as God taking counsel with the angels"),
     ("gen.3.1", "rev.12.9", "jewish", "rabbinic_midrash",
      "Midrashim connect the serpent of Eden with the adversary figure who appears at the end of days"),
-    
+
     # Patristic (early church fathers)
     ("gen.1.1", "john.1.1", "patristic", "patristic_reading",
      "Augustine: 'In the beginning' refers to Christ the Word — the OT creation account and John's prologue speak of the same Logos"),
@@ -35,7 +34,7 @@ INTERPRETATIONS = [
      "Justin Martyr and subsequent fathers saw the bronze serpent lifted up as a type of Christ lifted up on the cross"),
     ("jonah.1.17", "matt.12.40", "patristic", "patristic_reading",
      "Jonah in the fish three days as a type of Christ in the tomb — universally recognized by patristic writers"),
-    
+
     # Reformation
     ("rom.1.17", "gal.3.11", "reformation", "reformation_view",
      "Luther: 'The just shall live by faith' — this verse sparked the Reformation. Luther understood Paul to be contrasting faith vs. works-righteousness, not faith vs. Torah"),
@@ -43,7 +42,7 @@ INTERPRETATIONS = [
      "Calvin: Abraham's faith was counted for righteousness — the covenant with Abraham was always a covenant of grace, not of works"),
     ("gen.15.6", "rom.4.3", "reformation", "reformation_view",
      "Luther and Calvin both see this as the definitive OT proof that justification is by faith, not by works of the law"),
-    
+
     # Latter-day Saint interpretive tradition
     ("gen.1.1", "moses.2.1", "latter_day_saint", "latter_day_saint_reading",
      "JST/Book of Moses expands Genesis 1:1 to show the premortal council: 'Yea, in the beginning I created the heaven, and the earth upon which thou standest' — revealing the context of the creation as a heavenly council"),
@@ -65,7 +64,7 @@ INTERPRETATIONS = [
      "Rabbinic tradition interprets Psalm 110 as referring to Abraham or David, while Christian tradition (following Jesus himself) reads it as referring to the Messiah"),
     ("dan.7.13", "matt.26.64", "jewish", "rabbinic_midrash",
      "The 'Son of Man' figure in Daniel 7 receives extensive interpretation in both Jewish (1 Enoch, 4 Ezra) and Christian (Gospels) tradition as a messianic figure"),
-    
+
     # Critical scholarship
     ("gen.1.1", "gen.2.4", "critical", "critical_scholarship",
      "Source criticism identifies two creation accounts: the Priestly (Gen 1:1-2:4a) and the Yahwist (Gen 2:4b-25), from different sources with different theological emphases"),
@@ -80,11 +79,11 @@ INTERPRETATIONS = [
 
 def run(conn, book_ids=None):
     """Generate interpretive connections.
-    
+
     Connects verses to their interpretive traditions.
     """
     count = 0
-    
+
     # Map interpretive type names to categories
     tradition_map = {
         "jewish": "rabbinic_midrash",
@@ -93,12 +92,12 @@ def run(conn, book_ids=None):
         "latter_day_saint": "latter_day_saint_reading",
         "critical": "critical_scholarship",
     }
-    
+
     for entry in INTERPRETATIONS:
         source, target, tradition, type_name, note = entry
-        
+
         layer_type = tradition_map.get(tradition, "rabbinic_midrash")
-        
+
         try:
             add_connection(conn, source, target,
                           layer="interpretive",
@@ -116,10 +115,10 @@ def run(conn, book_ids=None):
             count += 1
         except Exception:
             pass
-        
+
         if count % 50 == 0:
             conn.commit()
-    
+
     conn.commit()
     print(f"  Interpretive: {count} connections across {len(set(e[3] for e in INTERPRETATIONS))} traditions")
     return count

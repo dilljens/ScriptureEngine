@@ -42,12 +42,12 @@ def _restore_final(letter, original_idx, original_letters):
 
 def decode_albam(text):
     """Albam (אלב"ם) — split alphabet in half, map across.
-    
+
     First half (letters 1-11): אבגדהוזחטיכ
     Second half (letters 12-22): למנסעפצקרשת
-    
+
     א→ל, ב→מ, ג→נ, ... ל→א, מ→ב, נ→ג, ...
-    
+
     Named after the first pair: אלב"ם (Aleph→Lamed, Bet→Mem)
     """
     half = 11  # 22 letters / 2
@@ -70,11 +70,11 @@ def decode_albam(text):
 
 def decode_atbah(text):
     """Atbah (אטב"ח) — within-half mirrored pairs.
-    
+
     Split into 5 pairs of 2 + 2 unpaired middle letters:
-    א↔ט, ב↔ח, ג↔ז, ד↔ו, ה↔ה, י↔י, כ↔כ, ל↔ל, מ↔מ, נ↔נ, ס↔ס, ע↔ע, 
+    א↔ט, ב↔ח, ג↔ז, ד↔ו, ה↔ה, י↔י, כ↔כ, ל↔ל, מ↔מ, נ↔נ, ס↔ס, ע↔ע,
     פ↔פ, צ↔צ, ק↔ק, ר↔ר, ש↔ש, ת↔ת
-    
+
     Actually the traditional Atbah is: א=ט, ב=ח, ג=ז, ד=ו, ה=ה (and beyond that,
     letters map to themselves). So it's only the first 5 pairs.
     """
@@ -90,7 +90,7 @@ def decode_atbah(text):
     for letter in ALEPH_BET:
         if letter not in atbah_map:
             atbah_map[letter] = letter
-    
+
     result = []
     for ch in text:
         cp = ord(ch)
@@ -107,9 +107,9 @@ def decode_atbah(text):
 
 def decode_avgad(text):
     """Avgad (אבג"ד) — shift each letter forward by one position.
-    
+
     א→ב, ב→ג, ג→ד, ... ת→א
-    
+
     Named after the first pair: אבג"ד (Aleph→Bet, Bet→Gimel, Gimel→Dalet)
     """
     result = []
@@ -131,7 +131,7 @@ def decode_avgad(text):
 # Also add the reverse shift (Avgad backwards)
 def decode_avgad_reverse(text):
     """Reverse Avgad — shift each letter back by one position.
-    
+
     א→ת, ב→א, ג→ב, ... ת→ש
     """
     result = []

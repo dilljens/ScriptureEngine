@@ -53,7 +53,7 @@ def main():
         return
 
     conn = sqlite3.connect(str(MEM_DB))
-    
+
     # Create the grammar reference table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS grammar_reference (
@@ -66,19 +66,19 @@ def main():
             has_details INTEGER DEFAULT 1
         )
     """)
-    
+
     # Count existing
     existing = conn.execute("SELECT COUNT(*) FROM grammar_reference").fetchone()[0]
     if existing > 0:
         print(f"Grammar reference already has {existing} paragraphs. Delete table to re-import.")
         conn.close()
         return
-    
+
     # Read TSV
     csv.field_size_limit(10 * 1024 * 1024)  # 10MB max field size
-    
+
     count = 0
-    with open(JOUON_TSV, 'r', encoding='utf-8') as f:
+    with open(JOUON_TSV, encoding='utf-8') as f:
         reader = csv.reader(f, delimiter='\t')
         for row in reader:
             if len(row) < 2:
@@ -88,25 +88,25 @@ def main():
                 html = row[1]
             except (ValueError, IndexError):
                 continue
-            
+
             section, subsection = extract_section_info(html)
             summary = html_to_plain_text(html)
             heb_examples = extract_hebrew_examples(html)
-            
+
             conn.execute(
                 "INSERT OR REPLACE INTO grammar_reference (paragraph_id, section, subsection, summary, hebrew_examples, html_content) VALUES (?, ?, ?, ?, ?, ?)",
                 (para_id, section, subsection, summary, json.dumps(heb_examples), html)
             )
             count += 1
-    
+
     conn.commit()
-    
+
     # Verify
     total = conn.execute("SELECT COUNT(*) FROM grammar_reference").fetchone()[0]
     sections = conn.execute("SELECT DISTINCT section FROM grammar_reference ORDER BY section").fetchall()
-    
+
     conn.close()
-    
+
     print(f"Imported {count} grammar paragraphs into {total} total")
     print(f"Sections: {[s[0] for s in sections]}")
 

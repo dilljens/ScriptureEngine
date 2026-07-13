@@ -8,7 +8,10 @@ Usage:
     python3 scripts/seed_hebrew_production.py
 """
 
-import sqlite3, json, sys, os
+import os
+import sqlite3
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 DB = sys.argv[1] if len(sys.argv) > 1 else "data/memorize.db"

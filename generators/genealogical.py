@@ -11,8 +11,6 @@ and text pattern matching for genealogical formulas.
 
 import re
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Person entity IDs from entity_links
 # (these are the ones that actually link to verses)

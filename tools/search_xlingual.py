@@ -12,11 +12,13 @@ Usage:
   python3 search_xlingual.py '{"entity": "person.moses"}'
 """
 
-import sys, json, os, re
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db
-
 
 # Stopwords for English search
 STOPWORDS = {"the", "and", "a", "an", "in", "of", "to", "for", "with",
@@ -79,13 +81,13 @@ def search_by_entity(conn, entity_id):
     entity = conn.execute("""
         SELECT * FROM entity_links WHERE entity_id = ?
     """, (entity_id,)).fetchone()
-    
+
     if not entity:
         return {"error": f"Entity '{entity_id}' not found"}
-    
+
     entity = dict(entity)
     results = {"entity": entity, "verses": []}
-    
+
     # Search by Hebrew name
     if entity.get("hebrew_name"):
         heb_pattern = build_hebrew_like(entity["hebrew_name"])
@@ -106,7 +108,7 @@ def search_by_entity(conn, entity_id):
                 "english": r["text_english"][:100] or "",
                 "book": r["book_title"],
             })
-    
+
     # Search by Greek name
     if entity.get("greek_name"):
         rows = conn.execute("""
@@ -126,7 +128,7 @@ def search_by_entity(conn, entity_id):
                 "english": r["text_english"][:100] or "",
                 "book": r["book_title"],
             })
-    
+
     # Search by English name
     if entity.get("english_name"):
         rows = conn.execute("""
@@ -142,33 +144,33 @@ def search_by_entity(conn, entity_id):
                 "text": r["text_english"][:100],
                 "book": r["book_title"],
             })
-    
+
     return results
 
 
 def main():
     args = json.loads(sys.argv[1]) if len(sys.argv) > 1 else json.loads(sys.stdin.read())
     conn = get_db()
-    
+
     # Entity lookup mode
     if "entity" in args:
         result = search_by_entity(conn, args["entity"])
         print(json.dumps(result, indent=2, ensure_ascii=False))
         conn.close()
         return
-    
+
     query = args.get("query", "")
     language = args.get("language", "all")
     include_entities = args.get("entities", False)
     limit = args.get("limit", 30)
-    
+
     if not query:
         print(json.dumps({"error": "Provide a query"}))
         conn.close()
         return
-    
+
     result = {"query": query, "results": []}
-    
+
     # Search Hebrew
     if language in ("all", "hebrew"):
         heb = search_hebrew(conn, query, limit)
@@ -180,7 +182,7 @@ def main():
                 "english": r.get("text_english", "")[:100],
                 "book": r.get("book_title", ""),
             })
-    
+
     # Search Greek
     if language in ("all", "greek"):
         grk = search_greek(conn, query, limit)
@@ -192,7 +194,7 @@ def main():
                 "english": r.get("text_english", "")[:100],
                 "book": r.get("book_title", ""),
             })
-    
+
     # Search English
     if language in ("all", "english"):
         eng = search_english(conn, query, limit)
@@ -203,7 +205,7 @@ def main():
                 "text": r.get("text_english", "")[:100],
                 "book": r.get("book_title", ""),
             })
-    
+
     # Include entity matches
     if include_entities:
         # Find entities matching the query
@@ -215,9 +217,9 @@ def main():
         """, (f"%{query}%", f"%{query}%", f"%{query}%")).fetchall()
         if entities:
             result["entity_matches"] = [dict(r) for r in entities]
-    
+
     result["total"] = len(result["results"])
-    
+
     conn.close()
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

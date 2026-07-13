@@ -8,19 +8,22 @@ Instead of testing obscure verse-reference trivia, generates questions that:
 
 Question types:
   1. Connection type ID — show 2 passages, ask what connects them
-  2. Shared word — show 2 passages with shared word, ask what it is  
+  2. Shared word — show 2 passages with shared word, ask what it is
   3. Quotation source — show a quotation, ask where it's from
   4. Thematic grouping — show verses, ask what theme connects them
 """
 
 import json
+import logging
 import os
 import random
 import re
+
+logger = logging.getLogger(__name__)
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from lib.db import get_db
-
 
 FULL_BOOK_NAMES = {
     'gen': 'Genesis', 'exo': 'Exodus', 'lev': 'Leviticus', 'num': 'Numbers', 'deu': 'Deuteronomy',
@@ -103,15 +106,15 @@ class AssessmentGenerator:
 
     def generate_all(self, count=200):
         """Generate a balanced set of assessment questions.
-        
+
         Uses efficient batch-fetching to minimize DB queries.
         """
         items = []
-        
+
         # Pre-fetch random connection pairs (batch, one query)
         in_clause = ','.join('?' for _ in USEFUL_TYPES)
         sql_text = f"""
-            SELECT c.type, c.source_verse, c.target_verse, 
+            SELECT c.type, c.source_verse, c.target_verse,
                    v1.text_english as t1, v2.text_english as t2
             FROM connections c
             JOIN verses v1 ON v1.id = c.source_verse
@@ -134,15 +137,15 @@ class AssessmentGenerator:
         """
         params = USEFUL_TYPES + [count * 3]
         pairs = self.conn.execute(sql_text, params)
-        
+
         pair_list = [{
             "type": r[0], "source": r[1], "target": r[2],
             "source_text": truncate_text(r[3], 150), "target_text": truncate_text(r[4], 150),
         } for r in pairs]
-        
+
         if not pair_list:
             return items
-        
+
         # Type A: Connection type questions (use all pairs)
         for pair in pair_list:
             if len(items) >= count // 2:
@@ -168,7 +171,7 @@ class AssessmentGenerator:
                 "explanation": CONNECTION_LABELS[correct],
                 "bloom_level": "understand",
             })
-        
+
         # Type B: Shared word questions (from same_lemma pairs)
         lemma_pairs = [p for p in pair_list if p["type"] == "same_lemma"]
         for pair in lemma_pairs:
@@ -199,7 +202,7 @@ class AssessmentGenerator:
                 ),
                 "bloom_level": "understand",
             })
-        
+
         # Type C: Well-known quotation questions (no DB needed)
         known_pairs = [
             ("hab.2.4", "rom.1.17", "The just shall live by faith"),
@@ -219,7 +222,7 @@ class AssessmentGenerator:
                 break
             ot_book = FULL_BOOK_NAMES.get(ot_ref.split('.')[0], ot_ref.split('.')[0].upper())
             nt_book = FULL_BOOK_NAMES.get(nt_ref.split('.')[0], nt_ref.split('.')[0].upper())
-            all_books = ['Isaiah', 'Psalms', 'Deuteronomy', 'Jeremiah', 'Genesis', 
+            all_books = ['Isaiah', 'Psalms', 'Deuteronomy', 'Jeremiah', 'Genesis',
                          'Exodus', 'Hosea', 'Zechariah', 'Daniel', 'Proverbs', 'Job',
                          'Malachi', 'Joel', 'Amos', 'Micah']
             correct_book = ot_book
@@ -242,10 +245,10 @@ class AssessmentGenerator:
                 ),
                 "bloom_level": "remember",
             })
-        
+
         # Type D: Thematic grouping
         topics = self.conn.execute("""
-            SELECT slug, name FROM topical_guide 
+            SELECT slug, name FROM topical_guide
             WHERE verse_count BETWEEN 5 AND 40
             ORDER BY RANDOM() LIMIT 20
         """).fetchall()
@@ -284,7 +287,7 @@ class AssessmentGenerator:
                 "explanation": f"All three are categorized under **{topic_name}** in the Topical Guide.",
                 "bloom_level": "analyze",
             })
-        
+
         random.shuffle(items)
         return items[:count]
 
@@ -292,14 +295,14 @@ class AssessmentGenerator:
 def build_assessment_items(count=3000):
     """Build and store assessment items in the database."""
     conn = get_db()
-    
+
     # Clear old items
     conn.execute("DELETE FROM assessment_items")
     conn.commit()
-    
+
     gen = AssessmentGenerator(conn)
     items = gen.generate_all(count=count)
-    
+
     stored = 0
     for item in items:
         try:
@@ -316,11 +319,11 @@ def build_assessment_items(count=3000):
                 item.get("bloom_level", "remember"),
             ))
             stored += 1
-        except Exception as e:
+        except Exception:
             pass
-    
+
     conn.commit()
-    print(f"Generated {len(items)} items, stored {stored}")
+    logger.info("Generated %d items, stored %d", len(items), stored)
     conn.close()
     return stored
 

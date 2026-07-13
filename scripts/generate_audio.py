@@ -10,11 +10,16 @@ Usage:
   python3 scripts/generate_audio.py --reclone          # re-generate with voice cloning
 """
 
-import sys, os, json, argparse
+import argparse
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db
+import soundfile as sf
+import torch
 from omnivoice import OmniVoice
-import torch, soundfile as sf
+
+from lib.db import get_db
 
 
 def get_verses(book_id=None, chapter=None):
@@ -46,10 +51,10 @@ def main():
 
     verses = get_verses(args.book, args.chapter)
     if not verses:
-        print(f"No verses found with Hebrew text")
+        print("No verses found with Hebrew text")
         return
 
-    print(f"Loading OmniVoice...")
+    print("Loading OmniVoice...")
     model = OmniVoice.from_pretrained(
         "k2-fsa/OmniVoice",
         device_map="cuda:0",
@@ -72,11 +77,11 @@ def main():
         if os.path.exists(outpath):
             continue
 
-    try:
-        if args.reclone:
-            audio = model.generate(text=heb, ref_audio=args.reference, speed=args.speed)
-        else:
-            audio = model.generate(text=heb, speed=args.speed)
+        try:
+            if args.reclone:
+                audio = model.generate(text=heb, ref_audio=args.reference, speed=args.speed)
+            else:
+                audio = model.generate(text=heb, speed=args.speed)
             sf.write(outpath, audio[0], 24000)
             count += 1
             if count % 10 == 0:

@@ -15,9 +15,14 @@ Endpoints:
   GET  /api/v1/learn/review          — due reviews
   POST /api/v1/learn/review/{id}    — submit review rating
 """
-import json, sqlite3, time, datetime, math, random
+import contextlib
+import datetime
+import json
+import math
+import sqlite3
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -28,7 +33,7 @@ def get_conn():
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
-    
+
     # Learning modules
     conn.execute("""
         CREATE TABLE IF NOT EXISTS learning_modules (
@@ -45,7 +50,7 @@ def get_conn():
             sort_order INTEGER DEFAULT 0
         )
     """)
-    
+
     # Module-to-question mapping
     conn.execute("""
         CREATE TABLE IF NOT EXISTS module_questions (
@@ -56,7 +61,7 @@ def get_conn():
             sort_order INTEGER DEFAULT 0
         )
     """)
-    
+
     # Per-user progress per module
     conn.execute("""
         CREATE TABLE IF NOT EXISTS learning_progress (
@@ -72,7 +77,7 @@ def get_conn():
             PRIMARY KEY (user_id, module_id)
         )
     """)
-    
+
     return conn
 
 
@@ -96,42 +101,42 @@ def seed_modules():
     if existing > 0:
         conn.close()
         return
-    
+
     # Hub notes → learning modules
-    hubs = conn.execute("SELECT id, title, description, icon FROM hub_notes").fetchall()
+    conn.execute("SELECT id, title, description, icon FROM hub_notes").fetchall()
     hub_order = [
         "covenant", "temple", "exodus", "atonement", "lamb_of_god",
         "angel_of_the_lord", "wisdom", "son_of_man",
         "zion", "priesthood", "faith_unto_salvation",
         "restoration", "garden_to_city", "dispensations",
     ]
-    
+
     for i, hid in enumerate(hub_order):
         hub = conn.execute(
             "SELECT id, title, description, icon FROM hub_notes WHERE id=?", (hid,)
         ).fetchone()
         if not hub:
             continue
-        
+
         # Build lesson content from hub note steps
         steps = conn.execute(
             "SELECT verse_id, title, explanation, connection_type FROM hub_note_steps WHERE hub_id=? ORDER BY step_number",
             (hid,)
         ).fetchall()
-        
+
         lesson_parts = [f"# {hub['title']}\n\n{hub['description']}\n"]
         for s in steps:
             vt = conn.execute("SELECT text_english FROM verses WHERE id=?", (s["verse_id"],)).fetchone()
             text = vt[0][:300] if vt and vt[0] else ""
             lesson_parts.append(f"\n## {s['title']} ({s['verse_id']})\n\n{text}\n\n{s['explanation']}")
-        
+
         # Worked examples from TG topic
         tg_links = conn.execute("""
             SELECT t.name, t.slug FROM hub_topic_links h
             JOIN topical_guide t ON t.slug = h.topic_id
             WHERE h.hub_id = ? LIMIT 3
         """, (hid,)).fetchall()
-        
+
         examples = []
         for tg in tg_links:
             verses = conn.execute("""
@@ -146,14 +151,14 @@ def seed_modules():
                     "verse": v["id"],
                     "text": v["text_english"][:200] if v["text_english"] else "",
                 })
-        
+
         # Find practice questions for this module (by TG topic links)
         q_ids = conn.execute("""
             SELECT a.id FROM assessment_items a
             WHERE a.tier = 'analysis'
             ORDER BY RANDOM() LIMIT 5
         """).fetchall()
-        
+
         conn.execute("""
             INSERT INTO learning_modules (id, title, description, icon, difficulty, lesson_content, worked_examples, sort_order)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -164,10 +169,10 @@ def seed_modules():
             json.dumps(examples[:4]),
             i + 1,
         ))
-        
+
         for q in q_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)", (hid, q[0]))
-        
+
         # Also link a couple open-ended questions
         open_ids = conn.execute("""
             SELECT id FROM assessment_items WHERE question_type_open = 1
@@ -175,7 +180,7 @@ def seed_modules():
         """).fetchall()
         for q in open_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)", (hid, q[0]))
-    
+
     # Add TG-based modules (doctrinal topics)
     tg_topics = conn.execute("""
         SELECT slug, name, description, verse_count FROM topical_guide
@@ -186,26 +191,26 @@ def seed_modules():
         )
         ORDER BY verse_count DESC LIMIT 12
     """).fetchall()
-    
+
     base_order = len(hub_order) + 1
     for i, t in enumerate(tg_topics):
         slug, name, desc, vc = t
         desc_text = desc or f"Study the theme of {name} across scripture — {vc} verses reference this topic."
-        
+
         examples = conn.execute("""
             SELECT v.id, v.text_english FROM tg_verse_references tg
             JOIN verses v ON v.id = tg.verse_id
             WHERE tg.topic_id = ? AND v.text_english IS NOT NULL
             LIMIT 3
         """, (slug,)).fetchall()
-        
+
         w_examples = [{"title": f"{name} — {v[0]}", "verse": v[0], "text": v[1][:200]} for v in examples]
-        
+
         q_ids = conn.execute("""
             SELECT id FROM assessment_items WHERE tier = 'consistency'
             ORDER BY RANDOM() LIMIT 4
         """).fetchall()
-        
+
         conn.execute("""
             INSERT INTO learning_modules (id, title, description, icon, difficulty, lesson_content, worked_examples, sort_order)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -216,11 +221,11 @@ def seed_modules():
             json.dumps(w_examples),
             base_order + i,
         ))
-        
+
         for q in q_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)",
                         (f"tg_{slug}", q[0]))
-        
+
         open_ids = conn.execute("""
             SELECT id FROM assessment_items WHERE question_type_open = 1
             ORDER BY RANDOM() LIMIT 2
@@ -228,7 +233,7 @@ def seed_modules():
         for q in open_ids:
             conn.execute("INSERT OR IGNORE INTO module_questions (module_id, question_id) VALUES (?, ?)",
                         (f"tg_{slug}", q[0]))
-    
+
     conn.commit()
     conn.close()
 
@@ -240,9 +245,9 @@ def list_modules(user_id: str = "default"):
     """List all learning modules with user progress."""
     seed_modules()
     conn = get_conn()
-    
+
     modules = conn.execute("""
-        SELECT m.*, 
+        SELECT m.*,
                COALESCE(p.mastery, 0) as mastery,
                COALESCE(p.attempts, 0) as attempts,
                COALESCE(p.correct, 0) as correct,
@@ -251,9 +256,9 @@ def list_modules(user_id: str = "default"):
         LEFT JOIN learning_progress p ON p.module_id=m.id AND p.user_id=?
         ORDER BY m.sort_order
     """, (user_id,)).fetchall()
-    
+
     conn.close()
-    
+
     results = []
     for m in modules:
         mastered = m["mastery"] >= 0.8
@@ -269,7 +274,7 @@ def list_modules(user_id: str = "default"):
             "question_count": m["question_count"],
             "status": "mastered" if mastered else ("learning" if in_progress else "available"),
         })
-    
+
     return {"ok": True, "data": {"modules": results, "total": len(results)}}
 
 
@@ -278,12 +283,12 @@ def get_module(module_id: str, user_id: str = "default"):
     """Get a full learning module with lesson content, worked examples, and practice questions."""
     seed_modules()
     conn = get_conn()
-    
+
     mod = conn.execute("SELECT * FROM learning_modules WHERE id=?", (module_id,)).fetchone()
     if not mod:
         conn.close()
         raise HTTPException(404, f"Module not found: {module_id}")
-    
+
     # Get practice questions — adaptive: weakest first, mix of MC and open-ended
     questions = conn.execute("""
         SELECT a.id, a.question_type, a.question_text, a.options_json, a.correct_answer,
@@ -294,12 +299,12 @@ def get_module(module_id: str, user_id: str = "default"):
         JOIN assessment_items a ON a.id = mq.question_id
         LEFT JOIN quiz_progress qp ON qp.question_id=a.id AND qp.user_id=?
         WHERE mq.module_id=?
-        ORDER BY 
+        ORDER BY
             CASE WHEN qp.attempts IS NULL THEN 0 ELSE 1 END,
             CAST(qp.correct AS REAL) / NULLIF(qp.attempts, 1) ASC NULLS FIRST,
             mq.sort_order
     """, (user_id, module_id)).fetchall()
-    
+
     # Also fetch related wiki articles to enrich the lesson
     wiki_content = ""
     try:
@@ -313,16 +318,14 @@ def get_module(module_id: str, user_id: str = "default"):
             for w in wiki_rows:
                 wiki_parts.append(f"\n**{w['title']}**: {w['summary'][:300] if w['summary'] else ''}")
             wiki_content = "\n".join(wiki_parts)
-    except:
+    except Exception:
         pass
-    
+
     q_list = []
     for q in questions:
         opts = []
-        try:
+        with contextlib.suppress(json.JSONDecodeError, ValueError):
             opts = json.loads(q["options_json"]) if q["options_json"] else []
-        except:
-            pass
         q_list.append({
             "id": q["id"],
             "type": q["question_type"],
@@ -336,21 +339,19 @@ def get_module(module_id: str, user_id: str = "default"):
             "user_correct": q["user_correct"],
             "user_attempts": q["user_attempts"],
         })
-    
+
     worked_examples = []
-    try:
+    with contextlib.suppress(json.JSONDecodeError, ValueError):
         worked_examples = json.loads(mod["worked_examples"]) if mod["worked_examples"] else []
-    except:
-        pass
-    
+
     # Get user progress
     prog = conn.execute(
         "SELECT mastery, attempts, correct, stability, difficulty, last_review, next_review FROM learning_progress WHERE user_id=? AND module_id=?",
         (user_id, module_id)
     ).fetchone()
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "id": mod["id"],
         "title": mod["title"],
@@ -377,15 +378,15 @@ def submit_practice(module_id: str, body: dict):
     user_id = body.get("user_id", "default")
     question_id = body.get("question_id", 0)
     correct = body.get("correct", False)
-    
+
     conn = get_conn()
-    
+
     # Record in quiz_progress
     existing = conn.execute(
         "SELECT correct, attempts FROM quiz_progress WHERE user_id=? AND question_id=?",
         (user_id, question_id)
     ).fetchone()
-    
+
     if existing:
         conn.execute("""
             UPDATE quiz_progress SET correct=correct+?, attempts=attempts+1, last_seen=datetime('now')
@@ -396,30 +397,30 @@ def submit_practice(module_id: str, body: dict):
             INSERT INTO quiz_progress (user_id, question_id, correct, attempts, last_seen)
             VALUES (?, ?, ?, 1, datetime('now'))
         """, (user_id, question_id, 1 if correct else 0))
-    
+
     # Update learning_progress
     prog = conn.execute(
         "SELECT mastery, attempts, correct FROM learning_progress WHERE user_id=? AND module_id=?",
         (user_id, module_id)
     ).fetchone()
-    
+
     if prog:
         a = prog["attempts"] + 1
         c = prog["correct"] + (1 if correct else 0)
     else:
         a = 1
         c = 1 if correct else 0
-    
+
     mastery = min(1.0, c / max(a, 1))
-    
+
     conn.execute("""
         INSERT OR REPLACE INTO learning_progress (user_id, module_id, mastery, attempts, correct, last_review)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
     """, (user_id, module_id, round(mastery, 3), a, c))
-    
+
     conn.commit()
     conn.close()
-    
+
     return {"ok": True, "data": {
         "mastery": round(mastery, 3),
         "attempts": a,
@@ -432,7 +433,7 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
     """Get due module reviews (FSRS-scheduled)."""
     conn = get_conn()
     now = datetime.datetime.now()
-    
+
     rows = conn.execute("""
         SELECT p.module_id, m.title, p.mastery, p.attempts, p.stability, p.difficulty, p.last_review,
                (SELECT COUNT(*) FROM module_questions WHERE module_id=p.module_id) as qcount
@@ -442,7 +443,7 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
         ORDER BY p.last_review ASC
         LIMIT ?
     """, (user_id, limit)).fetchall()
-    
+
     reviews = []
     for r in rows:
         if r["last_review"]:
@@ -450,11 +451,11 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
                 last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
                 days = (now - last).total_seconds() / 86400.0
                 ret = math.exp(-days / max(r["stability"], 0.5))
-            except:
+            except Exception:
                 ret = 0.5
         else:
             ret = 0.0
-        
+
         if ret < 0.8:
             reviews.append({
                 "module_id": r["module_id"],
@@ -463,6 +464,6 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
                 "retrievability": round(ret, 3),
                 "questions_available": r["qcount"],
             })
-    
+
     conn.close()
     return {"ok": True, "data": {"reviews": reviews, "due": len(reviews)}}

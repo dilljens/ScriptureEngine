@@ -8,8 +8,11 @@ Source: awerkamp markdown repo at /tmp/jst-markdown.
 Also creates a JST↔KJV diff index.
 """
 
-import sys, os, re, json
+import os
+import re
+import sys
 from pathlib import Path
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from lib.db import get_db
 
@@ -45,11 +48,11 @@ def parse_all_books(base_dir):
     Returns: {book_id: {chapter: {verse: text}}}
     """
     result = {}
-    for root, dirs, files in os.walk(base_dir):
+    for root, _dirs, files in os.walk(base_dir):
         # Get book name from directory name (e.g., "01 Genesis")
         dir_name = os.path.basename(root)
         book_name = re.sub(r'^\d+\s+', '', dir_name) if re.match(r'^\d+\s+', dir_name) else dir_name
-        
+
         for fname in sorted(files):
             if not fname.endswith(".md"):
                 continue
@@ -60,7 +63,7 @@ def parse_all_books(base_dir):
             if not ch_match:
                 continue
             ch = int(ch_match.group(1))
-            
+
             bid = BOOK_NAME_TO_ID.get(book_name)
             if not bid:
                 # Try alternative capitalization
@@ -70,25 +73,25 @@ def parse_all_books(base_dir):
                         break
             if not bid:
                 continue
-            
+
             if bid in EXCLUDED_BOOKS:
                 continue
-            
-            with open(os.path.join(root, fname), 'r', encoding='utf-8') as f:
+
+            with open(os.path.join(root, fname), encoding='utf-8') as f:
                 content = f.read()
-            
+
             # Parse markdown: ## N. for verse N, followed by text on same or next line
             # The chapter IS the file (Genesis1.md = chapter 1)
             ch = int(Path(fname).stem.rstrip('0123456789').removeprefix(book_name) or 0)
             try:
                 ch = int(re.search(r'(\d+)$', fname[:-3]).group(1))
-            except:
+            except (ValueError, AttributeError):
                 continue
-            
+
             verses = {}
             current_vs = None
             current_text = ''
-            
+
             for line in content.split('\n'):
                 line = line.strip()
                 if not line:
@@ -96,7 +99,7 @@ def parse_all_books(base_dir):
                 # Skip navigation links
                 if line.startswith('[[') and line.endswith(']]'):
                     continue
-                
+
                 vs_match = re.match(r'^##\s*(\d+)\.?\s*(.*)', line)
                 if vs_match:
                     # Save previous verse
@@ -107,16 +110,16 @@ def parse_all_books(base_dir):
                 elif current_vs is not None:
                     # Continuation of current verse
                     current_text += ' ' + line
-            
+
             # Save last verse
             if current_vs is not None and current_text:
                 verses[current_vs] = current_text.strip()
-            
+
             if verses:
                 if bid not in result:
                     result[bid] = {}
                 result[bid][ch] = verses
-    
+
     return result
 
 
@@ -125,43 +128,43 @@ def main():
         print(f"Error: {REPO} not found. Clone first:")
         print("  git clone https://github.com/awerkamp/markdown-scriptures-standard-works-church-of-jesus-christ.git /tmp/jst-markdown")
         sys.exit(1)
-    
+
     conn = get_db()
-    
+
     print("Parsing JST OT...", flush=True)
     jst_ot = parse_all_books(os.path.join(REPO, "JST Old Testament"))
     print(f"  {sum(len(chs) for chs in jst_ot.values())} chapters")
-    
+
     print("Parsing JST NT...", flush=True)
     jst_nt = parse_all_books(os.path.join(REPO, "JST New Testament"))
     print(f"  {sum(len(chs) for chs in jst_nt.values())} chapters")
-    
+
     jst = {**jst_ot, **jst_nt}
-    
+
     # Store in text_resources
     inserted = 0
     for bid, chapters in jst.items():
         for ch, verses in chapters.items():
             for vs, text in verses.items():
                 vid = f"{bid}.{ch}.{vs}"
-                
+
                 conn.execute(
                     "INSERT OR REPLACE INTO text_resources (verse_id, version, text, language) VALUES (?, 'JST', ?, 'eng')",
                     (vid, text)
                 )
                 inserted += 1
-                
+
                 if inserted % 1000 == 0:
                     conn.commit()
                     print(f"  {inserted} verses...", flush=True)
-    
+
     conn.commit()
-    
+
     total = conn.execute("SELECT COUNT(*) FROM text_resources WHERE version='JST'").fetchone()[0]
-    print(f"\nResults:")
+    print("\nResults:")
     print(f"  Inserted: {inserted}")
     print(f"  Total JST verses: {total}")
-    
+
     conn.close()
 
 

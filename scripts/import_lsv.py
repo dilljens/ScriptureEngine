@@ -8,7 +8,10 @@ Download source: https://openbible-api-1.biblica.com/artifactContent/64bff5e9fc8
 Usage: python3 scripts/import_lsv.py /path/to/lsv_usx_dir
 """
 
-import sys, os, glob, xml.etree.ElementTree as ET
+import os
+import sys
+import xml.etree.ElementTree as ET
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -89,11 +92,10 @@ def import_lsv(usx_dir):
 
             if tag == 'para' and current_chapter:
                 # Walk children to find verses
-                verse_texts = {}
                 current_verse = None
                 text_parts = {}
 
-                def walk_children(el, verse_num):
+                def walk_children(el, verse_num, text_parts):
                     if el.text:
                         if verse_num not in text_parts:
                             text_parts[verse_num] = ''
@@ -103,16 +105,15 @@ def import_lsv(usx_dir):
                             if child.get('number'):
                                 verse_num = int(child.get('number'))
                             elif child.get('eid'):
-                                # end marker, continue
                                 pass
                         else:
-                            walk_children(child, verse_num)
+                            walk_children(child, verse_num, text_parts)
                         if child.tail:
                             if verse_num not in text_parts:
                                 text_parts[verse_num] = ''
                             text_parts[verse_num] += child.tail or ''
 
-                walk_children(elem, current_verse)
+                walk_children(elem, current_verse, text_parts)
 
                 for vnum, txt in text_parts.items():
                     if vnum and txt.strip():

@@ -4,7 +4,11 @@
 340K human-curated cross-references from openbible.info.
 Uses batch inserts for performance.
 """
-import sys, os, csv, json
+import csv
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -23,7 +27,7 @@ def norm(v):
     b = BOOK_MAP.get(p[0].lower(), p[0].lower())
     try:
         return f"{b}.{int(p[1])}.{int(p[2])}"
-    except:
+    except (ValueError, IndexError):
         return None
 
 def type_and_conf(votes):
@@ -37,29 +41,29 @@ def type_and_conf(votes):
 def run():
     conn = get_db()
     conn.execute("PRAGMA journal_mode=DELETE")
-    
+
     tsk_file = '/tmp/cross_references.txt'
     if not os.path.exists(tsk_file):
         print("TSK file not found at /tmp/cross_references.txt")
         return
-    
+
     # Clear existing TSK connections
     conn.execute("DELETE FROM connections WHERE discovered_by='tsk'")
     conn.commit()
-    
+
     # Pre-load valid verse IDs for fast lookup
     valid = set(r[0] for r in conn.execute("SELECT id FROM verses"))
     print(f"  {len(valid):,} valid verses in DB", flush=True)
-    
+
     total = 0
     created = 0
     skipped_verse = 0
     batch = []
-    
+
     with open(tsk_file, encoding='utf-8') as f:
         reader = csv.reader(f, delimiter='\t')
         next(reader)  # skip header
-        
+
         for row in reader:
             if len(row) < 3:
                 continue
@@ -67,26 +71,26 @@ def run():
             to_v = norm(row[1])
             try:
                 votes = int(row[2])
-            except:
+            except ValueError:
                 votes = 0
-            
+
             if not from_v or not to_v or votes < 2:
                 continue
-            
+
             if from_v not in valid or to_v not in valid:
                 skipped_verse += 1
                 continue
-            
+
             conn_type, confidence = type_and_conf(votes)
             strength = round(confidence * 0.9, 2)
-            
+
             batch.append((
                 from_v, to_v, 'intertextual', conn_type, 'tsk',
                 strength, round(confidence, 2), 'tsk',
                 json.dumps({'source':'tsk','votes':votes})
             ))
             created += 1
-            
+
             if len(batch) >= 200:
                 conn.executemany("""
                     INSERT OR IGNORE INTO connections
@@ -95,11 +99,11 @@ def run():
                 """, batch)
                 conn.commit()
                 batch = []
-            
+
             total += 1
             if total % 100000 == 0:
                 print(f"  {total} processed, {created} created", flush=True)
-    
+
     if batch:
         conn.executemany("""
             INSERT OR IGNORE INTO connections
@@ -107,7 +111,7 @@ def run():
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, batch)
         conn.commit()
-    
+
     print(f"\nTSK done: {total} rows, {created} created, {skipped_verse} skipped (verse not in DB)")
     final = conn.execute("SELECT COUNT(*) FROM connections WHERE discovered_by='tsk'").fetchone()[0]
     print(f"Final TSK count: {final}")

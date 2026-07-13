@@ -7,13 +7,13 @@ Usage: python3 patterns.py '{"book": "isa", "chapter": 6}'
        python3 patterns.py '{"book": "gen", "chapter": 1, "chapter_end": 2}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_chapter
+from lib.db import get_chapter, get_db
 from lib.patterns.chiastic import detect_chiasm_in_book
 from lib.patterns.parallelism import detect_parallelisms
 
@@ -86,10 +86,7 @@ def analyze_passage(book, chapter_start, chapter_end=None):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     book = args.get("book", "")
     chapter = args.get("chapter", 1)

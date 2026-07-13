@@ -8,12 +8,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
 import VersePopup from './VersePopup'
+import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
 import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
+import { parseStandardRef, resolveBook } from '../refParser'
 
 // ── Verse ref detection ──
 
@@ -74,6 +77,41 @@ const BOOK_NAME_MAP = {
   mt: 'matt', mk: 'mark',
   jas: 'james',
   'joseph smith-matthew': 'jsm', 'joseph smith-history': 'jsh',
+  // DSS
+  'community rule': '1QS', 'serek hayahad': '1QS', 'serek': '1QS',
+  'war scroll': '1QM', 'milhamah': '1QM',
+  'hodayot': '1QHa', 'thanksgiving hymns': '1QHa', 'thanksgiving scroll': '1QHa',
+  'pesher habakkuk': '1QpHab',
+  'melchizedek scroll': '11Q13', '11q13': '11Q13',
+  'temple scroll': '11Q19', '11q19': '11Q19',
+  'damascus document': 'CD', 'cd': 'CD',
+  'songs of sabbath sacrifice': '4Q400', 'sabbath sacrifice': '4Q400',
+  'genesis apocryphon': '1Q20',
+  'book of giants': 'bookgiants',
+  // Pseudepigrapha
+  '1 enoch': '1en', 'ethiopic enoch': '1en',
+  '2 enoch': '2en', 'slavonic enoch': '2en',
+  'jubilees': 'jub', 'book of jubilees': 'jub',
+  'ascension of isaiah': 'ascis',
+  'assumption of moses': 'asmos',
+  'testament of abraham': 'tabr',
+  'testament of job': 'tjob',
+  'testament of solomon': 'tsol',
+  'life of adam and eve': '1adae',
+  'apocalypse of abraham': 'apabr',
+  'apocalypse of elijah': 'apelj',
+  'apocryphon of joshua': 'apjosh',
+  'psalms of solomon': 'psssol',
+  'odes of solomon': 'odessol',
+  'joseph and asenath': 'josasen',
+  'book of jasher': 'jasher', 'jasher': 'jasher',
+  'ladder of jacob': 'ladjac',
+  'prayer of azariah': 'azar',
+  // Expanded Canon
+  'shepherd of hermas': '1her', 'hermas': '1her',
+  'apocalypse of peter': 'apet',
+  'epistle of barnabas': 'barn', 'barnabas': 'barn',
+  'gospel of nicodemus': 'gnic', 'nicodemus': 'gnic',
 }
 
 function resolveBookName(name) {
@@ -160,6 +198,61 @@ function isStandaloneVerse(line) {
 }
 
 
+// ── System Prompt ──
+
+const SYSTEM_PROMPT = `You are a scripture study assistant for the Scripture Engine — a comprehensive digital library spanning 9 works: Old Testament, New Testament, Book of Mormon, Doctrine & Covenants, Pearl of Great Price, Dead Sea Scrolls, Apocrypha, Pseudepigrapha, and Expanded Canon.
+
+## Tools Available
+You have access to these categories of tools (invoked by the user's request):
+- **Lookup**: verse text, passage guides (instant connections + gematria + entities for any verse)
+- **Search**: full-text search across all works, cross-lingual search (Hebrew/Greek/English)
+- **Connections**: typed connections between verses (linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, sod/hidden)
+- **Graph**: shortest path between verses, reachable verses, hubs, entity networks
+- **Gematria**: Hebrew gematria (standard/ordinal/reduced), Greek isopsephy, Strong's definitions
+- **Study**: create/edit/export/publish guided study journeys through the canon
+
+## Formatting — USE THIS IN YOUR RESPONSES
+Always format scripture references and entities using these special markers so they become interactive:
+
+### For verse references:
+- Use :verse[book.chapter.verse] format
+- Examples: :verse[gen.1.1], :verse[isa.55.6], :verse[matt.5.3]
+- For verse ranges: :verse[exo.25.18-22]
+- For D&C sections: :verse[dc76.76.22] (use "dcNN" as book ID for section NN)
+- For whole chapters just mention the chapter reference
+
+### For entities (people, places, concepts):
+- Use :entity[Name] format
+- Examples: :entity[Abraham], :entity[Melchizedek], :entity[Zion], :entity[Covenant]
+
+### For Gematria:
+- Use :gematria[word=value] format
+- Example: :gematria[Messiah=358]
+
+### For Strong's numbers:
+- Use :strong[H430] for Hebrew, :strong[G26] for Greek
+- Example: :strong[H430] (Elohim)
+
+### For connections:
+- Use :conn[verseA↔verseB] format
+- Example: :conn[gen.1.1↔john.1.1]
+
+## Scripture Study Approach
+1. Start with what the text actually says — quote the actual words
+2. Distinguish linguistic connections (what the Hebrew/Greek says) from interpretive connections (what traditions say)
+3. Label traditions clearly: "Rashi interprets...", "Calvin says...", "The early church taught..."
+4. When Jesus and the Pharisees disagreed, Jesus was restoring the original intent of Torah against added traditions
+5. Connect themes across the canon using the connection graph
+
+## Hebrew Learning
+- You can teach Biblical Hebrew using aleph-bet, vowels, grammar, vocabulary, and root concepts
+- Use :verse[] markers to reference scripture examples
+- Use :strong[] for word studies
+- Format Hebrew words with transliteration when needed
+
+Be concise, accurate, and cite verse references.`
+
+
 // ── Chat Panel Component ──
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
@@ -178,6 +271,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [editText, setEditText] = useState('')          // text while editing
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
   const [visitedRefs, setVisitedRefs] = useState(new Set())
+  const [previewRef, setPreviewRef] = useState(null) // { ref: "gen.1.1", label: "Genesis 1:1" }
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
@@ -185,6 +279,40 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const titleSet = useRef(false)
 
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
+
+  // ── Verse preview detection in input ──
+  useEffect(() => {
+    const trimmed = input.trim()
+    if (!trimmed) { setPreviewRef(null); return }
+    // Try parsing as a verse reference using the same parser as SearchBar
+    const parsed = parseStandardRef(trimmed)
+    if (parsed) {
+      // Build refs: for a range, create array of verse refs; for chapter, just the book.chapter
+      const refs = parsed.verses?.length > 0
+        ? parsed.verses.map(v => `${parsed.book}.${parsed.chapter}.${v}`)
+        : `${parsed.book}.${parsed.chapter}`
+      const label = parsed.verse
+        ? `${parsed.book} ${parsed.chapter}:${parsed.verse}${parsed.verses?.length > 1 ? `-${parsed.verses[parsed.verses.length-1]}` : ''}`
+        : `${parsed.book} ${parsed.chapter}`
+      setPreviewRef({ ref: refs, label, book: parsed.book, chapter: parsed.chapter })
+    } else {
+      // Check if it looks like a natural language verse reference
+      const verseMatch = trimmed.match(/^([\w\s]+?)\s*(\d+)(?::(\d+(?:[-,]\d+)*))?$/)
+      if (verseMatch) {
+        const bookId = resolveBook(verseMatch[1].trim())
+        if (bookId) {
+          const ch = parseInt(verseMatch[2])
+          const vs = verseMatch[3]
+          const refs = vs ? `${bookId}.${ch}.${vs.split(/[-,]/)[0]}` : `${bookId}.${ch}`
+          setPreviewRef({ ref: refs, label: trimmed, book: bookId, chapter: ch })
+        } else {
+          setPreviewRef(null)
+        }
+      } else {
+        setPreviewRef(null)
+      }
+    }
+  }, [input])
 
   // ── Initialize session on mount ──
   useEffect(() => {
@@ -241,7 +369,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
     "The Septuagint (LXX) is the Greek translation of the Hebrew Bible used by the NT writers. The Masoretic Text (MT) is the Hebrew tradition.",
     "YHWH is the tetragrammaton — the four-letter divine name. The LSV uses YHWH directly. Its gematria value is 26, the same as the number of generations in Matthew's genealogy.",
     "11 connection layers: linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, and sod.",
-    "The engine spans 6 works: OT, NT, Book of Mormon, Doctrine and Covenants, Pearl of Great Price, and Dead Sea Scrolls variants.",
+    "The engine spans 9 works: OT, NT, Book of Mormon, Doctrine & Covenants, Pearl of Great Price, Dead Sea Scrolls, Apocrypha, Pseudepigrapha, and Expanded Canon.",
     "Switch between English, Hebrew, and Greek display in the Layers popover. Hebrew mode shows word-by-word transliteration with English glosses.",
     "Every connection has a confidence score from 0 to 1. Scores above 0.8 are high-confidence — reported as percentages in chat.",
     "The temple thread runs through all scripture: Eden is the first temple, the Tabernacle is a mobile Eden, the Temple is a permanent one, and Christ is the final temple.",
@@ -742,6 +870,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     }
 
     const allMessages = [
+      { role: 'system', content: SYSTEM_PROMPT },
       ...(scopeInstr ? [{ role: 'system', content: `[Scope: ${scopeInstr}]` }] : []),
       ...messages.filter(m => m.role !== 'system').map(m => {
         const base = { role: m.role, content: m.content }
@@ -890,7 +1019,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // Note: verse references are now handled by the :verse[] syntax and scripture-markdown module
   function renderWithMarkers(text) {
     if (!text) return text
-    const parts = text.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*})%%%)/g)
+    const parts = text.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*}|[^%]+)%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
     const elements = parts.map((part, i) => {
@@ -978,7 +1107,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     const hasActionMarkers = /%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%/g.test(processed)
     if (!hasActionMarkers) {
       return (
-        <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
           {processed}
         </Markdown>
       )
@@ -996,7 +1125,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       // Regular markdown text (with <span> tags from scripture) — render with Markdown component
       if (part.trim()) {
         return (
-          <Markdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
             {part}
           </Markdown>
         )
@@ -1128,25 +1257,50 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       </div>
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 flex gap-2 shrink-0">
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Escape' && variant === 'overlay') { handleClose(); return }
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
-          }}
-          placeholder="Ask about scriptures..."
-          className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
-          disabled={waiting || restoring}
-        />
-        <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
-          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium
-            hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors">
-          Send
-        </button>
+      <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-700 shrink-0">
+        {/* Verse preview inline */}
+        {previewRef && (
+          <div className="mb-3">
+            <VersePreviewCard refs={previewRef.ref} onNavigate={(b, c) => { onNavigate(b, c); handleClose() }} maxHeight="10rem" compact />
+            <div className="flex items-center gap-2 mt-1.5">
+              <button onClick={() => {
+                const refs = Array.isArray(previewRef.ref) ? previewRef.ref : [previewRef.ref]
+                const msg = refs.map(r => `:verse[${r}]`).join(', ')
+                sendMessage(msg)
+                setPreviewRef(null)
+              }}
+                className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-medium hover:bg-blue-700 cursor-pointer transition-colors"
+                title="Send this verse as context">
+                + Add as context
+              </button>
+              <button onClick={() => setPreviewRef(null)}
+                className="text-[10px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
+                Dismiss
+              </button>
+              <span className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-auto">{previewRef.label}</span>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape' && variant === 'overlay') { handleClose(); return }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
+            }}
+            placeholder="Ask about scriptures... (type a verse ref to preview)"
+            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
+            disabled={waiting || restoring}
+          />
+          <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium
+              hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors">
+            Send
+          </button>
+        </div>
       </div>
     </>
   )

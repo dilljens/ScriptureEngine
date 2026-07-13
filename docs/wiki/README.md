@@ -10,9 +10,13 @@ When working on this codebase, start here:
 4. **`features/`** — Domain-specific documentation:
    - [`features/web-api.md`](features/web-api.md) — FastAPI server, RAM cache
    - [`features/lib-core.md`](features/lib-core.md) — Database, tool registry, controls
-   - [`features/generators.md`](features/generators.md) — Connection discovery algorithms
-   - [`features/mcp-server.md`](features/mcp-server.md) — MCP protocol, 23 tools
-5. **`plans/`** — Architecture proposals and planning docs
+    - [`features/generators.md`](features/generators.md) — Connection discovery algorithms
+    - [`features/mcp-server.md`](features/mcp-server.md) — MCP protocol, 23 tools
+    - [`features/hebrew-audio.md`](features/hebrew-audio.md) — PassageReader, DailyVerse, AudioReview
+    - [`features/literary-patterns.md`](features/literary-patterns.md) — Chiasm detection, Mukdam u'Meuchar
+    - [`features/js-discourses-jst.md`](features/js-discourses-jst.md) — JS discourses + JST version
+    - [`features/truth-seeking.md`](features/truth-seeking.md) — Truth framework, disagreements
+ 5. **`plans/`** — Architecture proposals and planning docs
 
 ### Decision Tree
 

@@ -1,16 +1,13 @@
 """Hebrew learning + grammar reference routes."""
+import datetime
 import json
-import os
+import math
 import random
 import re
 import sqlite3
-import datetime
-import math
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
 
 router = APIRouter()
 
@@ -47,7 +44,7 @@ def fsrs_stability_after_success(stability, difficulty, rating):
         rating_mult = FSRS_W[8] * FSRS_W[15]
     elif rating == 4:  # Easy
         rating_mult = FSRS_W[8] * FSRS_W[16]
-    
+
     new_s = stability * (1 + rating_mult * retrieval_strength * difficulty_weight)
     return new_s
 
@@ -85,7 +82,7 @@ def fsrs_schedule(stability, difficulty, rating):
     else:  # Passed (Good or Easy)
         new_s = fsrs_stability_after_success(stability, difficulty, rating)
         new_d = fsrs_next_difficulty(difficulty, rating)
-    
+
     interval = fsrs_next_interval(new_s)
     return new_s, new_d, interval
 
@@ -123,17 +120,17 @@ def _get_topic_difficulty():
 
 def compute_learning_speed(user_id="default"):
     """Compute ability/difficulty ratio for each topic.
-    
+
     Returns: {node_id: learning_speed, ...}
     Also returns overall_ability and topic_difficulties for transparency.
     """
     user_acc, total_attempts, total_correct = _get_all_user_accuracy(user_id)
     topic_diff = _get_topic_difficulty()
-    
+
     # User ability = overall accuracy (weighted toward recent via exponential decay is ideal,
     # but simple ratio works well for now — Math Academy uses weighted recent accuracy)
     overall_ability = total_correct / max(total_attempts, 1) if total_attempts > 0 else 0.5
-    
+
     speeds = {}
     for node_id in topic_diff:
         diff = topic_diff[node_id]
@@ -141,7 +138,7 @@ def compute_learning_speed(user_id="default"):
         diff = max(0.1, diff)
         speed = overall_ability / diff
         speeds[node_id] = round(speed, 3)
-    
+
     return speeds, round(overall_ability, 3), {k: round(v, 3) for k, v in topic_diff.items()}
 
 
@@ -149,7 +146,7 @@ def compute_learning_speed(user_id="default"):
 
 def fire_process(graph, node_id, correct, weight=0.3):
     """Process FIRe: implicit repetition credit flows through the knowledge graph.
-    
+
     When a node is practiced, connected prerequisite nodes get partial credit.
     This implements repetition compression (Math Academy Ch. 18, 29).
     """
@@ -243,7 +240,7 @@ REMEDIATION_DRILLS = {
 def _get_remediation_for_pattern(node_id, pattern, conn=None):
     """Get targeted remediation content for a failure pattern."""
     drill = REMEDIATION_DRILLS.get(pattern, REMEDIATION_DRILLS["confusion"])
-    
+
     # Get node info for personalized drill
     node_title = node_id
     node_desc = ""
@@ -253,7 +250,7 @@ def _get_remediation_for_pattern(node_id, pattern, conn=None):
         if row:
             node_title = row['title']
             node_desc = row['description'] or ""
-    
+
     return {
         "pattern": pattern,
         "node_id": node_id,
@@ -268,20 +265,20 @@ def _get_remediation_for_pattern(node_id, pattern, conn=None):
 @router.get("/api/v1/hebrew/remediate/{node_id}")
 def get_hebrew_remediation(node_id: str, pattern: str = "confusion", user_id: str = "default"):
     """Get targeted remediation drill for a specific failure pattern.
-    
+
     Patterns: can't_start, mid_verse_loss, ending_loss, confusion
     Returns exercises and explanations tailored to the failure point.
     """
     if pattern not in REMEDIATION_DRILLS:
         pattern = "confusion"
-    
+
     if not MEM_DB.exists():
         return {"ok": True, "data": _get_remediation_for_pattern(node_id, pattern)}
-    
+
     conn = sqlite3.connect(str(MEM_DB))
     remediation = _get_remediation_for_pattern(node_id, pattern, conn)
     conn.close()
-    
+
     return {"ok": True, "data": remediation}
 
 
@@ -289,7 +286,7 @@ def get_hebrew_remediation(node_id: str, pattern: str = "confusion", user_id: st
 def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "default",
                             hint_level: int = 0, failure_location: str = ""):
     """Process an FSRS-5 review with FIRe, learning speed, and failure tracking.
-    
+
     Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
     hint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)
     failure_location: 'start', 'middle', 'end', 'confusion', or '' for no failure.
@@ -311,22 +308,22 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
         a, c, m = 0, 0, 0.0
         stability = fsrs_initial_stability(rating)
         difficulty = 5.0
-    
+
     # Compute student-topic learning speed
     speeds, ability, diffs = compute_learning_speed(user_id)
     learning_speed = speeds.get(node_id, 1.0)
     learning_speed = max(0.2, min(5.0, learning_speed))
-    
+
     new_s, new_d, interval = fsrs_schedule(stability, difficulty, rating)
     adjusted_interval = max(1, round(interval * learning_speed))
-    
+
     a += 1
     c += 1 if rating >= 3 else 0
     m = min(1.0, c / max(a, 1))
     conn.execute(
         "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced) VALUES (?,?,?,?,?,datetime('now'))",
         (user_id, node_id, m, a, c))
-    
+
     # Track failure pattern for targeted remediation
     failure_pattern = None
     if rating <= 2 and hint_level > 0:
@@ -339,12 +336,12 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
             failure_pattern = "mid_verse_loss"
         else:
             failure_pattern = "confusion"
-        
+
         # Store failure pattern for remediation
         remediation_hint = _get_remediation_for_pattern(node_id, failure_pattern, conn)
     else:
         remediation_hint = None
-    
+
     # FIRe: only if learning speed >= 0.5
     fire_results = {}
     if learning_speed >= 0.5:
@@ -356,7 +353,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
                 if pr:
                     conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
                                  (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
-    
+
     # ── Gamification: XP + Streak + Badge check ──
     streak_count = _update_streak(user_id)
     # Base XP: 10 per review, bonus if streak > 0
@@ -364,7 +361,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     streak_multiplier = min(3.0, 1.0 + streak_count * 0.05)  # up to 3x for 40 day streak
     xp_earned = round(xp_base * streak_multiplier)
     new_xp, new_badges = _award_xp(user_id, xp_earned, f"Review: {node_id}")
-    
+
     # Insight XP: discover connections through the graph
     insight_amount = 0
     insight_new_connections = 0
@@ -375,7 +372,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
         insight_new_connections = ins_new
         if ins_badges:
             new_badges.extend(ins_badges)
-    
+
     conn.commit()
     conn.close()
     return {"ok": True, "data": {
@@ -398,7 +395,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
 @router.get("/api/v1/hebrew/learning-speeds")
 def get_hebrew_learning_speeds(user_id: str = "default"):
     """Get student-topic learning speeds for all practiced nodes.
-    
+
     Returns ability, difficulty per topic, and the ratio (learning speed).
     Higher speed = learner is faster on this topic → longer intervals.
     """
@@ -490,38 +487,38 @@ def list_hebrew_lessons(category: str = ""):
 @router.get("/api/v1/hebrew/diagnostic")
 def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2):
     """Generate a diagnostic pre-assessment covering all categories.
-    
+
     Returns 2-3 sample questions per category to determine what
     the learner already knows. Results can skip mastered categories.
     """
     if not MEM_DB.exists():
         return {"ok": True, "data": {"questions": [], "categories": []}}
-    
+
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
     random.seed()
-    
+
     # Get all categories
     cats = conn.execute("SELECT DISTINCT category FROM hebrew_nodes ORDER BY category").fetchall()
     categories = [c['category'] for c in cats if c['category'] not in ('root_concept',)]
-    
+
     # Check if user already has progress
     existing_progress = conn.execute(
         "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=?", (user_id,)).fetchone()[0]
     has_progress = existing_progress > 0
-    
+
     questions = []
     cat_info = []
-    
+
     for cat in categories:
         # Get nodes in this category
         nodes = conn.execute(
             "SELECT n.id, n.title FROM hebrew_nodes n WHERE n.category=? ORDER BY RANDOM() LIMIT ?",
             (cat, count_per_category)).fetchall()
-        
+
         if not nodes:
             continue
-        
+
         cat_questions = []
         for n in nodes:
             # Get a practice item for this node
@@ -530,7 +527,7 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
                 (n['id'],)).fetchone()
             if not item:
                 continue
-            
+
             opts = json.loads(item['options_json']) if item['options_json'] else []
             cat_questions.append({
                 "node_id": n['id'],
@@ -540,7 +537,7 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
                 "correct_answer": item['correct_answer'],
                 "question_type": item['question_type'],
             })
-        
+
         if cat_questions:
             questions.extend(cat_questions)
             cat_info.append({
@@ -549,9 +546,9 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
                 "nodes": len(nodes),
                 "node_ids": [n['id'] for n in nodes],
             })
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "questions": questions,
         "total": len(questions),
@@ -565,7 +562,7 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
 @router.post("/api/v1/hebrew/diagnostic/apply")
 def apply_diagnostic_results(body: dict):
     """Apply diagnostic results — mark mastered categories as complete.
-    
+
     Body: {
         "user_id": "default",
         "results": { "category_name": { "correct": N, "total": N }, ... }
@@ -573,19 +570,19 @@ def apply_diagnostic_results(body: dict):
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    
+
     user_id = body.get("user_id", "default")
     results = body.get("results", {})
-    
+
     conn = sqlite3.connect(str(MEM_DB))
-    
+
     for cat, stats in results.items():
         correct = stats.get("correct", 0)
         total = stats.get("total", 0)
         if total == 0:
             continue
         pct = correct / total
-        
+
         if pct >= 1.0:
             # 100% → skip all nodes in this category
             nodes = conn.execute("SELECT id FROM hebrew_nodes WHERE category=?", (cat,)).fetchall()
@@ -601,10 +598,10 @@ def apply_diagnostic_results(body: dict):
                     "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
                     (user_id, n[0], 0.7, 1, 1))
         # Below 60% → no credit, full curriculum
-    
+
     conn.commit()
     conn.close()
-    
+
     return {"ok": True, "data": {"message": "Diagnostic applied. Categories with 100% accuracy were skipped."}}
 
 
@@ -644,16 +641,16 @@ def get_hebrew_curriculum(user_id: str = "default"):
             "prerequisites": prereq_list, "unlocked": all_mastered, "has_content": bool(n['has_content']),
         })
     conn.close()
-    
+
     # ── Add per-node learning speeds from student-topic calibration ──
     try:
         speeds, overall_ability, _ = compute_learning_speed(user_id)
-    except:
+    except Exception:
         speeds, overall_ability = {}, 0.5
-    
+
     for n in result_nodes:
         n['learning_speed'] = round(speeds.get(n['id'], 1.0), 3)
-    
+
     # ── Non-Interference: reorder to separate confusable pairs ──
     # Load confusability pairs from DB
     try:
@@ -661,16 +658,16 @@ def get_hebrew_curriculum(user_id: str = "default"):
         confusable = conn2.execute(
             "SELECT node_a, node_b FROM hebrew_confusability").fetchall()
         conn2.close()
-    except:
+    except Exception:
         confusable = []
-    
+
     if confusable:
         # Build a set of confusable pairs for O(1) lookup
         conf_set = set()
         for a, b in confusable:
             conf_set.add((a, b))
             conf_set.add((b, a))
-        
+
         # Reorder: scan through nodes, if adjacent pair is confusable,
         # swap the second node with the next non-confusable node
         ordered = list(result_nodes)
@@ -695,7 +692,7 @@ def get_hebrew_curriculum(user_id: str = "default"):
                     pass
             i += 1
         result_nodes = ordered
-    
+
     total = len(result_nodes)
     mastered = sum(1 for n in result_nodes if n['mastery'] >= 0.8)
     in_progress = sum(1 for n in result_nodes if 0 < n['mastery'] < 0.8)
@@ -706,7 +703,7 @@ def get_hebrew_curriculum(user_id: str = "default"):
         avg_speed = round(sum(speed_values) / len(speed_values), 3) if speed_values else 1.0
     else:
         avg_speed = 1.0
-    
+
     return {"ok": True, "data": {
         "nodes": result_nodes, "total": total, "mastered": mastered,
         "in_progress": in_progress, "locked": locked,
@@ -795,7 +792,7 @@ def get_hebrew_audio(word: str):
                         "word": word_clean, "source": r['source_file'],
                         "start": wt['start'], "end": wt['end'],
                     }}
-        except:
+        except Exception:
             continue
     align_dir = BASE_DIR / "data" / "audio" / "alignments"
     if align_dir.exists():
@@ -811,7 +808,7 @@ def get_hebrew_audio(word: str):
                             "word": word_clean, "source": "gen_1.wav",
                             "start": wt['start'], "end": wt['end'],
                         }}
-            except:
+            except Exception:
                 continue
     raise HTTPException(404, f"No audio found for: {word_clean}")
 
@@ -835,29 +832,29 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         if not last_str: continue
         try:
             last_time = datetime.datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
-        except:
+        except (ValueError, TypeError):
             continue
         days = (now - last_time).total_seconds() / 86400.0
         m = r['mastery']
         a = r['attempts']
         c = r['correct']
-        
+
         # FSRS-5 based stability estimation from progress data
         if a > 0 and c > 0:
             # Estimate: stability grows with attempts and correctness
             stability = max(1.0, a * m * 7.0)
-            difficulty = max(1.0, min(10.0, 5.0 - m * 3.0))
+            max(1.0, min(10.0, 5.0 - m * 3.0))
             ret = fsrs_retrievability(stability, days)
         else:
             stability = 1.0
             ret = math.exp(-days / stability) if stability > 0 else 0
-        
+
         if ret < 0.9:
             # Get learning speed for this user+node
             try:
                 speeds, _, _ = compute_learning_speed(user_id)
                 lr = speeds.get(r['node_id'], 1.0)
-            except:
+            except Exception:
                 lr = 1.0
             due.append({
                 "node_id": r['node_id'], "title": r['title'], "level": r['level'],
@@ -873,7 +870,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
     by_cat = defaultdict(list)
     for item in due:
         by_cat[item['category']].append(item)
-    
+
     # 2. Load confusability pairs for non-interference enforcement
     confusable_pairs = set()
     try:
@@ -884,25 +881,25 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         for a, b in conf_rows:
             confusable_pairs.add((a, b))
             confusable_pairs.add((b, a))
-    except:
+    except Exception:
         pass
-    
+
     # 3. Sort categories by their lowest retrievability (most urgent first)
     cat_priority = sorted(by_cat.keys(), key=lambda c: min(i['retrievability'] for i in by_cat[c]))
-    
+
     # 4. Round-robin with strict non-interference
     interleaved = []
-    cat_iterators = {c: iter(sorted(by_cat[c], key=lambda x: x['retrievability'])) for c in cat_priority}
+    {c: iter(sorted(by_cat[c], key=lambda x: x['retrievability'])) for c in cat_priority}
     remaining = {c: len(by_cat[c]) for c in cat_priority}
     cat_cycle = list(cat_priority)  # mutable copy for cycling
-    
+
     last_cat = None
     # Non-interference buffer: track recent node_ids to enforce ≥3 spacing for confusable pairs
     recent_nodes = []  # last 3 node_ids added
-    
+
     for _ in range(len(due)):
         chosen_cat = None
-        
+
         # Try categories in round-robin order, skipping last_cat and categories
         # whose remaining items are all confusable with recent nodes
         for c in cat_cycle:
@@ -924,17 +921,17 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
                     continue  # skip this category for now — would cause interference
             chosen_cat = c
             break
-        
+
         if not chosen_cat:
             # Fallback: pick from any remaining category regardless
             for c in cat_cycle:
                 if remaining.get(c, 0) > 0:
                     chosen_cat = c
                     break
-        
+
         if not chosen_cat:
             break
-        
+
         # Pick the most urgent item from this category
         cat_items_sorted = sorted(by_cat[chosen_cat], key=lambda x: x['retrievability'])
         item = None
@@ -942,11 +939,11 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
             if candidate not in interleaved:
                 item = candidate
                 break
-        
+
         if not item:
             remaining[chosen_cat] = 0
             continue
-        
+
         # Check if this specific item is confusable with any of the last 3 items
         if recent_nodes and any(
             (item['node_id'], recent_nid) in confusable_pairs
@@ -954,48 +951,47 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         ):
             # Try to find a different item in the same category that's not confusable
             for alternative in cat_items_sorted:
-                if alternative not in interleaved and alternative['node_id'] != item['node_id']:
-                    if not any(
-                        (alternative['node_id'], recent_nid) in confusable_pairs
-                        for recent_nid in recent_nodes[-3:]
-                    ):
-                        item = alternative
-                        break
-        
+                if alternative not in interleaved and alternative['node_id'] != item['node_id'] and not any(
+                    (alternative['node_id'], recent_nid) in confusable_pairs
+                    for recent_nid in recent_nodes[-3:]
+                ):
+                    item = alternative
+                    break
+
         interleaved.append(item)
         remaining[chosen_cat] -= 1
         last_cat = chosen_cat
         recent_nodes.append(item['node_id'])
         if len(recent_nodes) > 6:
             recent_nodes.pop(0)
-        
+
         # Rotate cat_cycle for true round-robin
         cat_cycle = cat_cycle[1:] + cat_cycle[:1]
-    
+
     conn.close()
-    
+
     # Add confusability_warning to items that have confusable counterparts in the queue
     queued_ids = set(it['node_id'] for it in interleaved[:limit])
     for item in interleaved[:limit]:
         conf_with = [nid for nid in queued_ids if (item['node_id'], nid) in confusable_pairs and nid != item['node_id']]
         item['confusability_warning'] = conf_with if conf_with else []
-    
+
     # ── Repetition Compression ──
     # Scan for items where one encompasses another (via the knowledge graph)
     compressed = []
     used_in_compression = set()
-    
+
     for i, item in enumerate(interleaved[:limit]):
         if item['node_id'] in used_in_compression:
             continue
-        
+
         # Check if any LATER items in the queue are encompassed by this one
         # (encompassing = this item's mastery would give implicit credit to the simpler item)
         compressed_group = [item]
-        
+
         # Get this item's prerequisites from the graph
         prereqs_of_current = HEBREW_GRAPH.get(item['node_id'], [])
-        
+
         for j in range(i + 1, min(i + 5, len(interleaved))):
             later_item = interleaved[j]
             if later_item['node_id'] in used_in_compression:
@@ -1006,13 +1002,13 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
                 used_in_compression.add(later_item['node_id'])
             # Also check if they share the same category and are from the same level family
             # (e.g., qal_perfect + qal_imperfect both in verb category)
-            elif (later_item['category'] == item['category'] 
+            elif (later_item['category'] == item['category']
                   and later_item['level'] == item['level']
                   and len(compressed_group) < 3):
                 # Same category+level = likely similar topic, compress
                 compressed_group.append(later_item)
                 used_in_compression.add(later_item['node_id'])
-        
+
         if len(compressed_group) > 1:
             compressed.append({
                 "type": "compressed",
@@ -1020,12 +1016,12 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
                 "items": compressed_group,
                 "count": len(compressed_group),
                 "primary_node_id": compressed_group[0]['node_id'],
-                "question": f"Review {compressed_group[0]['category']}: " + 
+                "question": f"Review {compressed_group[0]['category']}: " +
                            ", ".join(it['title'] for it in compressed_group),
             })
         else:
             compressed.append(item)
-    
+
     return {"ok": True, "data": {
         "reviews": compressed[:limit],
         "due_count": len(due),
@@ -1047,7 +1043,7 @@ def get_hebrew_verb_drill(count: int = 5, user_id: str = "default"):
     for lesson in verb_lessons:
         try:
             content = json.loads(lesson['content_json'])
-        except:
+        except (json.JSONDecodeError, ValueError):
             continue
         title = lesson['title']
         nid = lesson['id']
@@ -1107,9 +1103,8 @@ def get_hebrew_lesson(node_id: str):
     prereqs = conn.execute(
         "SELECT n.id,n.title,n.category,n.level FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id WHERE e.target_id=?",
         (node_id,)).fetchall()
-    
+
     # Get verse attestations (multiple witnesses)
-    verse_texts = {}
     try:
         scr_conn = sqlite3.connect(str(SCRIPTURE_DB))
         scr_conn.row_factory = sqlite3.Row
@@ -1120,7 +1115,7 @@ def get_hebrew_lesson(node_id: str):
             ORDER BY a.attestation_type, a.id
             LIMIT 15
         """, (node_id,)).fetchall()
-        
+
         # Fetch verse text in batch
         att_list = []
         for a in att_rows:
@@ -1133,22 +1128,22 @@ def get_hebrew_lesson(node_id: str):
                 "text": txt[0][:200] if txt and txt[0] else '',
             })
         scr_conn.close()
-    except:
+    except Exception:
         att_list = []
-    
+
     conn.close()
-    
+
     result = dict(node)
     if lesson:
         try:
             c = lesson['content_json']
             result["lesson"] = json.loads(c) if c.startswith("{") else c
-        except:
+        except (json.JSONDecodeError, ValueError):
             result["lesson"] = lesson['content_json']
     result["practice_items"] = [dict(p) for p in practices]
     result["prerequisites"] = [dict(p) for p in prereqs]
     result["verse_attestations"] = att_list
-    
+
     return {"ok": True, "data": result}
 
 
@@ -1219,10 +1214,10 @@ def _update_streak(user_id="default"):
     row = conn.execute(
         "SELECT streak_count, best_streak, last_review_date FROM hebrew_gamification WHERE user_id=?",
         (user_id,)).fetchone()
-    
+
     today = datetime.date.today().isoformat()
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    
+
     if row:
         _, best, last_date = row
         if last_date == today:
@@ -1249,7 +1244,7 @@ def _update_streak(user_id="default"):
         conn.execute(
             "INSERT INTO hebrew_gamification (user_id, xp, streak_count, last_review_date, best_streak) VALUES (?, 0, 1, ?, 1)",
             (user_id, today))
-    
+
     conn.commit()
     conn.close()
     return streak
@@ -1273,10 +1268,10 @@ def _award_xp(user_id="default", amount=10, reason=""):
             (user_id, new_xp))
     conn.commit()
     conn.close()
-    
+
     # Check for new badges
     new_badges = _check_badges(user_id)
-    
+
     return new_xp, new_badges
 
 
@@ -1285,13 +1280,13 @@ def _check_badges(user_id="default"):
     _ensure_gamification_table()
     if not MEM_DB.exists():
         return []
-    
+
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
-    
+
     # Get user state
     gam = _get_gamification(user_id)
-    
+
     # Get progress stats
     total_mastered = conn.execute(
         "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=? AND mastery>=0.8",
@@ -1309,7 +1304,7 @@ def _check_badges(user_id="default"):
         "SELECT COUNT(*) FROM hebrew_practice_items WHERE node_id IN (SELECT node_id FROM hebrew_progress WHERE user_id=? AND attempts>0)",
         (user_id,)).fetchone()[0]
     conn.close()
-    
+
     # Define badge criteria
     badge_defs = {
         "first_review": {"name": "First Steps", "icon": "👣", "check": lambda: gam['xp'] >= 10},
@@ -1323,11 +1318,11 @@ def _check_badges(user_id="default"):
         "half_century": {"name": "Half Century", "icon": "🏛️", "check": lambda: total_mastered >= 50},
         "insight_seeker": {"name": "Insight Seeker", "icon": "🔍", "check": lambda: gam['insight_xp'] >= 50},
     }
-    
+
     # Check each badge
     earned_ids = set(r['badge_id'] for r in conn.execute(
         "SELECT badge_id FROM hebrew_badges WHERE user_id=?", (user_id,)).fetchall()) if conn else set()
-    
+
     new_badges = []
     for bid, bdef in badge_defs.items():
         if bid not in earned_ids and bdef["check"]():
@@ -1335,11 +1330,11 @@ def _check_badges(user_id="default"):
                 "INSERT OR IGNORE INTO hebrew_badges (user_id, badge_id) VALUES (?, ?)",
                 (user_id, bid))
             new_badges.append({"badge_id": bid, "name": bdef["name"], "icon": bdef["icon"]})
-    
+
     if conn:
         conn.commit()
         conn.close()
-    
+
     return new_badges
 
 
@@ -1348,9 +1343,9 @@ def _award_insight_xp(user_id, node_id, amount=5):
     _ensure_gamification_table()
     if not MEM_DB.exists():
         return 0, []
-    
+
     conn = sqlite3.connect(str(MEM_DB))
-    
+
     # Get connections for this node from the scripture connection graph
     connections = []
     try:
@@ -1360,9 +1355,9 @@ def _award_insight_xp(user_id, node_id, amount=5):
             (f"{node_id}",)).fetchall()
         scripture_conn.close()
         connections = [{"type": r[0], "target": r[1]} for r in rows]
-    except:
+    except Exception:
         pass
-    
+
     # Count how many are new to this user
     new_connections = 0
     for conn_data in connections:
@@ -1375,11 +1370,11 @@ def _award_insight_xp(user_id, node_id, amount=5):
                 "INSERT INTO hebrew_seen_connections (user_id, connection_key) VALUES (?, ?)",
                 (user_id, key))
             new_connections += 1
-    
+
     if new_connections == 0:
         conn.close()
         return 0, []
-    
+
     # Award insight XP
     insight_amount = amount * new_connections
     row = conn.execute(
@@ -1392,10 +1387,10 @@ def _award_insight_xp(user_id, node_id, amount=5):
         conn.execute(
             "INSERT INTO hebrew_gamification (user_id, xp, insight_xp) VALUES (?, ?, ?)",
             (user_id, insight_amount, insight_amount))
-    
+
     conn.commit()
     conn.close()
-    
+
     new_badges = _check_badges(user_id)
     return insight_amount, new_badges, new_connections
 
@@ -1405,7 +1400,7 @@ def get_hebrew_gamification(user_id: str = "default"):
     """Get gamification state: XP, streak, badges, and next achievements."""
     _ensure_gamification_table()
     gam = _get_gamification(user_id)
-    
+
     # Get earned badges
     badges = []
     if MEM_DB.exists():
@@ -1416,7 +1411,7 @@ def get_hebrew_gamification(user_id: str = "default"):
         conn.close()
         for r in rows:
             badges.append({"badge_id": r[0], "earned_at": r[1]})
-    
+
     # List all possible badges with earned status
     badge_catalog = [
         {"id": "first_review", "name": "First Steps", "icon": "👣", "desc": "Earn your first 10 XP"},
@@ -1430,11 +1425,11 @@ def get_hebrew_gamification(user_id: str = "default"):
         {"id": "half_century", "name": "Half Century", "icon": "🏛️", "desc": "Master 50 topics"},
         {"id": "insight_seeker", "name": "Insight Seeker", "icon": "🔍", "desc": "Discover 50 connections"},
     ]
-    
+
     earned_ids = set(b['badge_id'] for b in badges)
     for b in badge_catalog:
         b['earned'] = b['id'] in earned_ids
-    
+
     return {"ok": True, "data": {
         "xp": gam['xp'],
         "streak": gam['streak'],
@@ -1452,7 +1447,7 @@ def get_hebrew_insight(node_id: str, user_id: str = "default"):
     """Discover connections for a node through the scripture graph and earn Insight XP."""
     result = _award_insight_xp(user_id, node_id)
     amount, new_badges, new_connections = result if len(result) == 3 else (result[0], result[1], 0)
-    
+
     # Also return the connections that were found
     connections = []
     try:
@@ -1462,9 +1457,9 @@ def get_hebrew_insight(node_id: str, user_id: str = "default"):
             (f"{node_id}",)).fetchall()
         scripture_conn.close()
         connections = [{"type": r[0], "target": r[1], "quality": r[2]} for r in rows]
-    except:
+    except Exception:
         pass
-    
+
     return {"ok": True, "data": {
         "node_id": node_id,
         "insight_xp_awarded": amount,

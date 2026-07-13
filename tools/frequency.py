@@ -8,24 +8,22 @@ Usage: python3 frequency.py '{"word": "covenant"}'
        python3 frequency.py '{"pattern": "seven_fold", "book": "gen"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db
-from lib.patterns.frequency import (count_occurrences, find_formula_count,
-                                     sacred_count_significance,
-                                     find_phrases_by_pattern)
-from lib.gematria import SACRED_NUMBERS
+from lib.patterns.frequency import (
+    count_occurrences,
+    find_phrases_by_pattern,
+    sacred_count_significance,
+)
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     conn = get_db()
 

@@ -11,24 +11,25 @@ Usage:
   python3 tools/assess.py '{"action": "diagnostic_report"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db
 from lib.api.assessment import (
-    start_assessment, submit_answer, get_progress,
-    start_diagnostic, submit_diagnostic_answer, get_diagnostic_report,
+    get_diagnostic_report,
+    get_progress,
+    start_assessment,
+    start_diagnostic,
+    submit_answer,
+    submit_diagnostic_answer,
 )
+from lib.db import get_db
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     action = args.get("action", "start")
     conn = get_db()
@@ -96,7 +97,7 @@ def main():
             print(f"   Known: {result['known_count']} items", file=sys.stderr)
             print(f"   Needs review: {result['unknown_count']} items", file=sys.stderr)
     elif result.get("has_diagnostic"):
-        print(f"\n📊 Diagnostic Report:", file=sys.stderr)
+        print("\n📊 Diagnostic Report:", file=sys.stderr)
         print(f"   Items assessed: {result.get('total_assessed', 0)}", file=sys.stderr)
         print(f"   Overall mastery: {result.get('overall_mastery', 0):.0%}", file=sys.stderr)
         if result.get("mastery_by_layer"):

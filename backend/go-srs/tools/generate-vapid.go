@@ -17,12 +17,13 @@ import (
 	"crypto/elliptic"
 	"encoding/base64"
 	"fmt"
+	"log"
 )
 
 func main() {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to generate VAPID key: %v", err)
 	}
 
 	// Public key in uncompressed point format

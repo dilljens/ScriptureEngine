@@ -37,7 +37,7 @@ def list_disagreements(conn, limit=20, offset=0):
 def add_disagreement(conn, verse_id, tradition_a, tradition_b, description, connection_a_id=None, connection_b_id=None):
     """Add a disagreement (for seeding)."""
     conn.execute(
-        """INSERT INTO interpretive_disagreements 
+        """INSERT INTO interpretive_disagreements
            (verse_id, tradition_a, tradition_b, description, connection_a_id, connection_b_id)
            VALUES (?, ?, ?, ?, ?, ?)""",
         (verse_id, tradition_a, tradition_b, description, connection_a_id, connection_b_id)

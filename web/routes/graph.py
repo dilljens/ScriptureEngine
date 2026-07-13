@@ -6,9 +6,12 @@ Endpoints:
   GET /api/v1/graph/search?q=X&limit=N
   GET /api/v1/connections/{verse_a}/{verse_b}/explain
 """
-import json, sqlite3, re, math, time, os
+import contextlib
+import json
+import os
+import sqlite3
+from collections import Counter
 from pathlib import Path
-from collections import defaultdict, Counter
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -77,45 +80,45 @@ def graph_explore(
     limit: int = Query(100, description="Max nodes to return", ge=1, le=500),
 ):
     """Explore the connection graph from a starting verse or TG topic.
-    
+
     Returns nodes and edges for force-directed graph rendering.
     Supports `tg:topic_slug` and `bd:entry_slug` as verse parameter.
     """
     if not verse:
         raise HTTPException(400, "verse parameter required")
-    
-    is_topic = verse.startswith("tg:")
-    is_bd = verse.startswith("bd:")
-    
+
+    verse.startswith("tg:")
+    verse.startswith("bd:")
+
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     # Parse layer filter
-    layer_filter = [l.strip() for l in layers.split(",") if l.strip()] if layers else None
-    
+    layer_filter = [layer.strip() for layer in layers.split(",") if layer.strip()] if layers else None
+
     # ── BFS through connections ──
     visited_nodes = set()
     all_nodes = []
     all_edges = []
     queue = [(verse, 0)]  # (node_id, current_depth)
-    
+
     # Track node metadata (type-specific enrichment)
     node_meta = {}
-    
+
     while queue and len(all_nodes) < limit:
         current, current_depth = queue.pop(0)
-        
+
         if current in visited_nodes:
             continue
         if current_depth > depth:
             continue
-        
+
         visited_nodes.add(current)
-        
+
         # Determine node type and fetch metadata
         is_tg = current.startswith("tg:")
         is_bd_entry = current.startswith("bd:")
-        
+
         if is_tg:
             # TG topic node
             slug = current[3:]
@@ -137,12 +140,12 @@ def graph_explore(
                 }
                 all_nodes.append(node)
                 node_meta[current] = node
-            
+
             if current_depth < depth:
                 # Get all verses connected to this topic
                 edges = cursor.execute("""
                     SELECT source_verse, target_verse, type, layer, strength, confidence, quality_level
-                    FROM connections 
+                    FROM connections
                     WHERE (source_verse=? OR target_verse=?) AND deprecated=0
                     LIMIT ?
                 """, (current, current, limit)).fetchall()
@@ -160,12 +163,12 @@ def graph_explore(
                         "layer": layer, "strength": strength,
                         "confidence": confidence, "quality": quality,
                     })
-                
+
                 # Get TG cross-references
                 edges2 = cursor.execute("""
                     SELECT source_verse, target_verse, type, layer, strength, confidence
-                    FROM connections 
-                    WHERE (source_verse=? OR target_verse=?) 
+                    FROM connections
+                    WHERE (source_verse=? OR target_verse=?)
                     AND type IN ('topical_see_also', 'topical_shared_verses')
                     AND deprecated=0
                     LIMIT 30
@@ -179,7 +182,7 @@ def graph_explore(
                         "layer": layer, "strength": strength,
                         "confidence": confidence, "quality": "strong",
                     })
-        
+
         elif is_bd_entry:
             # Bible Dictionary entry node
             slug = current[3:]
@@ -199,11 +202,11 @@ def graph_explore(
                 }
                 all_nodes.append(node)
                 node_meta[current] = node
-            
+
             if current_depth < depth:
                 edges = cursor.execute("""
                     SELECT source_verse, target_verse, type, layer, strength, confidence
-                    FROM connections 
+                    FROM connections
                     WHERE (source_verse=? OR target_verse=?) AND deprecated=0
                     LIMIT ?
                 """, (current, current, limit)).fetchall()
@@ -218,7 +221,7 @@ def graph_explore(
                         "layer": layer, "strength": strength,
                         "confidence": confidence, "quality": "strong",
                     })
-        
+
         else:
             # Regular verse node
             row = cursor.execute(
@@ -227,13 +230,12 @@ def graph_explore(
             ).fetchone()
             if row:
                 title = f"{row[1].upper()}.{row[2]}.{row[3]}" if row[1] else current
-                is_hub = False
                 # Get connection count for sizing
                 conn_count = cursor.execute(
                     "SELECT COUNT(*) FROM connections WHERE (source_verse=? OR target_verse=?) AND deprecated=0",
                     (current, current)
                 ).fetchone()[0]
-                
+
                 node = {
                     "id": current,
                     "title": title,
@@ -254,31 +256,31 @@ def graph_explore(
                     "id": current, "title": current, "type": "unknown",
                     "size": 5, "depth": current_depth,
                 })
-            
+
             if current_depth < depth:
                 edges = cursor.execute("""
                     SELECT source_verse, target_verse, type, layer, strength, confidence, quality_level, metadata, tradition, hermeneutic
-                    FROM connections 
+                    FROM connections
                     WHERE (source_verse=? OR target_verse=?) AND deprecated=0
                     ORDER BY strength DESC, confidence DESC
                     LIMIT ?
                 """, (current, current, limit * 2)).fetchall()
-                
-                for src, tgt, etype, layer, strength, confidence, quality, meta_json, tradition, hermeneutic in edges:
+
+                for src, tgt, etype, layer, strength, confidence, quality, _meta_json, tradition, hermeneutic in edges:
                     other = src if src != current else tgt
                     if layer_filter and layer not in layer_filter:
                         continue
                     qual = {"low": 1, "suggested": 2, "probable": 3, "strong": 4, "certain": 5}.get(quality or "", 0)
                     if qual < min_quality:
                         continue
-                    
-                    # If the other node is a TG topic or BD entry, handle it 
+
+                    # If the other node is a TG topic or BD entry, handle it
                     if other.startswith("tg:") or other.startswith("bd:"):
                         if other not in visited_nodes and other not in [n["id"] for n in all_nodes]:
                             queue.append((other, current_depth + 1))
                     elif other not in visited_nodes and other not in [n["id"] for n in all_nodes]:
                         queue.append((other, current_depth + 1))
-                    
+
                     all_edges.append({
                         "source": src, "target": tgt, "type": etype,
                         "layer": layer, "strength": strength,
@@ -286,9 +288,9 @@ def graph_explore(
                         "tradition": tradition or "none",
                         "hermeneutic": hermeneutic or "linguistic",
                     })
-    
+
     conn.close()
-    
+
     # Deduplicate nodes
     seen_ids = set()
     unique_nodes = []
@@ -296,7 +298,7 @@ def graph_explore(
         if n["id"] not in seen_ids:
             seen_ids.add(n["id"])
             unique_nodes.append(n)
-    
+
     # Deduplicate edges
     edge_set = set()
     unique_edges = []
@@ -305,10 +307,10 @@ def graph_explore(
         if key not in edge_set:
             edge_set.add(key)
             unique_edges.append(e)
-    
+
     # Get layer distribution
     layer_counts = Counter(e["layer"] for e in unique_edges)
-    
+
     return {"ok": True, "data": {
         "root": verse,
         "nodes": unique_nodes[:limit],
@@ -333,11 +335,11 @@ def graph_search(
     """Search verses, TG topics, and BD entries. Returns autocomplete suggestions."""
     if not q:
         return {"ok": True, "data": {"results": []}}
-    
+
     conn = get_conn()
     cursor = conn.cursor()
     results = []
-    
+
     # Search TG topics
     tg_rows = cursor.execute(
         "SELECT slug, name, verse_count FROM topical_guide WHERE name LIKE ? ORDER BY verse_count DESC LIMIT ?",
@@ -348,7 +350,7 @@ def graph_search(
             "id": f"tg:{r[0]}", "title": r[1], "type": "topic",
             "subtitle": f"Topical Guide · {r[2]} verses",
         })
-    
+
     # Search BD entries
     bd_rows = cursor.execute(
         "SELECT slug, name FROM bible_dictionary WHERE name LIKE ? OR slug LIKE ? LIMIT ?",
@@ -359,7 +361,7 @@ def graph_search(
             "id": f"bd:{r[0]}", "title": r[1], "type": "bd_entry",
             "subtitle": "Bible Dictionary",
         })
-    
+
     # Search verses
     if len(results) < limit:
         verse_rows = cursor.execute(
@@ -372,7 +374,7 @@ def graph_search(
                 "id": r[0], "title": title, "type": "verse",
                 "subtitle": f"{r[1].upper()} {r[2]}:{r[3]}" if r[1] else "",
             })
-    
+
     conn.close()
     return {"ok": True, "data": {"results": results[:limit]}}
 
@@ -386,25 +388,25 @@ def graph_centrality(
     """Get the most connected verses (hub verses) ranked by degree centrality."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     where_clauses = ["deprecated=0"]
     params = []
-    
+
     if book:
         where_clauses.append("(source_verse LIKE ? OR target_verse LIKE ?)")
         params.extend([f"{book}.%", f"{book}.%"])
     if layer:
         where_clauses.append("layer=?")
         params.append(layer)
-    
-    where = " AND ".join(where_clauses)
-    
+
+    " AND ".join(where_clauses)
+
     # Count connections per verse (both as source and target)
-    rows = cursor.execute(f"""
+    rows = cursor.execute("""
         SELECT v.id as verse_id, v.book_id, v.chapter, v.verse,
-               (SELECT COUNT(*) FROM connections c1 
+               (SELECT COUNT(*) FROM connections c1
                 WHERE c1.source_verse=v.id AND c1.deprecated=0) +
-               (SELECT COUNT(*) FROM connections c2 
+               (SELECT COUNT(*) FROM connections c2
                 WHERE c2.target_verse=v.id AND c2.deprecated=0)
                as total_connections
         FROM verses v
@@ -413,9 +415,9 @@ def graph_centrality(
         ORDER BY total_connections DESC
         LIMIT ?
     """, [limit]).fetchall()
-    
+
     conn.close()
-    
+
     results = []
     for r in rows:
         title = f"{r[1].upper()}.{r[2]}.{r[3]}" if r[1] else r[0]
@@ -427,7 +429,7 @@ def graph_centrality(
             "chapter": r[2],
             "verse": r[3],
         })
-    
+
     return {"ok": True, "data": {
         "results": results,
         "total": len(results),
@@ -443,36 +445,35 @@ def explain_connection(
     """Get a human-readable explanation of why two verses or topics are connected."""
     # Order the verse IDs deterministically
     a, b = sorted([verse_a, verse_b])
-    
+
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     # Find the connection(s) between these two nodes
     rows = cursor.execute("""
         SELECT type, layer, strength, confidence, subtype, metadata, quality_level
-        FROM connections 
+        FROM connections
         WHERE ((source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?))
         AND deprecated=0
         ORDER BY strength DESC, confidence DESC
         LIMIT 10
     """, (a, b, b, a)).fetchall()
-    
+
     conn.close()
-    
+
     if not rows:
         return {"ok": True, "data": {
             "explanation": None,
             "note": "No direct connection found between these items.",
         }}
-    
+
     explanations = []
     for r in rows:
         etype, layer, strength, confidence, subtype, meta_json, quality = r
         meta = {}
-        try:
+        with contextlib.suppress(json.JSONDecodeError, ValueError):
             meta = json.loads(meta_json) if meta_json else {}
-        except: pass
-        
+
         # Generate explanation from templates
         exp = _generate_explanation(a, b, etype, layer, strength, meta)
         explanations.append({
@@ -482,7 +483,7 @@ def explain_connection(
             "confidence": confidence,
             "explanation": exp,
         })
-    
+
     return {"ok": True, "data": {
         "connections": explanations,
         "count": len(explanations),
@@ -500,30 +501,30 @@ def _generate_explanation(a, b, etype, layer, strength, meta):
             name = vid[3:].replace("-", " ").title()
             return f"**{name}** (BD)"
         return f"**{vid}**"
-    
+
     a_fmt = fmt_id(a)
     b_fmt = fmt_id(b)
-    
+
     # TG connections
     if etype == "topical_guide":
         topic_name = meta.get("topic_name", b[3:].replace("-", " ").title() if b.startswith("tg:") else "")
         return f"{a_fmt} is categorized under **{topic_name}** in the LDS Topical Guide."
-    
+
     if etype == "topical_see_also":
         return f"In the Topical Guide, {a_fmt} lists {b_fmt} as a related topic."
-    
+
     if etype == "topical_shared_verses":
         shared = meta.get("shared_verses", 0)
         return f"{a_fmt} and {b_fmt} are thematically linked — they appear together in {shared} verses."
-    
+
     if etype == "bible_dictionary":
         entry_name = meta.get("entry_name", "")
         return f"The Bible Dictionary entry for **{entry_name}** references {b_fmt}."
-    
+
     if etype == "bible_dictionary_tg":
         entry_name = meta.get("entry_name", "")
         return f"The Bible Dictionary entry for **{entry_name}** relates to {b_fmt}."
-    
+
     # Standard connection types
     if etype == "direct_quotation":
         return f"{a_fmt} directly quotes {b_fmt} — the wording is nearly identical."
@@ -553,7 +554,7 @@ def _generate_explanation(a, b, etype, layer, strength, meta):
     if etype == "hebrew_grammar":
         concept = meta.get("concept", "")
         return f"**{concept}**: {a_fmt} uses this Hebrew grammar concept, which you studied in your lessons."
-    
+
     # Fallback
     type_label = CONNECTION_TYPE_LABELS.get(etype, etype.replace("_", " ").title())
     return f"{a_fmt} and {b_fmt} are connected via **{type_label}** ({layer} layer, strength {strength})."
@@ -569,29 +570,29 @@ def list_topical_guide(
     """List Topical Guide topics with metadata."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     where = "1=1"
     params = []
     if search:
         where += " AND name LIKE ?"
         params.append(f"%{search}%")
-    
+
     total = cursor.execute(f"SELECT COUNT(*) FROM topical_guide WHERE {where}", params).fetchone()[0]
-    
+
     rows = cursor.execute(f"""
         SELECT slug, name, description, verse_count, importance, related_topic_ids
         FROM topical_guide WHERE {where}
         ORDER BY verse_count DESC
         LIMIT ? OFFSET ?
     """, params + [limit, offset]).fetchall()
-    
+
     conn.close()
-    
+
     results = []
     for r in rows:
         try:
             related = json.loads(r[5]) if r[5] else []
-        except:
+        except (json.JSONDecodeError, ValueError):
             related = []
         results.append({
             "id": f"tg:{r[0]}",
@@ -602,7 +603,7 @@ def list_topical_guide(
             "importance": r[4],
             "related_topics": related[:10],
         })
-    
+
     return {"ok": True, "data": {
         "results": results,
         "total": total,
@@ -616,43 +617,43 @@ def get_topical_topic(slug: str):
     """Get a single Topical Guide topic with its full details and connected verses."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     row = cursor.execute(
         "SELECT slug, name, description, summary, verse_count, importance, related_topic_ids, related_bd_entries FROM topical_guide WHERE slug=?",
         (slug,)
     ).fetchone()
-    
+
     if not row:
         conn.close()
         raise HTTPException(404, f"Topic not found: {slug}")
-    
+
     # Parse related topics
     try:
         related_topics = json.loads(row[6]) if row[6] else []
-    except:
+    except (json.JSONDecodeError, ValueError):
         related_topics = []
-    
+
     try:
         related_bd = json.loads(row[7]) if row[7] else []
-    except:
+    except (json.JSONDecodeError, ValueError):
         related_bd = []
-    
+
     # Get connected verses (first 20)
     verses = cursor.execute("""
-        SELECT verse_id, snippet FROM tg_verse_references 
-        WHERE topic_id=? 
+        SELECT verse_id, snippet FROM tg_verse_references
+        WHERE topic_id=?
         ORDER BY rowid
         LIMIT 20
     """, (slug,)).fetchall()
-    
+
     # Also get from connections table for count
     conn_count = cursor.execute(
         "SELECT COUNT(*) FROM connections WHERE (source_verse=? OR target_verse=?) AND type='topical_guide'",
         (f"tg:{slug}", f"tg:{slug}")
     ).fetchone()[0]
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "id": f"tg:{slug}",
         "slug": row[0],
@@ -673,27 +674,27 @@ def get_bd_entry(slug: str):
     """Get a Bible Dictionary entry."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     row = cursor.execute(
         "SELECT slug, name, entry_text, summary, related_verses, related_topics FROM bible_dictionary WHERE slug=?",
         (slug,)
     ).fetchone()
-    
+
     if not row:
         conn.close()
         raise HTTPException(404, f"BD entry not found: {slug}")
-    
+
     try:
         verses = json.loads(row[4]) if row[4] else []
-    except:
+    except (json.JSONDecodeError, ValueError):
         verses = []
     try:
         topics = json.loads(row[5]) if row[5] else []
-    except:
+    except (json.JSONDecodeError, ValueError):
         topics = []
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "id": f"bd:{slug}",
         "slug": row[0],
@@ -712,7 +713,7 @@ def list_hub_notes(user_id: str = "default"):
     """List all hub notes with user progress summary."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     notes = cursor.execute("""
         SELECT n.id, n.title, n.description, n.theme, n.icon, n.seed_verse,
                n.tg_topic_ids,
@@ -720,14 +721,14 @@ def list_hub_notes(user_id: str = "default"):
         FROM hub_notes n
         ORDER BY n.id
     """).fetchall()
-    
+
     results = []
     for r in notes:
         completed = cursor.execute(
             "SELECT COUNT(*) FROM hub_note_progress WHERE user_id=? AND hub_id=?",
             (user_id, r[0])
         ).fetchone()[0]
-        
+
         tg_topics = cursor.execute("""
             SELECT t.slug, t.name, h.relevance_weight
             FROM hub_topic_links h
@@ -735,12 +736,12 @@ def list_hub_notes(user_id: str = "default"):
             WHERE h.hub_id=?
             ORDER BY h.relevance_weight DESC
         """, (r[0],)).fetchall()
-        
+
         try:
             tg_ids = json.loads(r[6]) if r[6] else []
-        except:
+        except (json.JSONDecodeError, ValueError):
             tg_ids = []
-        
+
         results.append({
             "id": r[0], "title": r[1], "description": r[2],
             "theme": r[3], "icon": r[4], "seed_verse": r[5],
@@ -749,7 +750,7 @@ def list_hub_notes(user_id: str = "default"):
             "tg_topic_ids": tg_ids,
             "tg_topics": [{"slug": t[0], "name": t[1], "weight": t[2]} for t in tg_topics],
         })
-    
+
     conn.close()
     return {"ok": True, "data": {"notes": results, "total": len(results)}}
 
@@ -759,38 +760,38 @@ def get_hub_note(hub_id: str, user_id: str = "default"):
     """Get a full hub note with all steps, verse text, and TG topics."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     note = cursor.execute(
         "SELECT id, title, description, theme, icon, seed_verse, tg_topic_ids, version FROM hub_notes WHERE id=?",
         (hub_id,)
     ).fetchone()
-    
+
     if not note:
         conn.close()
         raise HTTPException(404, f"Hub note not found: {hub_id}")
-    
+
     steps = cursor.execute("""
         SELECT id, step_number, verse_id, title, explanation, connection_type, pa_r_de_s_level, tg_topic_ids
         FROM hub_note_steps WHERE hub_id=? ORDER BY step_number
     """, (hub_id,)).fetchall()
-    
+
     step_data = []
     for s in steps:
         vt = cursor.execute(
             "SELECT text_english FROM verses WHERE id=?", (s[2],)
         ).fetchone()
         verse_text = vt[0] if vt else ""
-        
+
         prog = cursor.execute(
             "SELECT completed_at FROM hub_note_progress WHERE user_id=? AND hub_id=? AND step_number=?",
             (user_id, hub_id, s[1])
         ).fetchone()
-        
+
         try:
             step_tg = json.loads(s[7]) if s[7] else []
-        except:
+        except (json.JSONDecodeError, ValueError):
             step_tg = []
-        
+
         step_data.append({
             "step_number": s[1], "verse_id": s[2], "title": s[3],
             "explanation": s[4], "verse_text": verse_text[:500] if verse_text else "",
@@ -798,20 +799,20 @@ def get_hub_note(hub_id: str, user_id: str = "default"):
             "tg_topic_ids": step_tg, "completed": prog is not None,
             "completed_at": prog[0] if prog else None,
         })
-    
+
     tg_topics = cursor.execute("""
         SELECT t.slug, t.name, t.verse_count, h.relevance_weight
         FROM hub_topic_links h JOIN topical_guide t ON t.slug=h.topic_id
         WHERE h.hub_id=? ORDER BY h.relevance_weight DESC
     """, (hub_id,)).fetchall()
-    
+
     try:
         tg_ids = json.loads(note[6]) if note[6] else []
-    except:
+    except (json.JSONDecodeError, ValueError):
         tg_ids = []
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "id": note[0], "title": note[1], "description": note[2],
         "theme": note[3], "icon": note[4], "seed_verse": note[5],
@@ -829,33 +830,33 @@ def complete_hub_step(hub_id: str, step_number: int, user_id: str = "default"):
     """Mark a hub note step as complete."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     step = cursor.execute(
         "SELECT verse_id, title FROM hub_note_steps WHERE hub_id=? AND step_number=?",
         (hub_id, step_number)
     ).fetchone()
-    
+
     if not step:
         conn.close()
         raise HTTPException(404, f"Step {step_number} not found in hub note {hub_id}")
-    
+
     existing = cursor.execute(
         "SELECT completed_at FROM hub_note_progress WHERE user_id=? AND hub_id=? AND step_number=?",
         (user_id, hub_id, step_number)
     ).fetchone()
-    
+
     if existing:
         conn.close()
         return {"ok": True, "data": {"message": "Already completed", "step_number": step_number, "verse_id": step[0]}}
-    
+
     cursor.execute("""
         INSERT OR IGNORE INTO hub_note_progress (user_id, hub_id, step_number, completed_at)
         VALUES (?, ?, ?, datetime('now'))
     """, (user_id, hub_id, step_number))
-    
+
     conn.commit()
     conn.close()
-    
+
     return {"ok": True, "data": {
         "message": f"Completed step {step_number}: {step[1]}",
         "step_number": step_number, "verse_id": step[0], "xp_awarded": 25, "hub_id": hub_id,
@@ -867,46 +868,47 @@ def get_hub_path(hub_id: str):
     """Return the ordered graph path traversal for a hub note."""
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     steps = cursor.execute("""
         SELECT step_number, verse_id, connection_type
         FROM hub_note_steps WHERE hub_id=? ORDER BY step_number
     """, (hub_id,)).fetchall()
-    
+
     conn.close()
-    
+
     path = [{"step": s[0], "verse": s[1], "connection_type": s[2] if s[2] else ""} for s in steps]
-    
+
     return {"ok": True, "data": {"hub_id": hub_id, "path_steps": path, "total": len(path)}}
 
 
 # ── LLM Grading Endpoint ──
 
+
 from pydantic import BaseModel
-from typing import Optional
+
 
 class GradingRequest(BaseModel):
     question: str
     user_answer: str
-    rubric: Optional[str] = None
-    tier: Optional[str] = "text"
-    passage_context: Optional[str] = None
-    user_id: Optional[str] = None  # If provided, inject user's progress context
+    rubric: str | None = None
+    tier: str | None = "text"
+    passage_context: str | None = None
+    user_id: str | None = None  # If provided, inject user's progress context
 
 
 @router.post("/api/v1/assess/grade")
 def grade_answer(body: GradingRequest):
     """Grade an open-ended answer using the LLM with a transparent rubric.
-    
+
     Evaluates the QUALITY OF REASONING, not whether the answer is "right" or "wrong."
-    Returns scores for: engagement with text, internal consistency, 
+    Returns scores for: engagement with text, internal consistency,
     awareness of alternatives, context.
     If user_id is provided, injects their learning progress for personalized feedback.
     """
     # Build a grading prompt
     tier = body.tier or "text"
     rubric = body.rubric or ""
-    
+
     if not rubric:
         if tier == "text":
             rubric = "Does the answer accurately reference specific words or phrases from the passage?"
@@ -918,7 +920,7 @@ def grade_answer(body: GradingRequest):
             rubric = "Does the answer engage with the text? Does it acknowledge that other interpretations exist?"
         else:
             rubric = "Does the answer engage with the text and show reasoned thinking?"
-    
+
     # Fetch user progress context if user_id provided
     user_context = ""
     _api_base = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
@@ -932,7 +934,7 @@ def grade_answer(body: GradingRequest):
             if prog.get("ok"):
                 data = prog["data"]
                 parts = []
-                
+
                 q = data.get("quiz", {})
                 if q.get("total_answered", 0) > 0:
                     parts.append(f"- Answered {q['total_answered']} quiz questions")
@@ -941,11 +943,11 @@ def grade_answer(body: GradingRequest):
                         parts.append(f"- {tier_info['tier']} tier: {pct}% mastered")
                     if q.get("weakest_areas"):
                         parts.append(f"- Struggling with: {q['weakest_areas'][0]['question_text'][:80]}...")
-                
+
                 m = data.get("memorize", {})
                 if m.get("total", 0) > 0:
                     parts.append(f"- Memorizing {m['total']} verses ({m.get('mastered', 0)} mastered)")
-                
+
                 h = data.get("hebrew", {})
                 if h.get("progress"):
                     p = h["progress"]
@@ -953,12 +955,12 @@ def grade_answer(body: GradingRequest):
                     parts.append(f"- Hebrew: {pc}% complete ({p.get('mastered', 0)}/{h.get('total_nodes', 0)} nodes)")
                     if h.get("struggling"):
                         parts.append(f"- Struggling with Hebrew: {h['struggling'][0]['title']}")
-                
+
                 if parts:
                     user_context = "\nUser's learning context:\n" + "\n".join(parts) + "\n"
-        except:
+        except Exception:
             pass
-    
+
     # Format the grading request for the LLM
     prompt = (
         f"You are grading a student's answer to a scripture question.\n\n"
@@ -972,10 +974,10 @@ def grade_answer(body: GradingRequest):
         f"3. DEPTH: Does the answer go beyond surface observation to insight?\n"
         f"4. CONTEXT: Does the answer show awareness of the passage's context or the bigger picture?\n\n"
         f"Respond in JSON format:\n"
-        f"{'{\"scores\": {\"text_engagement\": N, \"reasoning\": N, \"depth\": N, \"context\": N}, \"total\": N, \"feedback\": \"...\", \"strengths\": [\"...\"], \"areas_for_growth\": [\"...\"]}'}\n\n"
+        '{"scores": {"text_engagement": N, "reasoning": N, "depth": N, "context": N}, "total": N, "feedback": "...", "strengths": ["..."], "areas_for_growth": ["..."]}\n\n'
         f"Keep feedback constructive and specific. Do NOT say 'right' or 'wrong' — evaluate reasoning quality only."
     )
-    
+
     # Call the existing chat endpoint
     result = {}
     try:
@@ -985,7 +987,7 @@ def grade_answer(body: GradingRequest):
             "model": "default",
         }, timeout=30)
         llm_response = resp.json()
-        
+
         if llm_response.get("ok"):
             raw = llm_response.get("data", {}).get("response", "{}")
             # Try to parse JSON from the LLM response
@@ -994,7 +996,7 @@ def grade_answer(body: GradingRequest):
             if json_match:
                 try:
                     result = json.loads(json_match.group())
-                except:
+                except (json.JSONDecodeError, ValueError):
                     result = {"raw": raw}
             else:
                 result = {"raw": raw}
@@ -1002,10 +1004,10 @@ def grade_answer(body: GradingRequest):
             result = {"error": "LLM unavailable"}
     except Exception as e:
         result = {"error": str(e)}
-    
+
     # If LLM grading failed, provide useful default feedback
     if not result or result.get("error"):
-        word_count = len(body.user_answer.split())
+        len(body.user_answer.split())
         result = {
             "scores": {"text_engagement": 5, "reasoning": 5, "depth": 3, "context": 3},
             "total": 16,
@@ -1017,7 +1019,7 @@ def grade_answer(body: GradingRequest):
             "strengths": ["You attempted to engage with the material"],
             "areas_for_growth": ["Reference specific words from the text", "Connect your observations to the broader context"],
         }
-    
+
     return {"ok": True, "data": {
         "tier": tier,
         "rubric": rubric,
@@ -1030,13 +1032,13 @@ def grade_answer(body: GradingRequest):
 @router.get("/api/v1/provenance/{verse_id}")
 def get_verse_provenance(verse_id: str, limit: int = 50):
     """Get provenance info for connections from a verse — shows tradition, hermeneutic, and consensus.
-    
+
     This lets users see WHICH traditions recognize each connection and whether
     it's a linguistic fact or an interpretive claim.
     """
     conn = get_conn()
     cursor = conn.cursor()
-    
+
     rows = cursor.execute("""
         SELECT type, layer, tradition, hermeneutic, consensus_score, strength, quality_level,
                target_verse, tradition_note
@@ -1045,7 +1047,7 @@ def get_verse_provenance(verse_id: str, limit: int = 50):
         ORDER BY tradition, layer, strength DESC
         LIMIT ?
     """, (verse_id, verse_id, limit)).fetchall()
-    
+
     # Group by tradition
     by_tradition = {}
     for r in rows:
@@ -1063,13 +1065,13 @@ def get_verse_provenance(verse_id: str, limit: int = 50):
             "note": r[8] or "",
         })
         by_tradition[trad]["count"] += 1
-    
+
     # Get tradition label info
     labels = cursor.execute("SELECT id, name, short_name, icon, color FROM tradition_labels").fetchall()
     tradition_labels = {r[0]: {"name": r[1], "short": r[2], "icon": r[3], "color": r[4]} for r in labels}
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "verse_id": verse_id,
         "total_connections": sum(t["count"] for t in by_tradition.values()),
@@ -1092,7 +1094,7 @@ def get_tradition_labels():
 @router.post("/api/v1/assess/submit-open")
 def submit_open_question(body: dict):
     """Submit an open-ended answer for LLM grading.
-    
+
     Body: {
         "question": "What connections do you see between these passages?",
         "passages": ["gen.1.1", "john.1.1"],
@@ -1101,13 +1103,12 @@ def submit_open_question(body: dict):
     }
     Returns scores + feedback, NOT a right/wrong judgment.
     """
-    from pydantic import BaseModel
-    
+
     question = body.get("question", "")
     passages = body.get("passages", [])
     user_answer = body.get("user_answer", "")
     tier = body.get("tier", "text")
-    
+
     # Format passage text for the grading context
     passage_texts = []
     for pid in passages:
@@ -1116,9 +1117,9 @@ def submit_open_question(body: dict):
         conn2.close()
         if txt:
             passage_texts.append(f"{pid}: {txt[0][:200]}")
-    
+
     passage_context = "\n".join(passage_texts) if passage_texts else ""
-    
+
     grading_req = GradingRequest(
         question=question,
         user_answer=user_answer,

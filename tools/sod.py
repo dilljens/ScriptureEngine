@@ -13,12 +13,14 @@ Usage:
   python3 sod.py '{"scan": true, "book": "psa"}'
 """
 
-import sys, json, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from lib.db import get_db
-from lib.gematria import extract_consonants, compute_standard, find_divine_name_matches
-from lib.sod import atbash, notarikon, acrostic, gematria_advanced, hidden_names
+from lib.sod import acrostic, atbash, gematria_advanced, hidden_names, notarikon
 
 
 def main():
@@ -56,10 +58,7 @@ def main():
             result = {"error": "Provide book"}
         else:
             acro = acrostic.scan_book_for_acrostics(conn, book)
-            if acro:
-                result = acro
-            else:
-                result = {"book": book, "acrostic": None, "note": "No acrostic pattern found"}
+            result = acro or {"book": book, "acrostic": None, "note": "No acrostic pattern found"}
 
     # Advanced gematria
     elif "gematria_advanced" in args:

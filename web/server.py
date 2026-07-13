@@ -10,44 +10,66 @@ Usage:
   # Open http://localhost:8002/docs for interactive API browser
 """
 
-import sys, os, json, sqlite3, time, asyncio, logging
+import json
+import os
+import sqlite3
+import sys
+import time
 from pathlib import Path
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Query, HTTPException, Request
+
+from biblical_transliteration import HebrewOptions, HebrewScheme, HebrewTransliterator
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional
 
-from lib.db import get_db, get_db_vec, DEFAULT_DB_PATH
-from biblical_transliteration import HebrewTransliterator, HebrewOptions
-from biblical_transliteration.hebrew import TransliterationScheme
-from lib.gematria import compute_all, find_divine_name_matches
-from lib.connections.pardes import get_pardes_level, LEVELS as PARDES_LEVELS
-from lib.sod import atbash as atb, acrostic, gematria_advanced, hidden_names
-from lib.controls.calibration import QUALITY_LEVELS, get_quality_stars, rate_connection_row, enrich_connection
 from lib.api import TOOL_REGISTRY, call_tool
-from lib.api.conversations import (
-    create_session, get_session, list_sessions, update_session, delete_session,
-    add_message, list_connections, add_connection, promote_connection,
+from lib.connections.pardes import LEVELS as PARDES_LEVELS
+from lib.connections.pardes import get_pardes_level
+from lib.controls.calibration import (
+    enrich_connection,
+    rate_connection_row,
 )
-from lib.api.study import (
-    create_guide, get_guide, list_guides, update_guide as study_update,
-    add_step as study_add_step, remove_step as study_remove_step,
-    reorder_steps as study_reorder, bulk_update_steps as study_bulk_update,
-    export_json as study_export_json,
-    export_html as study_export_html, import_json as study_import_json,
-    publish_study as study_publish, get_published as study_get_published,
-    list_published as study_list_published, fork_published as study_fork,
+from lib.db import DEFAULT_DB_PATH, get_db, get_db_vec
+from lib.gematria import compute_all, find_divine_name_matches
+from lib.lexicon import (
+    get_concordance,
+    get_domain_members,
+    get_lexicon_entry,
+    get_root_family,
+    search_lexicon,
 )
-from lib.lexicon import search_lexicon, get_lexicon_entry, get_root_family, get_concordance, get_domain_members
 from lib.patterns.intra_verse import detect_intra_verse
+from lib.sod import acrostic, gematria_advanced, hidden_names
+from lib.sod import atbash as atb
+
+_hebrew_trans = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.SIMPLE))
 
 # Track server start time for uptime reporting
 _start_time = time.time()
+
+import contextlib
+
+@contextlib.asynccontextmanager
+async def lifespan(app):
+    """Startup: create debug table, load caches. Shutdown: no-op."""
+    _startup_debug()
+    load_ram_cache()
+    _build_lexicon_cache_index()
+    # Load wiki articles into RAM cache
+    _wiki_conn = get_db()
+    _wiki_rows = _wiki_conn.execute("SELECT * FROM wiki_articles").fetchall()
+    for _r in _wiki_rows:
+        WIKI_CACHE[_r["id"]] = dict(_r)
+    _wiki_conn.close()
+    if WIKI_CACHE:
+        log.info("Cache loaded", cache="wiki_articles", count=len(WIKI_CACHE))
+    yield
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
@@ -55,6 +77,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -67,16 +90,18 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Include route modules
-from web.routes.hebrew import router as hebrew_router
-from web.routes.audio import router as audio_router
-from web.routes.chat import router as chat_router
-from web.routes.studies import router as studies_router
-from web.routes.conversations import router as conversations_router
+
 from web.routes.assessment import router as assessment_router
+from web.routes.audio import router as audio_router
 from web.routes.auth import router as auth_router
+from web.routes.chat import router as chat_router
+from web.routes.conversations import router as conversations_router
 from web.routes.graph import router as graph_router
-from web.routes.memorize import router as memorize_router
+from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
+from web.routes.memorize import router as memorize_router
+from web.routes.studies import router as studies_router
+
 app.include_router(hebrew_router)
 app.include_router(audio_router)
 app.include_router(chat_router)
@@ -95,6 +120,7 @@ VERSE_CACHE = {}          # verse_id → {id, text_english, text_hebrew, text_gr
 ENTITY_CACHE = []         # all entity links
 LEXICON_CACHE = {}        # lemma → lexicon entry (loaded at startup)
 VEC_CACHE = {"available": False}  # vector search — populated by embed script
+BOOKS_CACHE = None         # work/book tree — precomputed at startup, static data
 
 # ── Structured JSON Logger ──
 
@@ -104,7 +130,7 @@ class JSONLogger:
         record = {"level": level, "msg": msg, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         record.update(extra)
         print(json.dumps(record), flush=True)
-    
+
     def info(self, msg, **extra): self._log("info", msg, **extra)
     def warn(self, msg, **extra): self._log("warn", msg, **extra)
     def error(self, msg, **extra): self._log("error", msg, **extra)
@@ -124,13 +150,12 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.on_event("startup")
 def _startup_debug():
     """Create client_logs table for debug error reporting."""
     try:
         import sqlite3 as _s
-        from pathlib import Path as _P
-        _c = _s.connect(str(_P(__file__).parent.parent / "data" / "processed" / "scripture.db"))
+        from pathlib import Path as _Path
+        _c = _s.connect(str(_Path(__file__).parent.parent / "data" / "processed" / "scripture.db"))
         _c.execute(
             "CREATE TABLE IF NOT EXISTS client_logs ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -147,20 +172,16 @@ def _startup_debug():
     except Exception:
         pass
 
-@app.on_event("startup")
 def load_ram_cache():
     """Load all passage guides + verse data into RAM at startup.
-    
+
     Eliminates disk reads for all verse and connection lookups.
     ~41K guides, ~42K verses, ~500MB total RAM.
     Automatically skips when running multi-worker (each worker loads its own).
-    
+
     Set SCRIPTURE_WORKERS=1 to force RAM cache, SCRIPTURE_WORKERS=0 to skip.
     """
     workers = int(os.environ.get("SCRIPTURE_WORKERS", "1"))
-    if workers != 1:
-        log.info("Skipping RAM cache", workers=workers, mode="direct_sqlite")
-        return
 
     log.info("Loading cache", phase="start")
     db_path = DEFAULT_DB_PATH
@@ -170,6 +191,32 @@ def load_ram_cache():
 
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
+
+    # Load books/work tree — always cache (tiny data, ~2KB)
+    global BOOKS_CACHE
+    works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY position").fetchall()
+    books_result = []
+    for w in works_rows:
+        books = conn.execute(
+            "SELECT id, title, subtitle FROM books WHERE work_id=? ORDER BY position",
+            (w["id"],)
+        ).fetchall()
+        books_result.append({
+            "id": w["id"],
+            "title": w["title"],
+            "subtitle": w["subtitle"],
+            "books": [{"id": b["id"], "title": b["title"], "subtitle": b["subtitle"]} for b in books],
+        })
+    BOOKS_CACHE = {"works": books_result, "total": len(books_result)}
+    log.info("Cache loaded", cache="books", count=len(books_result))
+
+    # Multi-worker mode: skip heavy caches, books already loaded above
+    if workers != 1:
+        log.info("Skipping RAM cache (multi-worker)", workers=workers, mode="direct_sqlite")
+        conn.close()
+        total = len(books_result)
+        log.info("Cache load complete", total_items=total)
+        return
 
     # Load verses
     rows = conn.execute("""
@@ -216,7 +263,7 @@ def load_ram_cache():
         log.warn("Vectors not found", fix=".venv/bin/python3 scripts/embed_verses.py")
 
     conn.close()
-    total = len(VERSE_CACHE) + len(GUIDE_CACHE) + len(ENTITY_CACHE)
+    total = len(VERSE_CACHE) + len(GUIDE_CACHE) + len(ENTITY_CACHE) + len(books_result)
     log.info("Cache load complete", total_items=total)
 
 CONNECTION_TYPE_MAP = {
@@ -231,7 +278,7 @@ CONNECTION_TYPE_MAP = {
 # ─── Verse & Passage Guide ───
 
 @app.get("/api/v1/verses/{ref:path}")
-def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description="Enrich connections with quality signal breakdown"), context: Optional[int] = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
+def get_verse(ref: str, show_signals: bool | None = Query(False, description="Enrich connections with quality signal breakdown"), context: int | None = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
     """Get verse text with connections — served from RAM cache or SQLite."""
     ref = ref.replace(":", ".").replace(" ", ".")
     import re
@@ -297,8 +344,6 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
     lxx_fallback = None
     if not native_greek:
         try:
-            import sqlite3 as _s
-            from pathlib import Path as _P
             _conn = get_db()
             _lxx = _conn.execute(
                 "SELECT text FROM text_resources WHERE verse_id = ? AND version = 'LXX'",
@@ -345,7 +390,7 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
         resp["connections"] = json.loads(guide["connections_json"])
         resp["total_connections"] = guide["total_connections"]
         resp["layer_count"] = guide["layer_count"]
-        
+
         # Enrich with signals if requested
         if show_signals:
             enriched = {}
@@ -436,9 +481,9 @@ def get_verse(ref: str, show_signals: Optional[bool] = Query(False, description=
 
 
 @app.get("/api/v1/verses/{ref:path}/connections")
-def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Optional[str] = None, discovered_by: Optional[str] = None, min_confidence: Optional[float] = None, show_signals: Optional[bool] = False):
+def get_verse_connections(ref: str, layer: str | None = None, min_quality: str | None = None, discovered_by: str | None = None, min_confidence: float | None = None, show_signals: bool | None = False):
     """Get filtered connections for a verse.
-    
+
     Filters:
       layer: only show this layer
       min_quality: minimum quality tier (verified, strong, probable, suggested)
@@ -472,29 +517,27 @@ def get_verse_connections(ref: str, layer: Optional[str] = None, min_quality: Op
                     "confirmation_count": item.get("confirmation_count", 0),
                     "metadata": item.get("metadata", "{}"),
                 })
-                
+
                 # Apply filters
                 if min_quality:
                     star_order = {"verified": 5, "strong": 4, "probable": 3, "suggested": 2, "pattern": 1}
                     if sigs["stars"] < star_order.get(min_quality, 1):
                         continue
-                
-                if discovered_by:
-                    if sigs["signals"]["discovery_method"] != discovered_by:
-                        continue
-                
-                if min_confidence is not None:
-                    if sigs["overall_confidence"] < min_confidence:
-                        continue
-                
+
+                if discovered_by and sigs["signals"]["discovery_method"] != discovered_by:
+                    continue
+
+                if min_confidence is not None and sigs["overall_confidence"] < min_confidence:
+                    continue
+
                 if show_signals:
                     item["signals"] = sigs
-                
+
                 filtered_items.append(item)
-            
+
             if filtered_items:
                 filtered[lyr] = filtered_items
-        
+
         conns = filtered
 
     return {"ok": True, "data": {"verse": ref, "layers": list(conns.keys()), "connections": conns}}
@@ -544,9 +587,7 @@ def search(
     phrase_terms = []
     fuzzy_terms = []
     for token in q.strip().split():
-        if token.startswith("book:") or token.startswith("b:"):
-            filter_book = token.split(":", 1)[1].lower()
-        elif token.startswith("work:") or token.startswith("w:"):
+        if token.startswith("book:") or token.startswith("b:") or token.startswith("work:") or token.startswith("w:"):
             filter_book = token.split(":", 1)[1].lower()
         elif token.startswith("-"):
             exclude_terms.append(token[1:].lower())
@@ -562,76 +603,73 @@ def search(
         conn.close()
         return {"ok": True, "data": {"query": q, "total": 0, "results": [], "has_more": False}}
 
-    if lang in ("all", "english"):
-        if search_query:
-            fts_query = search_query.replace('"', '""')
-            terms = [t.strip() for t in fts_query.split() if t.strip()]
-            if terms:
-                # Build FTS5 match expression
-                match_parts = []
-                for t in terms:
-                    if t.startswith("-"):
-                        match_parts.append(f'NOT ("{t[1:]}"*)')
-                    else:
-                        match_parts.append(f'"{t}"*')
-                for pt in phrase_terms:
-                    match_parts.append(f'"{pt}"')
-                fts_match = " AND ".join(match_parts)
+    if lang in ("all", "english") and search_query:
+        fts_query = search_query.replace('"', '""')
+        terms = [t.strip() for t in fts_query.split() if t.strip()]
+        if terms:
+            # Build FTS5 match expression
+            match_parts = []
+            for t in terms:
+                if t.startswith("-"):
+                    match_parts.append(f'NOT ("{t[1:]}"*)')
+                else:
+                    match_parts.append(f'"{t}"*')
+            for pt in phrase_terms:
+                match_parts.append(f'"{pt}"')
+            fts_match = " AND ".join(match_parts)
 
-                # Base query
-                base_sql = """
-                    FROM verses_fts f
-                    JOIN verses v ON v.id = f.verse_id
-                    JOIN books b ON b.id = v.book_id
-                    WHERE verses_fts MATCH ?
-                """
-                params = [fts_match]
+        # Base query
+        base_sql = """
+            FROM verses_fts f
+            JOIN verses v ON v.id = f.verse_id
+            JOIN books b ON b.id = v.book_id
+            WHERE verses_fts MATCH ?
+        """
+        params = [fts_match]
 
-                # Apply book filter
-                if filter_book:
-                    # Support both work-level (ot, nt) and book-level (gen, isa) filters
-                    base_sql += " AND (b.id = ? OR b.id LIKE ?)"
-                    params.extend([filter_book, f"{filter_book}%"])
+        # Apply book filter
+        if filter_book:
+            # Support both work-level (ot, nt) and book-level (gen, isa) filters
+            base_sql += " AND (b.id = ? OR b.id LIKE ?)"
+            params.extend([filter_book, f"{filter_book}%"])
 
-                try:
-                    # Get total count
-                    total_row = conn.execute(f"SELECT COUNT(*) as cnt {base_sql}", params).fetchone()
-                    total_matches = total_row["cnt"] if total_row else 0
+        try:
+            # Get total count
+            total_row = conn.execute(f"SELECT COUNT(*) as cnt {base_sql}", params).fetchone()
+            total_row["cnt"] if total_row else 0
 
-                    # Get paginated results with highlighted offsets
-                    rows = conn.execute(f"""
-                        SELECT v.id, v.text_english, b.title,
-                               offsets(verses_fts) as match_offsets
-                        {base_sql}
-                        ORDER BY rank
-                        LIMIT ? OFFSET ?
-                    """, params + [limit_plus_one, offset]).fetchall()
-                except Exception:
-                    # Fallback to LIKE
-                    like_q = f"%{search_query}%"
-                    like_sql = "SELECT v.id, v.text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ?"
-                    like_params = [like_q]
-                    if filter_book:
-                        like_sql += " AND (b.id = ? OR b.id LIKE ?)"
-                        like_params.extend([filter_book, f"{filter_book}%"])
-                    total_row = conn.execute(f"SELECT COUNT(*) as cnt {like_sql.replace('SELECT v.id, v.text_english, b.title', '')}", like_params).fetchone()
-                    total_matches = total_row["cnt"] if total_row else 0
-                    rows = conn.execute(f"{like_sql} LIMIT ? OFFSET ?", like_params + [limit_plus_one, offset]).fetchall()
+            # Get paginated results with highlighted offsets
+            rows = conn.execute(f"""
+                SELECT v.id, v.text_english, b.title,
+                       offsets(verses_fts) as match_offsets
+                {base_sql}
+                ORDER BY rank
+                LIMIT ? OFFSET ?
+            """, params + [limit_plus_one, offset]).fetchall()
+        except Exception:
+            # Fallback to LIKE
+            like_q = f"%{search_query}%"
+            like_sql = "SELECT v.id, v.text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ?"
+            like_params = [like_q]
+            if filter_book:
+                like_sql += " AND (b.id = ? OR b.id LIKE ?)"
+                like_params.extend([filter_book, f"{filter_book}%"])
+            total_row = conn.execute(f"SELECT COUNT(*) as cnt {like_sql.replace('SELECT v.id, v.text_english, b.title', '')}", like_params).fetchone()
+            total_row["cnt"] if total_row else 0
+            rows = conn.execute(f"{like_sql} LIMIT ? OFFSET ?", like_params + [limit_plus_one, offset]).fetchall()
 
-                for r in rows:
-                    item = {"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"}
-                    if "match_offsets" in r.keys():
-                        offsets = []
-                        parts = r["match_offsets"].split()
-                        for i in range(0, len(parts), 4):
-                            if i + 3 < len(parts):
-                                try:
-                                    offsets.append({"pos": int(parts[i + 2]), "len": int(parts[i + 3])})
-                                except (ValueError, IndexError):
-                                    pass
-                        if offsets:
-                            item["highlights"] = offsets
-                    results.append(item)
+        for r in rows:
+            item = {"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"}
+            if "match_offsets" in r:
+                offsets = []
+                parts = r["match_offsets"].split()
+                for i in range(0, len(parts), 4):
+                    if i + 3 < len(parts):
+                        with contextlib.suppress(ValueError, IndexError):
+                            offsets.append({"pos": int(parts[i + 2]), "len": int(parts[i + 3])})
+                if offsets:
+                    item["highlights"] = offsets
+            results.append(item)
 
     if lang in ("all", "hebrew") and search_query:
         hebrew_sql = """
@@ -688,7 +726,7 @@ def search(
 # ─── Gematria ───
 
 @app.get("/api/v1/gematria")
-def gematria(word: Optional[str] = None, value: Optional[int] = None, system: str = "standard"):
+def gematria(word: str | None = None, value: int | None = None, system: str = "standard"):
     """Look up gematria values. Provide a Hebrew word or a numerical value."""
     conn = get_db()
 
@@ -712,7 +750,7 @@ def gematria(word: Optional[str] = None, value: Optional[int] = None, system: st
 # ─── Hidden Patterns (Sod) ───
 
 @app.get("/api/v1/sod")
-def sod(verse: Optional[str] = None, atbash_word: Optional[str] = None, acrostic_book: Optional[str] = None):
+def sod(verse: str | None = None, atbash_word: str | None = None, acrostic_book: str | None = None):
     """Explore hidden patterns — Atbash, acrostics, advanced gematria."""
     conn = get_db()
     result = {}
@@ -733,7 +771,7 @@ def sod(verse: Optional[str] = None, atbash_word: Optional[str] = None, acrostic
 
         # Notarikon
         if row and row["text_hebrew"]:
-            from lib.sod.notarikon import first_letters, last_letters, first_and_last
+            from lib.sod.notarikon import first_letters, last_letters
             result["notarikon"] = {
                 "first_letters": first_letters(row["text_hebrew"]),
                 "last_letters": last_letters(row["text_hebrew"]),
@@ -776,15 +814,17 @@ def get_passage_guide(ref: str):
 @app.get("/api/v1/semantic-search")
 def semantic_search(q: str = Query(..., description="Query text"), limit: int = 20):
     """Semantic search — find verses by meaning, not keywords.
-    
+
     Uses sqlite-vec vectors pre-computed by scripts/embed_verses.py.
     Returns verses ranked by cosine similarity to the query.
     """
     if not VEC_CACHE.get("available"):
         return {"ok": False, "error": "Vectors not available. Run: python3 scripts/embed_verses.py"}
-    
-    import struct, hashlib, re
-    
+
+    import hashlib
+    import re
+    import struct
+
     def ngram_hash(text, n=3, dim=384):
         vec = [0.0] * dim
         text = re.sub(r'[^a-zA-Z\u0590-\u05FF\s]', '', text.lower())
@@ -793,17 +833,17 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
             vec[struct.unpack_from('<I', h, 0)[0] % dim] += 1.0
         mag = sum(v * v for v in vec) ** 0.5
         return [v / mag for v in vec] if mag > 0 else vec
-    
+
     conn = get_db_vec()
     vec = ngram_hash(q)
     vec_bytes = struct.pack(f'{len(vec)}f', *vec)
-    
+
     rows = conn.execute("""
         SELECT verse_id, distance FROM vec_verses
         WHERE embedding MATCH ? AND k = ?
         ORDER BY distance
     """, (vec_bytes, limit)).fetchall()
-    
+
     results = []
     for r in rows:
         v = conn.execute("""
@@ -818,13 +858,13 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
                 "text": v["text_english"][:200],
                 "similarity": round(1.0 - r["distance"], 3),
             })
-    
+
     conn.close()
     return {"ok": True, "data": {"query": q, "total": len(results), "results": results}}
 
 
 @app.get("/api/v1/pardes/{ref:path}")
-def get_pardes(ref: str, level: Optional[str] = None):
+def get_pardes(ref: str, level: str | None = None):
     """Get connections grouped by PaRDeS interpretation level."""
     resp = get_verse(ref)
     if not resp["ok"]:
@@ -875,9 +915,13 @@ def get_info():
 
 @app.get("/api/v1/books")
 def get_books():
-    """Get all works and their books for navigation."""
+    """Get all works and their books for navigation — served from RAM cache."""
+    global BOOKS_CACHE
+    if BOOKS_CACHE is not None:
+        return {"ok": True, "data": BOOKS_CACHE}
+    # Fall back to direct SQLite for multi-worker or cold start
     conn = get_db()
-    works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY id").fetchall()
+    works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY position").fetchall()
     result = []
     for w in works_rows:
         books = conn.execute(
@@ -993,7 +1037,7 @@ def get_grammar(ref: str):
     m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
     if m:
         vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
-    
+
     conn = get_db()
     words = conn.execute("""
         SELECT g.word_hebrew, g.word_english, g.morph, g.lemma, g.word_index,
@@ -1002,11 +1046,11 @@ def get_grammar(ref: str):
         WHERE g.verse_id = ?
         ORDER BY g.word_index
     """, (vid,)).fetchall()
-    
+
     result = []
     for w in words:
         morph = w['morph'] or ''
-        prefix = morph[:2] if len(morph) >= 2 else ''
+        morph[:2] if len(morph) >= 2 else ''
         cat = 'unknown'
         pos = 'unknown'
         color = '#cccccc'
@@ -1016,7 +1060,7 @@ def get_grammar(ref: str):
                 cat = pfx
                 pos = MORPH_POS.get(pfx, 'unknown')
                 break
-        
+
         result.append({
             'hebrew': w['word_hebrew'] or '',
             'english': w['word_english'] or '',
@@ -1031,7 +1075,7 @@ def get_grammar(ref: str):
                 'reduced': w['value_reduced'],
             },
         })
-    
+
     conn.close()
     return {"ok": True, "data": {"verse_id": vid, "words": result}}
 
@@ -1039,7 +1083,7 @@ def get_grammar(ref: str):
 @app.get("/api/v1/grammar/{ref:path}")
 def get_chapter_grammar(ref: str):
     """Get word-level grammar/gematria data for all verses in a chapter.
-    
+
     /api/v1/grammar/isa.55  → Word data for all verses in Isaiah 55
     """
     ref_clean = ref.strip("/")
@@ -1077,7 +1121,7 @@ def get_chapter_grammar(ref: str):
             WHERE g.verse_id LIKE ?
             ORDER BY g.verse_id, g.word_index
         """, (f"{verse_prefix}%",)).fetchall()
-        
+
         # Build lookup maps from lemma_gloss and lexicon
         gloss_map = {}
         for r in conn.execute("SELECT lemma, english_gloss FROM lemma_gloss"):
@@ -1085,27 +1129,27 @@ def get_chapter_grammar(ref: str):
         lex_map = {}
         for r in conn.execute("SELECT lemma, definition, part_of_speech, root_letters FROM lexicon"):
             lex_map[r['lemma']] = dict(r)
-        
+
         def extract_lemma_key(raw_lemma):
             """Extract the numeric key from a compound lemma like 'b/7225' -> '7225'."""
             if '/' in raw_lemma:
                 return raw_lemma.split('/')[1]
             return raw_lemma
-        
+
         def lookup_gloss(raw_lemma):
             """Try full lemma match first, then numeric extraction."""
             if raw_lemma in gloss_map:
                 return gloss_map[raw_lemma]
             key = extract_lemma_key(raw_lemma)
             return gloss_map.get(key, '')
-        
+
         def lookup_lexicon(raw_lemma):
             """Try full lemma match first, then numeric extraction."""
             if raw_lemma in lex_map:
                 return lex_map[raw_lemma]
             key = extract_lemma_key(raw_lemma)
             return lex_map.get(key, {})
-    
+
     # Group by verse
     verses = {}
     for w in rows:
@@ -1113,7 +1157,7 @@ def get_chapter_grammar(ref: str):
         if vid not in verses:
             verses[vid] = []
         morph = w["morph"] or ""
-        prefix = morph[:2] if len(morph) >= 2 else ""
+        morph[:2] if len(morph) >= 2 else ""
         color = "#cccccc"
         for pfx, c in MORPH_COLORS.items():
             if morph.startswith(pfx):
@@ -1153,7 +1197,7 @@ def get_chapter_grammar(ref: str):
 @app.get("/api/v1/connections/chapter/{ref:path}")
 def get_chapter_connections(ref: str):
     """Get all non-structural connections for a chapter (intertextual, geographic, etc.).
-    
+
     /api/v1/connections/chapter/isa.55
     """
     ref_clean = ref.strip("/")
@@ -1227,10 +1271,8 @@ def get_footnotes(ref: str):
     footnotes = []
     for r in rows:
         ref_data = {}
-        try:
+        with contextlib.suppress(_json.JSONDecodeError, TypeError):
             ref_data = _json.loads(r["reference_data"]) if r["reference_data"] else {}
-        except (_json.JSONDecodeError, TypeError):
-            pass
         fn = {
             "id": r["id"],
             "verse_id": r["verse_id"],
@@ -1308,7 +1350,7 @@ def get_tsk_crossrefs(ref: str):
 def genealogy(person: str):
     """Get genealogical connections for a person entity."""
     conn = get_db()
-    
+
     # Find verse IDs for this person
     verses = conn.execute("""
         SELECT ve.verse_id
@@ -1317,7 +1359,7 @@ def genealogy(person: str):
         WHERE e.english_name LIKE ? AND ve.relationship_type = 'mentions'
         ORDER BY ve.verse_id
     """, (f'%{person}%',)).fetchall()
-    
+
     if not verses:
         # Try searching by entity_id directly
         verses = conn.execute("""
@@ -1326,9 +1368,9 @@ def genealogy(person: str):
             WHERE ve.entity_id LIKE ? AND ve.relationship_type = 'mentions'
             ORDER BY ve.verse_id
         """, (f'%{person}%',)).fetchall()
-    
+
     verse_ids = [v[0] for v in verses]
-    
+
     # Get connections between these verses
     connections = []
     if len(verse_ids) >= 2:
@@ -1336,13 +1378,13 @@ def genealogy(person: str):
             for j in range(i + 1, len(verse_ids)):
                 row = conn.execute("""
                     SELECT c.source_verse, c.target_verse, c.type, c.subtype
-                    FROM connections c 
+                    FROM connections c
                     WHERE c.source_verse=? AND c.target_verse=?
                        OR c.source_verse=? AND c.target_verse=?
                 """, (verse_ids[i], verse_ids[j], verse_ids[j], verse_ids[i])).fetchall()
                 for r in row:
                     connections.append(dict(r))
-    
+
     conn.close()
     return {
         "ok": True,
@@ -1360,12 +1402,12 @@ def genealogy(person: str):
 @app.get("/api/v1/ot-in-nt")
 def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt', 'rom')")):
     """Get all Old Testament quotations used in the New Testament.
-    
-    Aggregates direct_quotation, allusion, prophetic_fulfillment, 
+
+    Aggregates direct_quotation, allusion, prophetic_fulfillment,
     and modified_quotation connections from OT→NT.
     """
     conn = get_db()
-    
+
     query = """
         SELECT c.source_verse, c.target_verse, c.type, c.strength,
                c.confidence, c.subtype, vs.text_english as source_text,
@@ -1379,7 +1421,7 @@ def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt',
           AND vs.has_hebrew = 1
           AND vs.has_hebrew IS NOT NULL
     """
-    
+
     # OT books (those with Hebrew)
     ot_books_query = """
         AND vs.book_id IN ('gen','exo','lev','num','deu','josh','judg','ruth','1sam','2sam','1kgs','2kgs',
@@ -1388,14 +1430,14 @@ def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt',
                            'hab','zeph','hag','zech','mal')
     """
     query += ot_books_query
-    
+
     # Filter by NT book
     if book:
         query += " AND vt.book_id = ?"
         rows = conn.execute(query, (book,)).fetchall()
     else:
         rows = conn.execute(query).fetchall()
-    
+
     # Group by NT book
     by_nt_book = {}
     for r in rows:
@@ -1411,11 +1453,11 @@ def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt',
             'ot_text': (r['source_text'] or '')[:150],
             'nt_text': (r['target_text'] or '')[:150],
         })
-    
+
     # Sort each NT book's entries by OT verse
     for nt in by_nt_book:
         by_nt_book[nt].sort(key=lambda x: x['ot_verse'])
-    
+
     conn.close()
     return {
         "ok": True,
@@ -1429,39 +1471,39 @@ def ot_in_nt(book: str = Query("", description="Filter by NT book (e.g., 'matt',
 # ─── Connection Feedback ───
 
 class ConnectionFeedback(BaseModel):
-    connection_id: Optional[int] = None
-    source_verse: Optional[str] = None
-    target_verse: Optional[str] = None
+    connection_id: int | None = None
+    source_verse: str | None = None
+    target_verse: str | None = None
     action: str = "confirm"  # 'confirm', 'reject', 'unclear'
 
 @app.post("/api/v1/connections/feedback")
 def connection_feedback(fb: ConnectionFeedback):
     """Submit user feedback on a connection.
-    
+
     Confirming a connection increments its confirmation_count.
     Users can confirm, reject, or mark a connection as unclear.
     This feedback improves the quality signal over time.
     """
     conn = get_db()
-    
+
     if fb.connection_id:
         row = conn.execute("SELECT * FROM connections WHERE id = ?", (fb.connection_id,)).fetchone()
     elif fb.source_verse and fb.target_verse:
         row = conn.execute("""
-            SELECT * FROM connections 
+            SELECT * FROM connections
             WHERE source_verse = ? AND target_verse = ?
             LIMIT 1
         """, (fb.source_verse, fb.target_verse)).fetchone()
     else:
         conn.close()
         return {"ok": False, "error": "Provide connection_id or source_verse+target_verse"}
-    
+
     if not row:
         conn.close()
         return {"ok": False, "error": "Connection not found"}
-    
+
     cid = row["id"]
-    
+
     if fb.action == "confirm":
         conn.execute("UPDATE connections SET confirmation_count = COALESCE(confirmation_count, 0) + 1 WHERE id = ?", (cid,))
         msg = "Confirmed"
@@ -1474,7 +1516,7 @@ def connection_feedback(fb: ConnectionFeedback):
     else:
         conn.close()
         return {"ok": False, "error": f"Unknown action: {fb.action}"}
-    
+
     conn.commit()
     conn.close()
     return {"ok": True, "data": {"connection_id": cid, "action": fb.action, "message": msg}}
@@ -1488,7 +1530,7 @@ def get_connection_status(connection_id: int):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Connection not found")
-    
+
     result = dict(row)
     signals = rate_connection_row(result)
     result["signals"] = signals
@@ -1504,7 +1546,7 @@ class TabCreate(BaseModel):
     title: str = ""
     ref: str = ""
     query: str = ""
-    parent: Optional[str] = None
+    parent: str | None = None
 
 @app.get("/api/v1/tabs")
 def list_tabs():
@@ -1580,7 +1622,7 @@ def call_tool_get(tool_name: str, request: Request):
         result = call_tool(tool_name, conn, **typed_args)
         return {"ok": True, "data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         conn.close()
 
@@ -1597,7 +1639,7 @@ def call_tool_post(tool_name: str, body: dict):
         result = call_tool(tool_name, conn, **body)
         return {"ok": True, "data": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     finally:
         conn.close()
 
@@ -1626,24 +1668,9 @@ def _build_lexicon_cache_index():
             LEXICON_CACHE_BY_HEBREW[heb] = lemma
 
 
-@app.on_event("startup")
-def _load_lexicon_cache():
-    _build_lexicon_cache_index()
-
-
 # ─── Wiki Endpoints ───
 
 WIKI_CACHE = {}  # entity/id → article, loaded at startup
-
-@app.on_event("startup")
-def _load_wiki_cache():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM wiki_articles").fetchall()
-    for r in rows:
-        WIKI_CACHE[r["id"]] = dict(r)
-    conn.close()
-    if WIKI_CACHE:
-        log.info("Cache loaded", cache="wiki_articles", count=len(WIKI_CACHE))
 
 
 @app.get("/api/v1/wiki/search")
@@ -1733,7 +1760,6 @@ def learn_about_knowledge_item(knowledge_item_id: str):
 
     /api/v1/learn/12345  → wiki articles for entities in both verses
     """
-    import re
     kid = knowledge_item_id.strip("/")
     conn = get_db()
 
@@ -1757,7 +1783,7 @@ def learn_about_knowledge_item(knowledge_item_id: str):
         raise HTTPException(status_code=404, detail=f"Knowledge item not found: {kid}")
 
     # Find entities for both verses
-    verse_ids = [item["verse_id"], item["target_verse"]]
+    [item["verse_id"], item["target_verse"]]
     entities = conn.execute(
         """
         SELECT DISTINCT el.entity_id, el.english_name, el.entity_type
@@ -2021,12 +2047,8 @@ def isaiah_parallelism(chapter: str):
         src = r["source_verse"]
         tgt = r["target_verse"]
 
-        def _role(vid, paired_vid):
-            return "source" if vid == src else "target"
-
         # Add to source verse
         if src in verse_parallelisms:
-            paired_v = tgt if src == src else tgt  # always tgt
             ptype = r["type"]
             # Skip chiastic in regular parallelism list
             if ptype != "chiastic":
@@ -2069,10 +2091,8 @@ def isaiah_parallelism(chapter: str):
             for ref in chapter_refs:
                 parts = ref.split(".")
                 if len(parts) == 3:
-                    try:
+                    with contextlib.suppress(ValueError):
                         verse_nums.append(int(parts[2]))
-                    except ValueError:
-                        pass
             staircase_chains.append({
                 "pattern_id": r["id"],
                 "start_verse": r["start_verse"],
@@ -2191,10 +2211,8 @@ def isaiah_parallelism(chapter: str):
                 except ValueError:
                     pass
             elif len(p_parts) >= 2:
-                try:
+                with contextlib.suppress(ValueError):
                     pivot_ch = int(p_parts[1])
-                except ValueError:
-                    pass
 
         chiasms.append({
             "chiasm_id": kc["id"],
@@ -2335,7 +2353,6 @@ def get_chapter(ref: str):
     /api/v1/chapter/matt.5      → All data for Matthew 5
     /api/v1/chapter/gen.1       → All data for Genesis 1
     """
-    import json as _json
     ref_clean = ref.strip("/")
     parts = ref_clean.split(".")
     if len(parts) < 2:
@@ -2361,7 +2378,7 @@ def get_chapter(ref: str):
     verse_ids = [v["id"] for v in verse_list]
     id_to_verse_num = {v["id"]: v["verse"] for v in verse_list}
     id_to_ref = {v["id"]: f"{book_id}.{chapter_num}.{v['verse']}" for v in verse_list}
-    verse_num_to_id = {v["verse"]: v["id"] for v in verse_list}
+    {v["verse"]: v["id"] for v in verse_list}
 
     # 2. Get structural connections for verses in this chapter
     placeholders = ",".join("?" for _ in verse_ids)
@@ -2575,7 +2592,7 @@ class ForumPostCreate(BaseModel):
     topic_id: int
     content: str
     author: str = "anonymous"
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
 
 @app.post("/api/v1/forum/posts")
 def create_forum_post(post: ForumPostCreate):
@@ -2602,10 +2619,7 @@ def get_verse_annotations(ref: str):
     ref = ref.replace(":", ".").replace(" ", ".").lower()
     import re
     m = re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', ref)
-    if m:
-        vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
-    else:
-        vid = ref
+    vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}" if m else ref
 
     conn = get_db()
     rows = conn.execute("""
@@ -2632,7 +2646,7 @@ class AnnotationCreate(BaseModel):
     verse_id: str
     content: str
     user_id: str = "anonymous"
-    parent_id: Optional[int] = None
+    parent_id: int | None = None
 
 @app.post("/api/v1/verses/annotations")
 def create_annotation(ann: AnnotationCreate):
@@ -2660,10 +2674,10 @@ def health_check():
     conn = get_db()
     verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
     conn_count = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
-    
+
     # DB integrity check
     integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
-    
+
     # Traditional distribution summary
     trad_dist = {
         r[0]: r[1] for r in conn.execute(
@@ -2671,31 +2685,31 @@ def health_check():
             "FROM connections WHERE deprecated=0 GROUP BY t ORDER BY cnt DESC"
         ).fetchall()
     }
-    
+
     # Layer distribution
     layer_dist = {
         r[0]: r[1] for r in conn.execute(
             "SELECT layer, COUNT(*) as cnt FROM connections WHERE deprecated=0 GROUP BY layer ORDER BY cnt DESC"
         ).fetchall()
     }
-    
+
     # Audio alignments count
     audio_count = 0
     align_dir = Path(__file__).resolve().parent.parent / "data" / "audio" / "alignments"
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
-    
+
     # Uptime
     uptime_seconds = int(_time.time() - _start_time)
     conn.close()
-    
+
     # Cache status
     cache_sizes = {
         "wiki_articles": len(WIKI_CACHE),
         "lexicon_entries": len(LEXICON_CACHE),
         "tool_registry": len(TOOL_REGISTRY),
     }
-    
+
     return {"ok": True, "data": {
         "status": "ok" if integrity == "ok" else "degraded",
         "version": "1.0.0",
@@ -2738,7 +2752,6 @@ def staging_list_connections(status: str = "pending", layer: str = "", limit: in
 
 @app.post("/api/v1/debug/log")
 def client_error_log(data: dict):
-    import datetime
     try:
         conn = get_db()
         conn.execute('CREATE TABLE IF NOT EXISTS client_logs ('
@@ -2770,63 +2783,16 @@ def get_client_logs(limit: int = 50):
 
 @app.get("/api/v1/debug/check")
 def debug_check():
-    import os, sys
+    import os
+    import sys
     conn = get_db()
     try:
         verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
         conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
         audio_count = 0
-        for root, dirs, files in os.walk("data/audio/alignments"):
+        for _root, _dirs, files in os.walk("data/audio/alignments"):
             audio_count = len(files)
-    except:
-        verse_count = conn_count = audio_count = 0
-    conn.close()
-    return {"ok": True, "data": {
-        "python": sys.version,
-        "platform": __import__("platform").platform(),
-        "verses": verse_count,
-        "connections": conn_count,
-        "audio_alignments": audio_count,
-        "assets": os.listdir("frontend/dist/assets/") if os.path.isdir("frontend/dist/assets/") else [],
-    }}
-
-# ─── Client-side error logging (for debugging) ───
-
-@app.post("/api/v1/debug/log")
-def client_error_log(data: dict):
-    import datetime
-    try:
-        conn = get_db()
-        conn.execute(
-            "INSERT INTO client_logs (level, message, stack, url, user_agent) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (data.get("level", "error"), data.get("message", "")[:500],
-             data.get("stack", "")[:2000], data.get("url", ""), data.get("userAgent", ""))
-        )
-        conn.commit()
-        conn.close()
     except Exception:
-        pass
-    return {"ok": True}
-
-@app.get("/api/v1/debug/logs")
-def get_client_logs(limit: int = 50):
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM client_logs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-    conn.close()
-    return {"ok": True, "data": [dict(r) for r in rows]}
-
-@app.get("/api/v1/debug/check")
-def debug_check():
-    import os, sys
-    conn = get_db()
-    try:
-        verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
-        conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
-        audio_count = 0
-        for root, dirs, files in os.walk("data/audio/alignments"):
-            audio_count = len(files)
-    except:
         verse_count = conn_count = audio_count = 0
     conn.close()
     return {"ok": True, "data": {
@@ -2860,25 +2826,25 @@ def truth_score(
     limit: int = Query(20, description="Max verses per work"),
 ):
     """Cross-canon consensus scoring.
-    
+
     For a given topic/verse, shows how each canon treats it:
     - Number of relevant verses per work
     - Connection counts and tradition distribution
     - Consensus score across canons
-    
+
     The goal: let users see which interpretations are supported
     across multiple canons vs. unique to one.
     """
     conn = get_db()
     result = {"query": q or verse, "works": [], "consensus": {}}
-    
+
     # Get all works
-    works = conn.execute("SELECT id, title FROM works ORDER BY id").fetchall()
-    
+    works = conn.execute("SELECT id, title FROM works ORDER BY position").fetchall()
+
     for w in works:
         wid = w["id"]
         wtitle = w["title"]
-        
+
         # Find matching verses in this work
         if verse:
             # Specific verse analysis
@@ -2897,50 +2863,50 @@ def truth_score(
             """, (wid, f"%{q}%", limit)).fetchall()
         else:
             verses_data = []
-        
+
         if not verses_data:
             continue
-        
+
         verse_ids = [v["id"] for v in verses_data]
-        
+
         # Count connections from/to these verses
         placeholders = ",".join("?" for _ in verse_ids)
-        
+
         conn_count = conn.execute(f"""
-            SELECT COUNT(*) as c FROM connections 
+            SELECT COUNT(*) as c FROM connections
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
         """, (*verse_ids, *verse_ids)).fetchone()["c"]
-        
+
         # Tradition distribution
         trad_dist = conn.execute(f"""
             SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt
-            FROM connections 
+            FROM connections
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
             GROUP BY t ORDER BY cnt DESC
         """, (*verse_ids, *verse_ids)).fetchall()
-        
+
         # Layer distribution
         layer_dist = conn.execute(f"""
             SELECT layer, COUNT(*) as cnt
-            FROM connections 
+            FROM connections
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
             GROUP BY layer ORDER BY cnt DESC
         """, (*verse_ids, *verse_ids)).fetchall()
-        
+
         # JST changes for these verses
         jst_count = conn.execute(f"""
-            SELECT COUNT(*) as c FROM connections 
+            SELECT COUNT(*) as c FROM connections
             WHERE source_verse IN ({placeholders}) AND type LIKE 'jst_%'
         """, (*verse_ids,)).fetchone()["c"]
-        
+
         # Gematria values
         gem_count = conn.execute(f"""
             SELECT COUNT(*) as c FROM gematria WHERE verse_id IN ({placeholders})
         """, (*verse_ids,)).fetchone()["c"]
-        
+
         result["works"].append({
             "work_id": wid,
             "title": wtitle,
@@ -2952,9 +2918,9 @@ def truth_score(
             "jst_changes": jst_count,
             "gematria_entries": gem_count,
         })
-    
+
     conn.close()
-    
+
     # Compute consensus
     works_found = len(result["works"])
     if works_found > 0:
@@ -2964,7 +2930,7 @@ def truth_score(
         works_with_conn = sum(1 for w in result["works"] if w["total_connections"] > 0)
         # Works with JST changes
         works_with_jst = sum(1 for w in result["works"] if w["jst_changes"] > 0)
-        
+
         result["consensus"] = {
             "works_found": works_found,
             "works_with_connections": works_with_conn,
@@ -2978,7 +2944,7 @@ def truth_score(
                 else "no connection data"
             ),
         }
-    
+
     return {"ok": True, "data": result}
 
 
@@ -2988,7 +2954,7 @@ def truth_score(
 def search_js(q: str = "", limit: int = 20, year: int = 0):
     """Search Joseph Smith's teachings/discourses by keyword."""
     conn = get_db()
-    
+
     if not q.strip():
         rows = conn.execute(
             "SELECT id, title, source, year, length(content) as content_len FROM js_texts ORDER BY id DESC LIMIT ?",
@@ -3008,10 +2974,10 @@ def search_js(q: str = "", limit: int = 20, year: int = 0):
                 "SELECT id, title, source, year, length(content) as content_len FROM js_texts WHERE content LIKE ? ORDER BY id LIMIT ?",
                 (f"%{q}%", limit)
             ).fetchall()
-    
+
     if year > 0:
         rows = [r for r in rows if r["year"] == year]
-    
+
     results = []
     for r in rows:
         results.append({
@@ -3021,7 +2987,7 @@ def search_js(q: str = "", limit: int = 20, year: int = 0):
             "year": r["year"],
             "content_length": r["content_len"],
         })
-    
+
     total = conn.execute("SELECT COUNT(*) FROM js_texts").fetchone()[0]
     conn.close()
     return {"ok": True, "data": {"results": results, "total": total, "matched": len(results)}}
@@ -3043,7 +3009,7 @@ def get_js_text(text_id: int):
 @app.get("/api/v1/verse-of-day")
 def verse_of_day(user_id: str = "default"):
     """Get a random verse with word-by-word breakdown for daily study.
-    
+
     Returns: random verse with Hebrew, English, Strong's, gematria,
     and connection count. Used by the DailyVerse component for
     maintenance-mode study.
@@ -3052,15 +3018,15 @@ def verse_of_day(user_id: str = "default"):
     # Pick a random verse with Hebrew text
     row = conn.execute("""
         SELECT id, book_id, chapter, verse, text_english, text_hebrew
-        FROM verses 
-        WHERE text_hebrew IS NOT NULL 
+        FROM verses
+        WHERE text_hebrew IS NOT NULL
         ORDER BY RANDOM() LIMIT 1
     """).fetchone()
-    
+
     if not row:
         conn.close()
         return {"ok": False, "error": "No verses found"}
-    
+
     vid = row["id"]
     result = {
         "verse_id": vid,
@@ -3068,25 +3034,25 @@ def verse_of_day(user_id: str = "default"):
         "text_english": row["text_english"],
         "text_hebrew": row["text_hebrew"],
     }
-    
+
     # Word count
     heb_words = [w for w in row["text_hebrew"].split() if w.strip()]
     result["word_count"] = len(heb_words)
-    
+
     # Gematria if available
     gem = conn.execute(
         "SELECT COUNT(*) as c FROM gematria WHERE verse_id=? AND value_standard IS NOT NULL",
         (vid,)
     ).fetchone()
     result["has_gematria"] = (gem and gem["c"] > 0)
-    
+
     # Connection count
     conns = conn.execute(
         "SELECT COUNT(*) as c FROM connections WHERE (source_verse=? OR target_verse=?) AND deprecated=0",
         (vid, vid)
     ).fetchone()
     result["connections_count"] = conns["c"] if conns else 0
-    
+
     conn.close()
     return {"ok": True, "data": result}
 

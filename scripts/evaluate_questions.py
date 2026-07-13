@@ -6,32 +6,36 @@ Usage:
     python3 scripts/evaluate_questions.py --count 20   # More questions
     python3 scripts/evaluate_questions.py --skip-llm   # Just generate, no eval
 """
-import sys, os, json, random, sqlite3
+import json
+import os
+import random
+import sqlite3
+import sys
 from pathlib import Path
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 BASE = Path(__file__).parent.parent
 DB = BASE / "data" / "processed" / "scripture.db"
 
 from lib.assessment.items import DeepQuestionGenerator
-from lib.assessment.items_old import fmt_ref, truncate_text
 
 
 def generate_sample(count=10):
     """Generate sample questions from each tier."""
     conn = sqlite3.connect(str(DB))
     gen = DeepQuestionGenerator(conn)
-    
+
     # Generate extra to get diverse samples
     items = []
     target_tiers = {"text": 0, "analysis": 0, "consistency": 0}
-    
+
     for _ in range(count * 10):
         if all(target_tiers[t] >= count // 3 for t in target_tiers):
             break
-        
+
         # Try each generator type
-        for g in [gen._gen_cross_reference, gen._gen_structural, 
+        for g in [gen._gen_cross_reference, gen._gen_structural,
                   gen._gen_thematic_group, gen._gen_passage_comprehension,
                   gen._gen_consistency]:
             try:
@@ -46,13 +50,13 @@ def generate_sample(count=10):
                         item["tier"] = "text"
                     else:
                         item["tier"] = "analysis"
-                    
+
                     if target_tiers.get(item["tier"], 0) < count // 3:
                         target_tiers[item["tier"]] = target_tiers.get(item["tier"], 0) + 1
                         items.append(item)
-            except:
+            except Exception:
                 continue
-    
+
     conn.close()
     random.shuffle(items)
     return items[:count]
@@ -60,8 +64,9 @@ def generate_sample(count=10):
 
 def evaluate_with_llm(items):
     """Send sample questions to the LLM for evaluation."""
-    import urllib.request, urllib.error
-    
+    import urllib.error
+    import urllib.request
+
     # Build an evaluation prompt
     prompt_parts = [
         "You are evaluating scripture learning questions for quality. Rate each question from 1-10 on:\n",
@@ -71,7 +76,7 @@ def evaluate_with_llm(items):
         "- DEPTH: Does it test understanding/analysis, not just recall?\n\n",
         "Here are the questions:\n\n"
     ]
-    
+
     for i, item in enumerate(items):
         q = item.get("question", "")
         opts = item.get("options", [])
@@ -82,22 +87,22 @@ def evaluate_with_llm(items):
         prompt_parts.append(f"Options: {opts}")
         prompt_parts.append(f"Correct: {str(ans)[:80]}")
         prompt_parts.append("")
-    
+
     prompt_parts.append(
         "\nRespond with a JSON array of evaluations:\n"
         '[{"q": 1, "clarity": N, "pedagogical": N, "fairness": N, "depth": N, '
         '"issues": "any problems", "strengths": "what works well"}, ...]'
     )
-    
+
     prompt = "\n".join(prompt_parts)
-    
+
     # Call the local chat endpoint
     api_url = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002") + "/api/v1/chat"
     req_data = json.dumps({"message": prompt, "model": "default"}).encode()
-    req = urllib.request.Request(api_url, data=req_data, 
+    req = urllib.request.Request(api_url, data=req_data,
                                  headers={"Content-Type": "application/json"},
                                  method="POST")
-    
+
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             result = json.loads(resp.read())
@@ -120,14 +125,14 @@ def main():
     parser.add_argument("--count", type=int, default=10, help="Number of questions")
     parser.add_argument("--skip-llm", action="store_true", help="Skip LLM evaluation")
     args = parser.parse_args()
-    
+
     print(f"Generating {args.count} sample questions...\n")
     items = generate_sample(args.count)
-    
+
     if not items:
         print("❌ No questions generated")
         return
-    
+
     print(f"Generated {len(items)} questions:")
     for i, item in enumerate(items):
         tier = item.get("tier", "?")
@@ -138,15 +143,15 @@ def main():
         print(f"{q[:250]}...")
         print(f"Options: {item.get('options', [])[:4]}")
         print(f"Answer: {str(ans)[:80]}")
-    
+
     if args.skip_llm:
         return
-    
+
     print(f"\n{'='*60}")
-    print(f"Sending to LLM for evaluation...")
+    print("Sending to LLM for evaluation...")
     evaluations = evaluate_with_llm(items)
     print(f"\nReceived {len(evaluations)} evaluations:\n")
-    
+
     for ev in evaluations:
         if isinstance(ev, dict):
             qnum = ev.get("q", "?")
@@ -163,11 +168,12 @@ def main():
                 print(f"    ⚠️  {issues}")
         else:
             print(f"  Raw: {str(ev)[:200]}")
-    
+
     # Summary
     scores = [e for e in evaluations if isinstance(e, dict) and isinstance(e.get("clarity"), (int, float))]
     if scores:
-        avg = lambda k: sum(s.get(k, 0) for s in scores) / len(scores)
+        def avg(k):
+            return sum(s.get(k, 0) for s in scores) / len(scores)
         print(f"\n{'='*60}")
         print(f"AVERAGES: Clarity={avg('clarity'):.1f} Pedagogy={avg('pedagogical'):.1f} "
               f"Fairness={avg('fairness'):.1f} Depth={avg('depth'):.1f}")

@@ -11,7 +11,12 @@ Requires: API server running on localhost:8002
   ./run.sh web --port 8002
 """
 
-import sys, os, json, time, urllib.request, urllib.error
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
 
 BASE = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
 API_BASE = f"{BASE}/api/v1"
@@ -100,42 +105,42 @@ def test_api_verse():
 def test_api_search():
     d = fetch(f"{API_BASE}/search?q=written+heart&lang=english")
     assert d.get("ok"), f"search failed: {d}"
-    assert d["data"]["total"] > 0, f"no results"
+    assert d["data"]["total"] > 0, "no results"
     assert "written" in d["data"]["results"][0]["text"].lower(), f"wrong result: {d['data']['results'][0]}"
 
 
 def test_api_semantic_search():
     d = fetch(f"{API_BASE}/semantic-search?q=faith&limit=3")
     assert d.get("ok"), f"semantic failed: {d}"
-    assert len(d["data"]["results"]) > 0, f"no semantic results"
+    assert len(d["data"]["results"]) > 0, "no semantic results"
 
 
 def test_api_parallelism():
     d = fetch(f"{API_BASE}/parallelism/isaiah/6")
     assert d.get("ok"), f"parallelism failed: {d}"
-    assert d["data"]["statistics"]["total_verses"] == 13, f"wrong verse count"
-    assert "verses" in d["data"], f"missing verses"
+    assert d["data"]["statistics"]["total_verses"] == 13, "wrong verse count"
+    assert "verses" in d["data"], "missing verses"
     # Check intra-verse lines
     v10 = [v for v in d["data"]["verses"] if v["verse"] == 10][0]
-    assert len(v10.get("lines", [])) >= 2, f"v10 should have multiple lines"
+    assert len(v10.get("lines", [])) >= 2, "v10 should have multiple lines"
 
 
 def test_api_footnotes():
     d = fetch(f"{API_BASE}/footnotes/isa.55.6")
     assert d.get("ok"), f"footnotes failed: {d}"
-    assert d["data"]["total"] > 0, f"no footnotes for Isa 55:6"
+    assert d["data"]["total"] > 0, "no footnotes for Isa 55:6"
     fn = d["data"]["footnotes"][0]
-    assert "context_word" in fn, f"missing context_word"
-    assert "category" in fn, f"missing category"
+    assert "context_word" in fn, "missing context_word"
+    assert "category" in fn, "missing category"
 
 
 def test_api_tsk():
     d = fetch(f"{API_BASE}/tsk-crossrefs/isa.55.6")
     assert d.get("ok"), f"TSK failed: {d}"
-    assert d["data"]["total"] > 0, f"no TSK refs"
+    assert d["data"]["total"] > 0, "no TSK refs"
     ref = d["data"]["cross_references"][0]
-    assert "target_verse" in ref, f"missing target_verse"
-    assert "type" in ref, f"missing type"
+    assert "target_verse" in ref, "missing target_verse"
+    assert "type" in ref, "missing type"
 
 
 def test_api_books():
@@ -150,7 +155,7 @@ def test_api_books():
 def test_api_gematria():
     d = fetch(f"{API_BASE}/gematria?word=%D7%99%D7%94%D7%95%D7%94")
     assert d.get("ok"), f"gematria failed: {d}"
-    assert d["data"]["gematria"]["standard"] == 26, f"YHWH should be 26"
+    assert d["data"]["gematria"]["standard"] == 26, "YHWH should be 26"
 
 
 def test_api_pardes():
@@ -161,8 +166,8 @@ def test_api_pardes():
 def test_api_grammar():
     d = fetch(f"{API_BASE}/verses/isa.55.6/grammar")
     assert d.get("ok"), f"grammar failed: {d}"
-    assert d["data"]["text_english"], f"missing text"
-    assert "connections" in d["data"], f"missing connections"
+    assert d["data"]["text_english"], "missing text"
+    assert "connections" in d["data"], "missing connections"
 
 
 def test_api_chapter_generic():
@@ -174,14 +179,14 @@ def test_api_chapter_generic():
     # Genesis 1 should have synonymous parallelism
     gen = fetch(f"{API_BASE}/chapter/gen.1")
     by_type = gen["data"]["statistics"]["by_type"]
-    assert "parallel_synonymous" in by_type, f"missing synonymous in genesis"
-    assert by_type["parallel_synonymous"] > 0, f"0 synonymous in genesis"
+    assert "parallel_synonymous" in by_type, "missing synonymous in genesis"
+    assert by_type["parallel_synonymous"] > 0, "0 synonymous in genesis"
 
 
 def test_api_chapter_footnotes():
     d = fetch(f"{API_BASE}/footnotes/isa.55")
     assert d.get("ok"), f"chapter footnotes failed: {d}"
-    assert d["data"]["total"] >= 25, f"should have 25+ footnotes in Isa 55"
+    assert d["data"]["total"] >= 25, "should have 25+ footnotes in Isa 55"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -196,11 +201,11 @@ def test_agent_endpoints():
     # Queue an action
     r = fetch(f"{AGENT_BASE}/action", "POST", {"action": "test"})
     assert r.get("ok"), f"queue action failed: {r}"
-    assert "action_id" in r, f"missing action_id"
+    assert "action_id" in r, "missing action_id"
     # Poll
     d = fetch(f"{AGENT_BASE}/actions?after=-1")
     assert d.get("ok"), f"poll failed: {d}"
-    assert d["data"]["pending"] > 0, f"no pending actions"
+    assert d["data"]["pending"] > 0, "no pending actions"
     # Report state
     r = fetch(f"{AGENT_BASE}/state", "POST", {"test": True})
     assert r.get("ok"), f"report state failed: {r}"

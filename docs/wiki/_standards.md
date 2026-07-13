@@ -3,7 +3,7 @@
 ## Rules
 
 ### Python
-- Use Python 3.13+ type hints on all function signatures
+- Use Python 3.14+ type hints on all function signatures
 - `snake_case` for functions and variables, `PascalCase` for classes
 - Module-level docstrings in all `.py` files
 - Prefer `pathlib.Path` over `os.path`
@@ -12,7 +12,7 @@
 
 ### Testing
 - All Python tests in `tests/` — run with `python3 -m pytest tests/ -q --tb=short`
-- 38 tests covering: verses, search, gematria, graph exploration, quiz endpoints, hub notes, DB schema, DB integrity, count sanity, tradition distribution, OpenAPI snapshot
+- 38+ tests covering: verses, search, gematria, graph exploration, quiz endpoints, hub notes, DB schema, DB integrity, count sanity, tradition distribution, OpenAPI snapshot, Hebrew curriculum, assessment grading
 - Graph regression: `python3 scripts/test_graph_regression.py -v` — validates layer counts, quality levels, tradition labels, no orphaned refs, no duplicates
 - DB integrity: `sqlite3 data/processed/scripture.db "PRAGMA integrity_check;"` — must return "ok"
 - Pre-deploy gate: all tests + graph regression + integrity check must pass before rsync
@@ -34,12 +34,14 @@
 - Register in `lib/api/__init__.py` with JSON Schema for params
 - Docstring becomes the tool description
 - Return plain dicts (not JSON-RPC or HTTP wrapped)
+- **60 tools** registered in TOOL_REGISTRY (both MCP server and HTTP API consume the same registry)
 
 ### Connection Generators
 - Every generator exports `def run(conn, book_ids=None) -> int`
 - Register in `generators/__init__.py` with metadata
 - Do NOT commit inside the generator — caller handles commit
 - Use `add_connection()` from `lib/db.py` for inserts
+- **45 generators** registered (41 algorithmic + 4 manual/curation)
 
 ### Agent-Driven Data
 The agent (this coding session) reads scripture text directly and writes data. No external API, no cost.
@@ -88,8 +90,33 @@ The agent (this coding session) reads scripture text directly and writes data. N
 5. Apply to DB: INSERT INTO connections with `discovered_by='ai'`
 6. Verify: check DB counts match expectations
 
+### Adding Hebrew Audio
+1. Source audio files (Schmueloff .mp3 format) organized per book/chapter
+2. Register in `web/routes/audio.py` with verse-to-audio mapping
+3. Frontend components: PassageReader (sync highlight), DailyVerse (daily widget), AudioReview (listen-type)
+4. Test audio sync via curl endpoint, frontend via Playwright E2E
+
+### Adding Literary Pattern Detection
+1. Implement detection script in `scripts/detect_<pattern>.py`
+2. Run script to generate candidate connections
+3. Verify with `tools/section_compare.py` for word/keyword overlap
+4. Cross-check against `known_patterns` table to avoid duplicates
+5. Save novel discoveries with `tools/pattern_ingest.py`
+
+### Importing JS Discourses or JST
+1. For JS discourses: run `scripts/import_js_discourses.py` (TEV001-945 PDF corpus)
+2. For JST: run `scripts/import_jst_version.py` (creates version + 8,796 connections)
+3. Verify with DB counts: `SELECT COUNT(*) FROM connections WHERE type IN ('jst_change','jst_addition')`
+
+### Truth-Seeking: Adding Disagreement Data
+1. Identify contradictory readings across traditions for a verse
+2. Write to disagreements table via `scripts/seed_disagreements.py`
+3. Accessible via `scripture_disagreements` tool and `GET /api/v1/disagreements/{ref}`
+
 ## Enforcement
 
 - `./run.sh test` — smoke tests
-- git hooks — installed via install-wiki-hooks (post-commit staleness check)
+- Pre-deploy gate: 38+ Python tests + graph regression + DB integrity check
+- Graph regression: `python3 scripts/test_graph_regression.py -v`
+- DB integrity: `sqlite3 data/processed/scripture.db "PRAGMA integrity_check;"` — must return "ok"
 - Type hints are advisory (no mypy in CI yet)

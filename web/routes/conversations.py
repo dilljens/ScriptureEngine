@@ -1,9 +1,20 @@
 """Conversation session routes."""
-import json, os
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
+
+from lib.api.conversations import (
+    add_connection,
+    add_message,
+    create_session,
+    delete_session,
+    get_session,
+    list_connections,
+    list_sessions,
+    promote_connection,
+    update_session,
+)
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -24,11 +35,11 @@ class ConversationCreate(BaseModel):
 class MessageCreate(BaseModel):
     role: str  # 'user', 'assistant', 'system'
     content: str
-    metadata: Optional[dict] = {}
+    metadata: dict | None = {}
 
 class SessionUpdate(BaseModel):
-    title: Optional[str] = None
-    is_starred: Optional[bool] = None
+    title: str | None = None
+    is_starred: bool | None = None
 
 class ConnectionPromote(BaseModel):
     layer: str = "intertextual"
@@ -47,7 +58,7 @@ class ManualConnection(BaseModel):
     description: str = ""
 
 @router.get("/api/v1/conversations")
-def list_conversations(page: int = 1, per_page: int = 20, starred: Optional[bool] = None, search: str = ""):
+def list_conversations(page: int = 1, per_page: int = 20, starred: bool | None = None, search: str = ""):
     """List conversation sessions, paginated."""
     conn = get_db()
     result = list_sessions(conn, page=page, per_page=per_page, starred=starred, search=search)
@@ -123,7 +134,7 @@ def add_conversation_messages_batch(session_id: str, body: list[MessageCreate]):
     return {"ok": True, "data": {"messages": results, "count": len(results)}}
 
 @router.get("/api/v1/conversations/{session_id}/connections")
-def get_conversation_connections(session_id: str, connection_type: Optional[str] = None):
+def get_conversation_connections(session_id: str, connection_type: str | None = None):
     """List connections discovered/retrieved in a conversation."""
     conn = get_db()
     result = list_connections(conn, session_id, connection_type=connection_type)

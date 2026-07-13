@@ -48,12 +48,11 @@ def first_and_last(text):
 
 def find_notarikon_patterns(conn, book_id=None):
     """Find notarikon patterns in Hebrew verses.
-    
+
     For each verse with Hebrew text, extract first/last letters
     and check if they form known biblical names or meaningful patterns.
     """
-    from ..db import get_db
-    
+
     query = """
         SELECT v.id, v.text_hebrew
         FROM verses v
@@ -64,9 +63,9 @@ def find_notarikon_patterns(conn, book_id=None):
         query += " AND v.book_id = ?"
         params.append(book_id)
     query += " LIMIT 1000"
-    
+
     rows = conn.execute(query, params).fetchall()
-    
+
     # Names we're looking for in notarikon patterns
     target_names = {"יהוה": "YHWH",
                     "אלהים": "Elohim",
@@ -74,13 +73,13 @@ def find_notarikon_patterns(conn, book_id=None):
                     "אמן": "Amen",
                     "משיח": "Messiah",
                     }
-    
+
     results = []
     for r in rows:
         heb = r["text_hebrew"]
         fl = first_letters(heb)
         ll = last_letters(heb)
-        
+
         for name, meaning in target_names.items():
             if name in fl:
                 results.append({
@@ -98,5 +97,5 @@ def find_notarikon_patterns(conn, book_id=None):
                     "meaning": meaning,
                     "context": ll[:20],
                 })
-    
+
     return results

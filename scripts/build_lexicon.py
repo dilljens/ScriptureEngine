@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Build the lexicon table from gematria data — purely algorithmic."""
-import sys, os, time, json
+import json
+import os
+import sys
+import time
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from collections import defaultdict
+
 from lib.db import get_db
-from lib.lexicon import init_lexicon_tables, _insert_lexicon_batch, normalize_lemma, extract_root
+from lib.lexicon import _insert_lexicon_batch, extract_root, init_lexicon_tables, normalize_lemma
 
 conn = get_db()
 init_lexicon_tables(conn)
@@ -19,11 +24,11 @@ t_start = time.time()
 # Step 1: Extract all lemmas
 t0 = time.time()
 rows = conn.execute("""
-    SELECT lemma, word_hebrew, word_english, morph, 
+    SELECT lemma, word_hebrew, word_english, morph,
            COUNT(DISTINCT verse_id) as freq
-    FROM gematria 
+    FROM gematria
     WHERE lemma IS NOT NULL AND lemma != ''
-    GROUP BY lemma 
+    GROUP BY lemma
     ORDER BY freq DESC
 """).fetchall()
 print(f"Queried {len(rows)} raw lemma-rows in {(time.time()-t0)*1000:.0f}ms")

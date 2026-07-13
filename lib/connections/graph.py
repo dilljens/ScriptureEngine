@@ -6,7 +6,8 @@ Provides high-level queries across all 11 connection layers.
 
 import json
 from collections import defaultdict
-from ..db import get_db, get_connections, get_connections_by_layer, add_connection
+
+from ..db import add_connection, get_connections, get_connections_by_layer
 from .types import LAYERS
 
 
@@ -180,7 +181,7 @@ def find_all_paths(conn, start_verse, end_verse=None, max_depth=6, layer_filter=
     """
     if not layer_filter:
         # Start with the first verse's connections to find what layers are available
-        sample = conn.execute("""
+        conn.execute("""
             SELECT DISTINCT layer FROM connections
             WHERE source_verse = ? OR target_verse = ?
             LIMIT 5

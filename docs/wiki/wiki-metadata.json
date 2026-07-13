@@ -1,0 +1,55 @@
+{
+  "wiki": {
+    "lastUpdated": "2026-07-13",
+    "lastCheck": "2026-07-13",
+    "version": "3",
+    "domains": [
+      {"name": "Index", "path": "_index.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Standards", "path": "_standards.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Glossary", "path": "_glossary.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Web API", "path": "features/web-api.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Core Library", "path": "features/lib-core.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Connection Generators", "path": "features/generators.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "MCP Server", "path": "features/mcp-server.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Sources & Attribution", "path": "features/sources.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Hebrew Audio", "path": "features/hebrew-audio.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Literary Patterns", "path": "features/literary-patterns.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "JS Discourses + JST", "path": "features/js-discourses-jst.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Truth-Seeking Framework", "path": "features/truth-seeking.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "MEMORY.md", "path": "MEMORY.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Memorization System", "path": "features/memorization.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Assessment Engine", "path": "features/assessment.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Learn System", "path": "features/learn.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"},
+      {"name": "Truth Alignment v2", "path": "plans/truth-alignment-plan.md", "lastUpdated": "2026-07-13", "staleness": 0, "status": "FRESH"}
+    ],
+    "health": {
+      "avgStaleness": 0,
+      "freshest": "FRESH (all 17 pages updated today)",
+      "freshCount": 17,
+      "agingCount": 0,
+      "staleCount": 0,
+      "totalPages": 17
+    }
+  },
+  "graph": {
+    "nodes": 11584,
+    "edges": 23538
+  },
+  "scripture": {
+    "verses": 70956,
+    "connections": 1769593,
+    "layers": {
+      "chronological": 34505,
+      "frequency": 125205,
+      "geographic": 25180,
+      "interpretive": 405449,
+      "intertextual": 251271,
+      "linguistic": 286451,
+      "numerical": 375900,
+      "sod": 82538,
+      "structural": 94846,
+      "symbolic": 27988,
+      "textual": 60260
+    }
+  }
+}

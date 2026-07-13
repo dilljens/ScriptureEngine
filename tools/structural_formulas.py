@@ -9,15 +9,14 @@ Usage:
   python3 structural_formulas.py '{"book": "gen", "compute": true}'
 """
 
-import sys
 import json
 import os
 import re
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_formula_sequence, add_formula_marker
-
+from lib.db import add_formula_marker, get_db, get_formula_sequence
 
 # Formula detection patterns
 FORMULA_PATTERNS = {
@@ -95,10 +94,7 @@ def compute_formulas(conn, book_id):
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     book = args.get("book", "")
     formula_types = args.get("formulas")

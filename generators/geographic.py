@@ -7,10 +7,9 @@ Simple approach: find every verse containing any of the known place names,
 then connect all verses mentioning the same place.
 """
 
-import re
 from collections import defaultdict
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 # Seed gazetteer of biblical place names
 GAZETTEER = {

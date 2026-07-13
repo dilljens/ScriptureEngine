@@ -13,14 +13,14 @@ Usage:
   python3 pardes.py '{"stats": true}'
 """
 
-import sys, json, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_connections_by_layer
-from lib.connections.pardes import (
-    TYPE_PARDES, LEVELS, get_connections_by_level, get_layer_stats
-)
-from lib.connections.types import LAYERS
+from lib.connections.pardes import LEVELS, TYPE_PARDES, get_connections_by_level, get_layer_stats
+from lib.db import get_connections_by_layer, get_db
 
 
 def main():
@@ -65,10 +65,7 @@ def main():
 
     # Filter to one level if requested
     if level_filter:
-        if level_filter in by_level:
-            by_level = {level_filter: by_level[level_filter]}
-        else:
-            by_level = {}
+        by_level = {level_filter: by_level[level_filter]} if level_filter in by_level else {}
 
     # Get connections grouped by level with details
     result = {

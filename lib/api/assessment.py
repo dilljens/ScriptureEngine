@@ -7,9 +7,8 @@ Within a long-running MCP/HTTP server, the in-memory cache avoids disk I/O.
 
 import json
 import os
-import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 from lib.assessment import AssessmentEngine, KnowledgeState
 
@@ -367,11 +366,10 @@ def _get_question(conn, item_id):
 
 def _get_wiki_links(conn, item_id):
     """Find wiki article links for a knowledge item — used for 'learn more' suggestions.
-    
+
     Returns a list of entities with wiki articles related to both verses
     in the knowledge item.
     """
-    import json
 
     ki = conn.execute(
         "SELECT verse_id, target_verse FROM knowledge_items WHERE id = ?",
@@ -410,7 +408,7 @@ def _get_wiki_links(conn, item_id):
 
 def _fire_credit_for_item(conn, item_id):
     """Give FIRe credit to verses involved in a knowledge item when answered correctly.
-    
+
     Calls the Go memorization service to boost connected verse cards.
     """
     ki = conn.execute(
@@ -444,17 +442,17 @@ def _fire_credit_for_item(conn, item_id):
 
 def start_diagnostic(conn, user_id="default", max_items=30):
     """Start a pre-assessment diagnostic session.
-    
+
     Unlike a regular assessment, the diagnostic:
     1. Samples broadly across all layers and connection types
     2. Uses conditional completion — stops asking about topics once confident
     3. Reports what the user already knows vs. needs to learn
     4. Gives FIRe credit for demonstrated knowledge
-    
+
     Args:
         user_id: User identifier
         max_items: Maximum items to administer (default: 30)
-    
+
     Returns:
         Dict with first question and session info
     """
@@ -495,12 +493,12 @@ def start_diagnostic(conn, user_id="default", max_items=30):
 
 def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness=None):
     """Submit a diagnostic answer with conditional completion.
-    
+
     Supports partial credit via `correctness` parameter (0.0–1.0).
     Implements conditional completion from Math Academy Way (Ch 30):
     When mastery probability for a connection type + layer combination
     crosses 0.8, the system stops asking about that combination.
-    
+
     Returns the diagnostic report when complete.
     """
     session = _get_session(user_id)
@@ -577,10 +575,10 @@ def _finish_diagnostic(conn, session, user_id, reason):
 
     # Compute mastery by layer
     mastery_by_layer = session["state"].mastery_by_layer(conn)
-    
+
     # Compute outer fringe (ready to learn)
     outer_fringe = session["engine"].get_outer_fringe(session["state"], limit=15)
-    
+
     # Categorize known vs unknown by layer
     known_items = []
     unknown_items = []
@@ -629,7 +627,7 @@ def get_diagnostic_report(conn, user_id="default"):
     """Get a diagnostic report without running a new assessment."""
     session = _get_session(user_id)
     session["engine"] = AssessmentEngine(conn)
-    
+
     if not session["state"].mastery_prob:
         return {
             "ok": True,

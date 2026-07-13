@@ -21,7 +21,6 @@ Usage:
 import argparse
 import json
 import sqlite3
-import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -147,7 +146,7 @@ def main():
 
     # Statistics
     total_freq = sum(w['frequency'] for w in words)
-    print(f"\n--- Statistics ---")
+    print("\n--- Statistics ---")
     print(f"Total words: {len(words)}")
     print(f"Total occurrences covered: {total_freq}")
     print(f"Frequency range: {words[0]['frequency']} (most) - {words[-1]['frequency']} (least)")
@@ -158,13 +157,13 @@ def main():
     pos_counts = defaultdict(int)
     for w in words:
         pos_counts[w['pos'] or 'unknown'] += 1
-    print(f"\nPart of speech distribution:")
+    print("\nPart of speech distribution:")
     for pos, count in sorted(pos_counts.items(), key=lambda x: -x[1]):
         print(f"  {pos:<12} {count}")
 
     # Count by root frequency
     if args.by_root:
-        print(f"\nTop 20 roots by frequency:")
+        print("\nTop 20 roots by frequency:")
         sorted_roots = sorted(root_groups.items(), key=lambda x: -sum(w['frequency'] for w in x[1]))
         for root, group in sorted_roots[:20]:
             words_list = ', '.join(f"{w['hebrew']} ({w['gloss']})" for w in group)

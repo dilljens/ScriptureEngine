@@ -9,8 +9,6 @@ A word whose value = 7 × 26 (e.g., 182) connects to other verses with
 """
 
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Sacred numbers and their metadata
 SACRED_FACTORS = {
@@ -68,8 +66,8 @@ def run(conn, book_ids=None):
         WHERE g.value_standard > 0
     """
     if book_ids:
-        placeholders = ",".join("?" for _ in book_ids)
-        query += f" AND g.verse_id LIKE ?"
+        ",".join("?" for _ in book_ids)
+        query += " AND g.verse_id LIKE ?"
 
     rows = conn.execute(query).fetchall()
 

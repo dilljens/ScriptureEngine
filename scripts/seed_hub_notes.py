@@ -8,7 +8,10 @@ Usage:
     python3 scripts/seed_hub_notes.py
 """
 
-import sys, os, json, sqlite3
+import json
+import os
+import sqlite3
+import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -314,22 +317,22 @@ HUB_NOTES_SHORT = [
 
 def main():
     conn = sqlite3.connect(str(DB_PATH))
-    
+
     # Create tables
     for stmt in SCHEMA.split(";"):
         if stmt.strip():
             conn.execute(stmt)
-    
+
     # Skip if already seeded
     existing = conn.execute("SELECT COUNT(*) FROM hub_notes").fetchone()[0]
     if existing > 0:
         print(f"Hub notes already seeded ({existing} notes). Use --force to re-seed.")
         conn.close()
         return
-    
+
     all_notes = HUB_NOTES + HUB_NOTES_SHORT
     total_steps = 0
-    
+
     for hub in all_notes:
         # Insert hub note
         conn.execute("""
@@ -340,7 +343,7 @@ def main():
             hub.get("icon", ""), hub.get("seed_verse", ""),
             json.dumps(hub.get("tg_topic_ids", []))
         ))
-        
+
         # Insert steps
         for step in hub["steps"]:
             conn.execute("""
@@ -353,17 +356,17 @@ def main():
                 json.dumps(step.get("tg", []))
             ))
             total_steps += 1
-        
+
         # Insert hub-topic links
         for tid in hub.get("tg_topic_ids", []):
             conn.execute("""
                 INSERT OR IGNORE INTO hub_topic_links (hub_id, topic_id, relevance_weight)
                 VALUES (?, ?, 0.7)
             """, (hub["id"], tid))
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"✅ Seeded {len(all_notes)} hub notes with {total_steps} total steps")
     print(f"   Notes: {', '.join(h['id'] for h in all_notes)}")
 
@@ -373,7 +376,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed hub notes")
     parser.add_argument("--force", action="store_true", help="Re-seed even if already seeded")
     args = parser.parse_args()
-    
+
     if args.force:
         conn = sqlite3.connect(str(DB_PATH))
         conn.execute("DROP TABLE IF EXISTS hub_notes")
@@ -382,5 +385,5 @@ if __name__ == "__main__":
         conn.execute("DROP TABLE IF EXISTS hub_topic_links")
         conn.commit()
         conn.close()
-    
+
     main()

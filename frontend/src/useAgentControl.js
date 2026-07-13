@@ -21,7 +21,7 @@ export default function useAgentControl({ currentTab, toggles, navigate, openTab
     if (params.get('agent') !== 'true') return
 
     enabledRef.current = true
-    console.log('[agent] Agent control enabled')
+    if (import.meta.env.DEV) { console.log('[agent] Agent control enabled') }
 
     // Keepalive — report current state every 60s
     const keepalive = setInterval(async () => {
@@ -85,7 +85,7 @@ export default function useAgentControl({ currentTab, toggles, navigate, openTab
         window.location.reload()
         break
       default:
-        console.log('[agent] Unknown action:', type, params)
+        if (import.meta.env.DEV) { console.log('[agent] Unknown action:', type, params) }
     }
   }
 }

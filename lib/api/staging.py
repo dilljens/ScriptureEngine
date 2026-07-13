@@ -6,7 +6,6 @@ Devs approve via CLI (tools/staging.py) to promote into the real tables.
 """
 
 import json
-from lib.db import get_db
 
 
 def stage_connection(conn, source_verse, target_verse, layer, type_name,
@@ -100,7 +99,7 @@ def approve_study(conn, staging_id, reviewer="cli"):
         return {"ok": False, "error": f"No submitted staging study #{staging_id}"}
 
     try:
-        from lib.api.study import create_guide, add_step
+        from lib.api.study import add_step, create_guide
         steps = json.loads(row["steps_json"]) if row["steps_json"] else []
 
         # Create the guide

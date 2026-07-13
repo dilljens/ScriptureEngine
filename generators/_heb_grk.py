@@ -13,11 +13,11 @@ CROSS_CANON_BOOKS = (
 
 def get_ot_by_lemmas(conn, lemmas_and):
     """Find OT verses where ALL specified lemmas appear (AND logic).
-    
+
     Args:
         conn: DB connection
         lemmas_and: list of lemma strings (e.g., ['4397', '3068'])
-    
+
     Returns:
         list of verse_id strings
     """
@@ -29,7 +29,7 @@ def get_ot_by_lemmas(conn, lemmas_and):
             (lemmas_and[0],)
         ).fetchall()
         return [r["verse_id"] for r in rows]
-    
+
     # Multiple lemmas: JOIN to find verses where ALL appear
     joins = []
     for i in range(2, len(lemmas_and) + 1):
@@ -37,7 +37,7 @@ def get_ot_by_lemmas(conn, lemmas_and):
             f"JOIN gematria g{i} ON g1.verse_id = g{i}.verse_id AND g1.word_index != g{i}.word_index"
         )
     where = " AND ".join(f"g{i}.lemma = ?" for i in range(1, len(lemmas_and) + 1))
-    
+
     sql = f"""
         SELECT DISTINCT g1.verse_id FROM gematria g1
         {" ".join(joins)}
@@ -69,8 +69,8 @@ def get_cross_canon(conn, keyword_pattern):
     """Find BoM/D&C verses by English keyword (fallback)."""
     placeholders = ",".join("?" for _ in CROSS_CANON_BOOKS)
     rows = conn.execute(f"""
-        SELECT id FROM verses 
-        WHERE text_english LIKE ? 
+        SELECT id FROM verses
+        WHERE text_english LIKE ?
         AND book_id IN ({placeholders})
     """, (f'%{keyword_pattern}%',) + CROSS_CANON_BOOKS)
     return [r["id"] for r in rows]
@@ -80,7 +80,7 @@ MAX_GROUP_SIZE = 50
 
 
 def add_connections_for_group(conn, verse_ids, layer, type_name, subtype,
-                               strength=0.5, confidence=0.4, 
+                               strength=0.5, confidence=0.4,
                                discovered_by="algorithm", metadata="{}"):
     """Connect every pair of verses in a group (capped at MAX_GROUP_SIZE)."""
     verse_ids = list(verse_ids)[:MAX_GROUP_SIZE]
@@ -89,8 +89,8 @@ def add_connections_for_group(conn, verse_ids, layer, type_name, subtype,
         for j in range(i + 1, len(verse_ids)):
             try:
                 existing = conn.execute(
-                    """SELECT COUNT(*) FROM connections 
-                       WHERE source_verse = ? AND target_verse = ? 
+                    """SELECT COUNT(*) FROM connections
+                       WHERE source_verse = ? AND target_verse = ?
                        AND type = ? AND subtype = ?""",
                     (verse_ids[i], verse_ids[j], type_name, subtype)
                 ).fetchone()[0]
@@ -102,6 +102,6 @@ def add_connections_for_group(conn, verse_ids, layer, type_name, subtype,
                                   discovered_by=discovered_by,
                                   metadata=metadata)
                     count += 1
-            except:
+            except Exception:
                 pass
     return count

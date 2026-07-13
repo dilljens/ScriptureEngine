@@ -263,12 +263,12 @@ export function TabProvider({ children }) {
     }, []),
 
     // Convenience: navigate to work view (shows book list)
-    goToWork: useCallback((tabId, workId, workLabel) => {
-      dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
-        book: 'isa', chapter: 1, view: 'work', viewRef: workId,
+  goToWork: useCallback((tabId, workId, workLabel, firstBookId) => {
+    dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
+        book: firstBookId || 'gen', chapter: 1, view: 'work', viewRef: workId,
         label: workLabel || workId,
-      }})
-    }, []),
+    }})
+  }, []),
 
     // Open verses from chat results as a new tab with highlights
     openVersesAsTab: useCallback((book, chapter, verses) => {

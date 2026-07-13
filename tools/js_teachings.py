@@ -11,7 +11,10 @@ Usage:
   python3 tools/js_teachings.py '{"action": "verse_refs", "verse": "gen.1.26"}'
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from lib.db import get_db
 
@@ -24,7 +27,7 @@ def list_sources():
         SELECT ref_id, title, date, source_type, length(text) as char_count
         FROM js_sources ORDER BY date
     """).fetchall()
-    
+
     result = []
     for r in rows:
         result.append({
@@ -34,7 +37,7 @@ def list_sources():
             "source_type": r["source_type"],
             "char_count": r["char_count"],
         })
-    
+
     return {"ok": True, "data": result, "count": len(result)}
 
 
@@ -42,7 +45,7 @@ def search_sources(query, limit=20):
     """Full-text search JS teachings corpus."""
     if not query.strip():
         return {"ok": False, "error": "Query required"}
-    
+
     try:
         rows = conn.execute("""
             SELECT js.ref_id, js.title, js.date, js.source_type, js.location,
@@ -55,7 +58,7 @@ def search_sources(query, limit=20):
         """, (query, limit)).fetchall()
     except Exception as e:
         return {"ok": False, "error": f"FTS5 query error: {e}"}
-    
+
     result = []
     for r in rows:
         result.append({
@@ -66,7 +69,7 @@ def search_sources(query, limit=20):
             "location": r["location"],
             "snippet": r["snippet"],
         })
-    
+
     return {"ok": True, "data": result, "count": len(result), "query": query}
 
 
@@ -75,10 +78,10 @@ def get_source(ref_id):
     row = conn.execute("""
         SELECT * FROM js_sources WHERE ref_id = ?
     """, (ref_id,)).fetchone()
-    
+
     if not row:
         return {"ok": False, "error": f"Source '{ref_id}' not found"}
-    
+
     return {"ok": True, "data": {
         "ref_id": row["ref_id"],
         "title": row["title"],
@@ -96,11 +99,11 @@ def connect_source_to_verse(ref_id, verse_id, ref_type="quotation", certainty=0.
     source = conn.execute("SELECT 1 FROM js_sources WHERE ref_id=?", (ref_id,)).fetchone()
     if not source:
         return {"ok": False, "error": f"Source '{ref_id}' not found"}
-    
+
     verse = conn.execute("SELECT id FROM verses WHERE id=?", (verse_id,)).fetchone()
     if not verse:
         return {"ok": False, "error": f"Verse '{verse_id}' not found"}
-    
+
     try:
         conn.execute("""
             INSERT OR REPLACE INTO js_scripture_refs (js_ref_id, verse_id, ref_type, certainty, notes)
@@ -117,7 +120,7 @@ def get_connections_for_source(ref_id):
     source = conn.execute("SELECT title FROM js_sources WHERE ref_id=?", (ref_id,)).fetchone()
     if not source:
         return {"ok": False, "error": f"Source '{ref_id}' not found"}
-    
+
     rows = conn.execute("""
         SELECT r.verse_id, r.ref_type, r.certainty, r.notes, v.text_english as verse_text
         FROM js_scripture_refs r
@@ -125,7 +128,7 @@ def get_connections_for_source(ref_id):
         WHERE r.js_ref_id = ?
         ORDER BY r.ref_type
     """, (ref_id,)).fetchall()
-    
+
     result = []
     for r in rows:
         result.append({
@@ -135,7 +138,7 @@ def get_connections_for_source(ref_id):
             "notes": r["notes"],
             "verse_text": (r["verse_text"] or "")[:100],
         })
-    
+
     return {"ok": True, "data": result, "count": len(result), "source": source["title"]}
 
 
@@ -154,10 +157,10 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    
+
     params = json.loads(sys.argv[1])
     action = params.get("action", "")
-    
+
     if action == "list":
         result = list_sources()
     elif action == "search":
@@ -182,6 +185,6 @@ if __name__ == "__main__":
         result = purge_orphan_refs()
     else:
         result = {"error": f"Unknown action: {action}"}
-    
+
     print(json.dumps(result, indent=2))
     conn.close()

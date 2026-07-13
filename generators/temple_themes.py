@@ -11,9 +11,11 @@ Priority: Hebrew lemma (OT) → Greek lemma (NT) → English keyword (BoM/D&C).
 """
 
 import json
+
 from ._heb_grk import (
-    get_ot_by_lemmas, get_ot_by_lemma, get_nt_by_greek,
-    get_cross_canon, add_connections_for_group,
+    add_connections_for_group,
+    get_cross_canon,
+    get_nt_by_greek,
 )
 
 META = json.dumps({

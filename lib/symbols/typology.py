@@ -6,7 +6,6 @@ in earlier scripture prefigure and foreshadow later realities.
 
 from ..db import add_connection
 
-
 TYPOLOGY_TYPES = {
     "Adam": "person_type",
     "Eve": "person_type",

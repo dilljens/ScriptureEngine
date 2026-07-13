@@ -6,7 +6,8 @@ HTTP API (/api/v1/search),
 and CLI (tools/search.py, tools/search_xlingual.py).
 """
 
-from lib.hebrew_util import rtl_mark, transliterate, clean_hebrew as ch
+from lib.hebrew_util import clean_hebrew as ch
+from lib.hebrew_util import rtl_mark, transliterate
 
 
 def search_text(conn, query, book=None, works=None, limit=25):
@@ -15,7 +16,7 @@ def search_text(conn, query, book=None, works=None, limit=25):
     Args:
         query: Search term
         book: Optional book ID filter (e.g., 'gen', 'isa', '1QS', 'dc' for D&C)
-        works: Optional list of work IDs to filter (e.g., ['ot','nt','dss','bom','dc','pgp','apoc','pseu'])
+        works: Optional list of work IDs to filter (e.g., ['ot','nt','dss','bom','dc','pgp','apoc','pseu','expanded'])
         limit: Max results (default 25, max 50)
 
     Returns: dict with query, count, results list (each with verse, text, book, book_id, work_id)

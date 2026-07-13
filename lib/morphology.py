@@ -385,6 +385,9 @@ def lookup_description(morph_code):
 # === Self-tests ===
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
     # Hebrew
     assert parse('HVqp3ms') == "Verb Qal Perfect 3ms", (
         f"Got: {parse('HVqp3ms')!r}"
@@ -414,4 +417,4 @@ if __name__ == "__main__":
     assert parse_hebrew('HVqp3ms') == "HVqp3ms (Verb Qal Perfect 3ms)"
     assert parse_greek('V- 3AAI-S--') == "V- 3AAI-S-- (Verb 3rd Aorist Active Indicative Singular)"
 
-    print("All morphology tests passed!")
+    logger.info("All morphology tests passed!")

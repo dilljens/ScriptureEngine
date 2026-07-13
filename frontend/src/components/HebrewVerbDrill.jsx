@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 
 /**
  * HebrewVerbDrill — interactive verb conjugation drills.
@@ -147,7 +148,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
 
           {/* Question */}
           <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-4">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
               {preprocess(current.question || '')}
             </ReactMarkdown>
           </div>
@@ -196,7 +197,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
               </p>
               {current.explanation && (
                 <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={createComponents()}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
                     {preprocess(current.explanation)}
                   </ReactMarkdown>
                 </div>

@@ -9,9 +9,7 @@ For speed, focuses on the most intertextually active book pairs:
 """
 
 import re
-from collections import defaultdict, Counter
-from lib.db import add_connection
-
+from collections import Counter, defaultdict
 
 STOPWORDS = {
     "the", "and", "that", "for", "of", "to", "in", "he", "she", "it",
@@ -22,7 +20,7 @@ STOPWORDS = {
     "with", "upon", "unto", "thou", "thy", "thee", "thine",
     "ye", "your", "you", "our", "us", "we", "my", "me", "i", "all",
     "every", "each", "some", "any", "one", "two", "very", "also", "now",
-    "then", "than", "thus", "so", "yet", "for", "therefore", "wherefore",
+    "then", "than", "thus", "so", "yet", "therefore", "wherefore",
     "behold", "hath", "doth", "dost", "didst", "art", "wast",
     "shalt", "wilt", "canst", "couldst", "wouldst", "shouldst",
     "cometh", "goeth", "saith", "answered", "spake",
@@ -91,7 +89,7 @@ TARGET_PAIRS = [
     # PSEUDEPIGRAPHA — BoM cross-references
     ("1en", "1ne"), ("1en", "2ne"),
     ("jub", "1ne"), ("jub", "2ne"),
-    # PSEUDEPIGRAPHA — DSS cross-references  
+    # PSEUDEPIGRAPHA — DSS cross-references
     ("1en", "1QHa"), ("1en", "1QS"),
     ("jub", "CD"), ("jub", "11Q19"),
     # DSS — NT cross-references (now with Vermès English!)
@@ -131,7 +129,7 @@ def _batch_insert(conn, batch):
 
 def compare_books(conn, book_a, book_b, rare_words, word_verse_index):
     """Compare all verses in book_a with all verses in book_b.
-    
+
     Uses the pre-built rare word index to find shared rare-word clusters.
     """
     verses_a = conn.execute("""
@@ -233,7 +231,7 @@ def run(conn, book_ids=None):
     print(f"  {len(rare_words)} rare words indexed", flush=True)
 
     # Step 2: Compare target book pairs
-    for i, (book_a, book_b) in enumerate(TARGET_PAIRS):
+    for _i, (book_a, book_b) in enumerate(TARGET_PAIRS):
         result = compare_books(conn, book_a, book_b, rare_words, word_verse_index)
         count += result
         if result > 0:

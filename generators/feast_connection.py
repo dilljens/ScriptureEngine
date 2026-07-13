@@ -8,10 +8,9 @@ Two types of connections:
   2. OT institution → NT fulfillment pairings (e.g., Lev 23 Passover → Matt 26 Last Supper)
 """
 
-import re
 from collections import defaultdict
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 # Feast gazetteer: feast_name -> [search terms in English and Hebrew]
 FEAST_GAZETTEER = {

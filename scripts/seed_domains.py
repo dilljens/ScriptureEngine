@@ -13,7 +13,9 @@ Usage:
   python3 scripts/seed_domains.py
 """
 
-import sys, os, json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -175,14 +177,14 @@ def seed_domains(conn):
         SELECT lemma, english_gloss FROM lemma_gloss
         WHERE lemma != '' AND english_gloss != ''
     """).fetchall()
-    
+
     # Build lemma → set of domain names
     lemma_domains = {}  # lemma → set of domain names
-    
+
     for r in gloss_rows:
         lemma = r["lemma"]
         gloss = r["english_gloss"].lower()
-        
+
         for domain in DOMAINS:
             name = domain["name"]
             for keyword in domain["keywords"]:
@@ -191,7 +193,7 @@ def seed_domains(conn):
                         lemma_domains[lemma] = set()
                     lemma_domains[lemma].add(name)
                     break  # one keyword match per domain is enough
-    
+
     # Insert domains
     domain_ids = {}
     for domain in DOMAINS:
@@ -199,12 +201,12 @@ def seed_domains(conn):
             "INSERT OR IGNORE INTO semantic_domains (name, description, ai_generated) VALUES (?, ?, 0)",
             (domain["name"], domain["description"])
         )
-    
+
     # Get domain IDs
     rows = conn.execute("SELECT id, name FROM semantic_domains").fetchall()
     for r in rows:
         domain_ids[r["name"]] = r["id"]
-    
+
     # Insert domain members
     count = 0
     batch = []
@@ -217,10 +219,10 @@ def seed_domains(conn):
                 if len(batch) >= 200:
                     _batch_insert(conn, batch)
                     batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     conn.commit()
     return count
 
@@ -238,11 +240,11 @@ def main():
     print("  Seeding Semantic Domains (Algorithmic)")
     print("=" * 60)
     print()
-    
+
     print(f"  Domains defined: {len(DOMAINS)}")
     total = seed_domains(conn)
     print(f"  Domain members assigned: {total}")
-    
+
     # Stats
     rows = conn.execute("""
         SELECT sd.name, COUNT(dm.lemma) as c
@@ -254,7 +256,7 @@ def main():
     print()
     for r in rows:
         print(f"    {r['name']}: {r['c']} lemmas")
-    
+
     conn.close()
 
 

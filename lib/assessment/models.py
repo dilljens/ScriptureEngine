@@ -1,7 +1,6 @@
 """Data models for the assessment system."""
 
 import math
-import json
 
 
 class KnowledgeState:
@@ -132,10 +131,7 @@ class BLIM:
         # Compute posterior for WRONG response
         p_wrong = (self.slip * prior_mastery +
                    (1.0 - self.guess) * (1.0 - prior_mastery))
-        if p_wrong == 0:
-            posterior_wrong = prior_mastery
-        else:
-            posterior_wrong = (self.slip * prior_mastery) / p_wrong
+        posterior_wrong = prior_mastery if p_wrong == 0 else self.slip * prior_mastery / p_wrong
 
         # Interpolate between correct and wrong based on correctness weight
         posterior = posterior_correct * correctness + posterior_wrong * (1.0 - correctness)

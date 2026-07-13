@@ -6,9 +6,11 @@ For each symbol in the reference table, this generator:
 3. The AI classifies symbolic vs. literal use
 """
 
-import re
-from collections import defaultdict
+import logging
+
 from ..db import add_connection
+
+logger = logging.getLogger(__name__)
 
 
 # Mapping from symbol names to English and Hebrew search terms
@@ -140,7 +142,7 @@ def generate_shared_symbol_connections(conn, book_ids=None):
                 except Exception:
                     pass
 
-    print(f"  Shared symbols: {count} connections")
+    logger.info("Shared symbols: %s connections", count)
     conn.commit()
     return count
 

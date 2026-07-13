@@ -1,5 +1,4 @@
 """Tests for search and gematria endpoints."""
-import pytest
 
 
 class TestSearch:

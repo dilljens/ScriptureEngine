@@ -20,7 +20,6 @@ import os
 import re
 import sqlite3
 import subprocess
-import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -49,7 +48,7 @@ def consonants(w):
 
 def word_similarity(a, b):
     """Score 0-1 how similar two normalized Hebrew words are.
-    
+
     Uses set overlap (Jaccard-like) to handle prefix differences:
     e.g., 'בראשית' vs 'ראשית' should score high (same root).
     Also checks if one is a substring of the other.
@@ -58,33 +57,33 @@ def word_similarity(a, b):
         return 0
     if a == b:
         return 1.0
-    
+
     ca = consonants(a)
     cb = consonants(b)
-    
+
     if not ca or not cb:
         return 0
-    
+
     # Substring check: one word is contained in the other
     if ca in cb or cb in ca:
         return 0.9
-    
+
     # Set overlap (Jaccard)
     set_a = set(ca)
     set_b = set(cb)
     if not set_a or not set_b:
         return 0
-    
+
     intersection = len(set_a & set_b)
     union = len(set_a | set_b)
     jaccard = intersection / union if union > 0 else 0
-    
+
     # Also check sequential overlap for longer matches
     # Count matching consecutive pairs
     max_len = max(len(ca), len(cb))
     if max_len == 0:
         return 0
-    
+
     # Sliding window: count positions where chars match
     # by trying different offsets
     best_seq = 0
@@ -92,9 +91,9 @@ def word_similarity(a, b):
     for offset in range(len(longer) - len(shorter) + 1):
         matches = sum(1 for i in range(len(shorter)) if shorter[i] == longer[offset + i])
         best_seq = max(best_seq, matches)
-    
+
     seq_score = best_seq / max_len
-    
+
     # Combine: prefer jaccard, but boost with sequential match
     return max(jaccard, seq_score * 0.9)
 
@@ -107,7 +106,7 @@ def load_ivrit_alignment(wav_path, output_json, use_cache=True):
         with open(output_json) as f:
             return json.load(f)["words"]
 
-    print(f"  Running faster-whisper (CUDA)...")
+    print("  Running faster-whisper (CUDA)...")
     env = os.environ.copy()
     cublas_dir = "/tmp/cublas-fix"
     if os.path.isdir(cublas_dir):
@@ -191,7 +190,7 @@ def load_mms_alignment(wav_path, bible_text):
 
 def fit_timing(iv_words, mms_words):
     """Fit MMS_time = slope * ivrit_time + intercept by positional matching.
-    
+
     Both alignments are for the same audio in the same word order.
     Just pair word[i] of ivrit_body with word[i] of mms.
     """
@@ -209,7 +208,7 @@ def fit_timing(iv_words, mms_words):
     sum_x = sum(iv_t)
     sum_y = sum(ms_t)
     sum_xx = sum(x * x for x in iv_t)
-    sum_xy = sum(x * y for x, y in zip(iv_t, ms_t))
+    sum_xy = sum(x * y for x, y in zip(iv_t, ms_t, strict=False))
 
     denom = n * sum_xx - sum_x * sum_x
     if abs(denom) < 1e-10:
@@ -306,7 +305,7 @@ def compare_alignment(iv_words, mms_words, hybrid_words, chapter):
         print(f"  Mean end diff: {sum(end_diff)/n:.4f}s (max: {max(end_diff):.4f}s)")
 
     # Detailed per-word timing for gen.1.1 (for manual inspection)
-    print(f"\n--- gen.1.1 detailed boundary comparison ---")
+    print("\n--- gen.1.1 detailed boundary comparison ---")
     print(f"{'#':<4} {'Word':<10} {'Ivrit_start':<12} {'Ivrit_end':<12} {'MMS_start':<12} {'MMS_end':<12} {'Diff_start':<10} {'Diff_end':<10}")
     print("-" * 85)
     for i in range(min(7, n)):
@@ -468,7 +467,7 @@ def main():
         if slope != 1.0 or intercept != 0.0:
             print(f"  MMS = {slope:.4f} × ivrit + ({intercept:.4f})")
         else:
-            print(f"  Identity")
+            print("  Identity")
 
         # 4. Combine
         print("\n[4/4] Combining...")
@@ -487,7 +486,7 @@ def main():
     print(f"\n  Saved: {out}")
 
     # Verse files
-    print(f"\n  Saving verse alignments...")
+    print("\n  Saving verse alignments...")
     save_verse_files(hybrid, book, cn, "hybrid")
 
     # Comparison report

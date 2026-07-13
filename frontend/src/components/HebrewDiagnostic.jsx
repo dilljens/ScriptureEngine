@@ -65,7 +65,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
         body: JSON.stringify({ user_id, results: catResults }),
       })
     } catch (e) {
-      console.error('Failed to apply diagnostic:', e)
+      if (import.meta.env.DEV) { console.error('Failed to apply diagnostic:', e) }
     }
 
     onComplete()

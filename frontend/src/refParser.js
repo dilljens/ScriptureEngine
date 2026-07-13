@@ -14,6 +14,10 @@ const COLLECTION_MAP = {
   'bom': 'bom', 'book_of_mormon': 'bom', 'bookofmormon': 'bom', 'book of mormon': 'bom',
   'dc': 'dc', 'd&c': 'dc', 'doctrine_and_covenants': 'dc',
   'pgp': 'pgp', 'pearl_of_great_price': 'pgp',
+  'dss': 'dss', 'dead_sea_scrolls': 'dss', 'deadsea scrolls': 'dss',
+  'apoc': 'apoc', 'apocrypha': 'apoc',
+  'pseu': 'pseu', 'pseudepigrapha': 'pseu',
+  'expanded': 'expanded', 'expanded_canon': 'expanded', 'expanded canon': 'expanded',
 }
 
 const BOOK_ALIASES = {
@@ -176,10 +180,31 @@ export function scoreFuzzy(text, query) {
     prevIdx = idx
   }
 
-  // Small bonus for matching early in the string
-  if (prevIdx !== undefined && prevIdx < text.length * 0.4) {
-    score += 3
+  // Prefix bonus: query is a prefix of the entire text or a word within it
+  if (t.startsWith(q)) {
+    score += 50
+  } else {
+    // Check if query is a prefix of any word in the text
+    const words = t.split(/[\s\/._:\-]+/)
+    for (const word of words) {
+      if (word.startsWith(q)) {
+        score += 50
+        break
+      }
+    }
   }
+
+  // Word-prefix bonus: query starts at a word boundary
+  const words = t.split(/[\s\/._:\-]+/)
+  for (const word of words) {
+    if (word.startsWith(q)) {
+      score += 30
+      break
+    }
+  }
+
+  // Length normalization: prevent long strings from dominating short ones
+  score = score / Math.sqrt(text.length)
 
   return { score, matchIdxs }
 }
@@ -421,7 +446,22 @@ function parseVerses(spec) {
   return [...verses].sort((a, b) => a - b)
 }
 
-function parseStandardRef(text) {
+export function parseStandardRef(text) {
+  // "bookN:verse-range" or "bookN:verse" no-space ref: "genesis1:1", "isa55:6-12", "gen1:1-2"
+  const mNoSpace = text.match(/^([a-zA-Z]+)(\d+):([\d,\-]+)$/)
+  if (mNoSpace) {
+    const combined = (mNoSpace[1] + mNoSpace[2]).toLowerCase()
+    // D&C sections like "dc76:22" → book=dc76, chapter=1 (section), verses=[22]
+    if (/^dc\d+$/.test(combined)) {
+      const verses = parseVerses(mNoSpace[3])
+      return { book: combined, chapter: 1, verse: verses[0] || null, verses: verses.length > 0 ? verses : null }
+    }
+    const book = resolveBook(mNoSpace[1])
+    if (book) {
+      const verses = parseVerses(mNoSpace[3])
+      return { book, chapter: parseInt(mNoSpace[2]), verse: verses[0] || null, verses: verses.length > 0 ? verses : null }
+    }
+  }
   // "book chapter:verse-range" or "book chapter:verse1,verse2" or "book chapter:verse-verse"
   const mRange = text.match(/^([a-z0-9_]+)\s+(\d+):([\d,\-]+)$/i)
   if (mRange) {
@@ -492,6 +532,31 @@ const CHAPTER_MAP = {
   '1ne':22, '2ne':33, jacob:7, enos:1, jarom:1, omni:1, wom:1,
   mosiah:29, alma:63, hel:16, '3ne':30, '4ne':1, morm:9, ether:15, moro:10,
   moses:8, abraham:5, jsm:1, jsh:1, aoff:1,
+  // DSS
+  '1QS':1, '1QSa':1, '1QSb':1, '1QM':1, '1QHa':1,
+  '1QpHab':1, '11Q13':1, '11Q19':1, '11Q20':1, 'CD':1,
+  '4Q400':20, '4Q401':1, '4Q402':1, '4Q403':1, '4Q404':1,
+  '4Q405':1, '4Q406':1, '4Q407':1,
+  '4Q174':1, '4Q246':1, '4Q521':1,
+  '4Q266':1, '4Q267':1, '4Q268':1, '4Q269':1, '4Q270':1,
+  '4Q271':1, '4Q272':1, '4Q273':1,
+  '4Q394':1, '4Q395':1, '4Q396':1, '4Q397':1, '4Q398':1, '4Q399':1,
+  '1Qisaa':1, '1Q20':1, bookgiants:1, visamram:1, tkohath:2,
+  // Pseudepigrapha
+  '1en':108, '2en':68, '3bar':17, '4bar':9,
+  '1adae':79, '2adae':22, apabr:32, apelj:5,
+  apsed:1, apjosh:24, ascis:11, asmos:12,
+  azar:1, balin:2, jasher:91, jub:50,
+  nathan:3, '5psdav':5, gad:23, grkest:16,
+  rechab:22, janjam:1, josasen:29, ladjac:8,
+  livprop:23, odessol:42, psssol:18,
+  tabr:20, tisaac:13, tjacob:13, tjob:12,
+  tsol:1, ahikar:7,
+  treub:2, tsimeon:3, tlevi:5, tjudah:4,
+  tdan:2, tnaph:2, tgad:2, tasher:1,
+  tiss:2, tzeb:2, tjos:2, tbenj:2,
+  // Expanded Canon
+  '1her':4, '2her':12, '3her':9, apet:17, barn:21, gnic:23,
 }
 
 export function getChapters(bookId) {

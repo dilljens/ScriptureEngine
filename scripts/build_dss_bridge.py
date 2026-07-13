@@ -8,7 +8,9 @@ Populates text_english + gematria for all imported DSS scrolls.
 Usage: python3 scripts/build_dss_bridge.py
 """
 
-import sys, os, time
+import os
+import sys
+import time
 from collections import defaultdict
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -35,21 +37,21 @@ def gem(word):
 
 def tf_read_sparse(filepath):
     """Read a TF sparse column/edge file.
-    
+
     TF format: @header lines, then data in the form:
       node_id \t value  (explicit start of a run)
       value             (continuation for next sequential node)
-    
+
     Returns dict node_id -> value.
     """
     with open(filepath) as f:
         lines = f.readlines()
-    
+
     h = 0
     for line in lines:
         if line.startswith('@'): h += 1
         else: break
-    
+
     result = {}
     current_node = 0
     for i in range(h, len(lines)):
@@ -57,7 +59,7 @@ def tf_read_sparse(filepath):
         if not line:
             current_node += 1
             continue
-        
+
         if '\t' in line:
             parts = line.split('\t', 1)
             try:
@@ -68,49 +70,49 @@ def tf_read_sparse(filepath):
         else:
             current_node += 1
             val = line.strip()
-        
+
         if val:
             result[current_node] = val
-    
+
     return result
 
 
 def tf_read_oslots(filepath, non_sign_start=1430242):
     """Parse oslots.tf edge file.
-    
+
     TF oslots stores slot mappings sequentially. Format:
       source_node \t target_slot(s)   (explicit source, first line only)
       target_slot(s)                   (subsequent lines = next node IDs)
-    
+
     Returns dict node_id -> set(slot_ids).
     """
     with open(filepath) as f:
         lines = f.readlines()
-    
+
     h = 0
     for line in lines:
         if line.startswith('@'): h += 1
         else: break
-    
+
     result = {}
     current_nid = non_sign_start  # First non-sign node
-    
+
     for i in range(h, len(lines)):
         line = lines[i].rstrip('\n')
         if not line:
             current_nid += 1
             continue
-        
+
         if '\t' in line:
             parts = line.split('\t', 1)
             try:
                 current_nid = int(parts[0])
                 rest = parts[1]
-            except:
+            except (ValueError, IndexError):
                 rest = line
         else:
             rest = line
-        
+
         # Parse slot tokens (single numbers and ranges)
         for tok in rest.split():
             if '-' in tok:
@@ -120,7 +122,7 @@ def tf_read_oslots(filepath, non_sign_start=1430242):
                         if current_nid not in result:
                             result[current_nid] = set()
                         result[current_nid].add(sid)
-                except:
+                except (ValueError, IndexError):
                     pass
             else:
                 try:
@@ -128,11 +130,11 @@ def tf_read_oslots(filepath, non_sign_start=1430242):
                     if current_nid not in result:
                         result[current_nid] = set()
                     result[current_nid].add(sid)
-                except:
+                except ValueError:
                     pass
-        
+
         current_nid += 1
-    
+
     return result
 
 
@@ -150,8 +152,8 @@ def main():
                 r, t = line.split('\t', 1)
                 a, b = r.split('-') if '-' in r else (r, r)
                 ranges[t] = (int(a), int(b))
-    
-    total = max(r[1] for r in ranges.values())
+
+    max(r[1] for r in ranges.values())
     w_start, w_end = ranges['word']        # 1606869-2107863
     l_start, l_end = ranges['line']        # 1552973-1605867
     f_start, f_end = ranges['fragment']    # 1531341-1542522
@@ -162,9 +164,9 @@ def main():
     # ── Read sparse columns ──
     print("Reading scroll, fragment, line...", end=' ', flush=True)
     scroll_map = tf_read_sparse(f"{TF_DIR}/scroll.tf")
-    fragment_map = tf_read_sparse(f"{TF_DIR}/fragment.tf")
-    line_map = tf_read_sparse(f"{TF_DIR}/line.tf")
-    
+    tf_read_sparse(f"{TF_DIR}/fragment.tf")
+    tf_read_sparse(f"{TF_DIR}/line.tf")
+
     # Build scroll_name -> set of nodes that have that scroll
     # Filter to target scrolls
     TARGETS = [
@@ -175,13 +177,13 @@ def main():
         '4Q266','4Q267','4Q268','4Q269','4Q270','4Q271','4Q272','4Q273',
         '4Q394','4Q395','4Q396','4Q397','4Q398','4Q399','1Qisaa',
     ]
-    
+
     # Get set of node IDs belonging to each target scroll
     scroll_nodes = defaultdict(set)
     for nid, sname in scroll_map.items():
         if sname in TARGETS:
             scroll_nodes[sname].add(nid)
-    
+
     print(f"{len(scroll_map)} mapped nodes")
     for t in TARGETS:
         if t in scroll_nodes:
@@ -205,39 +207,39 @@ def main():
 
     # ── Build word → scroll mapping ──
     print("Mapping words to scrolls...", end=' ', flush=True)
-    
+
     # For each word node, check which scroll it belongs to
     # via the scroll_map (which maps arbitrary nodes to scrolls)
     #
     # TF convention: scroll_map maps nodes of any type to their scroll
     # For a word in range word_start..word_end, we find its parent fragment/line
-    # 
+    #
     # Simpler: use oslots to find which sign slots a word covers,
     # then check which scroll's sign slots contain it.
-    # 
+    #
     # Even simpler: scroll_map[nid] directly maps a word's node_id
     # to its scroll name, if the TF data follows that convention.
-    
+
     # Check if word nodes are directly in scroll_map
     word_scroll = {}
     for w_nid in range(w_start, w_end + 1):
         if w_nid in scroll_map:
             word_scroll[w_nid] = scroll_map[w_nid]
-    
+
     # If few words have direct scroll entries, use fragment membership
     if len(word_scroll) < 100:
         print(f"\n  Direct word→scroll: {len(word_scroll)} — too few, using fragment/line hierarchy...")
-        
+
         # Build sign → fragment mapping
         # fragment_map maps fragment nodes to scroll names
         # A word belongs to a scroll if its signs overlap with that scroll's fragments
-        
+
         # Build fragment → scroll lookup
         frag_scroll = {}
         for nid, sname in scroll_map.items():
             if f_start <= nid <= f_end and sname in TARGETS:
                 frag_scroll[nid] = sname
-        
+
         # Build sign → fragment mapping from oslots of fragment nodes
         sign_frag = {}
         for fnid in range(f_start, f_end + 1):
@@ -246,7 +248,7 @@ def main():
                 for s in oslots[fnid]:
                     if s not in sign_frag:
                         sign_frag[s] = scroll_name
-        
+
         # Map each word to its scroll via sign membership
         for w_nid in range(w_start, w_end + 1):
             if w_nid in oslots:
@@ -255,24 +257,24 @@ def main():
                     fs = min(slots)  # Sign IDs are monotonic — first sign tells scroll
                     if fs in sign_frag:
                         word_scroll[w_nid] = sign_frag[fs]
-    
+
     print(f"{len(word_scroll)} words mapped ({time.time()-t0:.1f}s)")
     sys.stdout.flush()
 
     # ── Build scroll → words → line structure ──
     print("Building scroll→line→word...")
-    
+
     conn = get_db()
     total_gem = 0
     total_eng = 0
-    
+
     for scroll_name in TARGETS:
         # Get all word nodes for this scroll
         w_nodes = sorted([nid for nid, s in word_scroll.items() if s == scroll_name])
         if not w_nodes:
             print(f"  {scroll_name}: no word nodes found")
             continue
-        
+
         # Get existing verses
         existing = conn.execute(
             "SELECT id, verse FROM verses WHERE book_id=? ORDER BY verse",
@@ -281,13 +283,13 @@ def main():
         if not existing:
             print(f"  {scroll_name}: no verses in DB")
             continue
-        
+
         # Line→words: For each line, oslots tells which sign slots it covers.
         # A word's oslots are its sign slots.
         # If word_W's signs ⊆ line_L's signs, word_W belongs to line_L.
         # For efficiency with contiguous sign IDs:
         #   word belongs to line if line.min_sign <= word.min_sign and word.max_sign <= line.max_sign
-        # 
+        #
         # Build line → sign_range for lines in this scroll
         line_range = {}
         for lnid in range(l_start, l_end + 1):
@@ -296,23 +298,23 @@ def main():
                 slots = oslots[lnid]
                 if slots:
                     line_range[lnid] = (min(slots), max(slots))
-        
+
         if not line_range:
             print(f"  {scroll_name}: no lines found")
             continue
-        
+
         sorted_lines = sorted(line_range.items(), key=lambda x: x[1][0])
-        
+
         # Assign words to lines by sign range
         n = min(len(existing), len(sorted_lines))
         gem_batch = []
         eng_updates = []
         word_idx = 0
-        
+
         for li in range(n):
             verse_id = existing[li]['id']
             line_nid, (l_min, l_max) = sorted_lines[li]
-            
+
             # Collect all words whose signs fall within this line's sign range
             line_words = []
             for wi in range(word_idx, len(w_nodes)):
@@ -328,7 +330,7 @@ def main():
                 if w_min >= l_min and w_max <= l_max:
                     line_words.append(w_nid)
                     word_idx = wi + 1
-            
+
             # Build glosses and gematria entries
             glosses = []
             for wi_off, w_nid in enumerate(line_words):
@@ -345,10 +347,10 @@ def main():
                             std, ord_v or 0, red_val or 0,
                             lx if lx else '',
                         ))
-            
+
             if glosses:
                 eng_updates.append((' '.join(glosses), verse_id))
-        
+
         # Batch apply
         for eng_txt, vid in eng_updates:
             conn.execute(
@@ -356,7 +358,7 @@ def main():
                 (eng_txt, vid)
             )
             total_eng += 1
-        
+
         if gem_batch:
             conn.executemany("""
                 INSERT OR IGNORE INTO gematria
@@ -365,19 +367,19 @@ def main():
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, gem_batch)
             total_gem += len(gem_batch)
-        
+
         conn.commit()
         print(f"  {scroll_name:8s}: {n:5d} lines, {len(gem_batch):6d} gematria, {len(eng_updates):5d} gloss | {len(w_nodes)} words")
         sys.stdout.flush()
-    
+
     # ── Report ──
     print(f"\n{'='*60}")
     print(f"Done in {time.time()-t0:.1f}s")
     print(f"  English glosses added: {total_eng}")
     print(f"  Gematria entries added: {total_gem}")
-    
-    dss_gem = conn.execute("""SELECT COUNT(*) FROM gematria g 
-        JOIN verses v ON v.id=g.verse_id 
+
+    dss_gem = conn.execute("""SELECT COUNT(*) FROM gematria g
+        JOIN verses v ON v.id=g.verse_id
         WHERE v.book_id IN (SELECT id FROM books WHERE work_id='dss')""").fetchone()[0]
     dss_eng = conn.execute("""SELECT COUNT(*) FROM verses v
         WHERE v.book_id IN (SELECT id FROM books WHERE work_id='dss')

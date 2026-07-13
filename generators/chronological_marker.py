@@ -10,8 +10,6 @@ Connects verses that share chronological time reference formulas:
 
 import re
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Time marker patterns: (regex, marker_name, description)
 TIME_MARKERS = [

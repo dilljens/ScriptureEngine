@@ -11,8 +11,6 @@ Two strategies:
 """
 
 from collections import defaultdict
-from lib.db import add_connection
-
 
 # Divine name values and sacred numbers
 DIVINE_VALUES = {26: "yhwh", 86: "elohim", 65: "adonai", 345: "el_shaddai", 31: "el"}
@@ -47,8 +45,8 @@ def run(conn, book_ids=None):
         WHERE value_standard > 0
     """
     if book_ids:
-        placeholders = ",".join("?" for _ in book_ids)
-        query += f" AND verse_id LIKE ?"
+        ",".join("?" for _ in book_ids)
+        query += " AND verse_id LIKE ?"
     query += " ORDER BY verse_id, word_index"
     rows = conn.execute(query).fetchall()
 
@@ -176,9 +174,7 @@ def run(conn, book_ids=None):
 
     # Strategy 3: Divine name complement relationships
     # Find word pairs where word A + divine_name_value = word B
-    dn_batch = []
-    dn_count = 0
-    for verse_id, words in verse_words.items():
+    for _verse_id, words in verse_words.items():
         if len(words) < 2:
             continue
 
@@ -191,7 +187,7 @@ def run(conn, book_ids=None):
                 values_dict[v].append(w)
 
         vals = sorted(values_dict.keys())
-        for dv, dv_name in DIVINE_VALUES.items():
+        for dv, _dv_name in DIVINE_VALUES.items():
             for v in vals:
                 complement = v - dv
                 if complement > 0 and complement in values_dict and complement != v:

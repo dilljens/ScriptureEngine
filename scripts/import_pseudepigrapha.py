@@ -8,7 +8,10 @@ Creates a new 'pseu' work in the database.
 Usage: python3 scripts/import_pseudepigrapha.py
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -26,6 +29,13 @@ SKIP_APOCRYPHA = {
 DSS_TEXTS = {
     'songs-of-the-sabbath-sacrifice', 'genesis-apocryphon',
     'book-of-giants', 'visions-of-amram', 'testament-of-kohath',
+}
+
+# Texts that should go into Expanded Canon work instead
+EXPANDED_TEXTS = {
+    '1-hermas', '2-hermas', '3-hermas',
+    'apocalypse-of-peter', 'epistle-of-barnabas',
+    'gospel-of-nicodemus',
 }
 
 # Map dir names to book IDs and titles
@@ -94,59 +104,62 @@ TEXT_MAP = [
 
 def main():
     conn = get_db()
-    
-    # Create the pseu work
-    conn.execute("INSERT OR IGNORE INTO works (id, title) VALUES ('pseu', 'Pseudepigrapha & Expanded Canon')")
-    
+
+    # Create the expanded canon works
+    conn.execute("INSERT OR IGNORE INTO works (id, title, position) VALUES ('pseu', 'Pseudepigrapha', 8)")
+    conn.execute("INSERT OR IGNORE INTO works (id, title, subtitle, position) VALUES ('expanded', 'Expanded Canon', 'Early Christian & Patristic Texts', 9)")
+
     total_books = 0
     total_verses = 0
-    
+
     for dirname, book_id, title in TEXT_MAP:
         json_path = os.path.join(SCROLLMAPPER, dirname, f"{dirname}.json")
         if not os.path.exists(json_path):
             print(f"  SKIP {dirname}: not found")
             continue
-        
+
         with open(json_path) as f:
             try:
                 data = json.load(f)
             except Exception as e:
                 print(f"  SKIP {dirname}: JSON error — {e}")
                 continue
-        
+
         books_data = data.get('books', [])
         if not books_data:
             print(f"  SKIP {dirname}: no books in JSON")
             continue
-        
+
         # Determine which work this belongs to
-        if dirname in DSS_TEXTS:
+        if dirname in EXPANDED_TEXTS:
+            work_id = 'expanded'
+        elif dirname in DSS_TEXTS:
             work_id = 'dss'
         else:
             work_id = 'pseu'
-        
+
         # Create book entry
         conn.execute(
             "INSERT OR IGNORE INTO books (id, work_id, title, position) VALUES (?, ?, ?, 99)",
             (book_id, work_id, title)
         )
-        
+
         chapter_count = 0
         verse_count = 0
-        
+
         for book_data in books_data:
             for ch_data in book_data.get('chapters', []):
                 ch_num = ch_data.get('chapter', chapter_count + 1)
-                
+
                 for v_data in ch_data.get('verses', []):
                     v_num = v_data.get('verse', verse_count + 1)
                     text = v_data.get('text', '').strip()
-                    
+
                     if not text:
                         continue
-                    
+
                     verse_id = f"{book_id}.{ch_num}.{v_num}"
-                    
+
                     if work_id == 'dss':
                         # For DSS texts: store in text_hebrew too for consistency
                         conn.execute(
@@ -158,27 +171,28 @@ def main():
                             "INSERT OR IGNORE INTO verses (id, book_id, chapter, verse, text_english) VALUES (?, ?, ?, ?, ?)",
                             (verse_id, book_id, ch_num, v_num, text)
                         )
-                    
+
                     # Also store as text resource
                     conn.execute(
                         "INSERT OR REPLACE INTO text_resources (verse_id, version, text, language) VALUES (?, 'SCROLLMAPPER', ?, 'eng')",
                         (verse_id, text)
                     )
-                    
+
                     verse_count += 1
-                
+
                 chapter_count += 1
-        
+
         conn.commit()
         total_verses += verse_count
         total_books += 1
         print(f"  {book_id:8s} {title[:45]:45s} {verse_count:5d} verses [{work_id}]")
-    
+
     conn.close()
     print(f"\n{'='*60}")
     print(f"Imported: {total_books} texts, {total_verses} total verses")
-    print(f"Work: 'pseu' = Pseudepigrapha & Expanded Canon")
-    print(f"Also added 5 texts to 'dss' work (Songs Sabbath, Genesis Apocryphon, etc.)")
+    print(f"Work: 'pseu' = Pseudepigrapha ({total_books - 6 - 5} texts from scrollmapper)")
+    print("Work: 'expanded' = Expanded Canon (6 Early Christian texts)")
+    print("Work: 'dss' = Dead Sea Scrolls (5 texts from scrollmapper)")
 
 
 if __name__ == '__main__':

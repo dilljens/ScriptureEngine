@@ -8,8 +8,15 @@ Allows Apocrypha to appear in chapter view, text search, and navigation.
 Usage: python3 scripts/import_kjva.py
 """
 
-import os, sys, re, struct, zlib
+import os
+import re
+import struct
+import sys
+import zlib
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import contextlib
+
 from lib.db import get_db
 
 # Book ID mapping: OSIS book name → our short ID
@@ -53,9 +60,11 @@ def decompress_kjva(mod_dir='/tmp/sword_mods/modules/texts/ztext/kjva/'):
     """Decompress all blocks from the KJVA module."""
     bzz_path = os.path.join(mod_dir, 'ot.bzz')
     bzs_path = os.path.join(mod_dir, 'ot.bzs')
-    bzz = open(bzz_path, 'rb').read()
-    bzs = open(bzs_path, 'rb').read()
-    
+    with open(bzz_path, 'rb') as f:
+        bzz = f.read()
+    with open(bzs_path, 'rb') as f:
+        bzs = f.read()
+
     blocks = []
     for i in range(len(bzs) // 8):
         off = struct.unpack('<I', bzs[i*8:i*8+4])[0]
@@ -65,19 +74,24 @@ def decompress_kjva(mod_dir='/tmp/sword_mods/modules/texts/ztext/kjva/'):
         try:
             decomp = zlib.decompress(bzz[off:off+sz], -zlib.MAX_WBITS)
             blocks.append(decomp)
-        except:
+        except zlib.error:
             try:
                 decomp = zlib.decompress(bzz[off:off+sz])
                 blocks.append(decomp)
-            except:
+            except zlib.error:
                 pass
-    
+
     # Also decompress NT
     nt_path = os.path.join(mod_dir, 'nt.bzz')
     if os.path.exists(nt_path):
-        nt_bzz = open(nt_path, 'rb').read()
+        with open(nt_path, 'rb') as f:
+            nt_bzz = f.read()
         nt_bzs_path = os.path.join(mod_dir, 'nt.bzs')
-        nt_bzs = open(nt_bzs_path, 'rb').read() if os.path.exists(nt_bzs_path) else b'\x00' * 8
+        if os.path.exists(nt_bzs_path):
+            with open(nt_bzs_path, 'rb') as f:
+                nt_bzs = f.read()
+        else:
+            nt_bzs = b'\x00' * 8
         for i in range(len(nt_bzs) // 8):
             off = struct.unpack('<I', nt_bzs[i*8:i*8+4])[0]
             sz = struct.unpack('<I', nt_bzs[i*8+4:i*8+8])[0]
@@ -86,16 +100,16 @@ def decompress_kjva(mod_dir='/tmp/sword_mods/modules/texts/ztext/kjva/'):
             try:
                 decomp = zlib.decompress(nt_bzz[off:off+sz], -zlib.MAX_WBITS)
                 blocks.append(decomp)
-            except:
+            except zlib.error:
                 pass
-    
+
     return b''.join(blocks)
 
 def parse_osis_verses(text):
     """Parse OSIS XML to extract (book, chapter, verse, text) tuples."""
     verses = []
     text_str = text.decode('utf-8', errors='replace')
-    
+
     # Remove XML tags, keeping only verse-relevant structure
     # Remove XML headers
     text_str = re.sub(r'<\?xml[^>]*>', '', text_str)
@@ -104,10 +118,10 @@ def parse_osis_verses(text):
     text_str = re.sub(r'<osisText[^>]*>', '', text_str)
     text_str = re.sub(r'</osisText>', '', text_str)
     text_str = re.sub(r'<header[^>]*>.*?</header>', '', text_str, flags=re.DOTALL)
-    
+
     # Split on book elements
     book_parts = re.split(r'<div type="book" osisID="([^"]+)"[^>]*>', text_str)
-    
+
     # book_parts[0] is before first book, then alternating [book_id, content]
     for i in range(1, len(book_parts), 2):
         if i + 1 >= len(book_parts):
@@ -118,18 +132,18 @@ def parse_osis_verses(text):
         if not our_book:
             print(f'  Unknown book: {osis_book}')
             continue
-        
+
         # Find all chapter elements
         chapter_parts = re.split(r'<chapter osisID="[^"]*"\s*sID="[^"]*"/>', book_content)
-        
+
         current_chapter = 1
         for cp_idx, cp in enumerate(chapter_parts):
             if cp_idx == 0:
                 continue  # skip content before first chapter
-            
+
             # Find chapter number in osisID
-            ch_match = re.search(r'<chapter osisID="[^"]*"\s*eID="[^"]*"/>', cp)
-            
+            re.search(r'<chapter osisID="[^"]*"\s*eID="[^"]*"/>', cp)
+
             # Actually, we split ON sID, so each cp starts AFTER an sID marker
             # The previous sID marker tells us the chapter
             # Let's find chapter by looking for eID markers
@@ -137,21 +151,19 @@ def parse_osis_verses(text):
             if ch_eid:
                 # Extract chapter from osisID like "Tob.1"
                 ch_part = ch_eid.group(1).split('.')[-1]
-                try:
+                with contextlib.suppress(ValueError, AttributeError):
                     current_chapter = int(ch_part)
-                except:
-                    pass
-            
+
             # The chapter content starts after the last chapter tag
             # Get the actual text content for this chapter
             # Remove all XML tags
             clean_text = re.sub(r'<[^>]+>', '', cp)
             clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-            
+
             if clean_text:
                 # Store as one continuous text (we'll split by verse markers later)
                 verses.append((our_book, current_chapter, 1, clean_text))
-    
+
     return verses
 
 def import_kjva():
@@ -159,23 +171,23 @@ def import_kjva():
     print("Decompressing KJVA module...")
     text = decompress_kjva()
     print(f"  Decompressed {len(text)} bytes")
-    
+
     print("Parsing OSIS XML...")
     # Save decompressed text for analysis
     with open('/tmp/kjva_decompressed.txt', 'wb') as f:
         f.write(text)
-    
+
     text_str = text.decode('utf-8', errors='replace')
-    
+
     # Direct approach: find Apocrypha book sections using regex
     # The OSIS format uses <div type="book" osisID="Tob">
     # Each book has chapters with osisID="Tob.1", verses with osisID="Tob.1.2"
-    
+
     conn = get_db()
-    
+
     # Add apoc work if not exists
     conn.execute("INSERT OR IGNORE INTO works (id, title) VALUES ('apoc', 'Apocrypha')")
-    
+
     # Add books
     for book_id, title, pos in APOC_BOOKS:
         conn.execute(
@@ -183,39 +195,39 @@ def import_kjva():
             (book_id, title, pos)
         )
     conn.commit()
-    
+
     # Extract verse references and text
     # Pattern: osisID="Book.Ch.V"
-    verse_pattern = re.compile(
+    re.compile(
         r'<verse\s+osisID="(\w+)\.(\d+)\.(\d+)"\s*sID="[^"]*"/>(.*?)<verse\s+osisID="\1\.\2\.(\d+)"\s*eID="[^"]*"/>',
         re.DOTALL
     )
-    
+
     # Also handle standalone verse markers
-    verse_pattern2 = re.compile(
+    re.compile(
         r'<verse\s+osisID="(\w+)\.(\d+)\.(\d+)"\s*sID="[^"]*"/>(.*?)(?=<verse\s+osisID=|\s*<chapter\s+osisID=|\s*<div\s+)',
         re.DOTALL
     )
-    
+
     total = 0
     errors = 0
-    
+
     # Process by book
     book_divs = re.split(r'<div\s+type="book"\s+osisID="(\w+)"[^>]*>', text_str)
-    
+
     for bidx in range(1, len(book_divs), 2):
         osis_book = book_divs[bidx]
         book_content = book_divs[bidx+1] if bidx + 1 < len(book_divs) else ''
         our_book = BOOK_MAP.get(osis_book)
-        
+
         if not our_book:
             continue
-        
+
         # Check if this book has verse-level markers
         if '<verse osisID=' not in book_content:
             print(f'  {osis_book} -> {our_book}: no verse markers, skipping')
             continue
-        
+
         # Extract all verses
         found_verses = []
         for m in re.finditer(
@@ -225,17 +237,17 @@ def import_kjva():
             chapter = int(m.group(1))
             verse = int(m.group(2))
             vtext = m.group(3)
-            
+
             # Clean up XML markup
             vtext = re.sub(r'<[^>]+>', '', vtext)
             vtext = re.sub(r'\s+', ' ', vtext).strip()
-            
+
             # Remove leading/trailing punctuation artifacts
             vtext = vtext.strip(' ,;:')
-            
+
             if vtext:
                 found_verses.append((chapter, verse, vtext))
-        
+
         # Also try without eID markers for verses that use simple format
         if not found_verses:
             for m in re.finditer(
@@ -250,11 +262,11 @@ def import_kjva():
                 vtext = vtext.strip(' ,;:')
                 if vtext:
                     found_verses.append((chapter, verse, vtext))
-        
+
         if not found_verses:
             print(f'  {osis_book} -> {our_book}: no verses extracted')
             continue
-        
+
         # Insert into database
         for chapter, verse, vtext in found_verses:
             verse_id = f'{our_book}.{chapter}.{verse}'
@@ -274,9 +286,9 @@ def import_kjva():
                 errors += 1
                 if errors <= 5:
                     print(f'  ERROR: {verse_id}: {e}')
-        
+
         print(f'  {osis_book} -> {our_book}: {len(found_verses)} verses')
-    
+
     conn.commit()
     conn.close()
     print(f'\nTotal: {total} verses, {errors} errors')

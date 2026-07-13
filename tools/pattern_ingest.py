@@ -26,20 +26,17 @@ Usage:
   }'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, add_known_chiasm
+from lib.db import add_known_chiasm, get_db
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     scholar = args.get("scholar", "deepseek_ai")
     book = args.get("book", "")

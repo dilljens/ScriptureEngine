@@ -7,9 +7,7 @@ This generator scans for repeated phrases at chapter/section boundaries.
 Uses the existing structural formula data and chapter-level text patterns.
 """
 
-import re
 from collections import defaultdict
-from lib.db import add_connection
 
 # ─── Known inclusio markers ───
 # These are phrases commonly used to open and close literary units
@@ -21,7 +19,7 @@ INCLUSIO_PATTERNS = [
     ("And it came to pass", "wayehi", "all"),
     ("And the LORD said", "wyomer", "all"),
     ("And God said", "wyomer_elohim", "all"),
-    # Poetic formulas  
+    # Poetic formulas
     ("Blessed be the LORD", "baruch", "all"),
     ("Praise ye the LORD", "hallelujah", "all"),
     ("Hallelujah", "hallelujah", "all"),
@@ -53,23 +51,21 @@ INCLUSIO_PATTERNS = [
 
 def run(conn, book_ids=None):
     """Detect inclusio patterns and create connections.
-    
+
     For each known pattern, scans chapter boundaries for occurrences
     and connects opening → closing verses when the same formula appears
     at both ends of a section.
     """
     count = 0
     batch = []
-    
+
     # Get all books
-    books = conn.execute("""
+    conn.execute("""
         SELECT b.id, b.work_id FROM books b
         ORDER BY b.work_id, b.position
     """).fetchall()
-    
-    heb_count = 0
-    eng_count = 0
-    
+
+
     for pattern, name, scope in INCLUSIO_PATTERNS:
         # Find all verses with this pattern
         # Hebrew text
@@ -80,7 +76,7 @@ def run(conn, book_ids=None):
                 (f'%{pattern}%',)
             ).fetchall()
             heb_verses = [dict(r) for r in rows]
-        
+
         # English text
         eng_verses = []
         if scope in ("all", "nt", "bom", "dc", "pgp"):
@@ -89,29 +85,29 @@ def run(conn, book_ids=None):
                 (f'%{pattern}%',)
             ).fetchall()
             eng_verses = [dict(r) for r in rows]
-        
+
         all_verses = heb_verses + eng_verses
-        
+
         if len(all_verses) < 2:
             continue
-        
+
         # Group by book and look for opening/closing uses
         by_book = defaultdict(list)
         for v in all_verses:
             by_book[v["book_id"]].append(v)
-        
+
         for book_id, verses in by_book.items():
             if len(verses) < 2:
                 continue
-            
+
             # Get the first and last occurrences in this book
             verses.sort(key=lambda v: (v["chapter"], v["verse"]))
             first = verses[0]
             last = verses[-1]
-            
+
             if first["id"] == last["id"]:
                 continue
-            
+
             # Only connect if the first occurrence is in the first 5 chapters
             # and the last in the last 5 chapters (avoids trivial connections)
             if first["chapter"] <= 5 and last["chapter"] >= 8:
@@ -122,14 +118,14 @@ def run(conn, book_ids=None):
                     f'{{"pattern": "{pattern}", "book": "{book_id}", "first": "{first["id"]}", "last": "{last["id"]}"}}'
                 ))
                 count += 1
-            
+
             if len(batch) >= 200:
                 _flush(conn, batch)
                 batch = []
-    
+
     if batch:
         _flush(conn, batch)
-    
+
     print(f"  Inclusio: {count} connections across {len(INCLUSIO_PATTERNS)} patterns")
     return count
 

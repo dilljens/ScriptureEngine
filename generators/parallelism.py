@@ -4,8 +4,7 @@ Runs the expanded parallelism detector on all books and creates
 connections for each detected parallel pattern.
 """
 
-from lib.db import add_connection
-from lib.patterns.parallelism import detect_parallelisms, detect_inclusio_in_passage
+from lib.patterns.parallelism import detect_inclusio_in_passage, detect_parallelisms
 
 
 def _batch_insert(conn, batch):
@@ -78,7 +77,7 @@ def run(conn, book_ids=None):
                 chapters[ch] = []
             chapters[ch].append(v)
 
-        for ch, ch_verses in chapters.items():
+        for _ch, ch_verses in chapters.items():
             inc = detect_inclusio_in_passage(ch_verses)
             if inc:
                 idx_a = inc["verse_a_index"]

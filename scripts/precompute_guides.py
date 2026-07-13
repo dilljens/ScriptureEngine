@@ -7,7 +7,10 @@ passage_guides table. The UI or API serves these with a single
 indexed lookup — no joins, no live aggregation.
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -32,7 +35,6 @@ COMPUTED_SCHEMA = """
 def precompute_all(conn):
     """Build the passage_guides table with pre-joined connection data."""
     from lib.connections.pardes import get_pardes_level
-    from lib.controls.calibration import get_quality_stars
 
     # Create table
     conn.execute(f"DROP TABLE IF EXISTS {COMPUTED_TABLE}")
@@ -183,7 +185,7 @@ def main():
 
     count = conn.execute(f"SELECT COUNT(*) as c FROM {COMPUTED_TABLE}").fetchone()["c"]
     print(f"\n  {count} passage guides ready")
-    print(f"  Query: SELECT * FROM passage_guides WHERE verse_id = ?")
+    print("  Query: SELECT * FROM passage_guides WHERE verse_id = ?")
 
     # Show sample
     sample = conn.execute("""

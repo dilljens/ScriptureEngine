@@ -11,12 +11,14 @@ Usage:
   python3 skeptic.py '{"stats": true}'
 """
 
-import sys, json, os
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from lib.controls.calibration import QUALITY_LEVELS
 from lib.db import get_db
-from lib.controls.calibration import QUALITY_LEVELS, get_quality_color, get_quality_stars
-from lib.connections.pardes import LEVELS as PARDES_LEVELS
 
 
 def main():
@@ -65,7 +67,7 @@ def main():
 
     # Determine minimum rank for filtering
     min_rank = QUALITY_LEVELS.get(min_quality, {}).get("rank", 5)
-    
+
     # Get connections with quality filtering
     rows = conn.execute("""
         SELECT c.*, v.text_english as target_text,
@@ -78,18 +80,18 @@ def main():
 
     by_quality = {}
     hidden_count = 0
-    
+
     for r in rows:
         r = dict(r)
         quality = r.get("quality_level", "suggested")
         confidence = r.get("confidence", 0.0) or 0.0
         q_rank = QUALITY_LEVELS.get(quality, {}).get("rank", 5)
-        
+
         # Filter
         if q_rank > min_rank or confidence < min_confidence:
             hidden_count += 1
             continue
-        
+
         if quality not in by_quality:
             info = QUALITY_LEVELS.get(quality, {})
             by_quality[quality] = {
@@ -98,7 +100,7 @@ def main():
                 "color": info.get("color", "#999"),
                 "connections": [],
             }
-        
+
         by_quality[quality]["connections"].append({
             "type": r["type"],
             "layer": r["layer"],
@@ -124,7 +126,7 @@ def main():
         "by_quality": by_quality,
         "total_shown": sum(len(v["connections"]) for v in by_quality.values()),
     }
-    
+
     print(json.dumps(result, indent=2, ensure_ascii=False))
     conn.close()
 

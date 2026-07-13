@@ -6,9 +6,9 @@ Search scripture text by keyword or phrase.
 Usage: python3 search.py '{"query": "light", "book": "gen"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -16,10 +16,7 @@ from lib.db import get_db, search_verses
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     query = args.get("query", "")
     book = args.get("book")

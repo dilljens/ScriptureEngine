@@ -11,7 +11,6 @@ Implements 7 methods from Isaiah Decoded and The End from the Beginning:
 7. DSS Paragraph Markers — 1QIsa structural division markers
 """
 
-from lib.db import add_connection
 
 
 def _verse_id(book, ch, v):
@@ -295,7 +294,7 @@ def seed_day_of_jehovah(conn):
     """Seed the two Days of Jehovah as structural markers."""
     batch = []
     count = 0
-    
+
     for day_type, day_data in [("midpoint", DAY_OF_JEHOVAH_MIDPOINT), ("final", DAY_OF_JEHOVAH_FINAL)]:
         # Add connection from first marker to last marker
         batch.append((
@@ -308,10 +307,10 @@ def seed_day_of_jehovah(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  1. Day of Jehovah: {count} markers")
     return count
 
@@ -320,7 +319,7 @@ def seed_three_threats(conn):
     """Seed three escalating threat patterns."""
     batch = []
     count = 0
-    
+
     for threat in THREATS:
         t = threat["type"]
         # Connect start → climax → end
@@ -337,14 +336,14 @@ def seed_three_threats(conn):
             f'{{"threat": "{t}", "description": "{threat["description"]}", "scholar": "Avraham Gileadi"}}'
         ))
         count += 2
-        
+
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  2. Three Threats: {count} connections")
     return count
 
@@ -353,7 +352,7 @@ def seed_curses_blessings(conn):
     """Seed covenant curse→blessing reversal pairs."""
     batch = []
     count = 0
-    
+
     for c_start, c_end, b_start, b_end, theme in CURSES_BLESSINGS:
         batch.append((
             c_start, b_start,
@@ -365,10 +364,10 @@ def seed_curses_blessings(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  3. Curses↔Blessings: {count} covenant reversal pairs")
     return count
 
@@ -377,7 +376,7 @@ def seed_destruction_deliverance(conn):
     """Seed destruction→deliverance antithetical pairs."""
     batch = []
     count = 0
-    
+
     for d_start, d_end, del_start, del_end, theme in DESTRUCTION_DELIVERANCE:
         batch.append((
             d_start, del_start,
@@ -389,10 +388,10 @@ def seed_destruction_deliverance(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  4. Destruction↔Deliverance: {count} antithetical pairs")
     return count
 
@@ -401,7 +400,7 @@ def seed_tabernacle_ladder(conn):
     """Seed tabernacle elements as types of spiritual levels."""
     batch = []
     count = 0
-    
+
     for element, level_desc, exodus_ref, meaning in TABERNACLE_LADDER:
         batch.append((
             exodus_ref, "isa.6.1",
@@ -413,10 +412,10 @@ def seed_tabernacle_ladder(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  5. Tabernacle as Ladder: {count} type connections")
     return count
 
@@ -425,7 +424,7 @@ def seed_cyclical_types(conn):
     """Seed past events as types of future (end-time) events."""
     batch = []
     count = 0
-    
+
     for past_s, past_e, future_s, future_e, desc in CYCLICAL_TYPES:
         batch.append((
             past_s, future_s,
@@ -437,10 +436,10 @@ def seed_cyclical_types(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  6. Cyclical History: {count} type→antitype pairs")
     return count
 
@@ -449,7 +448,7 @@ def seed_dss_markers(conn):
     """Seed Dead Sea Scroll paragraph markers as structural divisions."""
     batch = []
     count = 0
-    
+
     for start, end, div_type, significance in DSS_SECTIONS:
         batch.append((
             start, end,
@@ -461,10 +460,10 @@ def seed_dss_markers(conn):
         if len(batch) >= 200:
             _batch_insert(conn, batch)
             batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  7. DSS Markers: {count} structural divisions")
     return count
 
@@ -523,7 +522,7 @@ def seed_fairytale_archetypes(conn):
     """Seed fairytale archetype connections."""
     batch = []
     count = 0
-    for villain, hero, rescue, restoration, desc in FAIRYTALE_ARCHETYPES:
+    for villain, hero, _rescue, _restoration, desc in FAIRYTALE_ARCHETYPES:
         batch.append((
             villain, hero,
             "symbolic", "shared_symbol", "fairytale_archetype",
@@ -546,7 +545,7 @@ def seed_structural_overlays(conn):
     """Seed 3-part, 4-part, 2-part, and 3-tests structural markers."""
     batch = []
     total = 0
-    
+
     # 3-part structure
     for label, start, end in THREE_PART:
         batch.append((
@@ -556,7 +555,7 @@ def seed_structural_overlays(conn):
             f'{{"structure": "Trouble→Exile→Homecoming", "section": "{label}", "scholar": "Avraham Gileadi"}}'
         ))
         total += 1
-    
+
     # 4-part structure
     for label, start, end in FOUR_PART:
         batch.append((
@@ -566,7 +565,7 @@ def seed_structural_overlays(conn):
             f'{{"structure": "AJRS Cycle", "section": "{label}", "scholar": "Avraham Gileadi"}}'
         ))
         total += 1
-    
+
     # 2-part curses/blessings
     for label, start, end in TWO_PART_CURSES_BLESSINGS:
         batch.append((
@@ -576,7 +575,7 @@ def seed_structural_overlays(conn):
             f'{{"structure": "Curses→Blessings", "section": "{label}", "scholar": "Avraham Gileadi"}}'
         ))
         total += 1
-    
+
     # 3 tests
     for label, start, end in THREE_TESTS:
         batch.append((
@@ -586,7 +585,7 @@ def seed_structural_overlays(conn):
             f'{{"structure": "Three Tests", "section": "{label}", "scholar": "Avraham Gileadi"}}'
         ))
         total += 1
-    
+
     # Servant-Tyrant parallel verses
     for src, dst, desc in SERVANT_TYRANT_PARALLEL:
         batch.append((
@@ -596,7 +595,7 @@ def seed_structural_overlays(conn):
             f'{{"parallel": "21 antithetical verses", "description": "{desc}", "scholar": "Avraham Gileadi"}}'
         ))
         total += 1
-    
+
     if batch:
         _batch_insert(conn, batch)
     print(f"  10. Structural Overlays: {total} markers")
@@ -609,7 +608,7 @@ def seed_chaos_motifs(conn):
     """Seed chaos motif keywords as structural de-creation patterns."""
     batch = []
     count = 0
-    
+
     for motif, heb, meaning in CHAOS_MOTIF_KEYWORDS:
         # Find verses in Isaiah with this motif
         if motif == "darkness":
@@ -619,7 +618,7 @@ def seed_chaos_motifs(conn):
                 JOIN verses v ON v.id = g.verse_id
                 WHERE v.book_id = 'isa' AND (g.lemma LIKE ? OR g.word_hebrew LIKE ?)
                 LIMIT 15
-            """, (f"%2822%", f"%{heb}%")).fetchall()
+            """, ("%2822%", f"%{heb}%")).fetchall()
         elif motif == "hail":
             rows = conn.execute("""
                 SELECT DISTINCT g.verse_id
@@ -627,7 +626,7 @@ def seed_chaos_motifs(conn):
                 JOIN verses v ON v.id = g.verse_id
                 WHERE v.book_id = 'isa' AND (g.lemma LIKE ? OR g.word_hebrew LIKE ?)
                 LIMIT 15
-            """, (f"%1259%", f"%{heb}%")).fetchall()
+            """, ("%1259%", f"%{heb}%")).fetchall()
         else:
             rows = conn.execute("""
                 SELECT DISTINCT g.verse_id
@@ -636,10 +635,10 @@ def seed_chaos_motifs(conn):
                 WHERE v.book_id = 'isa' AND g.word_hebrew LIKE ?
                 LIMIT 15
             """, (f"%{heb}%",)).fetchall()
-        
+
         if len(rows) < 2:
             continue
-        
+
         verse_ids = [r["verse_id"] for r in rows]
         hub = verse_ids[0]
         for v in verse_ids[1:]:
@@ -653,7 +652,7 @@ def seed_chaos_motifs(conn):
             if len(batch) >= 200:
                 _batch_insert(conn, batch)
                 batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
     print(f"  11. Chaos Motifs: {count} connections across {len(CHAOS_MOTIF_KEYWORDS)} motifs")
@@ -667,7 +666,7 @@ def run(conn, book_ids=None):
     for subtype in ["day_of_jehovah_midpoint", "day_of_jehovah_final",
                      "threat_one", "threat_two", "threat_three",
                      "curses_to_blessings", "destruction_to_deliverance",
-                     "tabernacle_ladder", "cyclical_history", 
+                     "tabernacle_ladder", "cyclical_history",
                      "dss_petuchah", "dss_setumah",
                      "zion_ideology", "fairytale_archetype",
                      "three_part_structure", "four_part_ajrs",
@@ -675,7 +674,7 @@ def run(conn, book_ids=None):
                      "servant_tyrant_parallel", "chaos_motif"]:
         conn.execute("DELETE FROM connections WHERE subtype=?", (subtype,))
     conn.commit()
-    
+
     total += seed_day_of_jehovah(conn)
     total += seed_three_threats(conn)
     total += seed_curses_blessings(conn)

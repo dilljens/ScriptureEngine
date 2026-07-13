@@ -14,19 +14,17 @@ Usage:
   python3 scripts/null_text_validation.py --dry-run  # show only, no DB writes
 """
 
-import sys
+import argparse
 import os
 import random
-import argparse
+import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from lib.controls.null_text import generate_random_hebrew, generate_shuffled_words
 from lib.db import get_db
-from lib.controls.null_text import generate_shuffled_words, generate_random_hebrew
-from lib.controls.stats import monte_carlo_p_value
 from lib.gematria import compute_all
-
 
 # =========================================================================
 # Type-to-category mapping
@@ -285,7 +283,7 @@ def count_text_overlap_matches(word_list, word_data):
 
     # Count unique verse-pairs sharing ≥ 1 word
     sharing_pairs = set()
-    for w, verses in word_to_verses.items():
+    for _w, verses in word_to_verses.items():
         if len(verses) >= 2:
             vlist = sorted(verses)
             for i in range(len(vlist)):
@@ -649,8 +647,8 @@ def main():
         update_count = 0
         for conn_type, data in results_by_type.items():
             pv = data["p_value"]
-            es = data["effect_size"]
-            layer = data["layer"]
+            data["effect_size"]
+            data["layer"]
 
             # Apply Bonferroni-style correction: if we test N types,
             # adjust significance threshold. Store both raw and adjusted.
@@ -667,7 +665,7 @@ def main():
 
         conn.commit()
         print(f"  Updated {update_count} connections across {len(results_by_type)} types")
-        print(f"  (p-values written to connections.p_value column)")
+        print("  (p-values written to connections.p_value column)")
 
     # ---- Summary ----
     print("\n--- Summary ---")
@@ -683,7 +681,7 @@ def main():
     print(f"  Non-significant connections: {non_sig_connections} / {total} ({100*non_sig_connections/max(total,1):.1f}%)")
 
     # Print types with p >= 0.05 (potential false positives)
-    print(f"\n  Types needing review (p >= 0.05):")
+    print("\n  Types needing review (p >= 0.05):")
     for conn_type, d in sorted(results_by_type.items(), key=lambda x: -x[1]["real_count"]):
         if d["p_value"] >= 0.05:
             print(f"    {d['layer']:16s} {conn_type:30s} count={d['real_count']:>6}  "

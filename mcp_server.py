@@ -10,10 +10,12 @@ Adding a new tool: implement it in lib/api/*.py + register in lib/api/__init__.p
 Protocol: JSON-RPC over stdio (standard MCP protocol)
 """
 
-import sys, json, os
+import json
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib.api import TOOL_REGISTRY, list_tools, call_tool
+from lib.api import call_tool, list_tools
 from lib.db import get_db
 
 

@@ -10,11 +10,10 @@ Usage:
     python3 scripts/seed_hebrew_content.py --db data/memorize.db
 """
 
-import sqlite3
 import json
-import sys
 import os
-import re
+import sqlite3
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -545,7 +544,7 @@ def _worked_examples(nid, title, category):
         {"question": f"What is {title}?",
          "steps": [f"{title} is a {category} in Biblical Hebrew.",
                    f"{_explanation(nid, title, category)[:100]}..."],
-         "answer": f"See the explanation above."},
+         "answer": "See the explanation above."},
     ])
 
 
@@ -576,7 +575,7 @@ def _key_points(nid, category):
 def build_practice_items(nid, title, category):
     """Generate practice items for a topic with Math Academy quality."""
     items = []
-    
+
     # Confusable pairs for smart distractors
     SIMILAR_LETTERS = {
         "aleph": ["Ayin", "He", "Chet"],
@@ -603,7 +602,7 @@ def build_practice_items(nid, title, category):
         "sin": ["Shin", "Sin", "Samekh"],
         "tav": ["Tet", "Tav", "He"],
     }
-    
+
     SIMILAR_VOWELS = {
         "vowel_patah": ["Qamats", "Segol", "Patah"],
         "vowel_qamats": ["Patah", "Qamats", "Holam"],
@@ -615,7 +614,7 @@ def build_practice_items(nid, title, category):
         "vowel_qubuts": ["Shuruq", "Qubuts", "Holam"],
         "vowel_sheva": ["Sheva", "Hatef Patah", "Hatef Segol"],
     }
-    
+
     # Recognition questions
     if category == "consonant":
         correct = title.split("(")[0].strip()
@@ -675,7 +674,7 @@ def build_practice_items(nid, title, category):
             "difficulty": 0.5,
             "explanation": f"The Hebrew letter named '{correct}' is {title}."
         })
-    
+
     elif category == "vowel":
         correct = title.split("(")[0].strip()
         # Smart distractors based on similar vowels
@@ -706,7 +705,7 @@ def build_practice_items(nid, title, category):
             "difficulty": 0.5,
             "explanation": f"The vowel is {correct}."
         })
-    
+
     elif category == "verb":
         items.append({
             "question_type": "multiple_choice",
@@ -752,7 +751,7 @@ def seed_content(db_path="data/memorize.db"):
     lesson_count = 0
     practice_count = 0
 
-    for nid, title, level, category, desc in nodes:
+    for nid, title, _level, category, desc in nodes:
         # Extract glyph from title (title format: "Name (glyph)")
         glyph = ""
         if "(" in title:
@@ -773,10 +772,7 @@ def seed_content(db_path="data/memorize.db"):
         items = build_practice_items(nid, clean_title, category)
         for item in items:
             opts = item.get("options_json", item.get("options", "[]"))
-            if isinstance(opts, str):
-                opts_json = opts
-            else:
-                opts_json = json.dumps(opts)
+            opts_json = opts if isinstance(opts, str) else json.dumps(opts)
             cur.execute(
                 """INSERT INTO hebrew_practice_items
                    (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation)

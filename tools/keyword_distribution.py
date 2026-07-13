@@ -9,9 +9,9 @@ Usage:
   python3 keyword_distribution.py '{"book": "psa", "terms": ["חסד", "אמת", "צדק"]}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -19,10 +19,7 @@ from lib.db import get_db, get_keyword_distribution
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     book = args.get("book", "")
     terms = args.get("terms", [])

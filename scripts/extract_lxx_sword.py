@@ -5,9 +5,15 @@ Reads the STEPBible LXX_th SWORD module (.bzz/.bzv files) and compares
 LXX text against existing MT Hebrew text to find differences.
 """
 
-import sys, os, json, struct, zlib, re
+import json
+import os
+import re
+import struct
+import sys
+import zlib
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 # Book ID mapping: SWORD KJV v11n → our book IDs
 BOOK_MAP = {
@@ -27,7 +33,7 @@ def read_sword_block(compressed):
     """Decompress a SWORD zText block (zlib)."""
     try:
         return zlib.decompress(compressed)
-    except:
+    except zlib.error:
         return compressed
 
 def parse_sword_module(module_dir):
@@ -38,21 +44,21 @@ def parse_sword_module(module_dir):
     with open(os.path.join(module_dir, "ot.bzz"), "rb") as f:
         bzz = read_sword_block(f.read())
     with open(os.path.join(module_dir, "ot.czv"), "rb") as f:
-        czv = read_sword_block(f.read())
-    
+        read_sword_block(f.read())
+
     # SWORD zText format:
     # .bzv: verse index (book|chapter|verse records)
     # .bzz: verse text (null-terminated strings)
     # .czv: chapter index (for locating books)
-    
+
     verses = {}
-    
+
     # Parse verse index — each entry is 3 shorts (book, chapter, verse)
     # followed by a 4-byte offset into .bzz
     # Total per entry: 10 bytes (3 shorts + 1 int)
     entry_size = 10  # 3×uint16 + uint32
     num_entries = len(bzv) // entry_size
-    
+
     for i in range(num_entries):
         offset = i * entry_size
         if offset + entry_size > len(bzv):
@@ -61,44 +67,44 @@ def parse_sword_module(module_dir):
         chapter = struct.unpack_from('<H', bzv, offset + 2)[0]
         verse_num = struct.unpack_from('<H', bzv, offset + 4)[0]
         text_offset = struct.unpack_from('<I', bzv, offset + 6)[0]
-        
+
         our_book = BOOK_MAP.get(book_num)
         if not our_book:
             continue
-        
+
         # Read null-terminated text from bzz
         text_end = bzz.find(b'\x00', text_offset)
         if text_end == -1:
             verse_text = bzz[text_offset:].decode('utf-8', errors='replace')
         else:
             verse_text = bzz[text_offset:text_end].decode('utf-8', errors='replace')
-        
+
         verse_id = f"{our_book}.{chapter}.{verse_num}"
-        
+
         # Clean the text: strip XML/OSIS tags
         verse_text = re.sub(r'<[^>]+>', '', verse_text)
         verse_text = verse_text.strip()
-        
+
         if verse_text:
             verses[verse_id] = verse_text
-    
+
     return verses
 
 def main():
     module_dir = "/tmp/lxx_mod/modules/texts/ztext/lxx_th"
-    
+
     if not os.path.exists(module_dir):
         print("LXX module not found. Download first:")
         print("  curl -sL https://public.modules.stepbible.org/packages/LXX_th.zip -o /tmp/LXX_th.zip")
         print("  unzip -o /tmp/LXX_th.zip -d /tmp/lxx_mod")
         return
-    
+
     print("Parsing SWORD module...")
     lxx_texts = parse_sword_module(module_dir)
     print(f"  Parsed {len(lxx_texts)} LXX verses")
-    
+
     conn = get_db()
-    
+
     # Compare LXX against our existing verses
     count = 0
     skipped = 0
@@ -108,11 +114,11 @@ def main():
             "SELECT id, has_hebrew, text_hebrew FROM verses WHERE id = ?",
             (vid,)
         ).fetchone()
-        
+
         if not existing:
             skipped += 1
             continue
-        
+
         # Create a septuagint_difference connection noting this verse
         # exists in the LXX (independently of whether we have Hebrew)
         try:
@@ -134,10 +140,10 @@ def main():
             count += 1
         except Exception as e:
             print(f"  Error on {vid}: {e}")
-        
+
         if count % 500 == 0 and count > 0:
             print(f"  {count} connections created...")
-    
+
     conn.commit()
     conn.close()
     print(f"Done: {count} septuagint_difference connections created")

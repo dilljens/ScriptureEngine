@@ -11,7 +11,14 @@ Usage:
   python3 scripts/align_audio.py --list                  # show available books
 """
 
-import sys, os, json, re, gc, torch
+import gc
+import json
+import os
+import re
+import sys
+
+import torch
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -47,20 +54,20 @@ def clean_heb(txt):
 def align_book(audio_path, source_file, book_id, chapter_filter=None, force_transcribe=False):
     """Align a full book's audio to its verses."""
     os.makedirs("data/audio/raw/transcriptions", exist_ok=True)
-    
+
     book_label = source_file.replace(".mp3", "")
     whisper_file = f"data/audio/raw/transcriptions/{book_label}.json"
-    
+
     # Transcribe or load cached
     if force_transcribe or not os.path.exists(whisper_file):
         print(f"Transcribing {source_file} with whisper small...")
         import whisper
         gc.collect()
         torch.cuda.empty_cache()
-        
+
         model = whisper.load_model("small")
         result = model.transcribe(audio_path, language="he", word_timestamps=True)
-        
+
         with open(whisper_file, "w") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         print(f"  Saved transcription ({len(result['segments'])} segments)")
@@ -71,7 +78,7 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
         with open(whisper_file) as f:
             result = json.load(f)
         print(f"Loaded transcription ({len(result['segments'])} segments)")
-    
+
     # Get all verses for this book
     conn = get_db()
     if chapter_filter:
@@ -87,13 +94,13 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
             ORDER BY chapter, verse
         """, (book_id,)).fetchall()
     conn.close()
-    
+
     if not verses:
         print(f"  No verses found for {book_id}")
         return
-    
+
     print(f"  Aligning {len(verses)} verses...")
-    
+
     # Build verse data
     vdata = []
     for v in verses:
@@ -107,7 +114,7 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
             "start_sec": -1.0,
             "end_sec": -1.0,
         })
-    
+
     # Build word timeline
     all_words = []
     for seg in result.get("segments", []):
@@ -120,15 +127,15 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
                     "start": w.get("start", 0),
                     "end": w.get("end", 0),
                 })
-    
+
     # Match each whisper segment to verses by text overlap
     segments = result.get("segments", [])
     verse_timeline = []
-    
+
     for seg in segments:
         seg_clean = clean_heb(seg.get("text", ""))
         seg_words_set = set(seg_clean.split())
-        
+
         seg_verse_ids = []
         for vd in vdata:
             if vd["clean"]:
@@ -136,27 +143,27 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
                 overlap = len(seg_words_set & vw_set)
                 if overlap >= 2:
                     seg_verse_ids.append(vd["id"])
-        
+
         verse_timeline.append((seg["start"], seg["end"], seg_verse_ids, seg_clean[:60]))
-    
+
     # Distribute each segment's time across its verses
     for seg_start, seg_end, seg_vids, _ in verse_timeline:
         if not seg_vids:
             continue
         seg_duration = seg_end - seg_start
         vc = len(seg_vids)
-        
+
         for vi, vid in enumerate(seg_vids):
             vd = next(v for v in vdata if v["id"] == vid)
             vd["start_sec"] = seg_start + (seg_duration * vi / vc)
             vd["end_sec"] = seg_start + (seg_duration * (vi + 1) / vc)
-    
+
     # Fill unassigned verses by interpolation
     for i, vd in enumerate(vdata):
         if vd["start_sec"] < 0:
             prev_v = next((v for v in reversed(vdata[:i]) if v["start_sec"] >= 0), None)
             next_v = next((v for v in vdata[i+1:] if v["start_sec"] >= 0), None)
-            
+
             if prev_v and next_v:
                 pi = vdata.index(prev_v)
                 ni = vdata.index(next_v)
@@ -174,21 +181,21 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
             else:
                 vd["start_sec"] = 0.0
                 vd["end_sec"] = 3.0
-    
+
     # Build word-level timestamps per verse
     v_ts = {vd["id"]: [] for vd in vdata}
     for w in all_words:
         for vd in vdata:
             if vd["start_sec"] <= w["start"] <= vd["end_sec"]:
                 v_ts[vd["id"]].append({"word": w["text"], "start": w["start"], "end": w["end"]})
-    
+
     # Save to DB
     conn = get_db()
     count = 0
     for vd in vdata:
         if vd["start_sec"] >= vd["end_sec"]:
             vd["end_sec"] = vd["start_sec"] + 3.0
-        
+
         conn.execute("""
             INSERT OR REPLACE INTO audio_timestamps
                 (verse_id, book_id, chapter, start_sec, end_sec, word_timestamps, source_file)
@@ -200,10 +207,10 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
             source_file
         ))
         count += 1
-    
+
     conn.commit()
     conn.close()
-    
+
     # Print summary by chapter
     chapters = {}
     for vd in vdata:
@@ -215,11 +222,11 @@ def align_book(audio_path, source_file, book_id, chapter_filter=None, force_tran
             chapters[ch]["aligned"] += 1
         if len(v_ts[vd["id"]]) > 0:
             chapters[ch]["with_words"] += 1
-    
+
     for ch in sorted(chapters.keys()):
         c = chapters[ch]
         print(f"  Chapter {ch:3d}: {c['aligned']}/{c['total']} aligned, {c['with_words']} with word ts")
-    
+
     print(f"  Total: {count} verses aligned from {source_file}")
 
 
@@ -231,7 +238,7 @@ def main():
     parser.add_argument("--force", action="store_true", help="Force re-transcribe")
     parser.add_argument("--list", action="store_true", help="List available audio files")
     args = parser.parse_args()
-    
+
     if args.list:
         print("Available audio files:")
         for book, fname in sorted(BOOK_MAP.items()):
@@ -241,22 +248,22 @@ def main():
                 size = os.path.getsize(path) / 1e6 if exists else 0
                 print(f"  {book:5s} → {fname:30s} {'⬢' if exists else '○'} {size:.0f} MB" if exists else f"  {book:5s} → {fname:30s} ○ pending")
         return
-    
+
     if not args.book:
         print("Specify --book (e.g., --book gen) or use --list to see available")
         return
-    
+
     audio_file = BOOK_MAP.get(args.book)
     if not audio_file:
         print(f"Unknown book: {args.book}")
         return
-    
+
     audio_path = f"data/audio/raw/{audio_file}"
     if not os.path.exists(audio_path):
         print(f"Audio not found: {audio_path}")
         return
-    
-    align_book(audio_path, audio_file, args.book, 
+
+    align_book(audio_path, audio_file, args.book,
                chapter_filter=args.chapter if args.chapter > 0 else None,
                force_transcribe=args.force)
 

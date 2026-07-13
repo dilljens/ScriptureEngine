@@ -5,13 +5,10 @@ Uses the existing classify_parallelism() from lib.patterns.parallelism
 but with adjusted thresholds for shorter poetic lines.
 """
 
-import re
 from lib.patterns.parallelism import (
+    ANTITHETIC_MARKERS,
     classify_parallelism,
     tokenize,
-    word_overlap,
-    ANTITHETIC_MARKERS,
-    SYNTHETIC_MARKERS,
 )
 from lib.poetry.line_split import split_verse
 
@@ -46,9 +43,7 @@ def _detect_imperative_parallelism(text_a, text_b):
     """Check if both lines start with imperatives — strong structural parallel."""
     a_first = tokenize(text_a)[0] if tokenize(text_a) else ""
     b_first = tokenize(text_b)[0] if tokenize(text_b) else ""
-    if a_first in PARALLEL_IMPERATIVES and b_first in PARALLEL_IMPERATIVES:
-        return True
-    return False
+    return bool(a_first in PARALLEL_IMPERATIVES and b_first in PARALLEL_IMPERATIVES)
 
 
 def _detect_contrast_parallelism(text_a, text_b):
@@ -77,8 +72,8 @@ def detect_intra_verse(verse_text_english, verse_text_hebrew):
     lines = split_verse(verse_text_english, verse_text_hebrew)
 
     result = {
-        "lines": [{"english": l["english"], "hebrew": l["hebrew"], "index": i}
-                  for i, l in enumerate(lines)],
+        "lines": [{"english": line["english"], "hebrew": line["hebrew"], "index": i}
+                  for i, line in enumerate(lines)],
         "parallelisms": [],
     }
 

@@ -13,7 +13,6 @@ sections of candidate chiasms. Lower confidence than human-curated
 `chiastic` connections.
 """
 
-from collections import defaultdict
 from lib.db import add_connection
 
 
@@ -118,14 +117,14 @@ def run(conn, book_ids=None):
                             ORDER BY verse LIMIT 1
                         """, (book_id, pair["a_start_ch"])).fetchone()
 
-                        a_end = conn.execute("""
+                        conn.execute("""
                             SELECT id FROM verses
                             WHERE book_id = ? AND chapter = ? AND verse = (
                                 SELECT MAX(verse) FROM verses WHERE book_id = ? AND chapter = ?
                             )
                         """, (book_id, pair["a_end_ch"], book_id, pair["a_end_ch"])).fetchone()
 
-                        b_start = conn.execute("""
+                        conn.execute("""
                             SELECT id FROM verses
                             WHERE book_id = ? AND chapter = ?
                             ORDER BY verse LIMIT 1

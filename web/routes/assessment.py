@@ -1,9 +1,9 @@
 """Knowledge Assessment — direct HTTP endpoints."""
+import contextlib
 import json
-import os
 import sys
-import random
 from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter()
@@ -26,22 +26,22 @@ def get_quiz_questions(
     user_id: str = Query(default="default", description="User ID for adaptive progress"),
 ):
     """Get deep scripture understanding questions from the assessment_items table.
-    
+
     Questions show passage text, test analysis/understanding, and are tier-labeled.
     Replaces the old BLIM-based assessment engine for self-testing.
     """
     conn = get_db()
     cursor = conn.cursor()
-    
+
     where = []
     params = []
-    
+
     # Convert Query objects to actual values
     tier_val = tier if isinstance(tier, str) else str(tier.query if hasattr(tier, 'query') else "")
     bloom_val = bloom_level if isinstance(bloom_level, str) else ""
     count_val = count if isinstance(count, int) else 10
     user_val = user_id if isinstance(user_id, str) else "default"
-    
+
     if tier_val:
         tiers = [t.strip() for t in tier_val.split(",") if t.strip()]
         if tiers:
@@ -50,12 +50,12 @@ def get_quiz_questions(
     if bloom_val:
         where.append("bloom_level=?")
         params.append(bloom_val)
-    
+
     where_clause = " AND ".join(where) if where else "1=1"
-    
+
     # Count total available
     total = cursor.execute(f"SELECT COUNT(*) FROM assessment_items WHERE {where_clause}", params).fetchone()[0]
-    
+
     # Adaptive: prioritize questions the user hasn't seen or got wrong
     # Create user_progress table if needed
     cursor.execute("""
@@ -68,7 +68,7 @@ def get_quiz_questions(
             PRIMARY KEY (user_id, question_id)
         )
     """)
-    
+
     # Get questions with adaptive ordering
     rows = cursor.execute(f"""
         SELECT a.question_type, a.question_text, a.options_json, a.correct_answer, a.bloom_level, a.tier,
@@ -78,21 +78,19 @@ def get_quiz_questions(
         FROM assessment_items a
         LEFT JOIN quiz_progress qp ON qp.question_id=a.id AND qp.user_id=?
         WHERE {where_clause}
-        ORDER BY 
+        ORDER BY
             CASE WHEN qp.attempts IS NULL THEN 0 ELSE 1 END,  -- unseen first
             CAST(qp.correct AS REAL) / NULLIF(qp.attempts, 0) ASC NULLS FIRST,  -- lowest accuracy first
             RANDOM()
         LIMIT ?
     """, [user_val] + params + [count_val]).fetchall()
-    
+
     questions = []
     for r in rows:
         opts = []
-        try:
+        with contextlib.suppress(json.JSONDecodeError, ValueError):
             opts = json.loads(r[2]) if r[2] else []
-        except:
-            pass
-        
+
         questions.append({
             "type": r[0],
             "question": r[1],
@@ -103,12 +101,12 @@ def get_quiz_questions(
             "question_id": r[6],
             "explanation": r[7] or "",
         })
-    
+
     # Rebuild with question_ids included
     questions_with_ids = questions
-    
+
     conn.close()
-    
+
     return {"ok": True, "data": {
         "questions": questions_with_ids,
         "total": total,
@@ -121,7 +119,7 @@ def quiz_answer(body: dict):
     """Record a quiz answer and update adaptive progress."""
     conn = get_db()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS quiz_progress (
             user_id TEXT NOT NULL DEFAULT 'default',
@@ -132,24 +130,24 @@ def quiz_answer(body: dict):
             PRIMARY KEY (user_id, question_id)
         )
     """)
-    
+
     user_id = body.get("user_id", "default")
     question_id = body.get("question_id", 0)
     correct = body.get("correct", False)
-    
+
     if not question_id:
         conn.close()
         raise HTTPException(400, "question_id required")
-    
+
     # Upsert progress
     existing = cursor.execute(
         "SELECT correct, attempts FROM quiz_progress WHERE user_id=? AND question_id=?",
         (user_id, question_id)
     ).fetchone()
-    
+
     if existing:
         cursor.execute("""
-            UPDATE quiz_progress 
+            UPDATE quiz_progress
             SET correct=correct + ?, attempts=attempts + 1, last_seen=datetime('now')
             WHERE user_id=? AND question_id=?
         """, (1 if correct else 0, user_id, question_id))
@@ -158,10 +156,10 @@ def quiz_answer(body: dict):
             INSERT INTO quiz_progress (user_id, question_id, correct, attempts, last_seen)
             VALUES (?, ?, ?, 1, datetime('now'))
         """, (user_id, question_id, 1 if correct else 0))
-    
+
     conn.commit()
     conn.close()
-    
+
     return {"ok": True, "data": {"recorded": True, "correct": correct}}
 
 

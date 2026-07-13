@@ -34,6 +34,7 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
   const [pendingActions, setPendingActions] = useState([])
   const [showPreview, setShowPreview] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [error, setError] = useState(null)
   const qaEndRef = useRef(null)
 
   // Auto-scroll QA
@@ -77,6 +78,7 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
   }, [steps.length])
 
   const save = useCallback(async () => {
+    setError(null)
     setSaving(true)
     try {
       // Save title/description first
@@ -108,7 +110,7 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
         onSave?.()
       }
     } catch (err) {
-      console.error('Save failed:', err)
+      setError(err.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -126,7 +128,7 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
         const action = JSON.parse(match[1].trim())
         actions.push(action)
       } catch (e) {
-        console.warn('Failed to parse study-action:', match[1], e)
+        if (import.meta.env.DEV) { console.warn('Failed to parse study-action:', match[1], e) }
       }
     }
     return actions
@@ -185,7 +187,7 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
         break
       }
       default:
-        console.warn('Unknown study action:', action.action)
+        if (import.meta.env.DEV) { console.warn('Unknown study action:', action.action) }
     }
     setDirty(true)
   }, [steps.length])
@@ -365,6 +367,12 @@ Users must click "Apply" to execute changes — don't apply them automatically.`
           {saving ? 'Saving...' : dirty ? 'Save Changes' : 'Saved ✓'}
         </button>
         {dirty && <span className="text-[10px] text-amber-500">Unsaved changes</span>}
+        {error && (
+          <span className="flex items-center gap-1 text-[10px] text-red-500">
+            <span>Error: {error}</span>
+            <button onClick={() => setError(null)} className="hover:text-red-700 cursor-pointer">✕</button>
+          </span>
+        )}
 
         <button onClick={() => setShowPreview(true)}
           className="px-4 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors">

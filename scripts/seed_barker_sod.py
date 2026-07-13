@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Seed Sod-layer connections from Margaret Barker's Temple Theology."""
 
-import sys, os, json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from lib.db import get_db, add_connection
+from lib.db import add_connection, get_db
 
 CONNECTIONS = [
     # Angel of YHWH — the "lesser YHWH" / second god
@@ -23,7 +25,7 @@ CONNECTIONS = [
      "Barker: Daniel's 'Son of Man' coming with clouds is the same divine figure as Revelation's Son of Man — the Divine Angel who receives dominion"),
     ("dan.7.13", "matt.26.64", "angel_of_yhwh", "barker_angel_of_yhwh",
      "Barker: Jesus identifies himself as Daniel's Son of Man — 'ye shall see the Son of Man sitting on the right hand of power and coming in the clouds of heaven'"),
-    
+
     # Temple as microcosm of creation
     ("gen.1.1", "exo.25.40", "temple_microcosm", "creation_temple_microcosm",
      "Barker: The seven days of creation correspond to the seven-branched lampstand — the temple was a model of the created order, 'the pattern of things in the heavens'"),
@@ -35,7 +37,7 @@ CONNECTIONS = [
      "Barker: Stephen quotes Isaiah 66 — 'Heaven is my throne, earth is my footstool' — the temple-cosmos identification is the foundation of temple theology"),
     ("psa.78.69", "gen.1.1", "temple_microcosm", "creation_temple_microcosm",
      "Barker: 'He built his sanctuary like the high heavens, like the earth which he founded forever' — the temple is explicitly compared to creation"),
-    
+
     # Divine council
     ("1kgs.22.19", "isa.6.1", "divine_council", "barker_divine_council",
      "Barker: Micaiah's vision of the heavenly council and Isaiah's temple vision are the same theology — YHWH as Divine King surrounded by his heavenly court"),
@@ -49,7 +51,7 @@ CONNECTIONS = [
      "Barker: 'When the Most High divided the nations... he set the bounds of the people according to the number of the sons of God' — the divine council governed the nations"),
     ("deu.32.8", "acts.17.26", "divine_council", "barker_divine_council",
      "Barker: Paul's 'determined the bounds of their habitation' echoes Deuteronomy 32 — the divine council's role in allocating nations"),
-    
+
     # Eden as temple / garden-temple
     ("gen.2.8", "ezek.28.13", "eden_temple", "eden_as_prototype_temple",
      "Barker: Eden was the first temple — the garden of God, where God walked, on the holy mountain. Ezekiel describes the king of Tyre as having been in Eden, the garden of God"),
@@ -63,7 +65,7 @@ CONNECTIONS = [
      "Barker: Ezekiel's temple river parallels Eden's river — both water sources that bring life. The temple restores Eden"),
     ("gen.2.9", "1kgs.6.29", "eden_temple", "eden_as_prototype_temple",
      "Barker: The tree of life in Eden is replicated in the temple's carved palm trees and cherubim — the temple as restored Eden"),
-    
+
     # Holy of Holies / Day of Atonement
     ("lev.16.1", "heb.9.7", "holy_of_holies", "day_of_atonement_access",
      "Barker: The Day of Atonement was the central ritual — the high priest entering the Holy of Holies is the type of Christ entering heaven"),
@@ -77,7 +79,7 @@ CONNECTIONS = [
      "Barker: 'Boldness to enter the holiest by the blood of Jesus' — Christ's blood is the new Day of Atonement, granting access"),
     ("lev.16.15", "matt.27.51", "holy_of_holies", "day_of_atonement_access",
      "Barker: The temple veil rent at Christ's death — access to the Holy of Holies opened. The Day of Atonement typology fulfilled"),
-    
+
     # Mercy seat / kapporet
     ("exo.25.17", "rom.3.25", "mercy_seat", "mercy_seat_typology",
      "Barker: The mercy seat (kapporet) between the cherubim — Paul says Christ is our 'hilasterion' (mercy seat), the place of atonement"),
@@ -85,7 +87,7 @@ CONNECTIONS = [
      "Barker: 'Thou that dwellest between the cherubim' — YHWH's throne is the mercy seat, the place of divine presence"),
     ("exo.25.22", "rev.11.19", "mercy_seat", "mercy_seat_typology",
      "Barker: 'There I will meet with thee' — the ark of the covenant in the heavenly temple, seen in Revelation"),
-    
+
     # Divine ascent / visionary ascent
     ("gen.28.12", "john.1.51", "divine_ascent", "visionary_ascent",
      "Barker: Jacob's ladder — the heavenly ascent between earth and heaven. Jesus says 'Ye shall see heaven open, and the angels of God ascending and descending upon the Son of Man'"),
@@ -97,7 +99,7 @@ CONNECTIONS = [
      "Barker: Paul caught up to the third heaven — a visionary ascent like Micaiah's vision of the heavenly council"),
     ("exo.24.9", "gen.28.12", "divine_ascent", "visionary_ascent",
      "Barker: The elders ascending Sinai to see God and eat in his presence — the first biblical 'temple ascent' narrative"),
-    
+
     # Theosis / becoming divine
     ("psa.82.6", "john.10.34", "theosis", "becoming_divine_through_covenant",
      "Barker: Jesus' use of Psalm 82 at John 10:34 is the key text for early Christian theosis — 'if he called them gods unto whom the word of God came'"),
@@ -105,7 +107,7 @@ CONNECTIONS = [
      "Barker: 'Partakers of the divine nature' (2 Pet 1:4) and 'Ye are gods' (Ps 82:6) reflect the temple theology of theosis — humans can become divine through covenant"),
     ("rom.8.29", "1jn.3.2", "theosis", "becoming_divine_through_covenant",
      "Barker: 'Predestinated to be conformed to the image of his Son' and 'we shall be like him' represent theosis"),
-    
+
     # Melchizedek / royal priesthood
     ("gen.14.18", "heb.7.1", "kingdom_priesthood", "melchizedek_priesthood",
      "Barker: Melchizedek as 'priest of El Elyon (God Most High)' represents the pre-Levitical, original priesthood — the order of the Son of God"),
@@ -117,7 +119,7 @@ CONNECTIONS = [
      "Barker: The DSS Melchizedek Scroll (11Q13) identifies Melchizedek as a heavenly high priest who will execute judgment — the template for Hebrews 7"),
     ("11Q13", "heb.7.1", "kingdom_priesthood", "melchizedek_priesthood",
      "Barker: Hebrews' Melchizedek theology is rooted in the same tradition as the DSS Melchizedek Scroll — a heavenly, not earthly, high priest"),
-    
+
     # Divine marriage
     ("hos.2.19", "rev.19.7", "divine_marriage", "sacred_marriage_temple",
      "Barker: 'I will betroth thee unto me forever' — Hosea's marriage metaphor for the covenant is the root of Revelation's marriage of the Lamb"),
@@ -125,7 +127,7 @@ CONNECTIONS = [
      "Barker: The Song of Solomon read as temple liturgy — the union of the king and the land/people, which Paul applies to Christ and the Church"),
     ("eph.5.25", "rev.19.7", "divine_marriage", "sacred_marriage_temple",
      "Barker: Christ's love for the Church and the marriage of the Lamb — the temple marriage tradition from creation to new creation"),
-    
+
     # Sacred center / cosmic mountain
     ("psa.24.3", "isa.2.2", "cosmic_mountain", "mountain_of_god",
      "Barker: 'The mountain of the Lord's house shall be established in the top of the mountains' — Zion as the cosmic mountain, the center of the world"),
@@ -135,7 +137,7 @@ CONNECTIONS = [
      "Barker: Bethel as the 'gate of heaven' — Jacob's ladder is the axis mundi, the connection between heaven and earth, which Jesus claims as himself"),
     ("ezek.28.14", "gen.2.8", "eden_temple", "eden_as_prototype_temple",
      "Barker: 'Thou wast upon the holy mountain of God' — the king of Tyre as an Eden figure, showing Eden was understood as the mountain of God"),
-    
+
     # Watchers / Enochic tradition
     ("gen.6.1", "jude.1.6", "watchers_enedochic", "barker_watchers",
      "Barker: The 'sons of God' in Genesis 6 — the Watcher tradition of 1 Enoch is essential background for understanding Jude and 2 Peter"),
@@ -150,7 +152,7 @@ def main():
     print("=" * 60)
     print("  Margaret Barker — Sod Layer Expansion")
     print("=" * 60)
-    
+
     count = 0
     for source, target, conn_type, subtype, note in CONNECTIONS:
         try:
@@ -159,19 +161,19 @@ def main():
                 "SELECT COUNT(*) FROM connections WHERE source_verse = ? AND target_verse = ? AND type = ? AND subtype = ?",
                 (source, target, conn_type, subtype)
             ).fetchone()[0]
-            
+
             if existing == 0:
                 add_connection(conn, source, target, layer="sod",
                               type_name=conn_type, subtype=subtype,
                               strength=0.55, confidence=0.45,
                               discovered_by="human",
-                              metadata={"scholar": "Margaret Barker", 
+                              metadata={"scholar": "Margaret Barker",
                                        "note": note[:200],
                                        "source": "Temple Theology"})
                 count += 1
         except Exception:
             pass
-    
+
     conn.commit()
     total_sod = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='sod'").fetchone()["c"]
     print(f"  Added {count} new Barker Sod connections")

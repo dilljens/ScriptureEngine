@@ -12,9 +12,11 @@ export default function ChapterTile({ tab, isActive, onSelect, onClose, onDragSt
   const workColors = {
     ot: 'border-l-amber-500', nt: 'border-l-blue-500',
     bom: 'border-l-green-500', dc: 'border-l-purple-500',
-    pgp: 'border-l-pink-500', apoc: 'border-l-yellow-500',
+    pgp: 'border-l-pink-500', dss: 'border-l-yellow-500',
+    apoc: 'border-l-rose-500', pseu: 'border-l-indigo-500',
+    expanded: 'border-l-teal-500',
   }
-  const work = ref?.workId || 'ot'
+  const work = ref?.workId || (tab.book?.startsWith('dc') ? 'dc' : 'ot')
   const borderColor = workColors[work] || 'border-l-neutral-400'
 
   return (

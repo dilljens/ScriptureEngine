@@ -21,8 +21,11 @@ Usage:
     python3 scripts/detect_mukdam_umeuchar.py
 """
 
-import sys, os, re, json
+import json
+import re
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from lib.db import get_db
 
@@ -76,7 +79,7 @@ KNOWN_CASES = [
 def detect_temporal_disruptions(conn, book_id):
     """Find potential non-chronological passages by detecting temporal markers
     that conflict with surrounding context.
-    
+
     Looks for:
     - 'before there reigned' style anachronisms
     - Genealogies that interrupt narrative
@@ -86,13 +89,13 @@ def detect_temporal_disruptions(conn, book_id):
         "SELECT id, text_english, chapter, verse FROM verses WHERE book_id=? AND text_english IS NOT NULL ORDER BY CAST(chapter AS INTEGER), CAST(verse AS INTEGER)",
         (book_id,)
     ).fetchall()
-    
+
     disruptions = []
-    
+
     for v in verses:
         text = v["text_english"] or ""
         lower = text.lower()
-        
+
         # Pattern 1: "before there reigned" or "before there was" (anachronism)
         if re.search(r'before there (reigned|was|came)', lower):
             disruptions.append({
@@ -101,7 +104,7 @@ def detect_temporal_disruptions(conn, book_id):
                 "text": text[:120],
                 "confidence": 0.6,
             })
-        
+
         # Pattern 2: Genealogical markers ("these are the generations/sons of")
         if re.search(r'(these are|this is|are the) (generations|sons|descendants) of', lower):
             # Check if this interrupts a narrative
@@ -111,7 +114,7 @@ def detect_temporal_disruptions(conn, book_id):
                 "text": text[:120],
                 "confidence": 0.4,
             })
-        
+
         # Pattern 3: "in that day" or "at that time" referring to future events
         if re.search(r'at that time|in that day|after these things', lower):
             disruptions.append({
@@ -120,34 +123,34 @@ def detect_temporal_disruptions(conn, book_id):
                 "text": text[:120],
                 "confidence": 0.3,
             })
-    
+
     return disruptions
 
 
 def main():
     conn = get_db()
-    
+
     print("=" * 60)
     print("Mukdam u'Meuchar — Non-Chronological Order Detection")
     print("=" * 60)
-    
+
     # 1. Known cases (already cataloged)
     print(f"\nKnown rabinnic cases: {len(KNOWN_CASES)}")
     for kc in KNOWN_CASES:
         print(f"  ✅ {kc['verse_id']}: {kc['description'][:70]}...")
-    
+
     # 2. Algorithmic detection in narrative books
     narrative_books = ["gen", "exo", "lev", "num", "deu", "josh", "judg", "sam", "kgs"]
-    
+
     all_disruptions = []
     for bid in narrative_books:
         dis = detect_temporal_disruptions(conn, bid)
         for d in dis:
             d["book"] = bid
         all_disruptions.extend(dis)
-    
+
     print(f"\nAlgorithmic detections: {len(all_disruptions)}")
-    
+
     # Store in patterns table
     stored = 0
     for d in all_disruptions:
@@ -155,7 +158,7 @@ def main():
             continue
         try:
             conn.execute(
-                """INSERT OR IGNORE INTO patterns 
+                """INSERT OR IGNORE INTO patterns
                    (book_id, start_verse, end_verse, pattern_type, description, confidence, discovered_by, metadata)
                    VALUES (?, ?, ?, 'mukdam_umeuchar', ?, ?, 'algorithm', ?)""",
                 (d["book"], d["verse_id"], d["verse_id"],
@@ -166,17 +169,17 @@ def main():
             stored += 1
         except Exception:
             pass
-    
+
     conn.commit()
     print(f"  Stored: {stored}")
-    
+
     # Show top findings
     high_confidence = [d for d in all_disruptions if d["confidence"] >= 0.5]
-    print(f"\nTop findings:")
+    print("\nTop findings:")
     for d in high_confidence[:10]:
         print(f"  [{d['book']}] {d['verse_id']}: {d['type']} (conf={d['confidence']})")
         print(f"    {d['text'][:80]}")
-    
+
     conn.close()
 
 

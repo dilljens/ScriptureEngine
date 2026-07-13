@@ -6,35 +6,34 @@ these alternative systems.
 """
 
 from collections import defaultdict
-from lib.db import add_connection
 
 
 def run(conn, book_ids=None):
     """Connect verses sharing same ordinal or reduced gematria values.
-    
+
     For each value that appears in 2-15 verses, connect all verses
     that share that value.
-    
+
     Returns count of connections created.
     """
     count = 0
-    
+
     # ── Ordinal Gematria ──
     count += _process_value_system(conn, "same_gematria_ordinal", "value_ordinal", max_verses=15)
-    
+
     # ── Reduced Gematria ──
     # Reduced values are 1-9 (high collision, each in 15k+ verses).
     # Instead of full-group matching (pointless for 9 buckets),
     # connect verses where a word's reduced value matches the
     # reduced value of a divine name — meaningful word-level link.
     count += _process_reduced_via_divine_names(conn, "same_gematria_reduced", "value_reduced")
-    
+
     return count
 
 
 def _process_value_system(conn, conn_type, value_column, max_verses=15, hub_threshold=None):
     """Process one value system: find shared values and create connections.
-    
+
     Args:
         conn: Database connection
         conn_type: Connection type string (e.g. 'same_gematria_ordinal')
@@ -44,30 +43,30 @@ def _process_value_system(conn, conn_type, value_column, max_verses=15, hub_thre
     """
     count = 0
     batch = []
-    
+
     rows = conn.execute(f"""
         SELECT g.{value_column} as val, g.verse_id
         FROM gematria g
         WHERE g.{value_column} > 0
     """).fetchall()
-    
+
     # Group verses by value
     value_groups = defaultdict(set)
     for r in rows:
         val = r["val"]
         if 1 <= val <= 999:  # Skip values that are too large/common
             value_groups[val].add(r["verse_id"])
-    
+
     processed = 0
     for val, verses in value_groups.items():
         size = len(verses)
         if size < 2 or size > max_verses:
             continue
-        
+
         processed += 1
         verse_list = sorted(verses)
         strength = min(0.8, 0.3 + 0.05 * (max_verses - size))
-        
+
         if hub_threshold is not None and len(verse_list) > hub_threshold:
             # Hub-and-spoke for larger groups
             hub = verse_list[0]
@@ -91,17 +90,17 @@ def _process_value_system(conn, conn_type, value_column, max_verses=15, hub_thre
                         f'{{"value": {val}, "system": "{conn_type}", "verse_count": {size}}}'
                     ))
                     count += 1
-                    
+
                     if len(batch) >= 200:
                         _batch_insert(conn, batch)
                         batch = []
-        
+
         if processed % 500 == 0:
             print(f"    {conn_type}: {processed} values processed...", flush=True)
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  {conn_type}: {count} connections from {processed} value groups")
     return count
 

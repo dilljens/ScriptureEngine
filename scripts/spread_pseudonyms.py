@@ -7,11 +7,11 @@ between all occurrences, showing how the same divine/servant/tyrant
 language appears throughout scripture.
 """
 
-import sys, os, re
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from lib.db import get_db, add_connection
-from lib.gematria import extract_consonants
+import os
+import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from lib.db import add_connection, get_db
 
 # Gileadi's keywords with their English search terms across the canon
 PSEUDONYM_SEARCH = [
@@ -20,7 +20,7 @@ PSEUDONYM_SEARCH = [
     ("Righteousness (divine)", "righteousness", "divine", "psa.11.7"),
     ("Faithfulness", "faithfulness", "divine", "psa.89.1"),
     ("Light (divine)", "light", "divine", "psa.27.1"),
-    
+
     # Servant — Righteousness personified
     ("Righteousness (servant)", "righteousness", "servant", "isa.41.2"),
     ("Arm of Lord", "arm of the lord", "servant", "isa.53.1"),
@@ -40,7 +40,7 @@ PSEUDONYM_SEARCH = [
     ("Mediator", "mediator", "servant", "1tim.2.5"),
     ("Advocate", "advocate", "servant", "1jn.2.1"),
     ("Deliverer", "deliverer", "servant", "rom.11.26"),
-    
+
     # Tyrant — Assyria/Babylon
     ("Wicked", "wicked", "tyrant", "psa.1.1"),
     ("Pride", "pride", "tyrant", "prov.16.18"),
@@ -55,7 +55,7 @@ PSEUDONYM_SEARCH = [
     ("Antichrist", "antichrist", "tyrant", "1jn.2.18"),
     ("Man of sin", "man of sin", "tyrant", "2thes.2.3"),
     ("Son of perdition", "son of perdition", "tyrant", "2thes.2.3"),
-    
+
     # Thematic keywords
     ("Covenant", "covenant", "thematic", "gen.9.11"),
     ("Remnant", "remnant", "thematic", "isa.10.20"),
@@ -70,36 +70,36 @@ def main():
     print("=" * 60)
     print("  SPREADING PSEUDONYMS ACROSS THE CANON")
     print("=" * 60)
-    
+
     # Get all verse IDs for quick existence checks
     all_verses = set(r["id"] for r in conn.execute("SELECT id FROM verses").fetchall())
-    
+
     total = 0
     for keyword, search_term, category, seed_verse in PSEUDONYM_SEARCH:
         print(f"  {keyword:25s} ({search_term:20s})...", flush=True)
-        
+
         # Search across ALL books in English text
         rows = conn.execute("""
             SELECT id, book_id, text_english FROM verses
             WHERE text_english LIKE ?
             ORDER BY book_id, chapter, verse
         """, (f"%{search_term}%",)).fetchall()
-        
+
         if len(rows) < 2:
             print(f"    -> Only {len(rows)} occurrence, skipping")
             continue
-        
+
         found_verses = []
         for r in rows:
             if r["id"] in all_verses:
                 found_verses.append(r["id"])
-        
+
         if len(found_verses) < 2:
             continue
-        
+
         # Create connections — hub-and-spoke to the first occurrence (the seed or first found)
         hub = seed_verse if seed_verse in found_verses else found_verses[0]
-        
+
         pair_count = 0
         for v in found_verses:
             if v == hub:
@@ -119,14 +119,14 @@ def main():
                 pair_count += 1
             except Exception:
                 pass
-            
+
             if pair_count % 50 == 0:
                 conn.commit()
-        
+
         conn.commit()
         print(f"    -> {pair_count} connections across {len(found_verses)} verses")
         total += pair_count
-    
+
     # Summary
     symbolic_total = conn.execute("SELECT COUNT(*) as c FROM connections WHERE layer='symbolic'").fetchone()["c"]
     print(f"\n  Total pseudonym spread: {total} connections")

@@ -37,7 +37,7 @@ PSEUDONYM_MAP = [
     ("River", ["5104"], ["river", "flood", "stream"], "both"),
     ("Arm", ["2220"], ["arm"], "servant"),
     ("Breath", ["7307", "5397"], ["breath", "wind", "blast"], "both"),
-    
+
     # Single-actor pseudonyms
     ("Anger", ["639"], ["anger", "angry"], "tyrant"),
     ("Wrath", ["5678", "2534"], ["wrath", "fury"], "tyrant"),
@@ -56,11 +56,11 @@ def run(conn, book_ids=None):
     """Search non-Isaiah books for pseudonym keywords and connect to Isaiah hubs."""
     total = 0
     batch = []
-    
+
     # Clear previous runs
     conn.execute("DELETE FROM connections WHERE subtype IN ('cross_canon_pseudonym')")
     conn.commit()
-    
+
     for name, strongs, eng_keywords, actor in PSEUDONYM_MAP:
         # ── Hebrew OT Prophets ──
         for strong in strongs:
@@ -72,7 +72,7 @@ def run(conn, book_ids=None):
                     WHERE v.book_id = ? AND g.lemma LIKE ?
                     LIMIT 20
                 """, (book, f"%{strong}%")).fetchall()
-                
+
                 for r in rows:
                     hub = TYRANT_HUB if actor == "tyrant" else SERVANT_HUB
                     vid = r["verse_id"]
@@ -88,7 +88,7 @@ def run(conn, book_ids=None):
                     if len(batch) >= 200:
                         _batch_insert(conn, batch)
                         batch = []
-        
+
         # ── English BoM + D&C ──
         for keyword in eng_keywords:
             # Search BoM
@@ -98,7 +98,7 @@ def run(conn, book_ids=None):
                     WHERE book_id = ? AND text_english LIKE ?
                     LIMIT 15
                 """, (book, f"%{keyword}%")).fetchall()
-                
+
                 for r in rows:
                     hub = TYRANT_HUB if actor == "tyrant" else SERVANT_HUB
                     vid = r["id"]
@@ -112,14 +112,14 @@ def run(conn, book_ids=None):
                     if len(batch) >= 200:
                         _batch_insert(conn, batch)
                         batch = []
-            
+
             # Search D&C
             rows = conn.execute("""
                 SELECT id FROM verses
                 WHERE book_id LIKE 'dc%' AND text_english LIKE ?
                 LIMIT 20
             """, (f"%{keyword}%",)).fetchall()
-            
+
             for r in rows:
                 hub = TYRANT_HUB if actor == "tyrant" else SERVANT_HUB
                 vid = r["id"]
@@ -133,10 +133,10 @@ def run(conn, book_ids=None):
                 if len(batch) >= 200:
                     _batch_insert(conn, batch)
                     batch = []
-    
+
     if batch:
         _batch_insert(conn, batch)
-    
+
     print(f"  Cross-canon pseudonyms: {total} connections from {len(PSEUDONYM_MAP)} pseudonym terms")
     return total
 

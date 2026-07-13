@@ -9,23 +9,21 @@ Usage: python3 connections.py '{"verse": "gen.1.1"}'
        python3 connections.py '{"tool": "scripture_graph_entities", "verse": "gen.1.1"}'
 """
 
-import sys
 import json
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from lib.db import get_db, get_connections_by_layer, get_connections
+from lib.api import TOOL_REGISTRY
+from lib.api import call_tool as api_call_tool
 from lib.connections.graph import get_all_layers_for_verse, get_connection_summary
 from lib.connections.types import LAYERS
-from lib.api import TOOL_REGISTRY, call_tool as api_call_tool
+from lib.db import get_connections_by_layer, get_db
 
 
 def main():
-    if len(sys.argv) < 2:
-        args = json.loads(sys.stdin.read())
-    else:
-        args = json.loads(sys.argv[1])
+    args = json.loads(sys.stdin.read()) if len(sys.argv) < 2 else json.loads(sys.argv[1])
 
     # Dispatch to lib.api tool if requested
     tool_name = args.pop("tool", None)

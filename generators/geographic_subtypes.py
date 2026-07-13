@@ -13,10 +13,9 @@ typed geographic connections for specific geographic concepts:
 Each uses keyword and entity-based pre-filtering.
 """
 
-import re
 from collections import defaultdict
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 # Keyword gazetteers for each geographic subtype
 GEO_SUBTYPES = {

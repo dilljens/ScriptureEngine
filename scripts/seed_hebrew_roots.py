@@ -142,28 +142,28 @@ ROOT_LESSONS = [
 def main():
     conn = sqlite3.connect(str(MEM_DB))
     conn.execute("PRAGMA foreign_keys=OFF")
-    
+
     new_nodes = 0
     new_items = 0
     new_edges = 0
-    
+
     for lesson in ROOT_LESSONS:
         lid = f"root_{lesson['root']}"
-        
+
         existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing:
             print(f"  SKIP {lid}: practice items already exist")
             continue
-        
+
         title = f"Root {lesson['root']} — {lesson['meaning']}"
         desc = f"The root {lesson['root']} means '{lesson['meaning']}'. Derived words: " + ", ".join(f"{w} ({g})" for w, g in lesson['derived_words'])
-        
+
         conn.execute(
             "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'root', ?)",
             (lid, title, lesson['level'], desc[:200])
         )
         new_nodes += 1
-        
+
         # Content
         content = {
             "node_id": lid,
@@ -176,46 +176,46 @@ def main():
             "key_points": [
                 f"Root {lesson['root']} = {lesson['meaning']}",
                 f"Derives {len(lesson['derived_words'])}+ common words",
-                f"Key theological term in Biblical Hebrew",
+                "Key theological term in Biblical Hebrew",
             ],
         }
         conn.execute(
             "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
-        
+
         # Practice items
-        def add(q, opts, ans, qtype="multiple_choice"):
+        def add(q, opts, ans, qtype="multiple_choice", lid=lid):
             opts_j = json.dumps(opts, ensure_ascii=False) if opts else ""
             conn.execute("INSERT INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
                         (lid, qtype, q, opts_j, ans, 0.5))
             nonlocal new_items
             new_items += 1
-        
+
         add(f"What is the root {lesson['root']} mean?", [lesson['meaning'], "king", "write", "speak"], lesson['meaning'])
         add(f"Which word derives from root {lesson['root']}?", [w for w, g in lesson['derived_words'][:4]] or ["word"], lesson['derived_words'][0][0])
-        
+
         # Find a verse example
         try:
             conn2 = sqlite3.connect(str(DB_PATH))
-            for w, g in lesson['derived_words']:
+            for w, _g in lesson['derived_words']:
                 row = conn2.execute("SELECT v.id, v.text_hebrew FROM verses v JOIN gematria g ON g.verse_id=v.id WHERE g.word_hebrew LIKE ? LIMIT 1", (f'%{w}%',)).fetchone()
                 if row:
                     add(f"Find verse containing '{w}' (from root {lesson['root']})", [w, lesson['root'], "word", "verse"], w)
                     break
             conn2.close()
-        except:
+        except Exception:
             pass
-        
+
         # Prerequisites
         conn.execute("INSERT OR IGNORE INTO hebrew_edges (source_id, target_id, edge_type) VALUES ('root_concept', ?, 'prerequisite')", (lid,))
         new_edges += 1
-        
+
         print(f"  CREATED {lid}: {title}")
-    
+
     conn.commit()
     conn.close()
-    
+
     print(f"\n✓ Done! Created {new_nodes} root lessons, {new_items} items, {new_edges} edges")
 
 

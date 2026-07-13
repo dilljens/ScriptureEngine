@@ -16,6 +16,25 @@
  */
 
 import React from 'react'
+import { BOOK_TITLES } from '../bookNames'
+
+// Format a verse ref like "gen.1.1-12" into a readable name like "Genesis 1:1-12"
+function formatVerseRef(ref) {
+  if (!ref) return ref
+  const parts = ref.split('.')
+  if (parts.length < 2) return ref
+  const [bookId, chapter, ...rest] = parts
+  // D&C special case: "dc76" → "D&C 76"
+  if (bookId.startsWith('dc')) {
+    const section = bookId.replace('dc', '')
+    const verse = rest.join('.')
+    return verse ? `D&C ${section}:${verse}` : `D&C ${section}`
+  }
+  const bookName = BOOK_TITLES[bookId]
+  if (!bookName) return ref
+  const verse = rest.join('.')
+  return verse ? `${bookName} ${chapter}:${verse}` : `${bookName} ${chapter}`
+}
 
 // ── Inline patterns ──
 
@@ -144,9 +163,9 @@ export function createComponents(options = {}) {
               className={`inline align-baseline font-medium cursor-pointer transition-colors
                 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline
                 ${className || ''}`}
-              title={`Click to view ${value}`}
+              title={`Click to view ${formatVerseRef(value)}`}
             >
-              {value}
+              {formatVerseRef(value)}
             </span>
           )
 

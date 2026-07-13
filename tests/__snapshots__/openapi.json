@@ -3566,7 +3566,7 @@
     "/api/v1/memorize/review": {
       "get": {
         "summary": "Get Due Reviews",
-        "description": "Get due reviews from the memorize queue, ordered by urgency.",
+        "description": "Get due reviews from the memorize queue, ordered by urgency.\n\nFeatures:\n- FIRe knock-out: cards with fi_re_credit >= 1.0 are skipped (extend interval)\n- Connection-aware difficulty: shown in response\n- Repetition compression (if compress=True): connected cards grouped together\n- Palace-guided ordering (if palace_order=True): ordered by memory palace loci",
         "operationId": "get_due_reviews_api_v1_memorize_review_get",
         "parameters": [
           {
@@ -3587,6 +3587,26 @@
               "type": "integer",
               "default": 10,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "compress",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Compress"
+            }
+          },
+          {
+            "name": "palace_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Palace Order"
             }
           }
         ],
@@ -3640,6 +3660,202 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memorize/suggest": {
+      "get": {
+        "summary": "Suggest Verses",
+        "description": "Suggest verses to memorize based on graph centrality.\n\nFinds well-connected verses not yet in the queue \u2014 these are\nhigh-value verses that will unlock many connections.",
+        "operationId": "suggest_verses_api_v1_memorize_suggest_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review/interleaved": {
+      "get": {
+        "summary": "Get Interleaved Reviews",
+        "description": "Get interleaved reviews from ALL areas: memorize + hebrew + learn.\n\nImplements Math Academy's macro-interleaving (Ch 19):\n- Pulls due cards from memorize queue, hebrew review queue, and learn review\n- Interleaves them: no more than 2 consecutive from same area\n- Returns a mixed session for maximum retention",
+        "operationId": "get_interleaved_reviews_api_v1_review_interleaved_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 15,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review/next": {
+      "get": {
+        "summary": "Get Next Review",
+        "description": "Get the next review card, respecting non-interference.\n\nEnsures the next card doesn't interfere with the last one reviewed.\nAvoids scheduling confusable pairs consecutively.",
+        "operationId": "get_next_review_api_v1_review_next_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "last_verse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Last Verse"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review/weakest": {
+      "get": {
+        "summary": "Get Weakest Reviews",
+        "description": "Get cards where the user is weakest for targeted remediation.\n\nImplements Math Academy's targeted remediation (Ch 21):\n- Identifies verses with lowest accuracy rates\n- Prioritizes verses with most failed attempts\n- Returns targeted mini-session for weak areas",
+        "operationId": "get_weakest_reviews_api_v1_review_weakest_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Limit"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4043,6 +4259,44 @@
         }
       }
     },
+    "/api/v1/verses/{ref}/disagreements": {
+      "get": {
+        "summary": "Get Verse Disagreements",
+        "description": "Get interpretive disagreements for a verse \u2014 contradictory readings across traditions.",
+        "operationId": "get_verse_disagreements_api_v1_verses__ref__disagreements_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/search": {
       "get": {
         "summary": "Search",
@@ -4418,6 +4672,23 @@
         "summary": "Get Info",
         "description": "Get database and system statistics.",
         "operationId": "get_info_api_v1_info_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/books": {
+      "get": {
+        "summary": "Get Books",
+        "description": "Get all works and their books for navigation.",
+        "operationId": "get_books_api_v1_books_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5245,44 +5516,6 @@
         }
       }
     },
-    "/api/v1/wiki/{entity_id}": {
-      "get": {
-        "summary": "Get Wiki Article",
-        "description": "Get a wiki article about a biblical entity or concept.",
-        "operationId": "get_wiki_article_api_v1_wiki__entity_id__get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/wiki/search": {
       "get": {
         "summary": "Search Wiki",
@@ -5365,6 +5598,44 @@
         "summary": "Wiki Concordance",
         "description": "Get key verses for an entity from its wiki article.",
         "operationId": "wiki_concordance_api_v1_wiki_concordance__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/{entity_id}": {
+      "get": {
+        "summary": "Get Wiki Article",
+        "description": "Get a wiki article about a biblical entity or concept.",
+        "operationId": "get_wiki_article_api_v1_wiki__entity_id__get",
         "parameters": [
           {
             "name": "entity_id",
@@ -6024,6 +6295,207 @@
               "type": "integer",
               "default": 20,
               "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truth-score": {
+      "get": {
+        "summary": "Truth Score",
+        "description": "Cross-canon consensus scoring.\n\nFor a given topic/verse, shows how each canon treats it:\n- Number of relevant verses per work\n- Connection counts and tradition distribution\n- Consensus score across canons\n\nThe goal: let users see which interpretations are supported\nacross multiple canons vs. unique to one.",
+        "operationId": "truth_score_api_v1_truth_score_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Topic or search term",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Topic or search term"
+          },
+          {
+            "name": "verse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Specific verse to analyze",
+              "default": "",
+              "title": "Verse"
+            },
+            "description": "Specific verse to analyze"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Max verses per work",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Max verses per work"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/js/search": {
+      "get": {
+        "summary": "Search Js",
+        "description": "Search Joseph Smith's teachings/discourses by keyword.",
+        "operationId": "search_js_api_v1_js_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/js/text/{text_id}": {
+      "get": {
+        "summary": "Get Js Text",
+        "description": "Get full text of a Joseph Smith discourse.",
+        "operationId": "get_js_text_api_v1_js_text__text_id__get",
+        "parameters": [
+          {
+            "name": "text_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Text Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verse-of-day": {
+      "get": {
+        "summary": "Verse Of Day",
+        "description": "Get a random verse with word-by-word breakdown for daily study.\n\nReturns: random verse with Hebrew, English, Strong's, gematria,\nand connection count. Used by the DailyVerse component for\nmaintenance-mode study.",
+        "operationId": "verse_of_day_api_v1_verse_of_day_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
             }
           }
         ],

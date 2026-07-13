@@ -8,8 +8,8 @@ connections are suggestive rather than definitive. Low confidence (0.35-0.45).
 """
 
 from collections import defaultdict
-from lib.db import add_connection
 
+from lib.db import add_connection
 
 # Major biblical events with approximate BC dates (Ussher-LXX based)
 # Format: (verse_id, event_name, approx_bc_date)

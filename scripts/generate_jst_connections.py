@@ -6,7 +6,10 @@ Abraham chapters 4-5 parallel Genesis 1-2 (alternate account).
 
 Each connection maps JST verse → KJV verse with the revision type.
 """
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
 
@@ -29,52 +32,52 @@ NOTABLE_VERSES = {
 def run():
     conn = get_db()
     conn.execute("PRAGMA journal_mode=DELETE")
-    
+
     total = 0
-    
+
     for jst_book, jst_ch_start, kjv_book, kjv_ch_start, num_ch in BLOCKS:
         for offset in range(num_ch):
             jst_ch = jst_ch_start + offset
             kjv_ch = kjv_ch_start + offset
-            
+
             jst_verses = conn.execute(
                 "SELECT id, text_english FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
                 (jst_book, jst_ch)
             ).fetchall()
-            
+
             kjv_verses = conn.execute(
                 "SELECT id, text_english FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
                 (kjv_book, kjv_ch)
             ).fetchall()
-            
+
             if not jst_verses or not kjv_verses:
                 continue
-            
+
             max_v = min(len(jst_verses), len(kjv_verses))
-            
+
             for i in range(max_v):
                 jst_id = jst_verses[i][0]
                 kjv_id = kjv_verses[i][0]
                 jst_text = jst_verses[i][1] or ''
                 kjv_text = kjv_verses[i][1] or ''
-                
+
                 # Skip if either text is empty
                 if not jst_text or not kjv_text:
                     continue
-                
+
                 # Calculate overlap to confirm this is a genuine parallel
                 words_jst = set(jst_text.lower().split())
                 words_kjv = set(kjv_text.lower().split())
                 overlap = len(words_jst & words_kjv) / max(len(words_jst | words_kjv), 1)
-                
+
                 # Skip if text is very different (not parallel)
                 if overlap < 0.15:
                     continue
-                
+
                 # Determine revision subtype
                 key = (jst_book, jst_ch, i + 1)
                 subtype = NOTABLE_VERSES.get(key, "jst_expansion")
-                
+
                 try:
                     conn.execute("""
                         INSERT OR IGNORE INTO connections
@@ -88,16 +91,16 @@ def run():
                     total += 1
                 except Exception:
                     pass
-        
+
         print(f"  {jst_book}.{jst_ch_start}-{jst_ch_start+num_ch-1} → {kjv_book}.{kjv_ch_start}-{kjv_ch_start+num_ch-1}: {total} so far")
-    
+
     conn.commit()
     print(f"\nTotal JST connections created: {total}")
-    
+
     # Verify
     final = conn.execute("SELECT COUNT(*) FROM connections WHERE type='inspired_revision'").fetchone()[0]
     print(f"Final inspired_revision count: {final}")
-    
+
     conn.close()
 
 

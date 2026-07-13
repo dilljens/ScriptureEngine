@@ -5,10 +5,12 @@ Adds a 'tag' field to metadata JSON for all connections that have
 scholar information but are missing the tag field.
 """
 
-import sys, os, json
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.db import get_db
-
 
 SCHOLAR_TAGS = {
     "Margaret Barker": "barker_temple",

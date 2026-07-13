@@ -19,10 +19,11 @@ Known parallel blocks:
   D&C 42:45       = Isaiah 29:4
 """
 
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from lib.db import get_db
-
 
 # Known block-parallel book pairs: (source_book, source_ch_start, target_book, target_ch_start, num_chapters)
 BLOCK_PARALLELS = [
@@ -178,33 +179,33 @@ def process_block_parallels(conn):
         for offset in range(num_ch):
             src_ch = src_ch_start + offset
             tgt_ch = tgt_ch_start + offset
-            
+
             src_verses = conn.execute(
                 "SELECT id, text_english FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
                 (src_book, src_ch)
             ).fetchall()
-            
+
             tgt_verses = conn.execute(
                 "SELECT id, text_english FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
                 (tgt_book, tgt_ch)
             ).fetchall()
-            
+
             max_v = min(len(src_verses), len(tgt_verses))
             for i in range(max_v):
                 src_vid = src_verses[i][0]
                 tgt_vid = tgt_verses[i][0]
                 src_text = src_verses[i][1] or ''
                 tgt_text = tgt_verses[i][1] or ''
-                
+
                 # Skip if both texts are empty
                 if not src_text or not tgt_text:
                     continue
-                
+
                 # Calculate text overlap to confirm it's a genuine parallel
                 src_words = set(src_text.lower().split())
                 tgt_words = set(tgt_text.lower().split())
                 overlap = len(src_words & tgt_words) / max(len(src_words | tgt_words), 1)
-                
+
                 if overlap > 0.3:
                     try:
                         conn.execute("""
@@ -218,9 +219,9 @@ def process_block_parallels(conn):
                         count += 1
                     except Exception:
                         pass
-        
+
         print(f"  {src_book}.{src_ch_start}-{src_ch_start+num_ch-1} → {tgt_book}.{tgt_ch_start}-{tgt_ch_start+num_ch-1}: {count} connections so far")
-    
+
     conn.commit()
     return count
 
@@ -231,14 +232,14 @@ def process_known_references(conn):
     for src, tgt in KNOWN_REFERENCES:
         src_text = conn.execute("SELECT text_english FROM verses WHERE id=?", (src,)).fetchone()
         tgt_text = conn.execute("SELECT text_english FROM verses WHERE id=?", (tgt,)).fetchone()
-        
+
         if not src_text or not tgt_text:
             continue
-        
+
         src_words = set((src_text[0] or '').lower().split())
         tgt_words = set((tgt_text[0] or '').lower().split())
         overlap = len(src_words & tgt_words) / max(len(src_words | tgt_words), 1)
-        
+
         try:
             conn.execute("""
                 INSERT OR IGNORE INTO connections
@@ -251,7 +252,7 @@ def process_known_references(conn):
             count += 1
         except Exception:
             pass
-    
+
     conn.commit()
     return count
 
@@ -260,23 +261,23 @@ def main():
     print("=" * 60)
     print("  SELF-REFERENCING CONNECTION GENERATOR")
     print("=" * 60)
-    
+
     conn = get_db()
-    
+
     # Phase 1: Block-level chapter parallels
     print("\nPhase 1: Block parallels...")
     block_count = process_block_parallels(conn)
     print(f"  Total block parallel connections: {block_count}")
-    
+
     # Phase 2: Known single-verse cross-references
     print("\nPhase 2: Known cross-references...")
     ref_count = process_known_references(conn)
     print(f"  Known reference connections: {ref_count}")
-    
+
     # Phase 3: Clean up duplicate echo/allusion connections
     # If a direct_quotation already exists, don't create another
     # (handled by INSERT OR IGNORE)
-    
+
     total = conn.execute("SELECT COUNT(*) FROM connections WHERE subtype IN ('canonical_parallel', 'known_cross_reference')").fetchone()[0]
     print(f"\nTotal self-reference connections created: {total}")
     conn.close()

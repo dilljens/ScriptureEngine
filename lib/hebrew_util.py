@@ -15,7 +15,7 @@ Three improvements for terminal/plaintext display:
 import re
 import unicodedata
 
-from biblical_transliteration import HebrewTransliterator, HebrewOptions, HebrewScheme
+from biblical_transliteration import HebrewOptions, HebrewScheme, HebrewTransliterator
 
 # ── Shared engine ──────────────────────────────────────────────
 # Single instance, reused across all calls
