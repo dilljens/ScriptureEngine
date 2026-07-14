@@ -810,6 +810,15 @@ def get_hebrew_audio(word: str):
                         }}
             except Exception:
                 continue
+    # Fallback: check pre-generated letter audio files
+    letter_path = BASE_DIR / "data" / "audio" / "letters" / f"{word_clean}.wav"
+    if letter_path.exists():
+        return {"ok": True, "data": {
+            "audio_url": f"/api/v1/audio/letter/{word_clean}",
+            "word": word_clean,
+            "source": "letters",
+            "start": 0, "end": 0,
+        }}
     raise HTTPException(404, f"No audio found for: {word_clean}")
 
 

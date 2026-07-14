@@ -81,6 +81,17 @@ def get_read_along_data(verse_id: str):
     return {"ok": True, "data": result}
 
 
+@router.get("/api/v1/audio/letter/{letter_id}")
+def play_letter_audio(letter_id: str):
+    """Serve pre-generated Hebrew letter audio."""
+    safe_name = audio_os.path.basename(letter_id)
+    letter_file = BASE_DIR / "data" / "audio" / "letters" / f"{safe_name}.wav"
+    if not letter_file.exists():
+        raise HTTPException(404, f"Letter audio not found: {letter_id}")
+    return FileResponse(str(letter_file), media_type="audio/wav",
+                        headers={"Content-Disposition": f'inline; filename="{safe_name}.wav"'})
+
+
 @router.get("/api/v1/audio/play-raw/{filename:path}")
 def play_raw_audio_segment(filename: str, start: float = 0.0, end: float = 30.0):
     safe_name = audio_os.path.basename(filename)
