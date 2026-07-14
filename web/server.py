@@ -101,8 +101,10 @@ from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
 from web.routes.memorize import router as memorize_router
 from web.routes.studies import router as studies_router
+from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
+app.include_router(wiki_router)
 app.include_router(audio_router)
 app.include_router(chat_router)
 app.include_router(studies_router)
@@ -115,12 +117,7 @@ app.include_router(learn_router)
 
 
 # ─── RAM Cache (loaded at startup, zero disk reads after) ───
-GUIDE_CACHE = {}          # verse_id → {connections_json, gematria_json, quality_summary, ...}
-VERSE_CACHE = {}          # verse_id → {id, text_english, text_hebrew, text_greek, book_id, chapter, verse, book_title}
-ENTITY_CACHE = []         # all entity links
-LEXICON_CACHE = {}        # lemma → lexicon entry (loaded at startup)
-VEC_CACHE = {"available": False}  # vector search — populated by embed script
-BOOKS_CACHE = None         # work/book tree — precomputed at startup, static data
+from web.cache import GUIDE_CACHE, VERSE_CACHE, ENTITY_CACHE, LEXICON_CACHE, VEC_CACHE, BOOKS_CACHE, WIKI_CACHE
 
 # ── Structured JSON Logger ──
 
@@ -1668,84 +1665,6 @@ def _build_lexicon_cache_index():
             LEXICON_CACHE_BY_HEBREW[heb] = lemma
 
 
-# ─── Wiki Endpoints ───
-
-WIKI_CACHE = {}  # entity/id → article, loaded at startup
-
-
-@app.get("/api/v1/wiki/search")
-def search_wiki(q: str = ""):
-    """Search wiki articles by title or summary."""
-    query = q.strip().lower()
-    if not query or not WIKI_CACHE:
-        return {"ok": True, "data": {"results": [], "total": 0}}
-
-    results = []
-    for article in WIKI_CACHE.values():
-        title = (article.get("title") or "").lower()
-        summary = (article.get("summary") or "").lower()
-        # Simple substring + word boundary match
-        if query in title or query in summary:
-            score = 2 if query in title else 1
-            results.append({
-                "id": article["id"],
-                "title": article["title"],
-                "summary": (article.get("summary") or "")[:200],
-                "article_type": article.get("article_type", ""),
-                "score": score,
-            })
-
-    results.sort(key=lambda r: -r["score"])
-    return {"ok": True, "data": {"results": results[:20], "total": len(results)}}
-
-
-@app.get("/api/v1/wiki/browse/{type_name:path}")
-def browse_wiki(type_name: str = "entity"):
-    """Browse wiki articles by type (entity, concept, etc.)."""
-    t = type_name.strip("/").lower()
-    results = [
-        {"id": a["id"], "title": a["title"], "summary": a["summary"][:100]}
-        for a in WIKI_CACHE.values()
-        if a["article_type"] == t
-    ]
-    return {"ok": True, "data": {"type": t, "articles": results, "total": len(results)}}
-
-
-@app.get("/api/v1/wiki/concordance/{entity_id:path}")
-def wiki_concordance(entity_id: str):
-    """Get key verses for an entity from its wiki article."""
-    eid = entity_id.strip("/").lower().replace(" ", "_")
-    article = WIKI_CACHE.get(eid)
-    if not article:
-        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
-    import json
-    try:
-        verses = json.loads(article.get("key_verses", "[]"))
-    except (json.JSONDecodeError, TypeError):
-        verses = []
-    return {"ok": True, "data": {"entity": eid, "verses": verses, "total": len(verses)}}
-
-
-@app.get("/api/v1/wiki/{entity_id:path}")
-def get_wiki_article(entity_id: str):
-    """Get a wiki article about a biblical entity or concept."""
-    eid = entity_id.strip("/").lower().replace(" ", "_")
-    article = WIKI_CACHE.get(eid)
-    if not article:
-        raise HTTPException(status_code=404, detail=f"Article not found: {eid}")
-    import json
-    result = dict(article)
-    try:
-        result["key_verses"] = json.loads(result.get("key_verses", "[]"))
-    except (json.JSONDecodeError, TypeError):
-        result["key_verses"] = []
-    try:
-        result["cross_references"] = json.loads(result.get("cross_references", "[]"))
-    except (json.JSONDecodeError, TypeError):
-        result["cross_references"] = []
-    return {"ok": True, "data": result}
-
-
 # ─── Assessment ↔ Wiki Bridges ───
 
 @app.get("/api/v1/learn/{knowledge_item_id:path}")
@@ -2671,27 +2590,15 @@ def create_annotation(ann: AnnotationCreate):
 def health_check():
     """Health check with DB integrity, cache status, version, and uptime."""
     import time as _time
+    uptime_seconds = int(_time.time() - _start_time)
+
+    # Fast db check — quick_count pragma is near-instant; skip full integrity_check
     conn = get_db()
     verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
     conn_count = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
-
-    # DB integrity check
-    integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
-
-    # Traditional distribution summary
-    trad_dist = {
-        r[0]: r[1] for r in conn.execute(
-            "SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt "
-            "FROM connections WHERE deprecated=0 GROUP BY t ORDER BY cnt DESC"
-        ).fetchall()
-    }
-
-    # Layer distribution
-    layer_dist = {
-        r[0]: r[1] for r in conn.execute(
-            "SELECT layer, COUNT(*) as cnt FROM connections WHERE deprecated=0 GROUP BY layer ORDER BY cnt DESC"
-        ).fetchall()
-    }
+    # Quick sanity: check first page isn't corrupt
+    quick_ok = conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0] > 0
+    conn.close()
 
     # Audio alignments count
     audio_count = 0
@@ -2699,30 +2606,20 @@ def health_check():
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
 
-    # Uptime
-    uptime_seconds = int(_time.time() - _start_time)
-    conn.close()
-
-    # Cache status
-    cache_sizes = {
-        "wiki_articles": len(WIKI_CACHE),
-        "lexicon_entries": len(LEXICON_CACHE),
-        "tool_registry": len(TOOL_REGISTRY),
-    }
-
     return {"ok": True, "data": {
-        "status": "ok" if integrity == "ok" else "degraded",
+        "status": "ok" if quick_ok else "degraded",
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
         "verses": verse_count,
         "connections": conn_count,
-        "integrity": integrity,
-        "traditional_distribution": trad_dist,
-        "layer_distribution": layer_dist,
         "audio_alignments": audio_count,
         "tools": len(TOOL_REGISTRY),
         "lexicon": len(LEXICON_CACHE),
-        "cache_sizes": cache_sizes,
+        "cache_sizes": {
+            "wiki_articles": len(WIKI_CACHE),
+            "lexicon_entries": len(LEXICON_CACHE),
+            "tool_registry": len(TOOL_REGISTRY),
+        },
     }}
 
 

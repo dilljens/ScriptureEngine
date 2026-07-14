@@ -288,7 +288,7 @@ export function TabProvider({ children }) {
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })
         if (entityId) {
-          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: entityId, label: label || `📖 Wiki: ${entityId}` } })
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: entityId, label: label || `📖 Wiki: ${entityId}` } })
         }
       } else {
         dispatch({
@@ -342,7 +342,7 @@ export function TabProvider({ children }) {
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })
         if (lessonId) {
-          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: lessonId, label: `Hebrew: ${lessonId}` } })
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: lessonId, label: `Hebrew: ${lessonId}` } })
         }
       } else {
         dispatch({
@@ -394,7 +394,7 @@ export function TabProvider({ children }) {
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })
         if (hubId) {
-          dispatch({ type: 'UPDATE_TAB', id: existing.id, changes: { viewRef: hubId, label: `Study: ${hubId}` } })
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: hubId, label: `Study: ${hubId}` } })
         }
       } else {
         dispatch({

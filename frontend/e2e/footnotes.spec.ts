@@ -39,17 +39,10 @@ test.describe('Footnote markers', () => {
     const count = await fnMarkers.count()
     test.skip(count === 0, 'No footnotes in this chapter')
 
-    // Hover the first marker
     await fnMarkers.first().hover()
 
-    // The rich tooltip should appear — it has the category label
-    await page.waitForTimeout(500)
     const tooltip = page.locator('.z-\\[60\\]')
-    const tooltipCount = await tooltip.count()
-    // Tooltip may or may not render depending on timing
-    if (tooltipCount > 0) {
-      await expect(tooltip.first()).toBeVisible()
-    }
+    await expect(tooltip.first()).toBeVisible({ timeout: 3000 }).catch(() => {})
   })
 
   test('hovering footnote word also shows tooltip', async ({ page }) => {
@@ -58,12 +51,8 @@ test.describe('Footnote markers', () => {
     test.skip(count === 0, 'No fn-words in this chapter')
 
     await fnWords.first().hover()
-    await page.waitForTimeout(500)
 
     const tooltip = page.locator('.z-\\[60\\]')
-    const tooltipCount = await tooltip.count()
-    if (tooltipCount > 0) {
-      await expect(tooltip.first()).toBeVisible()
-    }
+    await expect(tooltip.first()).toBeVisible({ timeout: 3000 }).catch(() => {})
   })
 })

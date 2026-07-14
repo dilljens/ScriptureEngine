@@ -504,7 +504,7 @@ function AppInner() {
   }, [openTab])
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
-  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work' || viewLevel === 'library' ? 'read' : viewLevel === 'chat' ? 'chat' : viewLevel === 'tiles' ? 'tiles' : 'read'
+  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work' || viewLevel === 'library' ? 'read' : viewLevel === 'chat' ? 'chat' : viewLevel === 'tiles' ? 'tiles' : viewLevel === 'wiki' ? 'wiki' : 'read'
   window.__bookData = bookData
 
   const nav = useMemo(() => {
@@ -523,9 +523,14 @@ function AppInner() {
     return nav?.flat.find(n => n.bookId === bookId)?.bookTitle || bookId
   }, [nav])
 
-  // Listen for TSK navigation events from VerseBlock
+  // Listen for navigation events from VerseBlock, WikiArticleViewer, etc.
   useEffect(() => {
     const handleNav = (e) => {
+      if (e.detail?.ref && typeof e.detail.ref === 'string' && e.detail.ref.startsWith('wiki:')) {
+        const entityId = e.detail.ref.slice(5)
+        openWikiTab(entityId, `Wiki: ${entityId}`)
+        return
+      }
       if (currentTab?.id && e.detail?.book && e.detail?.chapter) {
         goToChapter(currentTab.id, e.detail.book, e.detail.chapter)
       }
@@ -542,7 +547,7 @@ function AppInner() {
       window.removeEventListener('scripture-navigate', handleNav)
       window.removeEventListener('scripture-open-tab', handleTab)
     }
-  }, [currentTab?.id, goToChapter, openTab, resolveBookTitle])
+  }, [currentTab?.id, goToChapter, openTab, resolveBookTitle, openWikiTab])
 
   // Flat book list for fuzzy finder
   const allBooks = useMemo(() => {

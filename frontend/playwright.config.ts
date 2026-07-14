@@ -22,14 +22,23 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium' },
+      use: { browserName: 'chromium', viewport: { width: 1280, height: 800 } },
+    },
+    {
+      name: 'mobile-chromium',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 375, height: 667 },
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
   // Playwright manages the Vite dev server + Python API backend
   webServer: [
     {
-      command: 'python3 -m uvicorn web.server:app --port 8000 --host 127.0.0.1',
-      url: 'http://127.0.0.1:8000/api/v1/health',
+      command: 'python3 -m uvicorn web.server:app --port 8002 --host 127.0.0.1',
+      url: 'http://127.0.0.1:8002/api/v1/info',
       reuseExistingServer: true,
       timeout: 30000,
       cwd: '/home/dillon/_code/scriptureengine',

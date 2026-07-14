@@ -14,10 +14,9 @@ test.describe('Connection tags — unified panel', () => {
     await layersBtn.click()
     await page.getByText('Direct Quotes').click()
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(1000)
 
-    // Connections panel should appear in the verse
     const panelBtn = page.locator('button', { hasText: /Connections/ }).first()
+    await expect(panelBtn).toBeVisible({ timeout: 5000 }).catch(() => {})
     const count = await page.locator('button', { hasText: /Connections/ }).count()
     test.skip(count === 0, 'No connections in this chapter')
     await expect(panelBtn).toBeVisible()
@@ -29,14 +28,13 @@ test.describe('Connection tags — unified panel', () => {
     await layersBtn.click()
     await page.getByText('Direct Quotes').click()
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
+    await expect(panels.first()).toBeVisible({ timeout: 5000 }).catch(() => {})
     const count = await panels.count()
     test.skip(count === 0, 'No connections in this chapter')
 
     await panels.first().click()
-    await page.waitForTimeout(500)
 
     const groupHeader = page.locator('button:has-text("Direct")').first()
     await expect(groupHeader).toBeVisible({ timeout: 3000 })
@@ -47,20 +45,19 @@ test.describe('Connection tags — unified panel', () => {
     await layersBtn.click()
     await page.getByText('Direct Quotes').click()
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
+    await expect(panels.first()).toBeVisible({ timeout: 5000 }).catch(() => {})
     const count = await panels.count()
     test.skip(count === 0, 'No connections in this chapter')
 
     await panels.first().click()
-    await page.waitForTimeout(500)
 
     const sectionWithItems = page.locator('.space-y-1 button:has-text("/")').first()
+    await expect(sectionWithItems).toBeVisible({ timeout: 3000 }).catch(() => {})
     const sectionCount = await sectionWithItems.count()
     test.skip(sectionCount === 0, 'No expandable sections in this panel')
     await sectionWithItems.click()
-    await page.waitForTimeout(300)
   })
 
   test('filter input works', async ({ page }) => {
@@ -68,20 +65,18 @@ test.describe('Connection tags — unified panel', () => {
     await layersBtn.click()
     await page.getByText('Direct Quotes').click()
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(1000)
 
     const panels = page.locator('button', { hasText: /Connections/ })
+    await expect(panels.first()).toBeVisible({ timeout: 5000 }).catch(() => {})
     const count = await panels.count()
     test.skip(count === 0, 'No connections in this chapter')
 
     await panels.first().click()
-    await page.waitForTimeout(500)
 
     const filterInput = page.locator('input[placeholder*="filter"]').first()
     await expect(filterInput).toBeVisible({ timeout: 3000 })
 
     await filterInput.fill('isa')
-    await page.waitForTimeout(300)
     await expect(filterInput).toBeVisible()
   })
 

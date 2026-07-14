@@ -96,7 +96,7 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
   )
 
   if (error) return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 pb-20 md:pb-8">
       <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
         {error}
         <button onClick={() => window.location.reload()} className="ml-3 underline hover:text-red-800 cursor-pointer">Retry</button>
@@ -114,7 +114,7 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
     }
 
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 pb-20 md:pb-8">
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">
           Wiki — Browse {browseType}
         </h2>
@@ -124,10 +124,10 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
               <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 {TYPE_ICONS[type] || '📖'} {type}s ({articles.length})
               </h3>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {articles.map(a => (
                   <button key={a.id} onClick={() => handleEntityClick(a.id)}
-                    className="text-left p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors">
+                    className="text-left p-3 sm:p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors min-h-[64px] sm:min-h-0">
                     <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{a.title}</div>
                     {a.summary && <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">{a.summary}</div>}
                   </button>
@@ -143,14 +143,14 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
   // ── Search Results ──
   if (activeTab === 'search' && searchResults.length > 0) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 pb-20 md:pb-8">
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4">
           Wiki Search: "{searchQuery}"
         </h2>
         <div className="space-y-2">
           {searchResults.map(r => (
             <button key={r.id} onClick={() => handleEntityClick(r.id)}
-              className="w-full text-left p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors">
+              className="w-full text-left p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition-colors min-h-[48px] sm:min-h-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{r.title}</span>
                 {r.article_type && (
@@ -169,7 +169,7 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
 
   // ── No article / empty state ──
   if (!article) return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 pb-20 md:pb-8">
       <div className="text-center py-20 text-neutral-400 dark:text-neutral-500">
         <p className="text-sm">Select an entity from the sidebar or search to view its wiki article</p>
       </div>
@@ -181,7 +181,7 @@ export default function WikiArticleViewer({ entityId, browseType, searchQuery, o
   const icon = TYPE_ICONS[article.article_type] || '📖'
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-6">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 pb-20 md:pb-8">
       {/* Header */}
       <div className={`mb-6 p-4 rounded-lg border ${colors.border} ${colors.bg}`}>
         <div className="flex items-center gap-3 mb-2">

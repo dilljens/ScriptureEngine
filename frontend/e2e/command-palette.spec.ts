@@ -17,9 +17,8 @@ test.describe('Command palette', () => {
     const input = page.getByPlaceholder('isa 55:6')
     await expect(input).toBeVisible({ timeout: 3000 })
     await input.fill('isa 55')
-    await page.waitForTimeout(500)
     const suggestions = page.locator('div.fixed.inset-0').last().locator('button')
-    expect(await suggestions.count()).toBeGreaterThan(0)
+    await expect(suggestions.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('pressing Enter navigates', async ({ page }) => {
@@ -27,10 +26,10 @@ test.describe('Command palette', () => {
     const input = page.getByPlaceholder('isa 55:6')
     await expect(input).toBeVisible({ timeout: 3000 })
     await input.fill('isa 55')
-    await page.waitForTimeout(500)
+    const suggestions = page.locator('div.fixed.inset-0').last().locator('button')
+    await expect(suggestions.first()).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(2000)
-    await expect(page.locator('h1')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1')).toContainText('ch. 55', { timeout: 10000 })
   })
 
   test('pressing Escape closes the palette', async ({ page }) => {
@@ -44,27 +43,23 @@ test.describe('Command palette', () => {
     await page.keyboard.press('/')
     const input = page.getByPlaceholder('isa 55:6')
     await input.fill('gn')
-    await page.waitForTimeout(500)
-    // Check if the page body contains a Genesis suggestion
-    const bodyText = await page.locator('body').textContent()
-    expect(bodyText).toContain('Genesis')
+    await expect(page.locator('body')).toContainText('Genesis', { timeout: 5000 })
   })
 
   test('colon format works', async ({ page }) => {
     await page.keyboard.press('/')
     const input = page.getByPlaceholder('isa 55:6')
     await input.fill('isa:34')
-    await page.waitForTimeout(500)
+    const suggestions = page.locator('div.fixed.inset-0').last().locator('button')
+    await expect(suggestions.first()).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(1000)
-    await expect(page.locator('h1')).toBeVisible()
+    await expect(page.locator('h1')).toContainText('ch. 34', { timeout: 10000 })
   })
 
   test('/chat command shows chat result', async ({ page }) => {
     await page.keyboard.press('/')
     const input = page.getByPlaceholder('isa 55:6')
     await input.fill('/chat hello')
-    await page.waitForTimeout(300)
     const result = page.locator('text=💬 Chat: hello')
     await expect(result).toBeVisible({ timeout: 3000 })
   })
@@ -73,7 +68,6 @@ test.describe('Command palette', () => {
     await page.keyboard.press('/')
     const input = page.getByPlaceholder('isa 55:6')
     await input.fill('/dark')
-    await page.waitForTimeout(300)
     await expect(page.locator('text=Toggle dark mode')).toBeVisible({ timeout: 3000 })
   })
 })

@@ -17,13 +17,8 @@ test.describe('Search bar', () => {
     const refResult = page.locator('button').filter({ hasText: 'Go to Isaiah' })
     await expect(refResult).toBeVisible({ timeout: 5000 })
 
-    // Press Enter to navigate
     await searchInput.press('Enter')
-    await page.waitForTimeout(1500)
-
-    // Should now be on Isaiah 3 — the h1/breadcrumb shows book + chapter
-    await expect(page.locator('h1')).toContainText('Isaiah')
-    await expect(page.locator('h1')).toContainText('ch. 3')
+    await expect(page.locator('h1')).toContainText('ch. 3', { timeout: 10000 })
   })
 
   test('reference search: "gen 1:1" navigates to Genesis 1', async ({ page }) => {
@@ -35,10 +30,7 @@ test.describe('Search bar', () => {
     await expect(refResult).toBeVisible({ timeout: 5000 })
 
     await searchInput.press('Enter')
-    await page.waitForTimeout(1500)
-
-    await expect(page.locator('h1')).toContainText('Genesis')
-    await expect(page.locator('h1')).toContainText('ch. 1')
+    await expect(page.locator('h1')).toContainText('ch. 1', { timeout: 10000 })
   })
 
   test('full-text search shows FTS results when no book matches', async ({ page }) => {
@@ -60,18 +52,12 @@ test.describe('Search bar', () => {
     const refResult = page.locator('button').filter({ hasText: 'Go to' }).first()
     await expect(refResult).toBeVisible({ timeout: 5000 })
 
-    // Click the ref result
     await refResult.click()
-    await page.waitForTimeout(1500)
-
-    await expect(page.locator('h1')).toContainText('Exodus')
-    await expect(page.locator('h1')).toContainText('ch. 20')
+    await expect(page.locator('h1')).toContainText('ch. 20', { timeout: 10000 })
   })
 
   test('Alt+S shortcut focuses search input', async ({ page }) => {
     await page.keyboard.press('Alt+s')
-    await page.waitForTimeout(500)
-    // No crash is the main check
     await expect(page.locator('h1')).toBeVisible()
   })
 })

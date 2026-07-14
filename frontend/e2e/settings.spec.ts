@@ -26,13 +26,11 @@ test.describe('Settings panel', () => {
     await page.keyboard.press('F1')
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(500)
-    await expect(page.getByRole('heading', { name: 'Settings' })).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Settings' })).not.toBeVisible({ timeout: 5000 })
   })
 
   test('question mark key opens chat', async ({ page }) => {
     await page.keyboard.press('?')
-    await page.waitForTimeout(1000)
     await expect(page.getByText('Chat').first()).toBeVisible({ timeout: 5000 })
   })
 })

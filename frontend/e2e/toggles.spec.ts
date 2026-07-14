@@ -31,9 +31,9 @@ test.describe('Layers popover (feature toggles)', () => {
 
     // Press Escape to close
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(300)
+    await expect(page.getByText('Annotations')).not.toBeVisible({ timeout: 3000 })
 
-    // Re-open to verify state (open and close are smoke checks)
+    // Re-open to verify state
     await layersBtn.click()
     await expect(page.getByText('Footnotes (LDS Notes)')).toBeVisible()
   })
@@ -63,7 +63,6 @@ test.describe('Layers popover (feature toggles)', () => {
 
     // Click Poetry
     await page.getByText('Poetry').click()
-    await page.waitForTimeout(500)
 
     // Close and reopen — Poetry should remain selected
     await page.keyboard.press('Escape')
