@@ -1120,12 +1120,13 @@ def get_hebrew_lesson(node_id: str):
         att_list = []
         for a in att_rows:
             vid = a['verse_id']
-            txt = scr_conn.execute("SELECT text_english FROM verses WHERE id=?", (vid,)).fetchone()
+            txt = scr_conn.execute("SELECT text_english, text_hebrew FROM verses WHERE id=?", (vid,)).fetchone()
             att_list.append({
                 "verse_id": vid,
                 "explanation": a['explanation'] or '',
                 "attestation_type": a['attestation_type'] or '',
                 "text": txt[0][:200] if txt and txt[0] else '',
+                "text_hebrew": txt[1] if txt and txt[1] else '',
             })
         scr_conn.close()
     except Exception:

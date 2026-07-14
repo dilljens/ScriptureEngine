@@ -108,7 +108,7 @@ test.describe('Wiki — article viewer (desktop)', () => {
       const event = new CustomEvent('scripture-navigate', { detail: { ref: 'wiki:abraham' } })
       window.dispatchEvent(event)
     })
-    await expect(page.getByText('Abraham')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Abraham' })).toBeVisible({ timeout: 10000 })
     const overflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth > window.innerWidth
     })

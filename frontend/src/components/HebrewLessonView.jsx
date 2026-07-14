@@ -1,6 +1,37 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
 
+/** Book ID → display name mapping for user-facing verse references */
+const BOOK_NAMES = {
+  gen: 'Genesis', exo: 'Exodus', lev: 'Leviticus', num: 'Numbers', deu: 'Deuteronomy',
+  josh: 'Joshua', judg: 'Judges', ruth: 'Ruth', '1sam': '1 Samuel', '2sam': '2 Samuel',
+  '1kgs': '1 Kings', '2kgs': '2 Kings', '1chr': '1 Chronicles', '2chr': '2 Chronicles',
+  ezra: 'Ezra', neh: 'Nehemiah', esth: 'Esther', job: 'Job', psa: 'Psalms',
+  prov: 'Proverbs', eccl: 'Ecclesiastes', song: 'Song of Solomon',
+  isa: 'Isaiah', jer: 'Jeremiah', lam: 'Lamentations', ezek: 'Ezekiel',
+  dan: 'Daniel', hos: 'Hosea', joel: 'Joel', amos: 'Amos', obad: 'Obadiah',
+  jonah: 'Jonah', mic: 'Micah', nah: 'Nahum', hab: 'Habakkuk',
+  zeph: 'Zephaniah', hag: 'Haggai', zech: 'Zechariah', mal: 'Malachi',
+  matt: 'Matthew', mark: 'Mark', luke: 'Luke', john: 'John',
+  acts: 'Acts', rom: 'Romans', '1cor': '1 Corinthians', '2cor': '2 Corinthians',
+  gal: 'Galatians', eph: 'Ephesians', phil: 'Philippians', col: 'Colossians',
+  '1thes': '1 Thessalonians', '2thes': '2 Thessalonians',
+  '1tim': '1 Timothy', '2tim': '2 Timothy', titus: 'Titus', philem: 'Philemon',
+  heb: 'Hebrews', james: 'James', '1pet': '1 Peter', '2pet': '2 Peter',
+  '1john': '1 John', '2john': '2 John', '3john': '3 John', jude: 'Jude', rev: 'Revelation',
+  '1ne': '1 Nephi', '2ne': '2 Nephi', jacob: 'Jacob', enos: 'Enos',
+  jarom: 'Jarom', omni: 'Omni', wom: 'Words of Mormon',
+  mosiah: 'Mosiah', alma: 'Alma', hel: 'Helaman', '3ne': '3 Nephi',
+  '4ne': '4 Nephi', morm: 'Mormon', ether: 'Ether', moro: 'Moroni',
+  dc: 'D&C', moses: 'Moses', abraham: 'Abraham', jsm: 'Joseph Smith—Matthew',
+  jsh: 'Joseph Smith—History', aoff: 'Articles of Faith',
+}
+
+function formatRef(book, ch, vs) {
+  const name = BOOK_NAMES[book.toLowerCase()] || book
+  return vs ? `${name} ${ch}:${vs}` : vs ? `${name} ${ch}:${vs}` : `${name} ${ch}`
+}
+
 /** Split text on scripture references like gen.1.1, exo.3.14 or Gen 1:1, Exo 3:14 */
 function renderTextWithRefs(text, onNavigate) {
   if (!text) return text
@@ -22,7 +53,7 @@ function renderTextWithRefs(text, onNavigate) {
             onClick={() => onNavigate?.(`${book}.${ch}`)}
             className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
             title={`Open ${book}.${ch}`}>
-            {book} {ch}:{vs}
+            {formatRef(book, ch, vs)}
           </button>
         )
         i += 2
@@ -42,7 +73,7 @@ function renderTextWithRefs(text, onNavigate) {
           onClick={() => onNavigate?.(`${book}.${ch}`)}
           className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
           title={`Open ${book}.${ch}`}>
-          {book}.{ch}.{vs}
+          {formatRef(book, ch, vs)}
         </button>
       )
       i += 2
@@ -453,13 +484,38 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
             </span>
           </div>
           <div className="space-y-2">
-            {node.verse_attestations.map((att, i) => (
+            {node.verse_attestations.map((att, i) => {
+              // For letter recognition, extract the Hebrew character and the word containing it
+              const isLetterRecog = att.attestation_type === 'letter_recognition'
+              const hebText = att.text_hebrew || ''
+              let highlightedHebrew = null
+              if (isLetterRecog && hebText && hebText.length > 0) {
+                // Try to find the node's Hebrew character in the verse
+                const hebChar = node?.title?.match(/\(([^)]+)\)/)?.[1] || ''
+                if (hebChar) {
+                  // Split the Hebrew text into parts, highlighting the target character
+                  const parts = []
+                  let remaining = hebText
+                  let idx = 0
+                  while (remaining.length > 0) {
+                    const ci = remaining.indexOf(hebChar)
+                    if (ci < 0) { parts.push({ t: remaining, hl: false }); break }
+                    if (ci > 0) parts.push({ t: remaining.slice(0, ci), hl: false })
+                    parts.push({ t: remaining.slice(ci, ci + hebChar.length), hl: true })
+                    remaining = remaining.slice(ci + hebChar.length)
+                    idx++
+                    if (idx > 20) break // safety
+                  }
+                  if (parts.length > 0) highlightedHebrew = parts
+                }
+              }
+              return (
               <div key={i} className="p-2.5 rounded-lg bg-white dark:bg-neutral-800 border border-green-200 dark:border-green-700">
                 <div className="flex items-center gap-1.5 mb-1">
                   <button onClick={() => onNavigate?.(att.verse_id)}
                     className="text-[10px] font-mono font-medium text-green-700 dark:text-green-300 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer hover:underline transition-colors"
                     title={`Open ${att.verse_id}`}>
-                    {att.verse_id}
+                    {formatRef(...(att.verse_id?.split('.') || []))}
                   </button>
                   {att.attestation_type && (
                     <span className="text-[8px] px-1 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
@@ -467,6 +523,18 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                     </span>
                   )}
                 </div>
+                {/* Hebrew text with highlighted target letter */}
+                {highlightedHebrew && (
+                  <div className="mb-1 text-right" dir="rtl">
+                    <span className="text-lg font-serif leading-relaxed" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
+                      {highlightedHebrew.map((p, pi) =>
+                        p.hl
+                          ? <mark key={pi} className="bg-yellow-300 dark:bg-yellow-600/50 text-neutral-900 dark:text-neutral-100 px-0.5 rounded">{p.t}</mark>
+                          : <span key={pi}>{p.t}</span>
+                      )}
+                    </span>
+                  </div>
+                )}
                 {att.text && (
                   <p className="text-[11px] text-neutral-700 dark:text-neutral-300 italic leading-relaxed">
                     “{att.text}”
@@ -476,7 +544,8 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                   <p className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5">{renderTextWithRefs(att.explanation, onNavigate)}</p>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -564,13 +633,24 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                   </div>
                 )}
 
-                {/* Question text */}
+                {/* Question text — handle mixed English/Hebrew lines */}
                 <div className="mb-3">
                   {q.question_text.split('\n').map((line, li) => {
-                    const isHb = /[\u0590-\u05FF]/.test(line)
-                    return isHb
-                      ? <p key={li} className="text-xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200 mb-1" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{line}</p>
-                      : <p key={li} className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-1">{line}</p>
+                    const hasHeb = /[\u0590-\u05FF]/.test(line)
+                    if (!hasHeb) {
+                      return <p key={li} className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-1">{line}</p>
+                    }
+                    // Mixed line: split into Hebrew and non-Hebrew segments
+                    const segments = line.split(/([\u0590-\u05FF]+)/g)
+                    return (
+                      <p key={li} className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-1">
+                        {segments.map((seg, si) =>
+                          /[\u0590-\u05FF]/.test(seg)
+                            ? <span key={si} className="text-lg font-serif" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{seg}</span>
+                            : <span key={si}>{seg}</span>
+                        )}
+                      </p>
+                    )
                   })}
                 </div>
 
@@ -603,11 +683,12 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                           ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
                           : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
                       }
-                      const isHeb = /[\u0590-\u05FF]/.test(opt)
                       return (
                         <button key={oi} onClick={() => { if (!isSubmitted) setAnswer(idx, opt) }} className={cls}>
                           <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + oi)}.</span>
-                          {isHeb ? <span className="text-lg font-serif" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{opt}</span> : <span>{opt}</span>}
+                          {/[\u0590-\u05FF]/.test(opt)
+                            ? <span className="text-lg font-serif" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{opt}</span>
+                            : <span>{opt}</span>}
                         </button>
                       )
                     })}

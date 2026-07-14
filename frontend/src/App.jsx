@@ -504,6 +504,7 @@ function AppInner() {
   }, [openTab])
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
+  const tabLabel = currentTab?.label || ''
   const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work' || viewLevel === 'library' ? 'read' : viewLevel === 'chat' ? 'chat' : viewLevel === 'tiles' ? 'tiles' : viewLevel === 'wiki' ? 'wiki' : 'read'
   window.__bookData = bookData
 
@@ -1114,30 +1115,34 @@ function AppInner() {
               <ChevronDown />
             </button>
 
-            {/* Clickable breadcrumb */}
+            {/* Clickable breadcrumb or tab label */}
             <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-sm">
-              {workTitle ? (
-                <button onClick={() => {
-                  if (viewLevel !== 'work') {
-                    const wId = nav?.flat[nav.idx]?.workId
-                    if (wId) goToWork(currentTab?.id, wId, workTitle)
-                  }
-                }} className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5 whitespace-nowrap hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
-                  {workTitle}
-                </button>
-              ) : isLibraryView ? (
-                <span className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5">Library</span>
-              ) : null}
-              {isChapterView ? (
-                <button onClick={() => {
-                  if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
-                }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
-                  {bookTitle}
-                </button>
-              ) : (
-                <span>{bookTitle}</span>
+              {['chapter', 'book', 'work', 'library'].includes(viewLevel) ? (<>
+                {workTitle ? (
+                  <button onClick={() => {
+                    if (viewLevel !== 'work') {
+                      const wId = nav?.flat[nav.idx]?.workId
+                      if (wId) goToWork(currentTab?.id, wId, workTitle)
+                    }
+                  }} className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5 whitespace-nowrap hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
+                    {workTitle}
+                  </button>
+                ) : isLibraryView ? (
+                  <span className="text-neutral-400 dark:text-neutral-500 font-normal text-[10px] mr-0.5">Library</span>
+                ) : null}
+                {isChapterView ? (
+                  <button onClick={() => {
+                    if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
+                  }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                    {bookTitle}
+                  </button>
+                ) : (
+                  <span>{bookTitle}</span>
+                )}
+                {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400 text-xs"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
+              </>) : (
+                <span className="text-neutral-800 dark:text-neutral-200">{tabLabel}</span>
               )}
-              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400 text-xs"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
             </h1>
 
             {/* Left arrow — previous at current level */}
@@ -1207,6 +1212,7 @@ function AppInner() {
               {darkMode ? <MoonIcon /> : <SunIcon />}
             </button>
             <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}><GearIcon /></button>
+            <button onClick={() => openWikiTab()} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-xs" title="Wiki">📖</button>
             <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}><CommandIcon /></button>
           </div>
         </div>
@@ -1223,30 +1229,34 @@ function AppInner() {
           <button onClick={doHistoryForward} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer shrink-0" title="Forward">
             <ChevronRight />
           </button>
-          {/* Tappable breadcrumb */}
+          {/* Tappable breadcrumb or tab label */}
           <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-xs min-w-0">
-            {workTitle ? (
-              <button onClick={() => {
-                if (viewLevel !== 'work') {
-                  const wId = nav?.flat[nav.idx]?.workId
-                  if (wId) goToWork(currentTab?.id, wId, workTitle)
-                }
-              }} className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
-                {workTitle}{' '}
-              </button>
-            ) : isLibraryView ? (
-              <span className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5">Library </span>
-            ) : null}
-            {isChapterView ? (
-              <button onClick={() => {
-                if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
-              }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
-                {bookTitle}
-              </button>
-            ) : (
-              <span>{bookTitle}</span>
+            {['chapter', 'book', 'work', 'library'].includes(viewLevel) ? (<>
+              {workTitle ? (
+                <button onClick={() => {
+                  if (viewLevel !== 'work') {
+                    const wId = nav?.flat[nav.idx]?.workId
+                    if (wId) goToWork(currentTab?.id, wId, workTitle)
+                  }
+                }} className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
+                  {workTitle}{' '}
+                </button>
+              ) : isLibraryView ? (
+                <span className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5">Library </span>
+              ) : null}
+              {isChapterView ? (
+                <button onClick={() => {
+                  if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
+                }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                  {bookTitle}
+                </button>
+              ) : (
+                <span>{bookTitle}</span>
+              )}
+              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
+            </>) : (
+              <span className="text-neutral-800 dark:text-neutral-200">{tabLabel}</span>
             )}
-            {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
           </h1>
         </div>
         {/* Right side: nav arrows + Tiles */}

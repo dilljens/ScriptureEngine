@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { parseStandardRef, resolveBook } from '../refParser'
+import CardQueue from './CardQueue'
 
 const LANGUAGES = [
   { id: 'english', label: 'English', field: 'text_english' },
@@ -20,6 +21,8 @@ export default function MemorizeQueue({ onStartReview }) {
   const [refResults, setRefResults] = useState([])
   const [activeView, setActiveView] = useState('queue')
   const [displayLang, setDisplayLang] = useState('english')
+  const [reviewVerse, setReviewVerse] = useState(null) // single-verse quick review
+  const [reviewLang, setReviewLang] = useState('hebrew') // Anki-style: show target language first
 
   const loadQueue = async () => {
     setLoading(true)
@@ -133,6 +136,79 @@ export default function MemorizeQueue({ onStartReview }) {
   const verseText = (v) => {
     const lang = LANGUAGES.find(l => l.id === displayLang)
     return v[lang?.field || 'text_english'] || v.text_english || ''
+  }
+
+  // Quick review single verse
+  const startVerseReview = (v) => {
+    const card = {
+      id: v.queue_id || v.id || v.verse_id,
+      type: 'verse',
+      queue_id: v.queue_id || v.id,
+      data: {
+        reference: v.verse_id,
+        text: v[v.langField || 'text_hebrew'] || v.text_hebrew || v.text_english || '',
+        book: v.verse_id?.split('.')[0],
+        chapter: parseInt(v.verse_id?.split('.')[1]) || 1,
+        verse: parseInt(v.verse_id?.split('.')[2]) || 1,
+      },
+    }
+    setReviewLang('hebrew') // Start in target language (Anki-style)
+    setReviewVerse(card)
+  }
+
+  const handleVerseReviewRate = async (card, rating) => {
+    if (card.queue_id) {
+      await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      })
+    }
+    setReviewVerse(null)
+    loadQueue()
+  }
+
+  // Single-verse review mode
+  if (reviewVerse) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={() => { setReviewVerse(null); loadQueue() }}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Queue
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-neutral-400">Display:</span>
+            <select value={reviewLang} onChange={e => setReviewLang(e.target.value)}
+              className="text-[10px] px-1.5 py-0.5 rounded border border-neutral-200 dark:border-neutral-700 bg-transparent text-neutral-500 dark:text-neutral-400 outline-none cursor-pointer">
+              <option value="hebrew">עברית</option>
+              <option value="english">English</option>
+            </select>
+            <span className="text-[9px] text-amber-500">(switching resets mastery)</span>
+          </div>
+        </div>
+        {reviewLang === 'hebrew' ? (
+          <CardQueue
+            cards={[reviewVerse]}
+            onRate={handleVerseReviewRate}
+            onComplete={() => { setReviewVerse(null); loadQueue() }}
+            title="Quick Review"
+            emptyMessage=""
+          />
+        ) : (
+          <CardQueue
+            cards={[{
+              ...reviewVerse,
+              data: { ...reviewVerse.data, text: verses.find(v => v.verse_id === reviewVerse.data.reference)?.['text_english'] || '' }
+            }]}
+            onRate={handleVerseReviewRate}
+            onComplete={() => { setReviewVerse(null); loadQueue() }}
+            title="Quick Review (English)"
+            emptyMessage=""
+          />
+        )}
+      </div>
+    )
   }
 
   // Check if input looks like a verse ref for "Add" button
@@ -262,7 +338,9 @@ export default function MemorizeQueue({ onStartReview }) {
             </div>
           </div>
           {verses.map(v => (
-            <div key={v.id} className="p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+            <div key={v.id}
+              onClick={() => startVerseReview(v)}
+              className="p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm cursor-pointer transition-all">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{v.verse_id}</span>
@@ -270,12 +348,13 @@ export default function MemorizeQueue({ onStartReview }) {
                     {verseText(v)}
                   </p>
                 </div>
-                <button onClick={() => removeVerse(v.id)}
+                <button onClick={(e) => { e.stopPropagation(); removeVerse(v.id) }}
                   className="ml-2 text-neutral-300 hover:text-red-500 cursor-pointer text-sm shrink-0">✕</button>
               </div>
               <div className="flex items-center gap-3 mt-2 text-[10px] text-neutral-400">
                 <span>Mastery: {Math.round((v.mastery || 0) * 100)}%</span>
                 <span>Attempts: {v.attempts || 0}</span>
+                <span className="ml-auto text-[9px] text-indigo-400 hover:text-indigo-600">Click to review →</span>
               </div>
             </div>
           ))}
