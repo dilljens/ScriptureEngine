@@ -30,7 +30,7 @@ test.describe('Wiki — article viewer (desktop)', () => {
       window.dispatchEvent(event)
     })
     // Article should render with title
-    await expect(page.getByRole('heading', { name: 'Abraham' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1.text-xl.font-bold').filter({ hasText: 'Abraham' })).toBeVisible({ timeout: 10000 })
     // Article content should have rendered verse references
     const content = await page.textContent('body')
     expect(content).toContain('friend of God')
@@ -108,7 +108,7 @@ test.describe('Wiki — article viewer (desktop)', () => {
       const event = new CustomEvent('scripture-navigate', { detail: { ref: 'wiki:abraham' } })
       window.dispatchEvent(event)
     })
-    await expect(page.getByRole('heading', { name: 'Abraham' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1.text-xl.font-bold').filter({ hasText: 'Abraham' })).toBeVisible({ timeout: 10000 })
     const overflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth > window.innerWidth
     })
