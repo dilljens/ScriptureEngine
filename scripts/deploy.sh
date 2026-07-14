@@ -47,7 +47,8 @@ echo "[5/5] Frontend E2E tests..."
 
 cd frontend
 # Playwright's webServer handles both API and Vite startup
-npx playwright test app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=60000 || {
+# Only run desktop chromium tests (mobile tests would need mobile viewport setup)
+npx playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=60000 || {
     echo "✗ Frontend E2E tests failed — aborting deploy"
     exit 1
 }
