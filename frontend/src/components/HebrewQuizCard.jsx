@@ -91,9 +91,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
     if (!hebrewGlyph) return null
     return (
       <div className="text-center mb-4">
-        <span className="text-5xl font-serif leading-relaxed"
-          style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
-          dir="rtl">
+        <span className="text-5xl leading-relaxed font-hebrew-biblical" dir="rtl">
           {hebrewGlyph}
         </span>
       </div>
@@ -161,7 +159,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
               <button key={i} onClick={() => handleSelect(i)} className={cls}>
                 <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
                 {isHebrewOption ? (
-                  <span className="text-xl font-serif" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }} dir="rtl">
+                  <span className="text-xl font-hebrew-biblical" dir="rtl">
                     {opt}
                   </span>
                 ) : (
@@ -189,7 +187,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
                           'Type your answer...'}
               className="flex-1 px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 dark:focus:ring-indigo-500 outline-none transition-all"
               dir={questionType === 'typing' || (hebrewGlyph) ? 'rtl' : 'ltr'}
-              style={questionType === 'typing' ? { fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif", fontSize: '1.25rem' } : {}}
+              className={questionType === 'typing' ? 'font-hebrew-biblical text-xl' : ''}
               autoComplete="off"
               spellCheck={false}
             />
@@ -208,7 +206,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
         <div className="space-y-3">
           {hebrewGlyph && (
             <div className="text-center py-4">
-              <span className="text-4xl font-serif" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }} dir="rtl">
+              <span className="text-4xl font-hebrew-biblical" dir="rtl">
                 {hebrewGlyph}
               </span>
             </div>
@@ -287,8 +285,8 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
           <p className="font-medium">{isCorrect ? '✓ Correct!' : '✗ Not quite'}</p>
           {isProductionType && !isCorrect && (
             <p className="mt-1 text-xs opacity-80">
-              Correct answer: <span className="font-medium" dir={/[\u0590-\u05FF]/.test(correctAnswer) ? 'rtl' : 'ltr'}
-                style={/[\u0590-\u05FF]/.test(correctAnswer) ? { fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif", fontSize: '1.1rem' } : {}}>
+              Correct answer:               <span className={`font-medium ${/[\u0590-\u05FF]/.test(correctAnswer) ? 'font-hebrew-biblical text-lg' : ''}`}
+                dir={/[\u0590-\u05FF]/.test(correctAnswer) ? 'rtl' : 'ltr'}>
                 {correctAnswer}
               </span>
             </p>

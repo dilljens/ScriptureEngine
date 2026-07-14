@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import { cleanHebrew } from '../lib/hebrew-utils'
 
 /** Book ID → display name mapping for user-facing verse references */
 const BOOK_NAMES = {
@@ -487,7 +488,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
             {node.verse_attestations.map((att, i) => {
               // For letter recognition, extract the Hebrew character and the word containing it
               const isLetterRecog = att.attestation_type === 'letter_recognition'
-              const hebText = att.text_hebrew || ''
+              const hebText = cleanHebrew(att.text_hebrew || '')
               let highlightedHebrew = null
               if (isLetterRecog && hebText && hebText.length > 0) {
                 // Try to find the node's Hebrew character in the verse
@@ -526,7 +527,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                 {/* Hebrew text with highlighted target letter */}
                 {highlightedHebrew && (
                   <div className="mb-1 text-right" dir="rtl">
-                    <span className="text-lg font-serif leading-relaxed" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
+                    <span className="text-xl leading-relaxed font-hebrew-biblical">
                       {highlightedHebrew.map((p, pi) =>
                         p.hl
                           ? <mark key={pi} className="bg-yellow-300 dark:bg-yellow-600/50 text-neutral-900 dark:text-neutral-100 px-0.5 rounded">{p.t}</mark>
@@ -646,7 +647,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                       <p key={li} className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-1">
                         {segments.map((seg, si) =>
                           /[\u0590-\u05FF]/.test(seg)
-                            ? <span key={si} className="text-lg font-serif" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{seg}</span>
+                            ? <span key={si} className="text-xl font-hebrew-biblical" dir="rtl">{seg}</span>
                             : <span key={si}>{seg}</span>
                         )}
                       </p>
@@ -687,7 +688,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
                         <button key={oi} onClick={() => { if (!isSubmitted) setAnswer(idx, opt) }} className={cls}>
                           <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + oi)}.</span>
                           {/[\u0590-\u05FF]/.test(opt)
-                            ? <span className="text-lg font-serif" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{opt}</span>
+                            ? <span className="text-lg font-hebrew-biblical" dir="rtl">{opt}</span>
                             : <span>{opt}</span>}
                         </button>
                       )

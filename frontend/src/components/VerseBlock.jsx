@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { cleanHebrew, lineHasChiasmRole } from '../utils'
+import { cleanHebrew } from '../lib/hebrew-utils'
+import { lineHasChiasmRole } from '../utils'
 import WordPopup from './WordPopup'
 import DisagreementsPanel from './DisagreementsPanel'
 import JSTDiffViewer from './JSTDiffViewer'
@@ -59,7 +60,7 @@ const CHIASMUS_COLORS = {
   "C'": { border: 'border-green-400 dark:border-green-600',bg: 'bg-green-50 dark:bg-green-900/20',text: 'text-green-700 dark:text-green-300', bar: 'bg-green-300 dark:bg-green-600' },
 }
 
-const HEBREW_FONT = "font-['SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif]"
+const HEBREW_FONT = 'font-hebrew-biblical'
 
 const CATEGORY_ICONS = {
   'cross-ref': '📖', 'tg': '🏷', 'heb': 'א', 'gr': 'α',
@@ -261,7 +262,7 @@ function ConnectionPanel({ extraConnections, tskRefs, navigateToRef }) {
   )
 }
 
-export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections, displayLang, showTranslit, showEnglish }) {
+export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections, displayLang, showTranslit, showEnglish, hebrewDisplayMode = 'reading' }) {
   const [expanded, setExpanded] = useState(false)
   const [openFn, setOpenFn] = useState(null)
   const [openTsk, setOpenTsk] = useState(false)
@@ -311,13 +312,94 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   const hasLang = !!sourceText
   const translitFn = displayLang === 'hebrew' ? transliterateHebrew : displayLang === 'greek' ? transliterateGreek : null
 
-  // Language mode: show original language + transliteration + English gloss
+  // Language mode: show original language with reading/scholar/interlinear display
   if (displayLang !== 'english' && hasLang) {
-    // Get word-level data for this verse (from grammar endpoint)
     const verseWordData = wordData || null
     const words = sourceText.trim().split(/\s+/).filter(Boolean)
     const hasWordGloss = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.english?.trim())
     const hasTranslit = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.transliteration?.trim())
+
+    // ── READING MODE: clean Hebrew, large font, English below ──
+    if (hebrewDisplayMode === 'reading') {
+      const cleanText = words.map(w => cleanHebrew(w)).join(' ')
+      return (
+        <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
+          <div className="flex items-start gap-1">
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-1 shrink-0">{verse.verse}</span>
+            <div className="flex-1 min-w-0">
+              {/* Hebrew text: large, clean, RTL */}
+              <div className="hebrew-reading font-hebrew-biblical mb-2" dir="rtl">
+                {cleanText}
+              </div>
+              {/* English translation below */}
+              {showEnglish && (
+                <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 border-t border-neutral-100 dark:border-neutral-800 pt-2">
+                  {verse.text_english}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // ── SCHOLAR MODE: Strong's, morph codes, root highlighting ──
+    if (hebrewDisplayMode === 'scholar') {
+      return (
+        <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
+          <div className="flex items-start gap-1">
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0">{verse.verse}</span>
+            <div className="flex-1 min-w-0">
+              <div className="hebrew-scholar" dir="rtl">
+                {words.map((word, i) => {
+                  const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
+                  const wordMorph = verseWordData?.[i]?.morph || ''
+                  const wordStrongs = verseWordData?.[i]?.strongs || ''
+                  const wordRoot = verseWordData?.[i]?.root_letters || ''
+                  const wordTranslit = verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
+                  const wordEnglish = verseWordData?.[i]?.english || ''
+
+                  // Color by part of speech
+                  const pos = (verseWordData?.[i]?.pos || wordMorph).toLowerCase()
+                  const posColor = pos.includes('verb') ? 'text-red-700 dark:text-red-300'
+                    : pos.includes('noun') ? 'text-blue-700 dark:text-blue-300'
+                    : pos.includes('prep') || pos.includes('conj') || pos.includes('art') ? 'text-green-700 dark:text-green-300'
+                    : pos.includes('adv') || pos.includes('adj') ? 'text-purple-700 dark:text-purple-300'
+                    : ''
+
+                  return (
+                    <span key={i} className="inline-flex flex-col items-center mx-1 align-top group cursor-pointer"
+                      onClick={() => window.dispatchEvent(new CustomEvent('word-click', {
+                        detail: { verseId: verse.id, wordIndex: i, word: wordClean, morph: wordMorph, strongs: wordStrongs, root: wordRoot, english: wordEnglish, transliteration: wordTranslit }
+                      }))}>
+                      {/* Hebrew with Strong's superscript */}
+                      <span className="font-hebrew-biblical text-lg leading-relaxed relative">
+                        {wordClean}
+                        {wordStrongs && <sup className="text-[8px] text-neutral-400 dark:text-neutral-500 -top-2 -right-0.5 absolute">{wordStrongs.replace('H', '')}</sup>}
+                      </span>
+                      {/* Morph code */}
+                      {wordMorph && (
+                        <span className="text-[8px] font-mono text-neutral-400 dark:text-neutral-500 leading-tight">{wordMorph}</span>
+                      )}
+                      {/* Transliteration */}
+                      {wordTranslit && (
+                        <span className="text-[9px] italic text-neutral-500 dark:text-neutral-400 leading-tight">{wordTranslit}</span>
+                      )}
+                      {/* English gloss */}
+                      {wordEnglish && (
+                        <span className={`text-[9px] leading-tight text-center max-w-[90px] ${posColor || 'text-blue-600 dark:text-blue-400'}`}>{wordEnglish}</span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // ── INTERLINEAR MODE: word-by-word vertical stacking ──
     return (
       <>
         <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
@@ -329,63 +411,63 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
               {verse.verse}
             </span>
             <div className="flex-1 min-w-0">
-              {/* Word-by-word layout */}
+              {/* Interlinear word-by-word layout */}
               <div className={`flex flex-wrap gap-x-4 gap-y-2 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
                 dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
                 {words.map((word, i) => {
-                  // Prefer clean hebrew from wordData; fall back to raw word with / removed
                   const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
                   const wordTranslit = verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
                   const wordEnglish = verseWordData?.[i]?.english || ''
+                  const wordMorph = verseWordData?.[i]?.morph || ''
                   const wordLemma = verseWordData?.[i]?.lemma || ''
                   const wordDef = verseWordData?.[i]?.definition || ''
-                  const wordMorph = verseWordData?.[i]?.morph || ''
-                  const wordPos = verseWordData?.[i]?.pos || ''
                   const wordRoot = verseWordData?.[i]?.root_letters || ''
                   const wordGematria = verseWordData?.[i]?.gematria || null
+
+                  const pos = (verseWordData?.[i]?.pos || wordMorph).toLowerCase()
+                  const posColor = pos.includes('verb') ? 'text-red-600 dark:text-red-400'
+                    : pos.includes('noun') ? 'text-blue-600 dark:text-blue-400'
+                    : pos.includes('prep') || pos.includes('conj') || pos.includes('art') ? 'text-green-600 dark:text-green-400'
+                    : pos.includes('adv') || pos.includes('adj') ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-blue-600 dark:text-blue-400'
 
                   return (
                     <div key={i} className="flex flex-col items-center group cursor-pointer relative"
                       onClick={() => {
                         window.dispatchEvent(new CustomEvent('word-click', {
                           detail: {
-                            verseId: verse.id,
-                            wordIndex: i,
-                            word: wordClean,
-                            transliteration: wordTranslit,
-                            english: wordEnglish,
-                            definition: wordDef,
-                            lemma: wordLemma,
-                            morph: wordMorph,
-                            pos: wordPos,
-                            root: wordRoot,
-                            gematria: wordGematria,
+                            verseId: verse.id, wordIndex: i, word: wordClean,
+                            transliteration: wordTranslit, english: wordEnglish,
+                            definition: wordDef, lemma: wordLemma, morph: wordMorph,
+                            pos: pos, root: wordRoot, gematria: wordGematria,
                           }
                         }))
                       }}
                     >
-                      {/* Line 1: Hebrew word (clean, no slashes) */}
-                      <span className={`text-lg leading-relaxed ${displayLang === 'hebrew' ? HEBREW_FONT : ''}`}
-                        style={displayLang === 'hebrew' ? { fontSize: '1.1em' } : {}}>
+                      <span className={`text-lg leading-relaxed font-hebrew-biblical`}
+                        style={{ fontSize: '1.15em' }}>
                         {wordClean}
                       </span>
-                      {/* Line 2: Transliteration (always show in Hebrew mode — like TanakhReadAlong) */}
                       {wordTranslit && (
                         <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
                           {wordTranslit}
                         </span>
                       )}
-                      {/* Line 3: English gloss per word (always show in Hebrew mode) */}
                       {wordEnglish && (
-                        <span className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 leading-tight text-center max-w-[120px]">
+                        <span className={`text-[10px] mt-0.5 leading-tight text-center max-w-[120px] ${posColor}`}>
                           {wordEnglish}
+                        </span>
+                      )}
+                      {wordMorph && (
+                        <span className="text-[8px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5 leading-tight opacity-60 group-hover:opacity-100">
+                          {wordMorph}
                         </span>
                       )}
                     </div>
                   )
                 })}
               </div>
-              {/* Fallback English: full verse text if no word-level glosses */}
+              {/* Fallback English */}
               {showEnglish && !hasWordGloss && (
                 <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
                   {verse.text_english}

@@ -69,7 +69,10 @@ export function ToggleProvider({ children }) {
   const [showTranslit, setShowTranslit] = useState(true)
   const [showEnglish, setShowEnglish] = useState(true)
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish }}>{children}</ToggleCtx.Provider>
+  // Hebrew display mode
+  const [hebrewDisplayMode, setHebrewDisplayMode] = useState('reading') // 'reading' | 'scholar' | 'interlinear'
+
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode, setHebrewDisplayMode }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -211,6 +214,29 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
             </div>
           )}
         </div>
+
+        {/* Hebrew Display Mode (shown when Hebrew is active) */}
+        {displayLang === 'hebrew' && (
+          <div className="px-1 py-1.5">
+            <div className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-1.5">Hebrew Display</div>
+            <div className="flex gap-1">
+              {[
+                { id: 'reading', label: '📖 Reading' },
+                { id: 'scholar', label: '🔍 Scholar' },
+                { id: 'interlinear', label: '📝 Interlinear' },
+              ].map(mode => (
+                <button key={mode.id} onClick={() => setHebrewDisplayMode(mode.id)}
+                  className={`flex-1 px-2 py-1 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                    hebrewDisplayMode === mode.id
+                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}>
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="border-t border-neutral-200 dark:border-neutral-700 my-2" />

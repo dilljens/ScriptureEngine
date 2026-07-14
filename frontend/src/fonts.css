@@ -1,0 +1,53 @@
+/* ─── Hebrew Biblical Fonts ─── */
+
+/* Ezra SIL — Primary open-source Biblical Hebrew font (SIL OFL) */
+@font-face {
+  font-family: 'Ezra SIL';
+  src: url('/fonts/EzraSIL.woff') format('woff');
+  font-display: swap;
+  unicode-range: U+0590-05FF, U+FB1D-FB4F;
+}
+
+@font-face {
+  font-family: 'Ezra SIL SR';
+  src: url('/fonts/EzraSIL-SR.woff') format('woff');
+  font-display: swap;
+  unicode-range: U+0590-05FF, U+FB1D-FB4F;
+}
+
+/* Noto Sans Hebrew — via Google Fonts (loaded in index.html) */
+/* Heebo — via Google Fonts (loaded in index.html) */
+
+/* ─── Hebrew Font Utility Classes ─── */
+
+/* Biblical Hebrew with niqqud + cantillation (primary study font) */
+.font-hebrew-biblical {
+  font-family: 'Ezra SIL', 'SBL Hebrew', 'Taamey Frank CLM',
+               'Noto Sans Hebrew', 'Tahoma', 'Arial Hebrew', serif;
+}
+
+/* Modern Hebrew UI (no niqqud needed) */
+.font-hebrew-modern {
+  font-family: 'Noto Sans Hebrew', 'Heebo', 'Tahoma', 'Arial Hebrew', sans-serif;
+}
+
+/* Hebrew text display sizes — responsive */
+.hebrew-reading {
+  font-size: clamp(1.25rem, 5vw, 1.75rem);
+  line-height: 1.8;
+  direction: rtl;
+  text-align: right;
+}
+
+.hebrew-scholar {
+  font-size: clamp(1.125rem, 4vw, 1.5rem);
+  line-height: 1.6;
+  direction: rtl;
+  text-align: right;
+}
+
+.hebrew-interlinear {
+  font-size: clamp(1rem, 3.5vw, 1.25rem);
+  line-height: 1.4;
+  direction: rtl;
+}

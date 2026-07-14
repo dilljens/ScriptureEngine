@@ -9,6 +9,7 @@ import ConversationHistory from './components/ConversationHistory'
 import VerseBlock from './components/VerseBlock'
 const StudyViewer = React.lazy(() => import('./components/StudyViewer'))
 import SearchBar from './components/SearchBar'
+import './fonts.css'
 import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
 import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,

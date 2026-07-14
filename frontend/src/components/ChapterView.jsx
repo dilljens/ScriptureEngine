@@ -44,7 +44,7 @@ function useChapterData(book, chapter) {
 }
 
 export default function ChapterView({ book, chapter, poetryMode, highlightVerse, onSplit, companionLabel, onCloseCompanion }) {
-  const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish } = useToggles()
+  const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode } = useToggles()
   const { data, loading, error } = useChapterData(book, chapter)
   const [footnotes, setFootnotes] = useState(null)
   const [tskRefs, setTskRefs] = useState(null)
@@ -317,6 +317,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
               reviewed={reviewed}
               onToggleReview={() => toggleReviewed(`${book}.${chapter}.${v.verse}`)}
               displayLang={displayLang} showTranslit={showTranslit} showEnglish={showEnglish}
+              hebrewDisplayMode={hebrewDisplayMode}
             />
           </div>
         )
