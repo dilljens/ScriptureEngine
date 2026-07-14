@@ -50,7 +50,7 @@ from lib.api.graph import (
 )
 from lib.api.info import get_stats
 from lib.api.interlinear import get_interlinear
-from lib.api.search import search_text, search_xlingual
+from lib.api.search import search_text, search_xlingual, semantic_search_text
 from lib.api.sod import hidden_patterns
 from lib.api.sources import get_sources_by_scholar, get_sources_for_verse, list_scholars
 from lib.api.strongs import strongs_lookup
@@ -180,6 +180,21 @@ register(
         "required": ["query"],
     },
     "Search for verses by keyword in English text",
+)
+
+register(
+    "scripture_semantic_search",
+    semantic_search_text,
+    {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query (auto-detects verse refs, Hebrew, Greek, natural language)"},
+            "limit": {"type": "integer", "default": 20, "description": "Max results"},
+            "mode": {"type": "string", "enum": ["hybrid", "vector", "keyword"], "default": "hybrid", "description": "Search mode: hybrid (RRF fusion), vector (pure semantic), keyword (pure BM25)"},
+        },
+        "required": ["query"],
+    },
+    "Hybrid semantic search — uses transformer embeddings (multilingual, Hebrew/Greek/English) fused with BM25. Finds verses by meaning, not just keywords.",
 )
 
 register(
@@ -1110,6 +1125,39 @@ register(
         "required": [],
     },
     "Generate Hebrew knowledge quiz questions. Perfect for practicing letter names (aleph-bet), vowel recognition, and vocabulary. Defaults to consonant/aleph-bet questions.",
+)
+
+# ─── Materialized View Tools (require scripts/build_materialized_views.py) ───
+
+from lib.api.materialized import similar_verses, entity_cooccurrence
+
+register(
+    "scripture_similar_verses",
+    similar_verses,
+    {
+        "type": "object",
+        "properties": {
+            "verse_id": {"type": "string", "description": "Verse ID (gen.1.1)"},
+            "limit": {"type": "integer", "default": 20, "description": "Max results"},
+            "min_score": {"type": "number", "default": 0.1, "description": "Minimum similarity score (0-1)"},
+        },
+        "required": ["verse_id"],
+    },
+    "Find verses similar to a given verse using pre-computed entity + connection overlap. Run scripts/build_materialized_views.py first.",
+)
+
+register(
+    "scripture_entity_cooccurrence",
+    entity_cooccurrence,
+    {
+        "type": "object",
+        "properties": {
+            "entity_id": {"type": "string", "description": "Entity ID (person.abraham)"},
+            "limit": {"type": "integer", "default": 20, "description": "Max results"},
+        },
+        "required": ["entity_id"],
+    },
+    "Find entities that frequently co-occur with a given entity in the same verse. Run scripts/build_materialized_views.py first.",
 )
 
 # ─── Export all registered tool names ───

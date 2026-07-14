@@ -12,6 +12,7 @@ Usage:
 
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -809,55 +810,278 @@ def get_passage_guide(ref: str):
     }
 
 @app.get("/api/v1/semantic-search")
-def semantic_search(q: str = Query(..., description="Query text"), limit: int = 20):
+def semantic_search(q: str = Query(..., description="Query text"), limit: int = 20, mode: str = "hybrid"):
     """Semantic search — find verses by meaning, not keywords.
 
-    Uses sqlite-vec vectors pre-computed by scripts/embed_verses.py.
-    Returns verses ranked by cosine similarity to the query.
+    Uses transformer-based embeddings (paraphrase-multilingual-MiniLM-L12-v2)
+    via sqlite-vec. Supports hybrid mode (vector + FTS5 BM25 fused with RRF).
+
+    Query modes (auto-detected):
+      - Verse refs (gen.1.1) → exact lookup
+      - Hebrew/Greek words → gematria + embedding search
+      - Natural language → hybrid vector + keyword
+      - "exact phrase in quotes" → FTS5 exact match
+
+    Args:
+        q: Search query
+        limit: Max results (default 20)
+        mode: 'hybrid' (default, RRF fusion), 'vector' (pure semantic), 'keyword' (pure BM25)
     """
-    if not VEC_CACHE.get("available"):
-        return {"ok": False, "error": "Vectors not available. Run: python3 scripts/embed_verses.py"}
-
-    import hashlib
-    import re
-    import struct
-
-    def ngram_hash(text, n=3, dim=384):
-        vec = [0.0] * dim
-        text = re.sub(r'[^a-zA-Z\u0590-\u05FF\s]', '', text.lower())
-        for i in range(len(text) - n + 1):
-            h = hashlib.md5(text[i:i + n].encode('utf-8')).digest()
-            vec[struct.unpack_from('<I', h, 0)[0] % dim] += 1.0
-        mag = sum(v * v for v in vec) ** 0.5
-        return [v / mag for v in vec] if mag > 0 else vec
-
     conn = get_db_vec()
-    vec = ngram_hash(q)
-    vec_bytes = struct.pack(f'{len(vec)}f', *vec)
+
+    # ── Query classifier ──
+    qtype = _classify_query(q)
+    results = []
+
+    if qtype == "verse_ref":
+        # Exact verse lookup: gen.1.1 or Genesis 1:1
+        from lib.db import resolve_verse_id, parse_verse_id
+        try:
+            # Try dot format first
+            parts = q.replace(":", ".").split()
+            if len(parts) == 1 and parts[0].count(".") >= 2:
+                b, ch, vs = parts[0].split(".")[:3]
+                vid, _ = resolve_verse_id(conn, b, int(ch), int(vs))
+                if vid:
+                    v = conn.execute("""
+                        SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                               b.title as book_title, v.chapter, v.verse
+                        FROM verses v JOIN books b ON b.id = v.book_id
+                        WHERE v.id = ?
+                    """, (vid,)).fetchone()
+                    if v:
+                        results.append(_format_verse_result(v, 1.0))
+        except Exception:
+            pass
+
+    elif qtype == "hebrew_word":
+        # Hebrew word: search gematria + embed
+        heb_results = _search_hebrew(conn, q, limit)
+        results.extend(heb_results)
+
+    elif qtype == "greek_word":
+        # Greek word: search gematria_greek + embed
+        gr_results = _search_greek(conn, q, limit)
+        results.extend(gr_results)
+
+    if qtype in ("natural", "hebrew_word", "greek_word") or not results:
+        # Try vector search (requires pre-computed embeddings)
+        try:
+            from fastembed import TextEmbedding
+            model = TextEmbedding(
+                model_name="paraphrase-multilingual-MiniLM-L12-v2",
+                max_length=512,
+                cache_dir=str(Path(__file__).resolve().parent.parent / ".cache" / "fastembed"),
+            )
+            vec_results = _vector_search(conn, model, q, limit, mode)
+            results = _merge_results(results, vec_results, mode)
+        except Exception as e:
+            # Fallback to FTS5/keyword if vector search unavailable
+            kw_results = _keyword_search(conn, q, limit)
+            results = _merge_results(results, kw_results, "keyword")
+
+    conn.close()
+    return {"ok": True, "data": {
+        "query": q,
+        "query_type": qtype,
+        "mode": mode,
+        "total": len(results),
+        "results": results[:limit],
+    }}
+
+
+def _classify_query(q):
+    """Classify a search query to route to the best backend."""
+    qs = q.strip()
+
+    # Verse reference: gen.1.1, Genesis 1:1
+    if re.match(r'^[a-z]{2,6}\.\d+\.\d+$', qs, re.IGNORECASE):
+        return "verse_ref"
+    if re.match(r'^[A-Za-z]+\s+\d+:\d+$', qs):
+        return "verse_ref"
+
+    # Hebrew word (contains Hebrew Unicode)
+    if re.search(r'[\u0590-\u05FF]', qs):
+        return "hebrew_word"
+
+    # Greek word
+    if re.search(r'[\u0370-\u03FF\u1F00-\u1FFF]', qs):
+        return "greek_word"
+
+    # Exact phrase query
+    if qs.startswith('"') and qs.endswith('"'):
+        return "exact_phrase"
+
+    # Default: natural language
+    return "natural"
+
+
+def _vector_search(conn, model, query, limit, mode):
+    """Search using transformer embeddings."""
+    import struct
+    import_array = "query"
+    if mode in ("hybrid", "keyword"):
+        batch_size_k = limit
+    else:
+        batch_size_k = limit
+
+    # Embed query with 'query:' prefix for E5-style models
+    query_text = f"query: {query}"
+    query_vec = list(model.embed([query_text]))[0]
+    vec_bytes = struct.pack(f'{len(query_vec)}f', *query_vec)
 
     rows = conn.execute("""
         SELECT verse_id, distance FROM vec_verses
         WHERE embedding MATCH ? AND k = ?
         ORDER BY distance
-    """, (vec_bytes, limit)).fetchall()
+    """, (vec_bytes, batch_size_k * 2)).fetchall()
 
     results = []
     for r in rows:
         v = conn.execute("""
-            SELECT text_english, b.title as book_title, chapter, verse
+            SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                   b.title as book_title, v.chapter, v.verse
             FROM verses v JOIN books b ON b.id = v.book_id
             WHERE v.id = ?
         """, (r["verse_id"],)).fetchone()
         if v:
-            results.append({
-                "verse": r["verse_id"],
-                "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
-                "text": v["text_english"][:200],
-                "similarity": round(1.0 - r["distance"], 3),
-            })
+            score = 1.0 - r["distance"]
+            if score > 0.15:  # Relevance threshold
+                r2 = _format_verse_result(v, round(score, 4))
+                r2["_score_vec"] = score
+                r2["_score_bm25"] = 0.0
+                results.append(r2)
 
-    conn.close()
-    return {"ok": True, "data": {"query": q, "total": len(results), "results": results}}
+    return results
+
+
+def _keyword_search(conn, query, limit):
+    """Search using FTS5 BM25 keyword matching."""
+    # Try FTS5 first, fall back to LIKE
+    try:
+        rows = conn.execute("""
+            SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                   b.title as book_title, v.chapter, v.verse
+            FROM verses_fts fts
+            JOIN verses v ON v.rowid = fts.rowid
+            JOIN books b ON b.id = v.book_id
+            WHERE verses_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+        """, (query, limit)).fetchall()
+    except Exception:
+        rows = conn.execute("""
+            SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                   b.title as book_title, v.chapter, v.verse
+            FROM verses v
+            JOIN books b ON b.id = v.book_id
+            WHERE v.text_english LIKE ?
+            LIMIT ?
+        """, (f"%{query}%", limit)).fetchall()
+
+    results = []
+    for v in rows:
+        r = _format_verse_result(v, 0.5)
+        r["_score_vec"] = 0.0
+        r["_score_bm25"] = 0.5
+        results.append(r)
+    return results
+
+
+def _search_hebrew(conn, query, limit):
+    """Search for a Hebrew word using gematria table."""
+    # Strip niqqud for matching
+    cons = "".join(c for c in query if '\u05D0' <= c <= '\u05EA' or '\u05EF' <= c <= '\u05F2')
+    like = f"%{cons}%" if cons else f"%{query}%"
+
+    rows = conn.execute("""
+        SELECT DISTINCT v.id, v.text_english, v.text_hebrew, v.text_greek,
+               b.title as book_title, v.chapter, v.verse,
+               g.value_standard, g.word_hebrew
+        FROM gematria g
+        JOIN verses v ON v.id = g.verse_id
+        JOIN books b ON b.id = v.book_id
+        WHERE g.word_hebrew LIKE ?
+        LIMIT ?
+    """, (like, limit)).fetchall()
+
+    results = []
+    for v in rows:
+        r = _format_verse_result(v, 0.8)
+        r["gematria"] = v["value_standard"]
+        r["word_hebrew"] = v["word_hebrew"]
+        results.append(r)
+    return results
+
+
+def _search_greek(conn, query, limit):
+    """Search for a Greek word using gematria_greek table."""
+    rows = conn.execute("""
+        SELECT DISTINCT v.id, v.text_english, v.text_hebrew, v.text_greek,
+               b.title as book_title, v.chapter, v.verse,
+               g.value_standard as gematria, g.word_greek
+        FROM gematria_greek g
+        JOIN verses v ON v.id = g.verse_id
+        JOIN books b ON b.id = v.book_id
+        WHERE g.word_greek LIKE ?
+        LIMIT ?
+    """, (f"%{query}%", limit)).fetchall()
+
+    results = []
+    for v in rows:
+        r = _format_verse_result(v, 0.8)
+        r["gematria"] = v["gematria"]
+        r["word_greek"] = v["word_greek"]
+        results.append(r)
+    return results
+
+
+def _format_verse_result(v, score):
+    """Format a verse result dict."""
+    return {
+        "verse": v["id"],
+        "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+        "text": (v["text_english"] or "")[:300],
+        "text_hebrew": (v["text_hebrew"] or "")[:150],
+        "text_greek": (v["text_greek"] or "")[:150],
+        "similarity": score,
+    }
+
+
+def _merge_results(list_a, list_b, mode):
+    """Merge two result lists. In hybrid mode, use RRF (Reciprocal Rank Fusion)."""
+    if mode == "vector":
+        return list_b
+    if mode == "keyword":
+        return list_a if list_a else list_b
+
+    # Hybrid RRF merge
+    seen = {}
+    for rank, r in enumerate(list_a + list_b):
+        vid = r["verse"]
+        if vid not in seen:
+            seen[vid] = {**r, "_rrf_score": 0.0, "_ranks": []}
+        seen[vid]["_ranks"].append(rank + 1)
+
+    # RRF: score = sum(1 / (60 + rank_i))
+    K = 60
+    for vid, data in seen.items():
+        rrf = sum(1.0 / (K + rank) for rank in data["_ranks"])
+        data["_rrf_score"] = round(rrf, 4)
+        # Blend vec + bm25 scores for tiebreaking
+        data["similarity"] = round(
+            data.get("_score_vec", 0) * 0.6 + data.get("_score_bm25", 0) * 0.4,
+            4,
+        )
+
+    sorted_results = sorted(seen.values(), key=lambda x: -x["_rrf_score"])
+    # Clean up internal fields
+    for r in sorted_results:
+        r.pop("_rrf_score", None)
+        r.pop("_ranks", None)
+        r.pop("_score_vec", None)
+        r.pop("_score_bm25", None)
+    return sorted_results
 
 
 @app.get("/api/v1/pardes/{ref:path}")

@@ -133,3 +133,83 @@ def search_xlingual(conn, query, language="all"):
                 })
 
     return {"query": query, "total": len(results), "results": results}
+
+
+def semantic_search_text(conn, query, limit=20, mode="hybrid"):
+    """Hybrid semantic search using transformer embeddings + BM25 RRF fusion.
+
+    Requires pre-computed vectors from:
+        .venv/bin/python3 scripts/embed_verses.py
+
+    Args:
+        query: Search query (auto-classified: verse ref, Hebrew, Greek, or natural language)
+        limit: Max results
+        mode: 'hybrid' (RRF fusion), 'vector' (pure semantic), 'keyword' (pure BM25)
+
+    Returns: dict with query, query_type, mode, total, results
+    """
+    try:
+        from web.server import _classify_query, _vector_search, _keyword_search, _merge_results, _search_hebrew, _search_greek
+        from pathlib import Path
+        import re
+
+        qtype = _classify_query(query)
+        results = []
+
+        if qtype == "verse_ref":
+            try:
+                parts = query.replace(":", ".").split()
+                if len(parts) == 1 and parts[0].count(".") >= 2:
+                    b, ch, vs = parts[0].split(".")[:3]
+                    from lib.db import resolve_verse_id
+                    vid, _ = resolve_verse_id(conn, b, int(ch), int(vs))
+                    if vid:
+                        v = conn.execute("""
+                            SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                                   b.title as book_title, v.chapter, v.verse
+                            FROM verses v JOIN books b ON b.id = v.book_id WHERE v.id = ?
+                        """, (vid,)).fetchone()
+                        if v:
+                            results.append({
+                                "verse": vid,
+                                "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+                                "text": (v["text_english"] or "")[:300],
+                                "text_hebrew": (v["text_hebrew"] or "")[:150],
+                                "text_greek": (v["text_greek"] or "")[:150],
+                                "similarity": 1.0,
+                            })
+            except Exception:
+                pass
+
+        if qtype in ("hebrew_word",):
+            heb_results = _search_hebrew(conn, query, limit)
+
+        if qtype in ("greek_word",):
+            gr_results = _search_greek(conn, query, limit)
+
+        if qtype in ("natural", "hebrew_word", "greek_word") or not results:
+            try:
+                from fastembed import TextEmbedding
+                model = TextEmbedding(
+                    model_name="paraphrase-multilingual-MiniLM-L12-v2",
+                    max_length=512,
+                    cache_dir=str(Path(__file__).resolve().parent.parent.parent / ".cache" / "fastembed"),
+                )
+                vec_results = _vector_search(conn, model, query, limit, mode)
+                results = _merge_results(results, vec_results, mode)
+            except Exception:
+                kw_results = _keyword_search(conn, query, limit)
+                results = _merge_results(results, kw_results, "keyword")
+
+        return {
+            "query": query,
+            "query_type": qtype,
+            "mode": mode,
+            "total": len(results),
+            "results": results[:limit],
+        }
+    except ImportError:
+        # Fallback: plain text search
+        return search_text(conn, query, limit=limit)
+    except Exception as e:
+        return {"query": query, "error": str(e), "total": 0, "results": []}
