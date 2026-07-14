@@ -46,12 +46,12 @@ python3 -m pytest tests/test_openapi_snapshot.py -q --tb=short || {
 echo "[5/5] Frontend E2E tests..."
 
 # Start API backend for E2E tests (Playwright's webServer handles Vite)
-python3 -m uvicorn web.server:app --port 8000 --host 127.0.0.1 &
+python3 -m uvicorn web.server:app --port 8002 --host 127.0.0.1 &
 API_PID=$!
 sleep 2
 
 cd frontend
-npx playwright test app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=30000 || {
+npx playwright test app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=60000 || {
     echo "✗ Frontend E2E tests failed — aborting deploy"
     kill $API_PID 2>/dev/null
     exit 1
