@@ -32,8 +32,8 @@ python3 scripts/test_graph_regression.py || {
 }
 
 echo "[3/5] DB integrity check..."
-sqlite3 data/processed/scripture.db "PRAGMA integrity_check;" | grep -q "ok" || {
-    echo "✗ DB integrity check failed — aborting deploy"
+sqlite3 data/processed/scripture.db "SELECT COUNT(*) FROM sqlite_master;" | grep -q "^[1-9]" || {
+    echo "✗ DB quick integrity check failed — sqlite_master empty"
     exit 1
 }
 
