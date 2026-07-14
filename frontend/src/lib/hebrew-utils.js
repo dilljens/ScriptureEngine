@@ -37,7 +37,13 @@ export function navigateToVerseBCV(book, chapter, verse) {
  * The WLC database uses / to mark morpheme boundaries (prefixes, etc.),
  * which is useful for linguistic analysis but not for reading.
  */
-export function cleanHebrew(text) {
+/**
+ * Strip morphological separators (/) from Hebrew text.
+ * The WLC database uses / to mark morpheme boundaries — useful for
+ * linguistic analysis but not for reading display.
+ * Note: there is also cleanHebrew() in utils.js which strips vowels.
+ */
+export function stripMorphSeparators(text) {
   if (!text) return text
   return text.replace(/\//g, '')
 }

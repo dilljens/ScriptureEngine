@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { cleanHebrew } from '../lib/hebrew-utils'
-import { lineHasChiasmRole } from '../utils'
+import { stripMorphSeparators } from '../lib/hebrew-utils'
+import { cleanHebrew as stripNiqqud, lineHasChiasmRole } from '../utils'
 import WordPopup from './WordPopup'
 import DisagreementsPanel from './DisagreementsPanel'
 import JSTDiffViewer from './JSTDiffViewer'
@@ -321,7 +321,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
 
     // ── READING MODE: clean Hebrew, large font, English below ──
     if (hebrewDisplayMode === 'reading') {
-      const cleanText = words.map(w => cleanHebrew(w)).join(' ')
+      const cleanText = words.map(w => stripMorphSeparators(w)).join(' ')
       return (
         <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
           <div className="flex items-start gap-1">
@@ -352,7 +352,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
             <div className="flex-1 min-w-0">
               <div className="hebrew-scholar" dir="rtl">
                 {words.map((word, i) => {
-                  const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
+                  const wordClean = verseWordData?.[i]?.hebrew_clean || stripMorphSeparators(word)
                   const wordMorph = verseWordData?.[i]?.morph || ''
                   const wordStrongs = verseWordData?.[i]?.strongs || ''
                   const wordRoot = verseWordData?.[i]?.root_letters || ''
@@ -415,7 +415,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
               <div className={`flex flex-wrap gap-x-4 gap-y-2 ${displayLang === 'hebrew' ? 'rtl' : ''}`}
                 dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
                 {words.map((word, i) => {
-                  const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
+                  const wordClean = verseWordData?.[i]?.hebrew_clean || stripMorphSeparators(word)
                   const wordTranslit = verseWordData?.[i]?.transliteration_sbl || verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
                   const wordEnglish = verseWordData?.[i]?.english || ''
                   const wordLemma = verseWordData?.[i]?.lemma || ''
@@ -504,7 +504,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
             <div className="flex-1 min-w-0 py-1" dir="rtl">
               {lines.map((line, i) => (
                 <div key={i} className="flex items-start gap-2 px-3 py-1.5 border-b border-neutral-100 dark:border-neutral-800 last:border-b-0">
-                  <p className={`text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 ${HEBREW_FONT}`} style={{ fontSize: '1.05em' }} dir="rtl">{cleanHebrew(line.hebrew)}</p>
+                  <p className={`text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 ${HEBREW_FONT}`} style={{ fontSize: '1.05em' }} dir="rtl">{stripMorphSeparators(line.hebrew)}</p>
                 </div>
               ))}
             </div>

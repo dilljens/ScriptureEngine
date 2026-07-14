@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
-import { cleanHebrew } from '../lib/hebrew-utils'
+import { stripMorphSeparators } from '../lib/hebrew-utils'
 
 /** Book ID → display name mapping for user-facing verse references */
 const BOOK_NAMES = {
@@ -488,7 +488,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
             {node.verse_attestations.map((att, i) => {
               // For letter recognition, extract the Hebrew character and the word containing it
               const isLetterRecog = att.attestation_type === 'letter_recognition'
-              const hebText = cleanHebrew(att.text_hebrew || '')
+              const hebText = stripMorphSeparators(att.text_hebrew || '')
               let highlightedHebrew = null
               if (isLetterRecog && hebText && hebText.length > 0) {
                 // Try to find the node's Hebrew character in the verse
