@@ -356,7 +356,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
                   const wordMorph = verseWordData?.[i]?.morph || ''
                   const wordStrongs = verseWordData?.[i]?.strongs || ''
                   const wordRoot = verseWordData?.[i]?.root_letters || ''
-                  const wordTranslit = verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
+                  const wordTranslit = verseWordData?.[i]?.transliteration_sbl || verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
                   const wordEnglish = verseWordData?.[i]?.english || ''
 
                   // Color by part of speech
@@ -416,11 +416,12 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
                 dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
                 {words.map((word, i) => {
                   const wordClean = verseWordData?.[i]?.hebrew_clean || cleanHebrew(word)
-                  const wordTranslit = verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
+                  const wordTranslit = verseWordData?.[i]?.transliteration_sbl || verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
                   const wordEnglish = verseWordData?.[i]?.english || ''
-                  const wordMorph = verseWordData?.[i]?.morph || ''
                   const wordLemma = verseWordData?.[i]?.lemma || ''
                   const wordDef = verseWordData?.[i]?.definition || ''
+                  const wordMorph = verseWordData?.[i]?.morph || ''
+                  const wordPos = verseWordData?.[i]?.pos || ''
                   const wordRoot = verseWordData?.[i]?.root_letters || ''
                   const wordGematria = verseWordData?.[i]?.gematria || null
 

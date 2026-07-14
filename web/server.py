@@ -50,6 +50,7 @@ from lib.sod import acrostic, gematria_advanced, hidden_names
 from lib.sod import atbash as atb
 
 _hebrew_trans = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.SIMPLE))
+_hebrew_trans_sbl = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.SBL))
 
 # Track server start time for uptime reporting
 _start_time = time.time()
@@ -946,8 +947,8 @@ def _vector_search(conn, model, query, limit, mode):
     else:
         batch_size_k = limit
 
-    # Embed query with 'query:' prefix for E5-style models
-    query_text = f"query: {query}"
+    # Embed query directly (paraphrase model doesn't need 'query:' prefix like E5)
+    query_text = query
     query_vec = list(model.embed([query_text]))[0]
     vec_bytes = struct.pack(f'{len(query_vec)}f', *query_vec)
 
@@ -1408,11 +1409,15 @@ def get_chapter_grammar(ref: str):
         word_raw = w["word_hebrew"] or ""
         # Clean Hebrew: remove / separators
         word_clean = word_raw.replace("/", "")
-        # Transliterate using biblical-transliteration SIMPLE scheme
+        # Transliterate using biblical-transliteration schemes
         try:
             translit = _hebrew_trans.transliterate_word(word_clean)
         except Exception:
             translit = ""
+        try:
+            translit_sbl = _hebrew_trans_sbl.transliterate_word(word_clean)
+        except Exception:
+            translit_sbl = translit
         # Look up gloss and lexicon data in Python
         raw_lemma = w["lemma"] or ""
         gloss = lookup_gloss(raw_lemma)
@@ -1421,6 +1426,7 @@ def get_chapter_grammar(ref: str):
             "hebrew": word_raw,
             "hebrew_clean": word_clean,
             "transliteration": translit,
+            "transliteration_sbl": translit_sbl,
             "english": gloss or w["word_english"] or "",
             "definition": lex.get("definition", ""),
             "morph": morph,
