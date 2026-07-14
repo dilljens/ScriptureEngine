@@ -803,6 +803,159 @@
         }
       }
     },
+    "/api/v1/wiki/search": {
+      "get": {
+        "summary": "Search Wiki",
+        "description": "Search wiki articles by title or summary.",
+        "operationId": "search_wiki_api_v1_wiki_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/browse/{type_name}": {
+      "get": {
+        "summary": "Browse Wiki",
+        "description": "Browse wiki articles by type (entity, concept, etc.).",
+        "operationId": "browse_wiki_api_v1_wiki_browse__type_name__get",
+        "parameters": [
+          {
+            "name": "type_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Type Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/concordance/{entity_id}": {
+      "get": {
+        "summary": "Wiki Concordance",
+        "description": "Get key verses for an entity from its wiki article.",
+        "operationId": "wiki_concordance_api_v1_wiki_concordance__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wiki/{entity_id}": {
+      "get": {
+        "summary": "Get Wiki Article",
+        "description": "Get a wiki article about a biblical entity or concept.",
+        "operationId": "get_wiki_article_api_v1_wiki__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/read-along/{verse_id}": {
       "get": {
         "summary": "Get Read Along Data",
@@ -815,6 +968,44 @@
             "schema": {
               "type": "string",
               "title": "Verse Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audio/letter/{letter_id}": {
+      "get": {
+        "summary": "Play Letter Audio",
+        "description": "Serve pre-generated Hebrew letter audio.",
+        "operationId": "play_letter_audio_api_v1_audio_letter__letter_id__get",
+        "parameters": [
+          {
+            "name": "letter_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Letter Id"
             }
           }
         ],
@@ -3262,7 +3453,7 @@
     "/api/v1/assess/grade": {
       "post": {
         "summary": "Grade Answer",
-        "description": "Grade an open-ended answer using the LLM with a transparent rubric.\n\nEvaluates the QUALITY OF REASONING, not whether the answer is \"right\" or \"wrong.\"\nReturns scores for: engagement with text, internal consistency, \nawareness of alternatives, context.\nIf user_id is provided, injects their learning progress for personalized feedback.",
+        "description": "Grade an open-ended answer using the LLM with a transparent rubric.\n\nEvaluates the QUALITY OF REASONING, not whether the answer is \"right\" or \"wrong.\"\nReturns scores for: engagement with text, internal consistency,\nawareness of alternatives, context.\nIf user_id is provided, injects their learning progress for personalized feedback.",
         "operationId": "grade_answer_api_v1_assess_grade_post",
         "requestBody": {
           "content": {
@@ -3527,7 +3718,7 @@
     "/api/v1/memorize/queue/batch": {
       "post": {
         "summary": "Add Chapter To Queue",
-        "description": "Add all verses in a chapter to the memorize queue.",
+        "description": "Add verses to the memorize queue \u2014 by chapter or by verse range.\n\nFor a full chapter: send { book: \"gen\", chapter: 1 }\nFor a verse range:  send { book: \"gen\", chapter: 1, verse_start: 1, verse_end: 5 }\nFor a single verse: send { book: \"gen\", chapter: 1, verse_start: 1 }",
         "operationId": "add_chapter_to_queue_api_v1_memorize_queue_batch_post",
         "requestBody": {
           "content": {
@@ -4687,7 +4878,7 @@
     "/api/v1/books": {
       "get": {
         "summary": "Get Books",
-        "description": "Get all works and their books for navigation.",
+        "description": "Get all works and their books for navigation \u2014 served from RAM cache.",
         "operationId": "get_books_api_v1_books_get",
         "responses": {
           "200": {
@@ -5166,7 +5357,7 @@
     "/api/v1/ot-in-nt": {
       "get": {
         "summary": "Ot In Nt",
-        "description": "Get all Old Testament quotations used in the New Testament.\n\nAggregates direct_quotation, allusion, prophetic_fulfillment, \nand modified_quotation connections from OT\u2192NT.",
+        "description": "Get all Old Testament quotations used in the New Testament.\n\nAggregates direct_quotation, allusion, prophetic_fulfillment,\nand modified_quotation connections from OT\u2192NT.",
         "operationId": "ot_in_nt_api_v1_ot_in_nt_get",
         "parameters": [
           {
@@ -5510,159 +5701,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/wiki/search": {
-      "get": {
-        "summary": "Search Wiki",
-        "description": "Search wiki articles by title or summary.",
-        "operationId": "search_wiki_api_v1_wiki_search_get",
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "",
-              "title": "Q"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/wiki/browse/{type_name}": {
-      "get": {
-        "summary": "Browse Wiki",
-        "description": "Browse wiki articles by type (entity, concept, etc.).",
-        "operationId": "browse_wiki_api_v1_wiki_browse__type_name__get",
-        "parameters": [
-          {
-            "name": "type_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Type Name"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/wiki/concordance/{entity_id}": {
-      "get": {
-        "summary": "Wiki Concordance",
-        "description": "Get key verses for an entity from its wiki article.",
-        "operationId": "wiki_concordance_api_v1_wiki_concordance__entity_id__get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/wiki/{entity_id}": {
-      "get": {
-        "summary": "Get Wiki Article",
-        "description": "Get a wiki article about a biblical entity or concept.",
-        "operationId": "get_wiki_article_api_v1_wiki__entity_id__get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
               }
             }
           }
