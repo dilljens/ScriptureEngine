@@ -168,7 +168,8 @@ export default function PalaceBuilder({ palaceId, onBack }) {
           <p className="text-xs text-neutral-500 mb-2">Position: ({selectedLocus.x_pct}, {selectedLocus.y_pct})</p>
           {selectedLocus.verse_id ? (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-indigo-600 dark:text-indigo-400">{selectedLocus.verse_id}</span>
+              <button onClick={() => { const p = (selectedLocus.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-blue-600 dark:hover:text-blue-300 cursor-pointer transition-colors">{selectedLocus.verse_id}</button>
               <button
                 onClick={() => {
                   memorizeApi.post(`/loci/${selectedLocus.id}/assign`, { verse_id: '' })
@@ -237,7 +238,8 @@ export default function PalaceBuilder({ palaceId, onBack }) {
                 {l.label[0]}
               </span>
               <span className="text-neutral-700 dark:text-neutral-300 flex-1">{l.label}</span>
-              <span className="text-neutral-400">{l.verse_id || '—'}</span>
+              <button onClick={() => { const p = (l.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                className="text-neutral-400 hover:text-blue-500 cursor-pointer transition-colors">{l.verse_id || '—'}</button>
             </div>
           ))}
           {loci.length === 0 && (

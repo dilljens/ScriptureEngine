@@ -47,16 +47,22 @@ export default function CardRenderer({ card, showAnswer, onAnswer, answerState, 
   }
 }
 
+function go(ref) {
+  const p = (ref || '').split('.')
+  if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}}))
+}
+
 // ── Verse Memory Card ──
 // Front: show reference, user must recall text
 // Back: show verse text
 function VerseCardRenderer({ card, showAnswer }) {
   const { reference, text, book, chapter, verse } = card.data || {}
+  const refStr = reference || `${book}.${chapter}.${verse}`
   return (
     <div className="text-center">
-      <p className="text-[10px] font-mono text-indigo-400 dark:text-indigo-300 mb-3">
-        {reference || `${book}.${chapter}.${verse}`}
-      </p>
+      <button onClick={() => go(refStr)} className="text-[10px] font-mono text-indigo-400 dark:text-indigo-300 mb-3 hover:text-indigo-600 dark:hover:text-indigo-200 cursor-pointer transition-colors">
+        {refStr}
+      </button>
       {showAnswer ? (
         <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 italic">
           "{text || card.data?.text_english || ''}"
@@ -110,7 +116,7 @@ function ConnectionCardRenderer({ card, showAnswer }) {
       </p>
       {showAnswer && target_verse && (
         <div className="mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-          <p className="text-sm font-medium text-green-700 dark:text-green-300">{target_verse}</p>
+          <button onClick={() => go(target_verse)} className="text-sm font-medium text-green-700 dark:text-green-300 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors">{target_verse}</button>
           {target_text && <p className="text-xs text-green-600 dark:text-green-400 mt-1 italic">"{target_text.slice(0, 120)}…"</p>}
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
             {connection_type} · {layer} · strength {strength?.toFixed(2)}
@@ -141,7 +147,7 @@ function GematriaCardRenderer({ card, showAnswer }) {
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
           <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{value || '—'}</p>
           {meaning && <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">{meaning}</p>}
-          {verse_ref && <p className="text-[10px] text-neutral-400 mt-1">{verse_ref}</p>}
+          {verse_ref && <button onClick={() => go(verse_ref)} className="text-[10px] text-neutral-400 mt-1 hover:text-indigo-500 cursor-pointer transition-colors">{verse_ref}</button>}
         </div>
       )}
     </div>
@@ -400,7 +406,7 @@ function ClozeCardRenderer({ card, showAnswer }) {
   const { passage, answer, verse_ref, hint, word_hebrew } = card.data || {}
   return (
     <div>
-      {verse_ref && <p className="text-[10px] font-mono text-indigo-400 mb-2">{verse_ref}</p>}
+      {verse_ref && <button onClick={() => go(verse_ref)} className="text-[10px] font-mono text-indigo-400 mb-2 hover:text-indigo-600 dark:hover:text-indigo-200 cursor-pointer transition-colors">{verse_ref}</button>}
       {!showAnswer ? (
         <div>
           <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
@@ -433,7 +439,7 @@ function TranslationCardRenderer({ card, showAnswer }) {
   const { english, hebrew, transliteration, verse_ref, lemma } = card.data || {}
   return (
     <div>
-      {verse_ref && <p className="text-[10px] font-mono text-indigo-400 mb-2">{verse_ref}</p>}
+      {verse_ref && <button onClick={() => go(verse_ref)} className="text-[10px] font-mono text-indigo-400 mb-2 hover:text-indigo-600 dark:hover:text-indigo-200 cursor-pointer transition-colors">{verse_ref}</button>}
       {!showAnswer ? (
         <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
           {english || ''}

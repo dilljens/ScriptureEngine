@@ -179,7 +179,8 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
               {author?.name && <span>by {author.name}</span>}
               <span>{totalSteps} steps · {expandedCount}/{totalSteps} expanded</span>
               {graph_summary?.total_connections > 0 && <span>{graph_summary.total_connections} graph connections</span>}
-              {seed_verse && <span>seed: {seed_verse}</span>}
+              {seed_verse && <button onClick={() => { const p = seed_verse.split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+  className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">seed: {seed_verse}</button>}
             </div>
           </div>
           <button onClick={() => setEditMode(!editMode)}
@@ -250,7 +251,8 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                 <span className="flex-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                   {step.title || `${step.verse}`}
                 </span>
-                <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500">{step.verse}</span>
+                <button onClick={() => { const p = (step.verse || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                  className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">{step.verse}</button>
                 {conns.length > 0 && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium">
                     {conns.length}

@@ -3,6 +3,36 @@
  */
 
 /**
+ * Navigate to a verse by dispatching a scripture-navigate event.
+ * This is handled by App.jsx globally.
+ */
+export function navigateToVerse(verseRef) {
+  if (!verseRef) return
+  const parts = verseRef.split('.')
+  if (parts.length >= 2) {
+    const book = parts[0]
+    const chapter = parseInt(parts[1]) || 1
+    window.dispatchEvent(new CustomEvent('scripture-navigate', {
+      detail: { book, chapter }
+    }))
+  } else if (verseRef.startsWith('wiki:')) {
+    window.dispatchEvent(new CustomEvent('scripture-navigate', {
+      detail: { ref: verseRef }
+    }))
+  }
+}
+
+/**
+ * Navigate to a verse by book, chapter, and optional verse number.
+ */
+export function navigateToVerseBCV(book, chapter, verse) {
+  if (!book || !chapter) return
+  window.dispatchEvent(new CustomEvent('scripture-navigate', {
+    detail: { book, chapter }
+  }))
+}
+
+/**
  * Strip morphological separators (/) from Hebrew text.
  * The WLC database uses / to mark morpheme boundaries (prefixes, etc.),
  * which is useful for linguistic analysis but not for reading.

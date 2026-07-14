@@ -225,7 +225,8 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
-            {passageInfo.book}.{passageInfo.chapter}
+            <button onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: passageInfo.book, chapter: passageInfo.chapter}}))}
+              className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">{passageInfo.book}.{passageInfo.chapter}</button>
             {passageInfo.startVerse}{passageInfo.endVerse ? `-${passageInfo.endVerse}` : ''}
           </h2>
           <p className="text-xs text-neutral-500">{tokens.length} words · {verses.length} verses</p>

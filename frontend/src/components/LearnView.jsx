@@ -233,7 +233,8 @@ export default function LearnView({ userId = 'default', onBack }) {
               {currentModule.worked_examples.map((ex, i) => (
                 <div key={i} className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800">
                   <p className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 mb-1">{ex.title}</p>
-                  {ex.verse && <p className="text-[10px] font-mono text-indigo-400 mb-1">{ex.verse}</p>}
+                  {ex.verse && <button onClick={() => { const p = ex.verse.split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+  className="text-[10px] font-mono text-indigo-400 mb-1 hover:text-indigo-600 dark:hover:text-indigo-200 cursor-pointer transition-colors">{ex.verse}</button>}
                   {ex.text && <p className="text-xs text-neutral-600 dark:text-neutral-400 italic">"{ex.text}"</p>}
                 </div>
               ))}

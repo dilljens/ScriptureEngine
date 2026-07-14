@@ -94,11 +94,15 @@ function ConnectionSection({ layer, connections, defaultOpen }) {
                 {conn.confidence && <QualityStars level={Math.round(conn.confidence * 5)} />}
               </div>
               {conn.subtype && <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{conn.subtype}</span>}
-              {conn.target_verse && (
-                <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate">
-                  → {parseRef(conn.target_verse)?.book}.{parseRef(conn.target_verse)?.chapter}:{parseRef(conn.target_verse)?.verse}
-                </div>
-              )}
+              {conn.target_verse && (() => {
+                const pr = parseRef(conn.target_verse)
+                return (
+                  <button onClick={(e) => { e.stopPropagation(); const p = conn.target_verse.split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                    className="text-[10px] text-blue-600 dark:text-blue-400 truncate hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition-colors">
+                    → {pr?.book}.{pr?.chapter}:{pr?.verse}
+                  </button>
+                )
+              })()}
               {conn.strength != null && (
                 <div className="text-[9px] text-neutral-400 dark:text-neutral-500">
                   strength: {typeof conn.strength === 'number' ? conn.strength.toFixed(2) : conn.strength}
@@ -310,9 +314,11 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
                     <div className="text-[10px] text-neutral-400 max-h-24 overflow-y-auto space-y-0.5 mt-1">
                       {graphElements.edges.slice(0, 50).map((e, i) => (
                         <div key={i} className="truncate">
-                          <span className="font-mono text-blue-500">{e.source}</span>
+                          <button onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book, chapter: parseInt(chapter), verse: parseInt(e.source)}}))}
+                            className="font-mono text-blue-500 hover:text-indigo-600 cursor-pointer transition-colors">{e.source}</button>
                           <span className="mx-1">—{e.layer?.slice(0, 4)}→</span>
-                          <span className="font-mono text-blue-500">{e.target}</span>
+                          <button onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book, chapter: parseInt(chapter), verse: parseInt(e.target)}}))}
+                            className="font-mono text-blue-500 hover:text-indigo-600 cursor-pointer transition-colors">{e.target}</button>
                           <span className="ml-1 text-neutral-400">({e.type})</span>
                         </div>
                       ))}
@@ -408,7 +414,11 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
                       <div className="pl-3 space-y-0.5">
                         {conns.slice(0, 5).map((c, i) => (
                           <div key={i} className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                            v{c.verse_num} → {c.target_verse?.split('.').pop()}
+                            <button onClick={() => { const p = (c.target_verse || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                              className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors">v{c.verse_num}</button>
+                            <span className="mx-0.5">→</span>
+                            <button onClick={() => { const p = (c.target_verse || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                              className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors">{c.target_verse?.split('.').pop()}</button>
                             {c.confidence && <QualityStars level={Math.round(c.confidence * 5)} />}
                           </div>
                         ))}

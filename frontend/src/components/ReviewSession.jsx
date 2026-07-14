@@ -226,7 +226,8 @@ export default function ReviewSession({ onDone }) {
           <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-2">You might want to review these connected verses:</p>
           {remediation.map((r, i) => (
             <div key={i} className="text-xs text-amber-600 dark:text-amber-300 mb-1">
-              <span className="font-medium">{r.verse_id}</span>
+              <button onClick={() => { const p = (r.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                className="font-medium hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">{r.verse_id}</button>
               <span className="opacity-60"> ({r.conn_type})</span>
               <p className="text-[11px] text-amber-500 dark:text-amber-400 mt-0.5">{r.text}</p>
             </div>

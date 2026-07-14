@@ -293,7 +293,8 @@ export default function MemorizeQueue({ onStartReview }) {
               {searchResults.slice(0, 8).map(r => (
                 <div key={r.verse || r.verse_id} className="flex items-center justify-between py-1.5 border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                   <div className="min-w-0 flex-1 mr-2">
-                    <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">{r.verse || r.verse_id}</span>
+                    <button onClick={() => { const p = (r.verse || r.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                      className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 cursor-pointer transition-colors">{r.verse || r.verse_id}</button>
                     <span className="text-[10px] text-neutral-500 dark:text-neutral-400 ml-1">{(r.book || '').toUpperCase()}</span>
                     <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5 truncate">{(r.text || r.text_english || '').slice(0, 80)}</p>
                   </div>
