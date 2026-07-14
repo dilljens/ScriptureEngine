@@ -809,6 +809,26 @@ def get_passage_guide(ref: str):
         }
     }
 
+# ─── Lazy-loaded embedding model (loaded once, reused) ───
+_EMBED_MODEL = None
+
+def _get_embed_model():
+    global _EMBED_MODEL
+    if _EMBED_MODEL is None:
+        try:
+            from fastembed import TextEmbedding
+            _EMBED_MODEL = TextEmbedding(
+                model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                max_length=512,
+                cache_dir=str(Path.home() / ".cache" / "fastembed"),
+            )
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to load embedding model: {e}")
+            return None
+    return _EMBED_MODEL
+
+
 @app.get("/api/v1/semantic-search")
 def semantic_search(q: str = Query(..., description="Query text"), limit: int = 20, mode: str = "hybrid"):
     """Semantic search — find verses by meaning, not keywords.
@@ -866,16 +886,17 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
 
     if qtype in ("natural", "hebrew_word", "greek_word") or not results:
         # Try vector search (requires pre-computed embeddings)
-        try:
-            from fastembed import TextEmbedding
-            model = TextEmbedding(
-                model_name="paraphrase-multilingual-MiniLM-L12-v2",
-                max_length=512,
-                cache_dir=str(Path(__file__).resolve().parent.parent / ".cache" / "fastembed"),
-            )
-            vec_results = _vector_search(conn, model, q, limit, mode)
-            results = _merge_results(results, vec_results, mode)
-        except Exception as e:
+        model = _get_embed_model()
+        if model is not None:
+            try:
+                vec_results = _vector_search(conn, model, q, limit, mode)
+                results = _merge_results(results, vec_results, mode)
+            except Exception as e:
+                import logging
+                logging.warning(f"Vector search failed: {e}, falling back to keyword")
+                kw_results = _keyword_search(conn, q, limit)
+                results = _merge_results(results, kw_results, "keyword")
+        else:
             # Fallback to FTS5/keyword if vector search unavailable
             kw_results = _keyword_search(conn, q, limit)
             results = _merge_results(results, kw_results, "keyword")

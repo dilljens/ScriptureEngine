@@ -189,14 +189,14 @@ def semantic_search_text(conn, query, limit=20, mode="hybrid"):
 
         if qtype in ("natural", "hebrew_word", "greek_word") or not results:
             try:
-                from fastembed import TextEmbedding
-                model = TextEmbedding(
-                    model_name="paraphrase-multilingual-MiniLM-L12-v2",
-                    max_length=512,
-                    cache_dir=str(Path(__file__).resolve().parent.parent.parent / ".cache" / "fastembed"),
-                )
-                vec_results = _vector_search(conn, model, query, limit, mode)
-                results = _merge_results(results, vec_results, mode)
+                from web.server import _get_embed_model
+                model = _get_embed_model()
+                if model is not None:
+                    vec_results = _vector_search(conn, model, query, limit, mode)
+                    results = _merge_results(results, vec_results, mode)
+                else:
+                    kw_results = _keyword_search(conn, query, limit)
+                    results = _merge_results(results, kw_results, "keyword")
             except Exception:
                 kw_results = _keyword_search(conn, query, limit)
                 results = _merge_results(results, kw_results, "keyword")
