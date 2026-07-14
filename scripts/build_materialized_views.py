@@ -66,6 +66,61 @@ def build_entity_cooccurrence(conn, reset=False):
 
 
 def build_verse_similarity(conn, reset=False):
+    """Pre-compute verse similarity based on shared entities only.
+
+    This is the fast path — uses verse_entities table (small).
+    Connection-type overlap requires the full connections graph (1.3M edges)
+    and is computed separately in scripts/compute_connection_similarity.py
+    """
+    if reset:
+        conn.execute("DROP TABLE IF EXISTS verse_similarity")
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS verse_similarity (
+            verse_a TEXT NOT NULL,
+            verse_b TEXT NOT NULL,
+            entity_overlap REAL DEFAULT 0.0,
+            connection_overlap REAL DEFAULT 0.0,
+            combined_score REAL DEFAULT 0.0,
+            shared_entity_count INTEGER DEFAULT 0,
+            shared_connection_count INTEGER DEFAULT 0,
+            PRIMARY KEY (verse_a, verse_b)
+        )
+    """)
+    conn.execute("DELETE FROM verse_similarity")
+
+    # Entity-based similarity using verse_entities
+    # Use MAX() instead of GREATEST: MAX(val1, val2, 1) via CASE
+    conn.execute("""
+        INSERT OR IGNORE INTO verse_similarity (verse_a, verse_b, entity_overlap, shared_entity_count, combined_score)
+        SELECT
+            ve1.verse_id,
+            ve2.verse_id,
+            1.0 * COUNT(DISTINCT ve1.entity_id) /
+                CASE
+                    WHEN t1.cnt > t2.cnt THEN t1.cnt
+                    ELSE t2.cnt
+                END,
+            COUNT(DISTINCT ve1.entity_id),
+            1.0 * COUNT(DISTINCT ve1.entity_id) /
+                CASE
+                    WHEN t1.cnt > t2.cnt THEN t1.cnt
+                    ELSE t2.cnt
+                END
+        FROM verse_entities ve1
+        JOIN verse_entities ve2 ON ve1.entity_id = ve2.entity_id AND ve1.verse_id < ve2.verse_id
+        JOIN (SELECT verse_id, COUNT(DISTINCT entity_id) as cnt FROM verse_entities GROUP BY verse_id) t1
+            ON t1.verse_id = ve1.verse_id
+        JOIN (SELECT verse_id, COUNT(DISTINCT entity_id) as cnt FROM verse_entities GROUP BY verse_id) t2
+            ON t2.verse_id = ve2.verse_id
+        GROUP BY ve1.verse_id, ve2.verse_id
+        HAVING COUNT(DISTINCT ve1.entity_id) >= 2
+    """)
+    conn.commit()
+
+    count = conn.execute("SELECT COUNT(*) FROM verse_similarity").fetchone()[0]
+    print(f"  Verse similarity (entity-based): {count} pairs")
+    return count
     """Pre-compute verse similarity based on shared entities and connection types.
     
     Table: verse_similarity (verse_a, verse_b, entity_overlap, connection_overlap, combined_score)
@@ -109,31 +164,50 @@ def build_verse_similarity(conn, reset=False):
     """)
     conn.commit()
 
-    # Connection-based similarity: verses sharing connection types
+    # Connection-based similarity: count per-verse connection types first, then join
+    print("  Computing per-verse connection type counts...", flush=True)
     conn.execute("""
-        UPDATE verse_similarity SET
-            connection_overlap = COALESCE((
-                SELECT 1.0 * COUNT(DISTINCT c1.type) / (
-                    SELECT MAX(cnt) FROM (
-                        SELECT COUNT(DISTINCT type) as cnt FROM connections WHERE source_verse = vs.verse_a AND deprecated=0
-                        UNION
-                        SELECT COUNT(DISTINCT type) as cnt FROM connections WHERE source_verse = vs.verse_b AND deprecated=0
-                    )
-                )
-                FROM connections c1
-                JOIN connections c2 ON c1.type = c2.type AND c1.source_verse = vs.verse_a AND c2.source_verse = vs.verse_b
-                WHERE c1.deprecated=0 AND c2.deprecated=0
-            ), 0.0),
-            shared_connection_count = COALESCE((
-                SELECT COUNT(DISTINCT c1.type)
-                FROM connections c1
-                JOIN connections c2 ON c1.type = c2.type AND c1.source_verse = vs.verse_a AND c2.source_verse = vs.verse_b
-                WHERE c1.deprecated=0 AND c2.deprecated=0
-            ), 0)
-        FROM verse_similarity vs
-        WHERE vs.verse_a = verse_a AND vs.verse_b = verse_b
+        CREATE TEMP TABLE IF NOT EXISTS _verse_conn_types AS
+        SELECT source_verse, COUNT(DISTINCT type) as type_count
+        FROM connections WHERE deprecated=0
+        GROUP BY source_verse
+    """)
+    conn.execute("DELETE FROM _verse_conn_types")
+    conn.execute("""
+        INSERT INTO _verse_conn_types
+        SELECT source_verse, COUNT(DISTINCT type) as type_count
+        FROM connections WHERE deprecated=0
+        GROUP BY source_verse
     """)
     conn.commit()
+
+    # Compute overlap using the temp table
+    conn.execute("""
+        UPDATE verse_similarity AS vs
+        SET connection_overlap = COALESCE((
+            SELECT 1.0 * COUNT(DISTINCT c1.type) /
+                CASE WHEN GREATEST(t1.type_count, t2.type_count) > 0
+                     THEN GREATEST(t1.type_count, t2.type_count)
+                     ELSE 1 END
+            FROM connections c1
+            JOIN connections c2 ON c1.type = c2.type
+                AND c1.source_verse = vs.verse_a
+                AND c2.source_verse = vs.verse_b
+            JOIN _verse_conn_types t1 ON t1.source_verse = vs.verse_a
+            JOIN _verse_conn_types t2 ON t2.source_verse = vs.verse_b
+            WHERE c1.deprecated=0 AND c2.deprecated=0
+        ), 0.0),
+        shared_connection_count = COALESCE((
+            SELECT COUNT(DISTINCT c1.type)
+            FROM connections c1
+            JOIN connections c2 ON c1.type = c2.type
+                AND c1.source_verse = vs.verse_a
+                AND c2.source_verse = vs.verse_b
+            WHERE c1.deprecated=0 AND c2.deprecated=0
+        ), 0)
+    """)
+    conn.commit()
+    conn.execute("DROP TABLE IF EXISTS _verse_conn_types")
 
     # Combined score: weighted combination
     conn.execute("""
@@ -205,7 +279,7 @@ def main():
     print("\n--- Entity Co-occurrence ---")
     build_entity_cooccurrence(conn, reset=args.reset)
 
-    print("\n--- Verse Similarity ---")
+    print("\n--- Verse Similarity (entity-based) ---")
     build_verse_similarity(conn, reset=args.reset)
 
     # Stats
