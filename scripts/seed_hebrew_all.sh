@@ -39,31 +39,35 @@ echo "=== Seeding Hebrew Lesson Content ==="
 echo "DB: $DB"
 
 echo ""
-echo "[1/6] Vocabulary lessons (500+ frequency-ranked words)..."
+echo "[1/8] Vocabulary lessons (500+ frequency-ranked words)..."
 python3 scripts/seed_hebrew_vocabulary.py --db "$DB"
 
 echo ""
-echo "[2/6] Grammar lessons (begadkefat, clauses, etc.)..."
+echo "[2/8] Grammar lessons (begadkefat, clauses, etc.)..."
 python3 scripts/seed_hebrew_grammar.py
 
 echo ""
-echo "[3/6] Phrase lessons (formulaic expressions)..."
+echo "[3/8] Phrase lessons (formulaic expressions)..."
 python3 scripts/seed_hebrew_phrases.py
 
 echo ""
-echo "[4/6] Root lessons (triconsonantal root families)..."
+echo "[4/8] Root lessons (triconsonantal root families)..."
 python3 scripts/seed_hebrew_roots.py
 
 echo ""
-echo "[5/6] Lesson content builder (curated letters/vowels + fills gaps)..."
+echo "[5/8] Graded reading progression (Bullard ETCBC-ordered chapters)..."
+python3 scripts/seed_hebrew_reading.py
+
+echo ""
+echo "[6/8] Lesson content builder (curated letters/vowels + fills gaps)..."
 python3 scripts/seed_hebrew_content.py --db "$DB"
 
 echo ""
-echo "[6/7] Enhance vocabulary lessons with real verse context..."
+echo "[7/8] Enhance vocabulary lessons with real verse context..."
 python3 scripts/enhance_vocabulary_lessons.py
 
 echo ""
-echo "[7/7] Production practice items (cloze, free recall)..."
+echo "[8/8] Production practice items (cloze, free recall)..."
 python3 scripts/seed_hebrew_production.py
 
 echo ""
