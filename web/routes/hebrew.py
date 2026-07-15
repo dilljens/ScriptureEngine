@@ -822,6 +822,48 @@ def get_hebrew_audio(word: str):
     raise HTTPException(404, f"No audio found for: {word_clean}")
 
 
+@router.get("/api/v1/hebrew/image/{word:path}")
+def get_hebrew_image(word: str):
+    """Get an image associated with a Hebrew word.
+
+    Returns image URL from word_images table (FreeBibleImages.org, etc.)
+    or a 404 if no image is available.
+    """
+    word_clean = word.strip()
+    if not word_clean:
+        raise HTTPException(400, "Word required")
+    conn = get_db()
+    row = conn.execute(
+        "SELECT image_url, source, attribution, width, height, prompt "
+        "FROM word_images WHERE word_hebrew = ? ORDER BY source LIMIT 1",
+        (word_clean,)
+    ).fetchone()
+    conn.close()
+    if row:
+        return {"ok": True, "data": dict(row)}
+    raise HTTPException(404, f"No image found for: {word_clean}")
+
+
+@router.get("/api/v1/hebrew/images") 
+def get_hebrew_images(limit: int = 50, offset: int = 0, source: str = ""):
+    """List all available word images, paginated."""
+    conn = get_db()
+    if source:
+        rows = conn.execute(
+            "SELECT word_hebrew, image_url, source, attribution FROM word_images WHERE source = ? ORDER BY word_hebrew LIMIT ? OFFSET ?",
+            (source, limit, offset)
+        ).fetchall()
+        total = conn.execute("SELECT COUNT(*) as c FROM word_images WHERE source = ?", (source,)).fetchone()["c"]
+    else:
+        rows = conn.execute(
+            "SELECT word_hebrew, image_url, source, attribution FROM word_images ORDER BY word_hebrew LIMIT ? OFFSET ?",
+            (limit, offset)
+        ).fetchall()
+        total = conn.execute("SELECT COUNT(*) as c FROM word_images").fetchone()["c"]
+    conn.close()
+    return {"ok": True, "data": [dict(r) for r in rows], "total": total}
+
+
 @router.get("/api/v1/hebrew/review-queue")
 def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
     if not MEM_DB.exists():

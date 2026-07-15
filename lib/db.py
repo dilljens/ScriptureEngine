@@ -613,6 +613,20 @@ CREATE TABLE IF NOT EXISTS conversation_connections (
     UNIQUE(session_id, source_verse, target_verse)
 );
 CREATE INDEX IF NOT EXISTS idx_conv_conn_session ON conversation_connections(session_id);
+
+-- Hebrew word images (FreeBibleImages, AI generation, etc.)
+CREATE TABLE IF NOT EXISTS word_images (
+    word_hebrew TEXT NOT NULL,
+    node_id TEXT,
+    source TEXT DEFAULT 'freebible',
+    image_url TEXT NOT NULL,
+    attribution TEXT DEFAULT '',
+    width INTEGER DEFAULT 0,
+    height INTEGER DEFAULT 0,
+    prompt TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (word_hebrew, source)
+);
 """
 
 
