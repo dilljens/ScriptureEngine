@@ -16,6 +16,7 @@ __pycache__/
 data/processed/*.db
 data/processed/*.db-wal
 data/processed/*.db-shm
+data/processed/*.bak*
 
 # Any root-level db files (placeholder)
 data/*.db
