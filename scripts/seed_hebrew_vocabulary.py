@@ -297,7 +297,7 @@ def main():
             desc = desc[:200] + '...'
 
         conn.execute(
-            "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'word', ?)",
+            "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'word', ?)",
             (lid, title, start_level, desc)
         )
         new_nodes += 1
@@ -316,7 +316,7 @@ def main():
             "verse_example": verse_data[0] if verse_data else None,
         }
         conn.execute(
-            "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
 
@@ -327,7 +327,7 @@ def main():
         )
         for item in items:
             conn.execute(
-                "INSERT INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (lid, item['question_type'], item['question_text'], item['options_json'], item['correct_answer'], item['difficulty'], item['explanation'])
             )
             new_items += 1

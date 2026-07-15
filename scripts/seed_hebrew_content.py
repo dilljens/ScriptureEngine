@@ -499,6 +499,192 @@ def _explanation(nid, title, category):
             "(he corresponded / wrote to himself). Marked by "
             "הִתְ prefix and dagesh forte in the middle root."
         ),
+
+        # ── Noun patterns (level 5) ──
+        "noun_gender": (
+            "Every Hebrew noun has a gender — masculine or feminine — "
+            "even inanimate objects. This is grammatical gender, not "
+            "biological gender. Feminine nouns typically end in ־ָה (qamats-he) "
+            "or ־ֶת/-ת. Masculine nouns have no fixed ending. "
+            "Gender matters because adjectives, verbs, and pronouns "
+            "must agree with the noun's gender."
+        ),
+        "noun_number": (
+            "Hebrew has three grammatical numbers: singular, plural, "
+            "and dual (for pairs: eyes, ears, hands, feet). "
+            "Masculine plural adds ־ִים (suffix -im). "
+            "Feminine plural adds ־וֹת (suffix -ot). "
+            "Adjectives and verbs must agree in number with their noun."
+        ),
+        "noun_state": (
+            "A noun in Hebrew can be in one of two states: "
+            "ABSOLUTE (the basic form, meaning 'a/the king') or "
+            "CONSTRUCT (the bound form, meaning 'king of'). "
+            "The construct state is used in a construct chain: "
+            "מֶלֶךְ יִשְׂרָאֵל = melekh yisrael = 'king of Israel'. "
+            "The first noun is in construct (shortened form); the "
+            "second noun is in absolute."
+        ),
+        "construct_chain": (
+            "A construct chain (סְמִיכוּת) is two or more nouns "
+            "linked together where the first is in CONSTRUCT state "
+            "and the rest are in ABSOLUTE state. "
+            "The chain translates as 'X of Y'. "
+            "Example: בֵּית הַמִּקְדָּשׁ = bet hamikdash = 'house of the sanctuary'. "
+            "Only the LAST noun in the chain can take the definite article. "
+            "A construct chain can range from 2 to 5+ nouns stacked together."
+        ),
+        "definite_article": (
+            "The definite article in Hebrew is the prefix הַ (ha-) "
+            "attached to the beginning of a noun. It means 'the'. "
+            "The article affects the first vowel of the word: "
+            "it typically takes a patah and doubles the next letter "
+            "via dagesh forte. Before guttural letters (אהחע), "
+            "the vowel may lengthen."
+        ),
+        "preposition_independent": (
+            "Independent prepositions are stand-alone words (not prefixes) "
+            "that indicate spatial, temporal, or logical relationships. "
+            "Common ones: אֶל (to/toward), עַל (upon/over), "
+            "עִם (with), אֵצֶל (beside), תַּחַת (under), "
+            "לִפְנֵי (before/in front of), אַחֲרֵי (after). "
+            "Unlike the inseparable prepositions (ב,כ,ל), "
+            "independent prepositions are separate words."
+        ),
+
+        # ── Syntax ──
+        "direct_object": (
+            "The direct object of a verb receives the action. "
+            "In Hebrew, the direct object is often marked by "
+            "the particle אֶת before a definite noun. "
+            "Example: וַיִּבְרָא אֱלֹהִים אֶת הַשָּׁמַיִם = "
+            "'And God created the heavens.' "
+            "The אֶת marker is untranslatable but signals the "
+            "definite direct object. Indefinite objects (no 'the') "
+            "do not take אֶת."
+        ),
+        "relative_clause": (
+            "A relative clause describes a noun and is introduced "
+            "by the relative particle אֲשֶׁר (that/which/who). "
+            "Example: הָאִישׁ אֲשֶׁר בָּא = 'the man who came'. "
+            "Sometimes the relative particle is omitted (asyndetic), "
+            "and the clause is simply juxtaposed: "
+            "הָאִישׁ בָּא = 'the man who came'. "
+            "The verb in a relative clause follows normal agreement."
+        ),
+        "word_order": (
+            "The standard word order in Biblical Hebrew prose is "
+            "VERB-SUBJECT-OBJECT (VSO), the opposite of English (SVO). "
+            "The verb typically comes first, often with the "
+            "consecutive vav (וַיְהִי, וַיֹּאמֶר). "
+            "Example: וַיֹּאמֶר אֱלֹהִים יְהִי אוֹר = "
+            "'And God said, Let there be light.' "
+            "Poetry and emphasis can invert this order."
+        ),
+        "vav_consecutive": (
+            "The vav-consecutive (or vav-conversive) is a unique "
+            "Hebrew feature where the prefix וַ (vav) attached to "
+            "a verb changes its tense: with the prefix, a perfect "
+            "verb becomes future, and an imperfect verb becomes past. "
+            "וַיֹּאמֶר = 'and he said' (past) from יֹּאמֶר (he will say). "
+            "וְאָהַבְתָּ = 'and you shall love' (future) from אָהַבְתָּ (you loved). "
+            "This is the backbone of Biblical narrative prose."
+        ),
+
+        # ── Weak verbs ──
+        "weak_nun": (
+            "Weak verbs: I-Nun have נ as the first root letter. "
+            "The nun assimilates into the next letter when the "
+            "prefix is added, causing dagesh forte in the second "
+            "root letter. Example root: נ-ת-נ (give). "
+            "Qal perfect: נָתַן (he gave). Qal imperfect: "
+            "יִתֵּן (he will give) — the nun disappeared! "
+            "This assimilation is regular and predictable."
+        ),
+        "weak_hollow": (
+            "Weak verbs: II-Vav/Yod (hollow verbs) have vav or "
+            "yod as the middle root letter. In many forms, the "
+            "middle radical disappears (is 'hollow'). "
+            "Example root: ק-ו-מ (arise). Qal perfect: קָם "
+            "(he arose — no vav visible). The vav reappears "
+            "in some forms: יָקוּם (he will arise). "
+            "Hollow verbs are common and follow regular patterns."
+        ),
+        "weak_he": (
+            "Weak verbs: III-He have ה as the third root letter. "
+            "The final he is often lost or becomes a yod-like "
+            "ending in prefix forms. Example root: ב-נ-ה (build). "
+            "Qal perfect: בָּנָה (he built). Qal imperfect: "
+            "יִבְנֶה (he will build) — the he becomes a final "
+            "-eh sound. These are sometimes called 'Lamed-He' verbs."
+        ),
+        "weak_double": (
+            "Weak verbs: Double Ayin (also called geminate/weak "
+            "double) have identical second and third root letters. "
+            "Example root: ס-ב-ב (turn). Qal perfect: "
+            "סָבַב (he turned). These verbs often merge the "
+            "two identical letters into one with dagesh forte. "
+            "They follow distinctive but regular patterns."
+        ),
+        "weak_guttural": (
+            "Weak verbs: I-Guttural have a guttural letter "
+            "(אהחע) as the first root letter. Gutturals "
+            "affect the prefix vowels: instead of a simple "
+            "sheva, the prefix takes a vowel matching the "
+            "guttural. Example root: ע-מ-ד (stand). "
+            "Qal imperfect: יַעֲמֹד (he will stand) — "
+            "the prefix has patah instead of sheva because "
+            "ayin is guttural."
+        ),
+
+        # ── Reading ──
+        "reading_torah": (
+            "Reading the Torah (the first five books of Moses) "
+            "is the foundation of Biblical Hebrew study. "
+            "Torah Hebrew is primarily narrative prose with "
+            "embedded poetry, laws, genealogies, and speeches. "
+            "Vocabulary is more limited than the Prophets, "
+            "making it ideal for early reading. "
+            "Genesis 1-3, Exodus 1-15, and Deuteronomy 6-8 "
+            "are good starting passages."
+        ),
+        "reading_genesis": (
+            "Genesis (בְּרֵאשִׁית) is the book of beginnings. "
+            "Its Hebrew ranges from the elevated prose of "
+            "creation (Gen 1) to the family narratives of "
+            "Abraham, Isaac, Jacob, and Joseph (Gen 12-50). "
+            "Key vocabulary includes: בָּרָא (create), "
+            "אָמַר (say), הָיָה (be), and repeated formulas "
+            "like אֵלֶּה תוֹלְדוֹת (these are the generations)."
+        ),
+        "reading_psalms": (
+            "Reading Psalms (תְּהִלִּים) introduces Biblical "
+            "poetry with its distinctive features: parallelism "
+            "(synonymous, antithetic, synthetic), compact "
+            "vocabulary, and frequent imperative/volitive forms. "
+            "Psalm 1, 23, 100, and 121 are excellent entry points. "
+            "Poetic word order differs from prose — expect "
+            "more variation and ellipsis."
+        ),
+        "reading_isaiah": (
+            "Isaiah (יְשַׁעְיָהוּ) is a prophetic book rich in "
+            "temple theology, messianic prophecy, and poetic "
+            "imagery. Its Hebrew spans oracles of judgment "
+            "(chapters 1-39) to promises of restoration "
+            "(chapters 40-66). Isaiah shares vocabulary with "
+            "Deuteronomy and the Psalms. Chapter 6 (the "
+            "temple vision) is the most famous passage."
+        ),
+        "reading_connections": (
+            "Textual connections link passages across the canon. "
+            "Recognizing connections — quotations, allusions, "
+            "thematic parallels — is a key reading skill. "
+            "Common connections include: the Angel of YHWH "
+            "(Gen 16 → Exo 3 → Josh 5), the covenant formula "
+            "(Gen 17 → Exo 6 → Dt 29), and the temple vision "
+            "(Isa 6 → Ezek 1 → Rev 4). Connections deepen "
+            "comprehension beyond individual verses."
+        ),
     }
     return explanations.get(nid, f"{title}: A key concept in Biblical Hebrew {category}.")
 
@@ -744,12 +930,13 @@ def seed_content(db_path="data/memorize.db"):
         "SELECT id, title, level, category, description FROM hebrew_nodes ORDER BY level, id"
     ).fetchall()
 
-    # Clear existing
-    cur.execute("DELETE FROM hebrew_lessons")
-    cur.execute("DELETE FROM hebrew_practice_items")
+    # Count existing lessons — don't overwrite content from specialized seeders
+    existing = set(r[0] for r in cur.execute("SELECT node_id FROM hebrew_lessons").fetchall())
+    print(f"  Existing lessons: {len(existing)}")
 
     lesson_count = 0
     practice_count = 0
+    skipped = 0
 
     for nid, title, _level, category, desc in nodes:
         # Extract glyph from title (title format: "Name (glyph)")
@@ -760,6 +947,13 @@ def seed_content(db_path="data/memorize.db"):
         else:
             clean_title = title
 
+        # Skip if this node already has lesson content (from a specialized seeder)
+        # UNLESS this seeder has a curated explanation for it (better content)
+        has_curated = nid in _explanations_dict()
+        if nid in existing and not has_curated:
+            skipped += 1
+            continue
+
         # Build and save lesson
         lesson = build_lesson(nid, glyph, clean_title, category, desc)
         cur.execute(
@@ -768,26 +962,80 @@ def seed_content(db_path="data/memorize.db"):
         )
         lesson_count += 1
 
-        # Build and save practice items
-        items = build_practice_items(nid, clean_title, category)
-        for item in items:
-            opts = item.get("options_json", item.get("options", "[]"))
-            opts_json = opts if isinstance(opts, str) else json.dumps(opts)
-            cur.execute(
-                """INSERT INTO hebrew_practice_items
-                   (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (nid, item["question_type"], item["question_text"],
-                 opts_json, item["correct_answer"], item["difficulty"], item["explanation"])
-            )
-            practice_count += 1
+        # Build and save practice items (only if none exist or has curated content)
+        if has_curated or not cur.execute(
+            "SELECT 1 FROM hebrew_practice_items WHERE node_id=? LIMIT 1",
+            (nid,),
+        ).fetchone():
+            items = build_practice_items(nid, clean_title, category)
+            for item in items:
+                opts = item.get("options_json", item.get("options", "[]"))
+                opts_json = opts if isinstance(opts, str) else json.dumps(opts)
+                cur.execute(
+                    """INSERT OR IGNORE INTO hebrew_practice_items
+                       (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (nid, item["question_type"], item["question_text"],
+                     opts_json, item["correct_answer"], item["difficulty"], item["explanation"])
+                )
+                practice_count += 1
 
     conn.commit()
     conn.close()
 
     print(f"Seeded {lesson_count} lessons")
     print(f"Seeded {practice_count} practice items")
+    print(f"Skipped (already exist): {skipped}")
     print(f"Nodes: {len(nodes)}")
+
+
+def _explanations_dict():
+    """Return the set of node IDs that have curated explanations.
+
+    Only includes nodes where _explanation() returns real content
+    (not the 'key concept in Biblical Hebrew' fallback).
+    Generated by scanning the _explanation() function's dict keys.
+    """
+    return {
+        # Level 1-2: Letters (28)
+        "aleph", "bet", "gimel", "dalet", "he", "vav", "zayin", "chet",
+        "tet", "yod", "kaf", "kaf_final", "lamed", "mem", "mem_final",
+        "nun", "nun_final", "samekh", "ayin", "pe", "pe_final",
+        "tsade", "tsade_final", "qof", "resh", "shin", "sin", "tav",
+        # Level 2: Vowels (19)
+        "vowel_patah", "vowel_qamats", "vowel_qamats_qatan",
+        "vowel_hiriq", "vowel_hiriq_yod", "vowel_tsere", "vowel_tsere_yod",
+        "vowel_segol", "vowel_segol_yod", "vowel_holam", "vowel_holam_vav",
+        "vowel_shuruq", "vowel_qubuts", "vowel_sheva", "vowel_sheva_na",
+        "vowel_sheva_nah", "vowel_hataf_patah", "vowel_hataf_qamats",
+        "vowel_hataf_segol",
+        # Level 3: Syllables (5)
+        "syllable_basics", "syllable_open", "syllable_closed",
+        "syllable_stress", "syllable_division",
+        # Level 4+: Verb binyanim (10)
+        "qal_perfect", "qal_imperfect", "qal_imperative", "qal_infinitive",
+        "qal_participle", "niphal", "piel", "pual", "hiphil", "hophal",
+        "hithpael",
+        # Level 4: Word patterns (3)
+        "noun_pattern_qatl", "noun_pattern_qitl", "noun_pattern_qutl",
+        # Level 4: Prefixes (7) + Suffixes (6)
+        "prefix_bet", "prefix_kaf", "prefix_lamed", "prefix_mem",
+        "prefix_vav", "prefix_he", "prefix_shin",
+        "suffix_plural_m", "suffix_plural_f", "suffix_pron_1s",
+        "suffix_pron_2ms", "suffix_pron_3ms", "suffix_pron_1p",
+        # Foundational concepts (2)
+        "root_concept", "root_extraction",
+        # Noun patterns (6)
+        "noun_gender", "noun_number", "noun_state",
+        "construct_chain", "definite_article", "preposition_independent",
+        # Syntax (4)
+        "direct_object", "relative_clause", "word_order", "vav_consecutive",
+        # Weak verbs (5)
+        "weak_nun", "weak_hollow", "weak_he", "weak_double", "weak_guttural",
+        # Reading (5)
+        "reading_torah", "reading_genesis", "reading_psalms",
+        "reading_isaiah", "reading_connections",
+    }
 
 
 if __name__ == "__main__":

@@ -215,7 +215,7 @@ def main():
             continue
 
         conn.execute(
-            "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'phrase', ?)",
+            "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'phrase', ?)",
             (lid, lesson['title'], lesson['level'], lesson['explanation'][:100])
         )
         new_nodes += 1
@@ -229,14 +229,14 @@ def main():
             "key_points": lesson['key_points'],
         }
         conn.execute(
-            "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
 
         # Practice items
         def add(q, opts, ans, qtype="multiple_choice", lid=lid):
             opts_j = json.dumps(opts, ensure_ascii=False) if opts else ""
-            conn.execute("INSERT INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
+            conn.execute("INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
                         (lid, qtype, q, opts_j, ans, 0.5))
             nonlocal new_items
             new_items += 1

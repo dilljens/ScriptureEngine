@@ -884,7 +884,7 @@ def main():
 
         # Create node
         conn.execute(
-            "INSERT INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, ?, ?)",
             (lid, lesson["title"], lesson["level"], lesson["category"], lesson["description"])
         )
         new_nodes += 1
@@ -901,7 +901,7 @@ def main():
             "worked_examples": lesson["worked_examples"],
         }
         conn.execute(
-            "INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
             (lid, json.dumps(content, ensure_ascii=False))
         )
 
@@ -909,7 +909,7 @@ def main():
         for item in lesson["practice"]:
             opts = json.dumps(item.get("opts", []), ensure_ascii=False) if item.get("opts") else ""
             conn.execute(
-                "INSERT INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (lid, item["type"], item["q"], opts, item["ans"], 0.5, "")
             )
             new_items += 1
@@ -925,7 +925,7 @@ def main():
                 ).fetchone()
                 if not edge_exists:
                     conn.execute(
-                        "INSERT INTO hebrew_edges (source_id, target_id, edge_type) VALUES (?, ?, 'prerequisite')",
+                        "INSERT OR IGNORE INTO hebrew_edges (source_id, target_id, edge_type) VALUES (?, ?, 'prerequisite')",
                         (pid, lid)
                     )
                     new_edges += 1
