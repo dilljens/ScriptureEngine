@@ -20,10 +20,25 @@ const workCardColors = {
   'expanded': { bg: 'bg-teal-50 dark:bg-teal-900/20', border: 'border-teal-200 dark:border-teal-800', hover: 'hover:bg-teal-100 dark:hover:bg-teal-900/30', badge: 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300', icon: '⛪' },
 }
 
-export default function LibraryView({ bookData, onNavigate }) {
+export default function LibraryView({ bookData, onNavigate, bookError, onRetry }) {
   const { goToWork: ctxGoToWork, goToBook, currentTab, viewRef } = useTabs()
   const works = bookData?.works || []
   const focusedWorkId = viewRef || works[0]?.id || null
+
+  // Error state with retry
+  if (bookError) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-12 text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Couldn't load library</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">{bookError}</p>
+        <button onClick={onRetry}
+          className="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors">
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   // Works where "books" are really chapters/sections (single-chapter books).
   // D&C: 138 sections, each stored as a 1-chapter "book" — skip book list.
@@ -71,8 +86,11 @@ export default function LibraryView({ bookData, onNavigate }) {
           )
         })}
       </div>
-      {works.length === 0 && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">No works loaded</p>
+      {works.length === 0 && !bookError && (
+        <div className="text-center py-12">
+          <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading library...</p>
+        </div>
       )}
       <p className="text-[10px] text-neutral-400 dark:text-neutral-500 text-center mt-6">
         ← → navigate works · ↑↓ zoom in/out · Enter to open

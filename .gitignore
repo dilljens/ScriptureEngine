@@ -46,6 +46,7 @@ frontend/src/debug.js
 .task-done
 NOTICE.md
 pyproject.toml
+SESSION.md
 
 # OS files
 .DS_Store

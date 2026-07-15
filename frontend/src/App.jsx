@@ -478,7 +478,24 @@ function AppInner() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [renamingWs, setRenamingWs] = useState(null); const [renameValue, setRenameValue] = useState('')
 
-  useEffect(() => { getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => {}) }, [])
+  const [bookError, setBookError] = useState(null)
+  useEffect(() => {
+    let retries = 0
+    const maxRetries = 2
+    const doFetch = () => {
+      getBooks()
+        .then(r => { setBookData(r.data); window.__bookData = r.data; setBookError(null) })
+        .catch(e => {
+          if (retries < maxRetries) {
+            retries++
+            setTimeout(doFetch, 2000 * retries)
+          } else {
+            setBookError('Could not load library. Check your connection.')
+          }
+        })
+    }
+    doFetch()
+  }, [])
   useEffect(() => { getInfo().then(r => setServerInfo(r.data)).catch(() => {}) }, [])
   // Close dropdown menus when clicking outside
   useEffect(() => {
@@ -659,12 +676,13 @@ function AppInner() {
     const idx = list.findIndex(w => w.id === viewRef)
     if (idx > 0) {
       const target = list[idx - 1]
-      // Also update book to the first book of the target work (for goDown navigation)
       const firstBook = target.books?.[0]
+      // Keep label consistent: "Library" for library view, work title for work view
+      const label = viewLevel === 'library' ? 'Library' : target.title
       updateTab(currentTab.id, {
         view: viewLevel === 'library' ? 'library' : 'work',
         viewRef: target.id,
-        label: target.title,
+        label,
         ...(firstBook ? { book: firstBook.id } : {}),
       })
     }
@@ -677,10 +695,11 @@ function AppInner() {
     if (idx < list.length - 1) {
       const target = list[idx + 1]
       const firstBook = target.books?.[0]
+      const label = viewLevel === 'library' ? 'Library' : target.title
       updateTab(currentTab.id, {
         view: viewLevel === 'library' ? 'library' : 'work',
         viewRef: target.id,
-        label: target.title,
+        label,
         ...(firstBook ? { book: firstBook.id } : {}),
       })
     }
@@ -932,7 +951,7 @@ function AppInner() {
       )
     }
     if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
-    if (viewLevel === 'library') return <LibraryView bookData={bookData} onNavigate={handleChatNavigate} />
+    if (viewLevel === 'library') return <LibraryView bookData={bookData} bookError={bookError} onRetry={() => { setBookError(null); getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => { setBookError('Still could not load.') }) }} onNavigate={handleChatNavigate} />
     if (viewLevel === 'work' && viewRef) return <WorkView workId={viewRef} />
     if (viewLevel === 'book') return <BookView bookId={book} />
     // Chat view — render ChatPanel inline
