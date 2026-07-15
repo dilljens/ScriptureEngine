@@ -1,15 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { fetchJSON } from '../api'
 
 /**
  * WordPopup — appears when clicking a Hebrew word.
  * Shows: Hebrew word, transliteration, English gloss,
- * Strong's definition, morphology, root, gematria.
- * Plays audio for that specific word from the Shmueloff recording.
+ * Strong's definition, morphology, root, gematria, image, audio,
+ * and an "Add to Learning" button.
  */
 export default function WordPopup({ data, onClose, readAlongData }) {
   const [playing, setPlaying] = useState(false)
+  const [imageData, setImageData] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false)
   const audioRef = useRef(null)
   const popupRef = useRef(null)
+
+  // Fetch image for this word when popup opens
+  useEffect(() => {
+    if (data?.word) {
+      const word = data.word.replace(/\u0591-\u05AF/g, '').trim()
+      if (word) {
+        fetchJSON(`/hebrew/image/${encodeURIComponent(word)}`)
+          .then(r => { if (r.ok && r.data) setImageData(r.data) })
+          .catch(() => {})
+      }
+    }
+  }, [data?.word])
 
   // Close on Escape
   useEffect(() => {
@@ -130,6 +146,24 @@ export default function WordPopup({ data, onClose, readAlongData }) {
             </div>
           )}
 
+          {/* Image (if available) — shown like Anki's Extra field */}
+          {imageData?.image_url && (
+            <div className="border-t border-neutral-100 dark:border-neutral-800 pt-2">
+              <div className="relative w-full overflow-hidden rounded-lg bg-neutral-50 dark:bg-neutral-800">
+                <img
+                  src={imageData.image_url}
+                  alt={data.word}
+                  className="w-full h-48 object-cover"
+                  loading="lazy"
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
+                {imageData.attribution && (
+                  <p className="text-[9px] text-neutral-400 text-center py-1">{imageData.attribution}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Audio play button */}
           {readAlongData?.word_timestamps?.[data.wordIndex] && (
             <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
@@ -142,6 +176,36 @@ export default function WordPopup({ data, onClose, readAlongData }) {
               </button>
             </div>
           )}
+
+          {/* Add to Learning button */}
+          <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3">
+            <button
+              onClick={async () => {
+                if (adding || added) return
+                setAdding(true)
+                try {
+                  const word = data.word.replace(/[\u0591-\u05AF]/g, '').trim()
+                  if (!word) return
+                  const r = await fetchJSON('/hebrew/add-word', {
+                    method: 'POST',
+                    body: JSON.stringify({ word }),
+                    headers: { 'Content-Type': 'application/json' },
+                  })
+                  if (r.ok) setAdded(true)
+                } catch (_) {}
+                setAdding(false)
+              }}
+              disabled={adding || added}
+              className={`w-full py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                added
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 cursor-default'
+                  : 'bg-amber-500 hover:bg-amber-600 text-white'
+              }`}
+            >
+              <span>{added ? '✓' : adding ? '...' : '+'}</span>
+              <span>{added ? 'Added to Learning' : adding ? 'Adding...' : 'Add to Learning'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Close button */}

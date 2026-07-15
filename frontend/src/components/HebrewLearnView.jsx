@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import CardQueue from './CardQueue'
+import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 
@@ -165,43 +166,37 @@ export default function HebrewLearnView({ onOpenLesson }) {
     )
   }
 
-  // Hebrew review mode — flashcard review of unlocked nodes
+  // Hebrew review mode — Anki-style flashcard review
   if (showHebrewReview) {
-    const handleRate = async (card, rating) => {
-      try {
-        const nodeId = card.data?.node_id || card.id?.replace(/heb-/, '')
-        if (nodeId) {
-          await fetch(`/api/v1/hebrew/fsrs/review`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: 'default',
-              node_id: nodeId,
-              rating: rating,
-              source: 'review_queue',
-            }),
-          })
-        }
-      } catch {}
-    }
+    // Convert curriculum nodes to AnkiReview-compatible cards
+    const ankiCards = hebrewReviewCards
+      .filter(c => c.data?.hebrew)
+      .map(c => ({
+        node_id: c.data?.node_id || c.id?.replace(/heb-/, '') || '',
+        hebrew: c.data?.hebrew || '',
+        gloss: c.data?.gloss || c.data?.definition?.split(' — ')[1] || c.data?.definition || '',
+        transliteration: c.data?.transliteration || '',
+      }))
 
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Hebrew Review</h2>
-          <button onClick={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
+    if (ankiCards.length === 0) {
+      return (
+        <div className="max-w-lg mx-auto px-6 py-12 text-center">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">No words to review right now.</p>
+          <button onClick={() => setShowHebrewReview(false)}
             className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
             ← Back to Curriculum
           </button>
         </div>
-        <CardQueue
-          cards={hebrewReviewCards}
-          onRate={handleRate}
-          onComplete={() => setShowHebrewReview(false)}
-          title="Hebrew Review"
-          emptyMessage="No unlocked nodes to review."
-        />
-      </div>
+      )
+    }
+
+    return (
+      <AnkiReview
+        cards={ankiCards}
+        onComplete={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
+        onBack={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
+        title="Hebrew Review"
+      />
     )
   }
 

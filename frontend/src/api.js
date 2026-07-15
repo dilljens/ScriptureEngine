@@ -1,7 +1,7 @@
 const BASE = '/api/v1'
 const TIMEOUT_MS = 10_000
 
-async function fetchJSON(url, options = {}) {
+export async function fetchJSON(url, options = {}) {
   // AbortController for timeout
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
