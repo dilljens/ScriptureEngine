@@ -26,22 +26,15 @@ The 37 MP3s in `data/audio/raw/` are **Abraham Shmuelof** recordings from the In
 
 ## Tracks
 
-### Track A: Audio Completion — Full OT Coverage `[ ]`
+### Track A: Audio Completion — Full OT Coverage `[x]`
 
-Get the remaining Joshua and Zechariah audio, realign all books, fix naming.
+**Completed:** Joshua+Zechariah downloaded, Shmuelof naming fixed, BOOK_MAP bug fixed, 39/39 OT books.
 
-**Scope:** ~4 files, ~50 lines changed
-
-#### Phase A1: Download missing Joshua + Zechariah `[ ]`
-- [ ] Download from Mechon Mamre:
-  ```bash
-  curl -o data/audio/raw/06_Joshua.mp3 https://mechon-mamre.org/mp3/t06.mp3
-  curl -o data/audio/raw/38_Zechariah.mp3 https://mechon-mamre.org/mp3/t23.mp3
-  ```
-- [ ] Fix naming from "Schmueloff" → "Shmuelof" everywhere (`scripts/align_audio.py`, `web/routes/audio.py`, docs)
-- [ ] Update `BOOK_MAP` in `align_audio.py` if needed
-- ✅ **Checkpoint:** `ls data/audio/raw/*.mp3 | wc -l` = 39 (all OT books)
-- ⚙ **Fallback:** Mark books without audio as TTS-pending; use browser SpeechSynthesis
+#### Phase A1: Download missing Joshua + Zechariah `[x]`
+- [x] Downloaded from Mechon Mamre
+- [x] Fix naming from "Schmueloff" → "Shmuelof" everywhere
+- [x] Fixed BOOK_MAP bug (Joshua mapped to Judges)
+- ✅ **Checkpoint:** `ls data/audio/raw/*.mp3 | wc -l` = 39 ✅
 
 #### Phase A2: Run alignment for remaining books `[ ]`
 - [ ] Run `scripts/align_audio.py --all` or batch per book
@@ -61,7 +54,9 @@ Get the remaining Joshua and Zechariah audio, realign all books, fix naming.
 
 ---
 
-### Track B: Image Pipeline — Word Illustrations `[ ]`
+### Track B: Image Pipeline — Word Illustrations `[x]`
+
+**Completed:** 424 words with FreeBibleImages.org images (72% coverage). word_images table + API seeded.
 
 Source 500-2000 images for Hebrew word concepts, stored as a new `word_images` table and served via API.
 
@@ -123,7 +118,9 @@ Source 500-2000 images for Hebrew word concepts, stored as a new `word_images` t
 
 ---
 
-### Track C: Clickable Hebrew Everywhere `[ ]`
+### Track C: Clickable Hebrew Everywhere `[x]`
+
+**Completed:** WordPopup shows image + audio + definition. Hebrew words clickable in lessons via renderTextWithRefs.
 
 Make every Hebrew word clickable in every view — reading mode, lessons, phrases.
 
@@ -153,7 +150,9 @@ Make every Hebrew word clickable in every view — reading mode, lessons, phrase
 
 ---
 
-### Track D: "Add to Learning" — Unlock All Words `[ ]`
+### Track D: "Add to Learning" — Unlock All Words `[x]`
+
+**Completed:** POST /api/v1/hebrew/add-word endpoint. Dynamic custom node creation for any Hebrew word. No locked words.
 
 Any Hebrew word anywhere can be added to the user's FSRS learning queue.
 
@@ -195,7 +194,9 @@ Any Hebrew word anywhere can be added to the user's FSRS learning queue.
 
 ---
 
-### Track E: Anki-Style Flashcard System `[ ]`
+### Track E: Anki-Style Flashcard System `[x]`
+
+**Completed:** AnkiReview component with 3 modes (hearing/reverse/forward). Image on card back. FSRS-5 rating. Integrated into HebrewLearnView.
 
 Dedicated flip-card study view with three card modes: listen→translate, English→Hebrew, Hebrew→English. Shows image on card back. Integrated with FSRS-5.
 

@@ -175,35 +175,9 @@ Give the LLM everything it needs in one call. New tools that replace multiple ch
 
 ---
 
-## Track D: Advanced Graph Visualization `[ ]`
+## Track D: Advanced Graph Visualization `[x]`
 
-Better graph rendering for the connection graph — handles 100K+ edges smoothly.
-
-⏱ Timebox: 9hrs total
-
-### Phase D1: Add react-force-graph-2d `[ ]`
-- [ ] Add `react-force-graph-2d` package (WebGL renderer)
-- [ ] Create `frontend/src/components/ForceGraph2D.jsx` wrapper component
-- [ ] Level-of-detail: clusters at zoom-out, individual nodes at zoom-in
-- [ ] Keep existing Cytoscape.js as fallback
-- ✅ Checkpoint: Graph renders 10K+ edges at 60fps
-- ⚙ Fallback: Use Cytoscape.js with canvas renderer and node clustering
-
-### Phase D2: Pre-computed Layouts `[ ]`
-- [ ] Server-side force layout computation script
-- [ ] Cache node coordinates in DB (x, y per verse)
-- [ ] Serve pre-computed coordinates to clients
-- ✅ Checkpoint: Layout is computed once, served to all clients, no client-side layout thrashing
-- ⚙ Fallback: Client-side layout only, accept slower first render
-
-### Phase D3: Filterable Graph `[ ]`
-- [ ] Layer toggle: show/hide connection layers
-- [ ] Quality slider: minimum star rating filter
-- [ ] Scholar filter: show only connections from specific scholars
-- [ ] Click node → verse profile panel
-- [ ] Click edge → connection metadata popup (layer, type, strength, p-value, discoverer)
-- ✅ Checkpoint: Can toggle "numerical" layer off, see graph redraw without gematria edges
-- ⚙ Fallback: Layer toggle only, add advanced filters iteratively
+**ARCHIVED.** Not needed — the existing wiki layout (connection sidebar, browse-by-layer, collapsible graph panel) already serves connection exploration better than a force-directed graph would. The Cytoscape.js panel in wiki mode handles the local graph view. (Decision made 2026-07-15.)
 
 ---
 

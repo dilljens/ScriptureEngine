@@ -614,6 +614,19 @@ CREATE TABLE IF NOT EXISTS conversation_connections (
 );
 CREATE INDEX IF NOT EXISTS idx_conv_conn_session ON conversation_connections(session_id);
 
+-- Audio alignment timestamps for verse-level and word-level audio
+CREATE TABLE IF NOT EXISTS audio_timestamps (
+    verse_id TEXT PRIMARY KEY REFERENCES verses(id),
+    book_id TEXT NOT NULL,
+    chapter INTEGER NOT NULL,
+    start_sec REAL NOT NULL,
+    end_sec REAL NOT NULL,
+    audio_source TEXT DEFAULT 'shmuelof',
+    word_timestamps TEXT DEFAULT '[]',
+    source_file TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Hebrew word images (FreeBibleImages, AI generation, etc.)
 CREATE TABLE IF NOT EXISTS word_images (
     word_hebrew TEXT NOT NULL,
@@ -624,7 +637,7 @@ CREATE TABLE IF NOT EXISTS word_images (
     width INTEGER DEFAULT 0,
     height INTEGER DEFAULT 0,
     prompt TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (word_hebrew, source)
 );
 """

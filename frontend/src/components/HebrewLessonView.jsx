@@ -36,51 +36,106 @@ function formatRef(book, ch, vs) {
 /** Split text on scripture references like gen.1.1, exo.3.14 or Gen 1:1, Exo 3:14 */
 function renderTextWithRefs(text, onNavigate) {
   if (!text) return text
-  // Match both formats: gen.1.1 and Gen 1:1
-  const parts = text.split(/(\b[a-z]{2,6})\.(\d+)\.(\d+)\b/gi)
-  if (parts.length === 1) {
-    // Try colon format
-    const parts2 = text.split(/(\b[a-z]{2,6})\s+(\d+):(\d+)\b/gi)
-    if (parts2.length === 1) return text
-    const elements = []
-    for (let i = 0; i < parts2.length; i++) {
-      if (i % 4 === 0) elements.push(parts2[i])
-      else if (i % 4 === 1) {
-        const book = parts2[i]
-        const ch = parts2[i + 1]
-        const vs = parts2[i + 2]
-        elements.push(
-          <button key={i}
-            onClick={() => onNavigate?.(`${book}.${ch}`)}
-            className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
-            title={`Open ${book}.${ch}`}>
-            {formatRef(book, ch, vs)}
-          </button>
-        )
-        i += 2
-      }
+
+  // Split into segments: refs, Hebrew words, and plain text.
+  // Matches: dotted refs (gen.1.1), colon refs (Gen 1:1), Hebrew words.
+  const hebRe = /[\u0590-\u05FF\u05B0-\u05C7]+/g
+  const dotRefRe = /\b([a-z]{2,6})\.(\d+)\.(\d+)\b/gi
+  const colRefRe = /\b([A-Za-z][a-z]{2,6})\s+(\d+):(\d+)\b/g
+
+  // Tokenize: split text into an array of {type, value} tokens
+  const tokens = []
+  let remaining = text
+  let tokenId = 0
+
+  while (remaining.length > 0) {
+    // Try matching each pattern at the current position
+    const dotMatch = dotRefRe.exec(remaining)
+    const colMatch = colRefRe.exec(remaining)
+    let hebMatch
+
+    // Find the next Hebrew word by scanning from current position
+    hebRe.lastIndex = 0
+    const hebTest = hebRe.exec(remaining)
+    const hebPos = hebTest ? hebTest.index : -1
+
+    // Build list of all matches at current position
+    const candidates = []
+    if (dotMatch) candidates.push({ type: 'ref_dot', match: dotMatch, pos: dotMatch.index })
+    if (colMatch) candidates.push({ type: 'ref_col', match: colMatch, pos: colMatch.index })
+    if (hebPos >= 0) candidates.push({ type: 'hebrew', match: hebTest, pos: hebPos })
+
+    if (candidates.length === 0) {
+      // No more matches — emit remaining as text
+      tokens.push({ type: 'text', value: remaining })
+      break
     }
-    return elements.length > 0 ? <>{elements}</> : text
+
+    // Sort by position, take the earliest
+    candidates.sort((a, b) => a.pos - b.pos)
+    const first = candidates[0]
+
+    // Emit text before the match
+    if (first.pos > 0) {
+      tokens.push({ type: 'text', value: remaining.slice(0, first.pos) })
+    }
+
+    // Emit the match
+    if (first.type === 'ref_dot') {
+      const m = first.match
+      tokens.push({ type: 'ref', book: m[1], ch: m[2], vs: m[3], raw: m[0] })
+      remaining = remaining.slice(m.index + m[0].length)
+    } else if (first.type === 'ref_col') {
+      const m = first.match
+      tokens.push({ type: 'ref', book: m[1], ch: m[2], vs: m[3], raw: m[0] })
+      remaining = remaining.slice(m.index + m[0].length)
+    } else if (first.type === 'hebrew') {
+      const m = first.match
+      tokens.push({ type: 'hebrew', value: m[0] })
+      remaining = remaining.slice(m.index + m[0].length)
+    }
+
+    // Reset regex lastIndex for next iteration
+    dotRefRe.lastIndex = 0
+    colRefRe.lastIndex = 0
   }
-  const elements = []
-  for (let i = 0; i < parts.length; i++) {
-    if (i % 4 === 0) elements.push(parts[i])
-    else if (i % 4 === 1) {
-      const book = parts[i]
-      const ch = parts[i + 1]
-      const vs = parts[i + 2]
-      elements.push(
+
+  // Render tokens
+  const elems = tokens.map((t, i) => {
+    if (t.type === 'text') {
+      return <span key={i}>{t.value}</span>
+    }
+    if (t.type === 'ref') {
+      return (
         <button key={i}
-          onClick={() => onNavigate?.(`${book}.${ch}`)}
+          onClick={() => onNavigate?.(`${t.book.toLowerCase()}.${t.ch}`)}
           className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
-          title={`Open ${book}.${ch}`}>
-          {formatRef(book, ch, vs)}
+          title={`Open ${t.book}.${t.ch}`}>
+          {t.raw}
         </button>
       )
-      i += 2
     }
-  }
-  return elements.length > 0 ? <>{elements}</> : text
+    if (t.type === 'hebrew') {
+      const word = t.value
+      const clean = word.replace(/[\u0591-\u05C7]/g, '').trim()
+      return (
+        <span key={i}
+          onClick={(e) => {
+            e.stopPropagation()
+            window.dispatchEvent(new CustomEvent('word-click', {
+              detail: { word: clean, wordIndex: 0, verseId: '', transliteration: '', english: '' }
+            }))
+          }}
+          className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          title={`Click to explore: ${clean}`}>
+          {word}
+        </span>
+      )
+    }
+    return null
+  })
+
+  return <>{elems}</>
 }
 
 /**

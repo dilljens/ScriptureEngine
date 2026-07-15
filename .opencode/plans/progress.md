@@ -26,8 +26,26 @@
   - Tools count: 56 → **61**
 
 ### Deferred/Not Started
-- [ ] Track D: Graph Visualization (react-force-graph-2d) — deferred, existing Cytoscape.js works
 - [ ] Track E: Structured Data & Interop (JSON-LD, GraphQL) — lower priority
+
+## Session 2026-07-15 — Hebrew Flashcards & Infrastructure
+
+### Completed
+- [x] **Hebrew seed system** — 0% generic, 4,592 practice items (from 428)
+- [x] **Production practice** — 1,041 verb conjugation/root extraction/parsing items
+- [x] **Graded reading** — 26 ETCBC-ordered chapters across 5 phases
+- [x] **Audio** — 39/39 OT books, Shmuelof naming fixed, BOOK_MAP bug fixed
+- [x] **Images** — word_images table + API, 424 words with FreeBibleImages (72%)
+- [x] **Clickable Hebrew** — WordPopup with images, lessons render Hebrew words clickable
+- [x] **Add to Learning** — POST /api/v1/hebrew/add-word, custom nodes for any word
+- [x] **AnkiReview** — 3-mode flip cards (hearing/reverse/forward), FSRS-5, images on back
+- [x] **audio_timestamps in schema** — lib/db.py now has CREATE TABLE
+- [x] **Track D archived** — Wiki layout covers graph exploration needs
+
+### New Ideas (planned)
+- [ ] Tab sync / library loading error fix
+- [ ] CLT techniques (vocalization prompts, TPR, chanting)
+- [ ] Session persistence / context recovery
 
 ### Quality Signal
 - Before: 0.5805
