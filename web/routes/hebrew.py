@@ -864,6 +864,118 @@ def get_hebrew_images(limit: int = 50, offset: int = 0, source: str = ""):
     return {"ok": True, "data": [dict(r) for r in rows], "total": total}
 
 
+@router.post("/api/v1/hebrew/add-word")
+def add_hebrew_word_to_learning(word: str, user_id: str = "default"):
+    """Add any Hebrew word to the user's FSRS learning queue.
+
+    Creates a dynamic vocabulary node if no existing lesson exists.
+    Returns the node_id for tracking.
+    """
+    word_clean = word.strip()
+    if not word_clean:
+        raise HTTPException(400, "Word required")
+
+    if not MEM_DB.exists():
+        raise HTTPException(503, "Memorize database not available")
+
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=OFF")
+
+    # 1. Check if a vocab lesson already exists for this word
+    existing = conn.execute(
+        "SELECT id FROM hebrew_nodes WHERE category='word' AND id LIKE 'vocab_%' AND description LIKE ? LIMIT 1",
+        (f"%{word_clean}%",)
+    ).fetchone()
+
+    if existing:
+        node_id = existing["id"]
+    else:
+        # 2. Look up the word in the lexicon/scripture DB
+        scrip = get_db()
+        lex_row = scrip.execute(
+            "SELECT lemma, hebrew, transliteration, definition, frequency, part_of_speech, root_letters "
+            "FROM lexicon WHERE hebrew = ? LIMIT 1",
+            (word_clean,)
+        ).fetchone()
+
+        # Try lemma_gloss for English gloss
+        gloss_row = None
+        if lex_row:
+            gloss_row = scrip.execute(
+                "SELECT english_gloss FROM lemma_gloss WHERE lemma = ? LIMIT 1",
+                (lex_row["lemma"],)
+            ).fetchone()
+        scrip.close()
+
+        if not lex_row:
+            conn.close()
+            raise HTTPException(404, f"Word '{word_clean}' not found in lexicon")
+
+        # 3. Create a dynamic node ID
+        import hashlib
+        safe_word = word_clean[:20]
+        hash_suffix = hashlib.md5(word_clean.encode()).hexdigest()[:8]
+        node_id = f"custom_{safe_word}_{hash_suffix}"
+
+        # 4. Create node
+        title = f"{word_clean} — {gloss_row['english_gloss'] if gloss_row else lex_row['definition'][:40]}"
+        conn.execute(
+            "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, 4, 'word', ?)",
+            (node_id, title, f"Custom word: {word_clean}")
+        )
+
+        # 5. Create lesson content
+        gloss = gloss_row["english_gloss"] if gloss_row else ""
+        content = {
+            "node_id": node_id,
+            "title": title,
+            "category": "word",
+            "level": 4,
+            "hebrew": word_clean,
+            "gloss": gloss,
+            "transliteration": lex_row["transliteration"] or "",
+            "root": lex_row["root_letters"] or "",
+            "definition": lex_row["definition"] or "",
+            "frequency": lex_row["frequency"] or 0,
+            "part_of_speech": lex_row["part_of_speech"] or "",
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json, version) VALUES (?, ?, 1)",
+            (node_id, json.dumps(content, ensure_ascii=False))
+        )
+
+        # 6. Create practice items (recognition → recall → production)
+        items_data = [
+            ("multiple_choice", f"What does '{word_clean}' mean?",
+             json.dumps([gloss, "—", "—", "—"], ensure_ascii=False), gloss, 0.3,
+             f"'{word_clean}' means '{gloss}'"),
+            ("recall", f"What is the Hebrew word for '{gloss}'?", "[]", word_clean, 0.5,
+             f"The Hebrew word is '{word_clean}'"),
+            ("typing", f"Type the Hebrew word: '{gloss}'", "[]", word_clean, 0.7,
+             f"Type '{word_clean}' in Hebrew"),
+        ]
+        for qtype, qtext, opts, answer, difficulty, explanation in items_data:
+            conn.execute(
+                "INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (node_id, qtype, qtext, opts, answer, difficulty, explanation)
+            )
+
+    # 7. Initialize progress for this user
+    conn.execute(
+        "INSERT OR IGNORE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct) VALUES (?, ?, 0.0, 0, 0)",
+        (user_id, node_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "data": {
+        "node_id": node_id,
+        "added_to_queue": True,
+    }}
+
+
 @router.get("/api/v1/hebrew/review-queue")
 def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
     if not MEM_DB.exists():
