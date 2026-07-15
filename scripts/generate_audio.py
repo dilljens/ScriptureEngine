@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--chapter", type=int, default=None, help="Chapter number")
     parser.add_argument("--speed", type=float, default=1.25, help="Speaking speed (1.0=default, 1.25=natural)")
     parser.add_argument("--reclone", action="store_true", help="Regenerate with voice cloning")
-    parser.add_argument("--reference", type=str, default="data/audio/clone/schmueloff_8s.wav",
+    parser.add_argument("--reference", type=str, default="data/audio/clone/shmuelof_8s.wav",
                         help="Reference audio for voice cloning")
     args = parser.parse_args()
 

@@ -219,7 +219,7 @@ Each section represents a feature area. For each:
 - Card queue with spaced repetition
 - Daily verse card
 - Passage reader for memorization
-- Audio review session (Schmueloff recordings)
+- Audio review session (Shmuelof recordings)
 - FIRe penalty flow
 - Palace-guided ordering
 - Macro-interleaving
@@ -347,7 +347,7 @@ Each section represents a feature area. For each:
 ### Features
 - Daily verse audio playback
 - Read-along audio alignment
-- Schmueloff recordings (Hebrew OT)
+- Shmuelof recordings (Hebrew OT)
 - Audio review for memorization
 
 ### Known Issues

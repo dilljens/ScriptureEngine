@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 router = APIRouter()
 
 # Audio sources available (also referenced from server.py)
-AUDIO_SOURCES = ["schmueloff", "tts"]
+AUDIO_SOURCES = ["shmuelof", "tts"]
 
 BASE_DIR = Path(__file__).parent.parent.parent
 RAW_AUDIO_DIR = BASE_DIR / "data" / "audio" / "raw"
@@ -47,7 +47,7 @@ def get_read_along_data(verse_id: str):
         "SELECT start_sec, end_sec, word_timestamps, source_file FROM audio_timestamps WHERE verse_id=?",
         (vid,)).fetchone()
 
-    audio_source = "schmueloff" if ts_row else "tts"
+    audio_source = "shmuelof" if ts_row else "tts"
     audio_url = f"/api/v1/audio/play/{vid}"
 
     word_ts = []
@@ -118,7 +118,7 @@ def play_raw_audio_segment(filename: str, start: float = 0.0, end: float = 30.0)
 @router.get("/api/v1/audio/play/{verse_id:path}")
 def play_verse_audio(verse_id: str):
     vid = verse_id.strip("/")
-    for suffix in ['_schmueloff', '_cloned', '']:
+    for suffix in ['_shmuelof', '_cloned', '']:
         audio_file = AUDIO_DIR / f"{vid}{suffix}.wav"
         if audio_file.exists():
             return FileResponse(str(audio_file), media_type="audio/wav", filename=f"{vid}.wav")
@@ -128,7 +128,7 @@ def play_verse_audio(verse_id: str):
 @router.get("/api/v1/audio/align/{verse_id:path}")
 def get_verse_alignment(verse_id: str):
     vid = verse_id.strip("/")
-    for suffix in ['_schmueloff', '_cloned', '']:
+    for suffix in ['_shmuelof', '_cloned', '']:
         align_file = ALIGN_DIR / f"{vid}{suffix}.json"
         if align_file.exists():
             with open(align_file) as f:

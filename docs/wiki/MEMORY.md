@@ -70,7 +70,7 @@ Biblical Hebrew curriculum (642 nodes across 7 levels):
 - **New**: Student-topic learning speeds — ability/difficulty ratio tracked per topic
 - Mukdam u'Meuchar (early/late) literary pattern detection in Hebrew
 - 1,716 verse attestations (630/642 nodes show real scripture examples)
-- Audio playback for Genesis 1 alignments (Schmueloff recordings)
+- Audio playback for Genesis 1 alignments (Shmuelof recordings)
 
 ### Memorize Queue
 Verse memorization with FSRS-5:
@@ -128,7 +128,7 @@ Multi-verse literary structure analysis:
 - Segment-based rendering (markdown + verse chips coexist)
 
 ### Audio System (New)
-- **Schmueloff recordings**: Hebrew Genesis 1 audio from Schmueloff.com
+- **Shmuelof recordings**: Hebrew Genesis 1 audio from Shmuelof.com
 - **DailyVerse**: Audio playback for daily Hebrew verse
 - **PassageReader**: Read-along text highlighting synchronized to audio
 - **AudioReview**: Listen-and-type Hebrew comprehension practice

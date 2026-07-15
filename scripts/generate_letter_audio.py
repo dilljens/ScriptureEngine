@@ -8,7 +8,7 @@ Output: data/audio/letters/{node_id}.wav
 
 Usage:
   python3 scripts/generate_letter_audio.py                  # all letters
-  python3 scripts/generate_letter_audio.py --reclone         # voice-cloned from Schmueloff
+  python3 scripts/generate_letter_audio.py --reclone         # voice-cloned from Shmuelof
   python3 scripts/generate_letter_audio.py --letter aleph    # single letter
 """
 
@@ -84,9 +84,9 @@ LETTERS = [
 def main():
     parser = argparse.ArgumentParser(description="Generate Hebrew letter audio")
     parser.add_argument("--reclone", action="store_true",
-                        help="Use voice cloning with Schmueloff reference")
+                        help="Use voice cloning with Shmuelof reference")
     parser.add_argument("--reference", type=str,
-                        default="data/audio/clone/schmueloff_8s.wav",
+                        default="data/audio/clone/shmuelof_8s.wav",
                         help="Reference audio for voice cloning")
     parser.add_argument("--letter", type=str, default="",
                         help="Single letter node_id to generate (e.g. 'aleph')")

@@ -4,7 +4,7 @@ PassageReader, DailyVerse, AudioReview — Hebrew audio playback with synchroniz
 
 ## Overview
 
-The Hebrew Audio system integrates **Schmueloff recordings** (Hebrew Genesis 1 audio) into three learning experiences:
+The Hebrew Audio system integrates **Shmuelof recordings** (Hebrew Genesis 1 audio) into three learning experiences:
 
 1. **PassageReader** — Read-along mode: verse text highlights in sync with audio playback
 2. **DailyVerse** — Daily Hebrew verse widget with one-tap audio
@@ -13,7 +13,7 @@ The Hebrew Audio system integrates **Schmueloff recordings** (Hebrew Genesis 1 a
 ## Architecture
 
 ```
-Audio files (Schmueloff .mp3)
+Audio files (Shmuelof .mp3)
         │
         ▼
 web/routes/audio.py
@@ -39,7 +39,7 @@ frontend (React)
 
 ## Audio Sources
 
-- **Schmueloff recordings**: Hebrew audio for Genesis 1, sourced from Schmueloff.com
+- **Shmuelof recordings**: Hebrew audio for Genesis 1, sourced from Shmuelof.com
 - Format: MP3, served via streaming endpoint
 - Verse-level segmentation aligned to MT verse divisions
 

@@ -25,7 +25,7 @@ the latest GitHub Release (compressed 206MB, decompresses to 1.4GB).
 | Source code | — | ✅ In git | `git clone` |
 | Audio alignments | 500K | ✅ In git | `git clone` |
 | `data/processed/scripture.db` | 1.4 GB | ❌ **GitHub Release** | `bash scripts/setup.sh` or download from [releases](https://github.com/dilljens/ScriptureEngine/releases) |
-| `data/audio/raw/*.mp3` | ~200 MB | ❌ Not tracked | Download from [Archive.org](https://archive.org/details/HebrewOldTestamentReadByAbrahamSchmueloff) |
+| `data/audio/raw/*.mp3` | ~200 MB | ❌ Not tracked | Download from [Archive.org](https://archive.org/details/HebrewOldTestamentReadByAbrahamShmuelof) |
 | `data/audio/verses/*.wav` | ~50 MB | ❌ Not tracked | Run `scripts/generate_audio.py` |
 | `.env` | — | ❌ Secrets | Create with `DATABASE_PATH=data/processed/scripture.db` |
 

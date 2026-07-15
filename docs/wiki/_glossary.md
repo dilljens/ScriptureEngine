@@ -63,7 +63,7 @@
 | **Quality Level** | Calibration tier: certain → probable → speculative → suggested → rejected |
 | **Context Budget** | 300K token limit per chat call, compaction at 200K strips old tool traces |
 | **Library View** | Highest zoom level — shows all works as cards |
-| **PassageReader** | Read-along Hebrew text highlighting synchronized to audio (Schmueloff recordings) |
+| **PassageReader** | Read-along Hebrew text highlighting synchronized to audio (Shmuelof recordings) |
 | **FIRe** | Forgotten Implicit Recall — failing a review item deducts implicit credit for sharper FSRS-5 scheduling |
 | **Mukdam u'Meuchar** | Hebrew literary technique: early/late rearrangement of chronological order for thematic purposes |
 | **Truth-Seeking Framework** | Systematic distinction between textual truth (what scripture says) and interpretive tradition (what later commentators added) |

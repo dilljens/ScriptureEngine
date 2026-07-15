@@ -91,7 +91,7 @@ The agent (this coding session) reads scripture text directly and writes data. N
 6. Verify: check DB counts match expectations
 
 ### Adding Hebrew Audio
-1. Source audio files (Schmueloff .mp3 format) organized per book/chapter
+1. Source audio files (Shmuelof .mp3 format) organized per book/chapter
 2. Register in `web/routes/audio.py` with verse-to-audio mapping
 3. Frontend components: PassageReader (sync highlight), DailyVerse (daily widget), AudioReview (listen-type)
 4. Test audio sync via curl endpoint, frontend via Playwright E2E

@@ -24,7 +24,7 @@ from lib.db import get_db
 
 BOOK_MAP = {
     "gen": "01_Genesis.mp3", "exo": "02_Exodus.mp3", "lev": "03_Leviticus.mp3",
-    "num": "04_Numbers.mp3", "deu": "05_Deuteronomy.mp3", "josh": "07_Judges.mp3",
+    "num": "04_Numbers.mp3", "deu": "05_Deuteronomy.mp3",     "josh": "06_Joshua.mp3",
     "judg": "07_Judges.mp3", "ruth": "08_Ruth.mp3", "1sam": "09_1Samuel.mp3",
     "2sam": "10_2Samuel.mp3", "1kgs": "11_1Kings.mp3", "2kgs": "12_2Kings.mp3",
     "1chr": "13_1Chronicles.mp3", "2chr": "14_2Chronicles.mp3",
@@ -36,7 +36,7 @@ BOOK_MAP = {
     "joel": "29_Joel.mp3", "amos": "30_Amos.mp3", "obad": "31_Obadiah.mp3",
     "jonah": "32_Jonah.mp3", "mic": "33_Micah.mp3", "nah": "34_Nahum.mp3",
     "hab": "35_Habakkuk.mp3", "zeph": "36_Zephaniah.mp3", "hag": "37_Haggai.mp3",
-    "zech": "38_Zechariah.mp3" if os.path.exists("data/audio/raw/38_Zechariah.mp3") else None,
+    "zech": "38_Zechariah.mp3",
     "mal": "39_Malachi.mp3",
 }
 
