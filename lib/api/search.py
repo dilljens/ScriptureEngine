@@ -10,8 +10,96 @@ from lib.hebrew_util import clean_hebrew as ch
 from lib.hebrew_util import rtl_mark, transliterate
 
 
+def _sanitize_fts_query(query):
+    """Sanitize a query string for FTS5 trigram search."""
+    query = query.replace('"', '""')
+    query = query.replace("^", " ").replace("*", " ")
+    return query.strip()
+
+
+def _ngrams(text, n=3):
+    """Generate n-gram tokens from text."""
+    text = text.strip()
+    if len(text) < n:
+        return [text] if text else []
+    return [text[i:i+n] for i in range(len(text) - n + 1)]
+
+
+def _trigram_search(conn, query, limit):
+    """Search using trigram FTS5 — substring matching, cross-lingual, typo-tolerant.
+
+    Strategy:
+      1. AND query — matches ALL trigrams (best ranking for exact substrings)
+      2. OR query — matches ANY trigram (typo-tolerant fallback)
+    """
+    if len(query) < 2:
+        return []
+    sanitized = _sanitize_fts_query(query)
+
+    # 1. AND query (exact trigram overlap)
+    try:
+        rows = conn.execute("""
+            SELECT v.id, v.book_id, v.text_english, v.text_hebrew, v.text_greek,
+                   b.title, b.work_id
+            FROM verses_fts_trigram f
+            JOIN verses v ON v.id = f.verse_id
+            JOIN books b ON b.id = v.book_id
+            WHERE verses_fts_trigram MATCH ?
+            ORDER BY rank
+            LIMIT ?
+        """, (sanitized, limit)).fetchall()
+        if rows:
+            return [
+                {
+                    "verse": r["id"],
+                    "text": r["text_english"][:200] if r["text_english"] else "",
+                    "book": r["title"],
+                    "book_id": r["book_id"],
+                    "work_id": r["work_id"],
+                }
+                for r in rows
+            ]
+    except Exception:
+        pass
+
+    # 2. OR query (typo-tolerant — match any trigram)
+    ngrams = _ngrams(sanitized, 3)
+    if len(ngrams) >= 2:
+        try:
+            or_query = " OR ".join(f'"{g}"' for g in ngrams if len(g) == 3)
+            if or_query:
+                rows = conn.execute("""
+                    SELECT v.id, v.book_id, v.text_english, v.text_hebrew, v.text_greek,
+                           b.title, b.work_id
+                    FROM verses_fts_trigram f
+                    JOIN verses v ON v.id = f.verse_id
+                    JOIN books b ON b.id = v.book_id
+                    WHERE verses_fts_trigram MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                """, (or_query, limit)).fetchall()
+                if rows:
+                    return [
+                        {
+                            "verse": r["id"],
+                            "text": r["text_english"][:200] if r["text_english"] else "",
+                            "book": r["title"],
+                            "book_id": r["book_id"],
+                            "work_id": r["work_id"],
+                        }
+                        for r in rows
+                    ]
+        except Exception:
+            pass
+
+    return []
+
+
 def search_text(conn, query, book=None, works=None, limit=25):
     """Search verses by English text.
+
+    Uses trigram FTS5 for substring matching with BM25 ranking.
+    Falls back to LIKE for typo tolerance.
 
     Args:
         query: Search term
@@ -21,6 +109,14 @@ def search_text(conn, query, book=None, works=None, limit=25):
 
     Returns: dict with query, count, results list (each with verse, text, book, book_id, work_id)
     """
+    limit = min(limit, 50)
+
+    # 1. Try trigram FTS5 first
+    results = _trigram_search(conn, query, limit)
+    if results:
+        return {"query": query, "count": len(results), "results": results}
+
+    # 2. Fallback to LIKE for typo tolerance
     sql = """
         SELECT v.id, v.book_id, v.text_english, b.title, b.work_id
         FROM verses v

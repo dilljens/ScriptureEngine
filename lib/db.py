@@ -726,26 +726,93 @@ def get_verse(conn, book, chapter, verse):
     return None
 
 
+def _ngrams(text, n=3):
+    """Generate n-gram tokens from text."""
+    text = text.strip()
+    if len(text) < n:
+        return [text] if text else []
+    return [text[i:i+n] for i in range(len(text) - n + 1)]
+
+
 def search_verses(conn, query, book_id=None, limit=20):
-    """Search verses by text content."""
-    sql = """
-        SELECT v.*, b.title as book_title, b.work_id
-        FROM verses v
-        JOIN books b ON b.id = v.book_id
-        WHERE v.text_english LIKE ?
+    """Search verses by text content.
+
+    Uses trigram FTS5 for substring matching with BM25 ranking.
+    Falls back to LIKE % for typo tolerance.
     """
-    params = [f"%{query}%"]
-    if book_id:
-        # Handle D&C prefix: "dc" matches dc1, dc2, etc.
-        if book_id == "dc":
-            sql += " AND (v.book_id LIKE 'dc%' OR b.work_id = 'dc')"
+    # Helper for LIKE fallback
+    def _like_fallback(q):
+        sql = """
+            SELECT v.*, b.title as book_title, b.work_id
+            FROM verses v
+            JOIN books b ON b.id = v.book_id
+            WHERE v.text_english LIKE ?
+        """
+        params = [f"%{q}%"]
+        if book_id:
+            if book_id == "dc":
+                sql += " AND (v.book_id LIKE 'dc%' OR b.work_id = 'dc')"
+            else:
+                sql += " AND v.book_id = ?"
+                params.append(book_id)
+        sql += " LIMIT ?"
+        params.append(limit)
+        rows = conn.execute(sql, params).fetchall()
+        return [dict(r) for r in rows]
+
+    def _fts_search(q, and_mode=True):
+        nonlocal book_id
+        if len(q) < 2:
+            return None
+        sanitized = q.replace('"', '""').replace("^", " ").replace("*", " ").strip()
+        # For OR mode, decompose into individual trigrams
+        if not and_mode:
+            ngrams = _ngrams(sanitized, 3)
+            if len(ngrams) >= 2:
+                sanitized = " OR ".join(f'"{g}"' for g in ngrams if len(g) == 3)
+            else:
+                return None  # Single trigram can't do OR
+        if book_id:
+            rows = conn.execute("""
+                SELECT v.*, b.title as book_title, b.work_id
+                FROM verses_fts_trigram f
+                JOIN verses v ON v.id = f.verse_id
+                JOIN books b ON b.id = v.book_id
+                WHERE verses_fts_trigram MATCH ?
+                AND (b.id = ? OR b.id LIKE ?)
+                ORDER BY rank
+                LIMIT ?
+            """, (sanitized, book_id, f"{book_id}%", limit)).fetchall()
         else:
-            sql += " AND v.book_id = ?"
-            params.append(book_id)
-    sql += " LIMIT ?"
-    params.append(limit)
-    rows = conn.execute(sql, params).fetchall()
-    return [dict(r) for r in rows]
+            rows = conn.execute("""
+                SELECT v.*, b.title as book_title, b.work_id
+                FROM verses_fts_trigram f
+                JOIN verses v ON v.id = f.verse_id
+                JOIN books b ON b.id = v.book_id
+                WHERE verses_fts_trigram MATCH ?
+                ORDER BY rank
+                LIMIT ?
+            """, (sanitized, limit)).fetchall()
+        return [dict(r) for r in rows] if rows else None
+
+    # 1. Try AND trigram (exact trigram overlap)
+    try:
+        result = _fts_search(query, and_mode=True)
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # 2. Try OR trigram (typo-tolerant)
+    try:
+        result = _fts_search(query, and_mode=False)
+        if result:
+            return result
+    except Exception:
+        pass
+
+    # 3. Fallback to LIKE
+    return _like_fallback(query)
 
 
 def search_by_strongs(conn, strongs, limit=50):

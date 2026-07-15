@@ -603,72 +603,33 @@ def search(
         return {"ok": True, "data": {"query": q, "total": 0, "results": [], "has_more": False}}
 
     if lang in ("all", "english") and search_query:
-        fts_query = search_query.replace('"', '""')
-        terms = [t.strip() for t in fts_query.split() if t.strip()]
-        if terms:
-            # Build FTS5 match expression
-            match_parts = []
-            for t in terms:
-                if t.startswith("-"):
-                    match_parts.append(f'NOT ("{t[1:]}"*)')
-                else:
-                    match_parts.append(f'"{t}"*')
-            for pt in phrase_terms:
-                match_parts.append(f'"{pt}"')
-            fts_match = " AND ".join(match_parts)
-
-        # Base query
-        base_sql = """
-            FROM verses_fts f
-            JOIN verses v ON v.id = f.verse_id
-            JOIN books b ON b.id = v.book_id
-            WHERE verses_fts MATCH ?
-        """
-        params = [fts_match]
-
-        # Apply book filter
-        if filter_book:
-            # Support both work-level (ot, nt) and book-level (gen, isa) filters
-            base_sql += " AND (b.id = ? OR b.id LIKE ?)"
-            params.extend([filter_book, f"{filter_book}%"])
-
-        try:
-            # Get total count
-            total_row = conn.execute(f"SELECT COUNT(*) as cnt {base_sql}", params).fetchone()
-            total_row["cnt"] if total_row else 0
-
-            # Get paginated results with highlighted offsets
-            rows = conn.execute(f"""
-                SELECT v.id, v.text_english, b.title,
-                       offsets(verses_fts) as match_offsets
-                {base_sql}
-                ORDER BY rank
-                LIMIT ? OFFSET ?
-            """, params + [limit_plus_one, offset]).fetchall()
-        except Exception:
-            # Fallback to LIKE
+        # Try trigram FTS5 first (substring matching, BM25 ranked, cross-lingual)
+        trigram_hits = _trigram_search(conn, search_query, limit_plus_one)
+        if trigram_hits:
+            for r in trigram_hits:
+                results.append({
+                    "verse": r["verse"],
+                    "text": r["text"][:200],
+                    "book": r["reference"].split(" ")[0],
+                    "language": "english",
+                    "similarity": r.get("similarity", 0.5),
+                })
+        else:
+            # Fallback to LIKE for typo tolerance and very short queries
             like_q = f"%{search_query}%"
             like_sql = "SELECT v.id, v.text_english, b.title FROM verses v JOIN books b ON b.id=v.book_id WHERE v.text_english LIKE ?"
             like_params = [like_q]
             if filter_book:
                 like_sql += " AND (b.id = ? OR b.id LIKE ?)"
                 like_params.extend([filter_book, f"{filter_book}%"])
-            total_row = conn.execute(f"SELECT COUNT(*) as cnt {like_sql.replace('SELECT v.id, v.text_english, b.title', '')}", like_params).fetchone()
-            total_row["cnt"] if total_row else 0
-            rows = conn.execute(f"{like_sql} LIMIT ? OFFSET ?", like_params + [limit_plus_one, offset]).fetchall()
-
-        for r in rows:
-            item = {"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"}
-            if "match_offsets" in r:
-                offsets = []
-                parts = r["match_offsets"].split()
-                for i in range(0, len(parts), 4):
-                    if i + 3 < len(parts):
-                        with contextlib.suppress(ValueError, IndexError):
-                            offsets.append({"pos": int(parts[i + 2]), "len": int(parts[i + 3])})
-                if offsets:
-                    item["highlights"] = offsets
-            results.append(item)
+            try:
+                total_row = conn.execute(f"SELECT COUNT(*) as cnt {like_sql.replace('SELECT v.id, v.text_english, b.title', '')}", like_params).fetchone()
+                total_row["cnt"] if total_row else 0
+                rows = conn.execute(f"{like_sql} LIMIT ? OFFSET ?", like_params + [limit_plus_one, offset]).fetchall()
+                for r in rows:
+                    results.append({"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"})
+            except Exception:
+                pass
 
     if lang in ("all", "hebrew") and search_query:
         hebrew_sql = """
@@ -977,21 +938,96 @@ def _vector_search(conn, model, query, limit, mode):
     return results
 
 
-def _keyword_search(conn, query, limit):
-    """Search using FTS5 BM25 keyword matching."""
-    # Try FTS5 first, fall back to LIKE
+def _sanitize_fts_query(query):
+    """Sanitize a query string for FTS5 trigram search.
+
+    Trigrams handle substring matching natively, so we don't need
+    the `*` prefix wildcards or special operators that the porter
+    tokenizer required. Just escape double-quotes for safety.
+    """
+    query = query.replace('"', '""')
+    query = query.replace("^", " ").replace("*", " ")
+    return query.strip()
+
+
+def _ngrams(text, n=3):
+    """Generate n-gram tokens from text."""
+    text = text.strip()
+    if len(text) < n:
+        return [text] if text else []
+    return [text[i:i+n] for i in range(len(text) - n + 1)]
+
+
+def _trigram_search(conn, query, limit):
+    """Search using trigram FTS5 — substring matching, cross-lingual, typo-tolerant.
+
+    Strategy:
+      1. AND query — matches ALL trigrams (best ranking for exact substrings)
+      2. OR query — matches ANY trigram (typo-tolerant fallback)
+      3. Empty — caller falls back to LIKE
+
+    The trigram tokenizer indexes every 3-char substring, so a typo like
+    'genis' still shares some trigrams with 'genesis' ('gen'), and the
+    BM25 rank pushes the best match to the top.
+    """
+    if len(query) < 2:
+        return []
+
+    sanitized = _sanitize_fts_query(query)
+
+    # 1. Try AND query first (exact trigram overlap — best ranking)
     try:
         rows = conn.execute("""
             SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
                    b.title as book_title, v.chapter, v.verse
-            FROM verses_fts fts
-            JOIN verses v ON v.rowid = fts.rowid
+            FROM verses_fts_trigram f
+            JOIN verses v ON v.id = f.verse_id
             JOIN books b ON b.id = v.book_id
-            WHERE verses_fts MATCH ?
+            WHERE verses_fts_trigram MATCH ?
             ORDER BY rank
             LIMIT ?
-        """, (query, limit)).fetchall()
+        """, (sanitized, limit)).fetchall()
+        if rows:
+            return [_format_verse_result(v, 0.5) for v in rows]
     except Exception:
+        pass
+
+    # 2. Try OR query (typo-tolerant — match any trigram)
+    ngrams = _ngrams(sanitized, 3)
+    if len(ngrams) >= 2:
+        try:
+            or_query = " OR ".join(f'"{g}"' for g in ngrams if len(g) == 3)
+            if or_query:
+                rows = conn.execute("""
+                    SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
+                           b.title as book_title, v.chapter, v.verse
+                    FROM verses_fts_trigram f
+                    JOIN verses v ON v.id = f.verse_id
+                    JOIN books b ON b.id = v.book_id
+                    WHERE verses_fts_trigram MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                """, (or_query, limit)).fetchall()
+                if rows:
+                    return [_format_verse_result(v, 0.4) for v in rows]
+        except Exception:
+            pass
+
+    return []
+
+
+def _keyword_search(conn, query, limit):
+    """Search using trigram FTS5 + LIKE fallback for typo tolerance."""
+    # 1. Try trigram FTS5 first (substring matching, BM25 ranked)
+    results = _trigram_search(conn, query, limit)
+    if results:
+        for r in results:
+            r["_score_vec"] = 0.0
+            r["_score_bm25"] = 0.5
+        return results
+
+    # 2. Fallback to LIKE for typo tolerance and very short queries
+    try:
         rows = conn.execute("""
             SELECT v.id, v.text_english, v.text_hebrew, v.text_greek,
                    b.title as book_title, v.chapter, v.verse
@@ -1000,6 +1036,8 @@ def _keyword_search(conn, query, limit):
             WHERE v.text_english LIKE ?
             LIMIT ?
         """, (f"%{query}%", limit)).fetchall()
+    except Exception:
+        return []
 
     results = []
     for v in rows:
@@ -1011,8 +1049,13 @@ def _keyword_search(conn, query, limit):
 
 
 def _search_hebrew(conn, query, limit):
-    """Search for a Hebrew word using gematria table."""
-    # Strip niqqud for matching
+    """Search for a Hebrew word — trigram first, then gematria table for gematria data."""
+    # 1. Try trigram FTS5 first (works for any Hebrew substring)
+    trigram_hits = _trigram_search(conn, query, limit)
+    if trigram_hits:
+        return trigram_hits
+
+    # 2. Fallback: search gematria table (niqqud-stripped matching, word-level)
     cons = "".join(c for c in query if '\u05D0' <= c <= '\u05EA' or '\u05EF' <= c <= '\u05F2')
     like = f"%{cons}%" if cons else f"%{query}%"
 
@@ -1037,7 +1080,13 @@ def _search_hebrew(conn, query, limit):
 
 
 def _search_greek(conn, query, limit):
-    """Search for a Greek word using gematria_greek table."""
+    """Search for a Greek word — trigram first, then gematria_greek table."""
+    # 1. Try trigram FTS5 first (works for any Greek substring)
+    trigram_hits = _trigram_search(conn, query, limit)
+    if trigram_hits:
+        return trigram_hits
+
+    # 2. Fallback: search gematria_greek table (word-level with gematria data)
     rows = conn.execute("""
         SELECT DISTINCT v.id, v.text_english, v.text_hebrew, v.text_greek,
                b.title as book_title, v.chapter, v.verse,
