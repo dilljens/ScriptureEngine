@@ -59,7 +59,11 @@ echo "[5/6] Lesson content builder (curated letters/vowels + fills gaps)..."
 python3 scripts/seed_hebrew_content.py --db "$DB"
 
 echo ""
-echo "[6/6] Production practice items (cloze, free recall)..."
+echo "[6/7] Enhance vocabulary lessons with real verse context..."
+python3 scripts/enhance_vocabulary_lessons.py
+
+echo ""
+echo "[7/7] Production practice items (cloze, free recall)..."
 python3 scripts/seed_hebrew_production.py
 
 echo ""
