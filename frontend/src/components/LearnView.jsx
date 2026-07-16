@@ -47,16 +47,22 @@ export default function LearnView({ userId = 'default', onBack }) {
   const [answerState, setAnswerState] = useState({})
   const [dueCount, setDueCount] = useState(0)
   const [reviewCards, setReviewCards] = useState([])
+  const [gamification, setGamification] = useState(null)
 
   const loadModules = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/v1/learn/modules?user_id=${userId}`)
-      const d = await r.json()
-      if (d.ok) {
-        setModules(d.data.modules)
-        setDueCount(d.data.due_count || 0)
-      } else setError(d.detail)
+      const [modRes, gamRes] = await Promise.all([
+        fetch(`/api/v1/learn/modules?user_id=${userId}`),
+        fetch(`/api/v1/learn/gamification?user_id=${userId}`),
+      ])
+      const modData = await modRes.json()
+      const gamData = await gamRes.json()
+      if (modData.ok) {
+        setModules(modData.data.modules)
+        setDueCount(modData.data.due_count || 0)
+      } else setError(modData.detail)
+      if (gamData.ok) setGamification(gamData.data)
     } catch (e) { setError(e.message) }
     setLoading(false)
   }
@@ -179,6 +185,19 @@ export default function LearnView({ userId = 'default', onBack }) {
             </span>
           )}
         </div>
+        {gamification && (
+          <div className="flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
+            {gamification.streak > 0 && (
+              <span>🔥 {gamification.streak} day streak</span>
+            )}
+            {gamification.xp > 0 && (
+              <span>✨ {gamification.xp} XP</span>
+            )}
+            {gamification.modules_completed > 0 && (
+              <span>🏅 {gamification.modules_completed}/{gamification.total_modules} modules</span>
+            )}
+          </div>
+        )}
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
           Choose a subject or let the AI pick for you.
         </p>
@@ -196,7 +215,7 @@ export default function LearnView({ userId = 'default', onBack }) {
             </button>
           ))}
           <button onClick={() => {
-            const available = modules.filter(m => m.status !== 'mastered')
+            const available = modules.filter(m => m.status === 'available' || m.status === 'learning')
             if (available.length > 0) {
               const pick = available[Math.floor(Math.random() * available.length)]
               loadModule(pick.id)
@@ -224,12 +243,14 @@ export default function LearnView({ userId = 'default', onBack }) {
         ) : (
           <div className="space-y-2">
             {filtered.map(m => (
-              <button key={m.id} onClick={() => loadModule(m.id)}
+              <button key={m.id} onClick={() => m.status !== 'locked' && loadModule(m.id)}
                 className={`w-full text-left p-4 rounded-xl border transition-all cursor-pointer ${
                   m.status === 'mastered'
                     ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
                     : m.status === 'learning'
                     ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10'
+                    : m.status === 'locked'
+                    ? 'border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800/50 opacity-60 cursor-not-allowed'
                     : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600'
                 }`}>
                 <div className="flex items-center gap-3">
@@ -239,13 +260,22 @@ export default function LearnView({ userId = 'default', onBack }) {
                       <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{m.title}</span>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-500">Lv.{m.difficulty}</span>
                       {m.status === 'mastered' && <span className="text-[10px] text-green-600">✓ Mastered</span>}
+                      {m.status === 'locked' && <span className="text-[10px] text-neutral-400">🔒 Locked</span>}
                     </div>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 line-clamp-1">{m.description}</p>
+                    {m.status === 'locked' && m.prerequisites?.length > 0 && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                        Requires: {m.prerequisites.filter(p => !p.satisfied).map(p => {
+                          const prereqMod = modules.find(mod => mod.id === p.id)
+                          return prereqMod?.title || p.id
+                        }).join(', ')}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-mono text-neutral-400">{m.question_count} questions</span>
                     <div className="w-14 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 mt-1 overflow-hidden">
-                      <div className={`h-full rounded-full ${m.mastery >= 0.8 ? 'bg-green-500' : 'bg-amber-500'}`}
+                      <div className={`h-full rounded-full ${m.mastery >= 0.8 ? 'bg-green-500' : m.status === 'locked' ? 'bg-neutral-300 dark:bg-neutral-600' : 'bg-amber-500'}`}
                         style={{ width: `${Math.round(m.mastery * 100)}%` }} />
                     </div>
                   </div>

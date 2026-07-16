@@ -78,6 +78,18 @@ def get_conn():
         )
     """)
 
+    # Learn gamification: XP, streak tracking
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS learn_gamification (
+            user_id TEXT NOT NULL DEFAULT 'default' PRIMARY KEY,
+            xp INTEGER DEFAULT 0,
+            streak_count INTEGER DEFAULT 0,
+            last_review_date TEXT,
+            best_streak INTEGER DEFAULT 0,
+            modules_completed INTEGER DEFAULT 0
+        )
+    """)
+
     return conn
 
 
@@ -263,9 +275,35 @@ def list_modules(user_id: str = "default"):
 
     due_count = 0
     results = []
+    # Pre-load all prerequisite IDs for quick lookup
+    prereq_map = {}
+    for m in modules:
+        try:
+            prereq_map[m["id"]] = json.loads(m["prerequisite_ids"]) if m["prerequisite_ids"] else []
+        except (json.JSONDecodeError, TypeError):
+            prereq_map[m["id"]] = []
+
+    # Build mastery lookup for prerequisite checking
+    mastery_map = {m["id"]: m["mastery"] for m in modules}
+
     for m in modules:
         mastered = m["mastery"] >= 0.8
         in_progress = m["mastery"] > 0 and m["mastery"] < 0.8
+
+        # Check prerequisites
+        prereqs = prereq_map.get(m["id"], [])
+        prereq_satisfied = True
+        prereq_details = []
+        for pid in prereqs:
+            p_mastery = mastery_map.get(pid, 0)
+            satisfied = p_mastery >= 0.8
+            if not satisfied:
+                prereq_satisfied = False
+            prereq_details.append({
+                "id": pid,
+                "satisfied": satisfied,
+                "mastery": p_mastery,
+            })
 
         # Compute retrievability for FSRS scheduling
         is_due = False
@@ -281,6 +319,16 @@ def list_modules(user_id: str = "default"):
         if is_due:
             due_count += 1
 
+        # Determine status with prerequisite gating
+        if mastered:
+            status = "mastered"
+        elif not prereq_satisfied:
+            status = "locked"
+        elif in_progress:
+            status = "learning"
+        else:
+            status = "available"
+
         results.append({
             "id": m["id"],
             "title": m["title"],
@@ -290,8 +338,9 @@ def list_modules(user_id: str = "default"):
             "mastery": m["mastery"],
             "attempts": m["attempts"],
             "question_count": m["question_count"],
-            "status": "mastered" if mastered else ("learning" if in_progress else "available"),
+            "status": status,
             "is_due": is_due,
+            "prerequisites": prereq_details,
         })
 
     conn.close()
@@ -485,6 +534,53 @@ def submit_practice(module_id: str, body: dict):
         next_review.strftime("%Y-%m-%d %H:%M:%S"),
     ))
 
+    # ── Gamification: XP + streak ──
+    xp_gained = 10 + (5 if rating >= 3 else 0) + (5 if correct else 0)
+    today = now.strftime("%Y-%m-%d")
+
+    # Check if this is the first time reaching mastery >= 0.8
+    prior_mastery = conn.execute(
+        "SELECT COALESCE(mastery, 0) FROM learning_progress WHERE user_id=? AND module_id=?",
+        (user_id, module_id)
+    ).fetchone()
+    was_not_mastered = prior_mastery is None or prior_mastery[0] < 0.8
+    just_completed = mastery >= 0.8 and was_not_mastered
+
+    gam = conn.execute(
+        "SELECT xp, streak_count, last_review_date, best_streak, modules_completed FROM learn_gamification WHERE user_id=?",
+        (user_id,)
+    ).fetchone()
+
+    if gam:
+        new_xp = gam["xp"] + xp_gained
+        new_streak = gam["streak_count"]
+        if gam["last_review_date"]:
+            try:
+                last_date = datetime.datetime.strptime(gam["last_review_date"], "%Y-%m-%d")
+                delta = (now - last_date).days
+                if delta == 1:
+                    new_streak += 1
+                elif delta > 1:
+                    new_streak = 1
+                # delta == 0: same day, streak unchanged
+            except Exception:
+                new_streak = 1
+        else:
+            new_streak = 1 if not gam["last_review_date"] else new_streak
+        best = max(gam["best_streak"], new_streak)
+        new_completed = gam["modules_completed"] + (1 if just_completed else 0)
+    else:
+        new_xp = xp_gained
+        new_streak = 1
+        best = 1
+        new_completed = 1 if mastery >= 0.8 else 0
+
+    conn.execute("""
+        INSERT OR REPLACE INTO learn_gamification
+            (user_id, xp, streak_count, last_review_date, best_streak, modules_completed)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, new_xp, new_streak, today, best, new_completed))
+
     conn.commit()
     conn.close()
 
@@ -494,6 +590,9 @@ def submit_practice(module_id: str, body: dict):
         "difficulty": round(new_d, 2),
         "interval_days": interval,
         "next_review": next_review.strftime("%Y-%m-%d"),
+        "xp_gained": xp_gained,
+        "total_xp": new_xp,
+        "streak": new_streak,
     }}
 
 
@@ -566,3 +665,48 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
 
     conn.close()
     return {"ok": True, "data": {"reviews": reviews, "due": len(reviews)}}
+
+
+@router.get("/api/v1/learn/gamification")
+def get_learn_gamification(user_id: str = "default"):
+    """Get gamification stats for LearnView."""
+    from lib.db import get_db as _get_db
+    conn = _get_db()
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+
+    # Ensure table exists
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS learn_gamification (
+            user_id TEXT NOT NULL DEFAULT 'default' PRIMARY KEY,
+            xp INTEGER DEFAULT 0,
+            streak_count INTEGER DEFAULT 0,
+            last_review_date TEXT,
+            best_streak INTEGER DEFAULT 0,
+            modules_completed INTEGER DEFAULT 0
+        )
+    """)
+
+    row = conn.execute(
+        "SELECT xp, streak_count, last_review_date, best_streak, modules_completed FROM learn_gamification WHERE user_id=?",
+        (user_id,)
+    ).fetchone()
+
+    total_modules = conn.execute("SELECT COUNT(*) as c FROM learning_modules").fetchone()["c"]
+
+    conn.close()
+
+    if row:
+        return {"ok": True, "data": {
+            "xp": row["xp"],
+            "streak": row["streak_count"],
+            "best_streak": row["best_streak"],
+            "last_review_date": row["last_review_date"],
+            "modules_completed": row["modules_completed"],
+            "total_modules": total_modules,
+        }}
+    return {"ok": True, "data": {
+        "xp": 0, "streak": 0, "best_streak": 0,
+        "last_review_date": None, "modules_completed": 0,
+        "total_modules": total_modules,
+    }}
