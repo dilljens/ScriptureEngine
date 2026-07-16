@@ -9,6 +9,7 @@ on:
 env:
   NODE_VERSION: '20'
   GO_VERSION: '1.23'
+  PYTHON_VERSION: '3.12'
 
 jobs:
   frontend:
@@ -42,13 +43,47 @@ jobs:
       - run: go test ./internal/... -count=1
         working-directory: backend/go-srs
 
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install ruff
+      - name: Ruff check
+        run: ruff check --output-format=github
+      - name: Count errors
+        run: |
+          errors=$(ruff check --statistics | tail -1 | grep -oP '^\s*\d+' || echo "0")
+          echo "Ruff errors: $errors"
+
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: web/requirements.txt
+      - run: pip install -r web/requirements.txt biblical-transliteration fastembed sentence-transformers
+        working-directory: .
+      - name: Create test fixture database
+        run: |
+          python3 scripts/create_test_db.py
+      - name: Run tests
+        run: |
+          python3 -m pytest tests/ -q --tb=short -x
+        timeout-minutes: 5
+
   api-import:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r web/requirements.txt biblical-transliteration
         working-directory: .
       - name: Test API imports

@@ -1,8 +1,9 @@
 """Test configuration and shared fixtures for Scripture Engine API tests.
 
-Uses FastAPI TestClient for in-process testing (no real server).
-Default DB connection is read-only to the production database.
+Uses a minimal test database when available, falls back to production DB.
+Set SCRIPTURE_DB_PATH env var to override, or create data/test/test.db.
 """
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -14,17 +15,30 @@ from fastapi.testclient import TestClient
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from web.server import app
-
+# Determine database path
+TEST_DB = ROOT / "data" / "test" / "test.db"
 PROD_DB = ROOT / "data" / "processed" / "scripture.db"
+
+if "SCRIPTURE_DB_PATH" in os.environ:
+    DB_PATH = Path(os.environ["SCRIPTURE_DB_PATH"])
+elif TEST_DB.exists():
+    DB_PATH = TEST_DB
+else:
+    DB_PATH = PROD_DB
+
+# Override the default DB path BEFORE server imports
+import lib.db
+lib.db.DEFAULT_DB_PATH = DB_PATH
+
+from web.server import app
 
 
 @pytest.fixture(scope="session")
 def prod_db():
-    """Read-only connection to production database for integration tests."""
-    if not PROD_DB.exists():
-        pytest.skip(f"Production DB not found: {PROD_DB}")
-    conn = sqlite3.connect(f"file:{PROD_DB}?mode=ro", uri=True)
+    """Read-only connection to test/production database."""
+    if not DB_PATH.exists():
+        pytest.skip(f"Test database not found: {DB_PATH}")
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     yield conn
     conn.close()

@@ -4217,7 +4217,7 @@
     "/api/v1/learn/modules": {
       "get": {
         "summary": "List Modules",
-        "description": "List all learning modules with user progress.",
+        "description": "List all learning modules with user progress and due review count.",
         "operationId": "list_modules_api_v1_learn_modules_get",
         "parameters": [
           {
@@ -4304,7 +4304,7 @@
     "/api/v1/learn/modules/{module_id}/practice": {
       "post": {
         "summary": "Submit Practice",
-        "description": "Submit a practice answer for a module question.",
+        "description": "Submit a practice answer for a module question.\n\nUses FSRS-5 for spaced repetition scheduling.\nRating mapping: Again(1), Hard(2), Good(3), Easy(4).",
         "operationId": "submit_practice_api_v1_learn_modules__module_id__practice_post",
         "parameters": [
           {
@@ -4354,7 +4354,7 @@
     "/api/v1/learn/review": {
       "get": {
         "summary": "Get Learn Reviews",
-        "description": "Get due module reviews (FSRS-scheduled).",
+        "description": "Get due module reviews with actual practice questions for interleaved review.",
         "operationId": "get_learn_reviews_api_v1_learn_review_get",
         "parameters": [
           {
@@ -4375,6 +4375,45 @@
               "type": "integer",
               "default": 10,
               "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learn/gamification": {
+      "get": {
+        "summary": "Get Learn Gamification",
+        "description": "Get gamification stats for LearnView.",
+        "operationId": "get_learn_gamification_api_v1_learn_gamification_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
             }
           }
         ],
@@ -4636,7 +4675,7 @@
     "/api/v1/search": {
       "get": {
         "summary": "Search",
-        "description": "Search across English, Hebrew, and Greek simultaneously.\n\nSupports query syntax:\n  \"exact phrase\"  \u2014 exact phrase match\n  -word           \u2014 exclude verses containing word\n  book:gen        \u2014 scope to a specific book ID\n  work:ot         \u2014 scope to an entire work\n\nEnglish uses FTS5 full-text search (50-100x faster than LIKE).\nHebrew searches against niqqud-stripped words (hebrew_plain).",
+        "description": "Search across English, Hebrew, and Greek simultaneously.\n\nSupports query syntax:\n  \"exact phrase\"  \u2014 exact phrase match\n  -word           \u2014 exclude verses containing word\n  book:gen        \u2014 scope to a specific book ID\n  work:ot         \u2014 scope to an entire work\n\nEnglish uses FTS5 full-text search (50-100x faster than LIKE).\nHebrew searches against niqqud-stripped words (hebrew_plain).\n\nResults are cached with TTL-based SQLite cache. Use `_skip_cache=True`\nto force a fresh search (e.g., after re-indexing).",
         "operationId": "search_api_v1_search_get",
         "parameters": [
           {
@@ -4688,6 +4727,16 @@
               "type": "string",
               "default": "",
               "title": "Book"
+            }
+          },
+          {
+            "name": "_skip_cache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": " Skip Cache"
             }
           }
         ],

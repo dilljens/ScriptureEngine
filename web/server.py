@@ -37,6 +37,7 @@ from lib.controls.calibration import (
     rate_connection_row,
 )
 from lib.db import DEFAULT_DB_PATH, get_db, get_db_vec
+from lib.api.query_cache import cached_search, invalidate_cache, get_cache_stats
 from lib.gematria import compute_all, find_divine_name_matches
 from lib.lexicon import (
     get_concordance,
@@ -566,6 +567,7 @@ def search(
     limit: int = 20,
     offset: int = 0,
     book: str = "",
+    _skip_cache: bool = False,
 ):
     """Search across English, Hebrew, and Greek simultaneously.
 
@@ -577,9 +579,25 @@ def search(
 
     English uses FTS5 full-text search (50-100x faster than LIKE).
     Hebrew searches against niqqud-stripped words (hebrew_plain).
+
+    Results are cached with TTL-based SQLite cache. Use `_skip_cache=True`
+    to force a fresh search (e.g., after re-indexing).
     """
     conn = get_db()
     results = []
+
+    # Check query cache (skip when _skip_cache is set, e.g., after re-index)
+    if not _skip_cache:
+        from lib.api.query_cache import _make_key, _check_cache, _set_cache, _get_cache_table
+        try:
+            _get_cache_table(conn)
+            cache_key = _make_key("search", (q.strip(), lang, limit, offset, book), {})
+            cached = _check_cache(conn, cache_key)
+            if cached is not None:
+                conn.close()
+                return cached
+        except Exception:
+            pass
 
     # Parse query syntax: extract book/work filter, exclude terms, phrase terms
     filter_book = book  # explicit ?book= param
@@ -670,9 +688,8 @@ def search(
                 seen.add(r["id"])
                 results.append({"verse": r["id"], "text": (r["text_greek"] or "")[:120], "english": (r["text_english"] or "")[:60], "book": r["title"], "language": "greek"})
 
-    conn.close()
     has_more = len(results) > limit
-    return {
+    response = {
         "ok": True,
         "data": {
             "query": q,
@@ -682,6 +699,18 @@ def search(
             "total_estimate": len(results),
         },
     }
+
+    # Store in query cache
+    if not _skip_cache:
+        try:
+            from lib.api.query_cache import _make_key, _set_cache
+            cache_key = _make_key("search", (q.strip(), lang, limit, offset, book), {})
+            _set_cache(conn, cache_key, response)
+        except Exception:
+            pass
+
+    conn.close()
+    return response
 
 
 # ─── Gematria ───
@@ -812,6 +841,18 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
     """
     conn = get_db_vec()
 
+    # Check query cache
+    from lib.api.query_cache import _make_key, _check_cache, _set_cache, _get_cache_table
+    try:
+        _get_cache_table(conn)
+        cache_key = _make_key("semantic_search", (q.strip(), limit, mode), {})
+        cached = _check_cache(conn, cache_key)
+        if cached is not None:
+            conn.close()
+            return cached
+    except Exception:
+        pass
+
     # ── Query classifier ──
     qtype = _classify_query(q)
     results = []
@@ -848,30 +889,57 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
         results.extend(gr_results)
 
     if qtype in ("natural", "hebrew_word", "greek_word") or not results:
+        # Run graph search as 3rd signal (uses entity + connection graph)
+        graph_results = []
+        try:
+            from lib.api.graph_search import graph_search as _gs
+            graph_results = _gs(conn, q, top_k=limit)
+        except Exception:
+            pass
+
         # Try vector search (requires pre-computed embeddings)
         model = _get_embed_model()
         if model is not None:
             try:
                 vec_results = _vector_search(conn, model, q, limit, mode)
-                results = _merge_results(results, vec_results, mode)
+                results = _merge_results(results, vec_results, mode, list_c=graph_results)
             except Exception as e:
                 import logging
                 logging.warning(f"Vector search failed: {e}, falling back to keyword")
                 kw_results = _keyword_search(conn, q, limit)
-                results = _merge_results(results, kw_results, "keyword")
+                results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
         else:
             # Fallback to FTS5/keyword if vector search unavailable
             kw_results = _keyword_search(conn, q, limit)
-            results = _merge_results(results, kw_results, "keyword")
+            results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
 
-    conn.close()
-    return {"ok": True, "data": {
+    # Optional cross-encoder reranking (graceful if unavailable)
+    try:
+        from lib.api.reranker import rerank_if_available
+        reranked = rerank_if_available(q, results, top_k=limit)
+        if reranked:
+            results = reranked
+    except Exception:
+        pass
+
+    response = {"ok": True, "data": {
         "query": q,
         "query_type": qtype,
         "mode": mode,
+        "reranked": results != results[:limit],
         "total": len(results),
         "results": results[:limit],
     }}
+
+    # Store in query cache
+    try:
+        cache_key = _make_key("semantic_search", (q.strip(), limit, mode), {})
+        _set_cache(conn, cache_key, response)
+    except Exception:
+        pass
+
+    conn.close()
+    return response
 
 
 def _classify_query(q):
@@ -944,10 +1012,23 @@ def _sanitize_fts_query(query):
 
     Trigrams handle substring matching natively, so we don't need
     the `*` prefix wildcards or special operators that the porter
-    tokenizer required. Just escape double-quotes for safety.
+    tokenizer required.
+
+    FTS5 interprets these characters as operators or syntax:
+      ? - / ( ) "  * ^ ~ + .
+    Unicity benchmarks found 83% of BEIR queries crashed FTS5
+    because of `?` at end of questions — strip them all.
     """
     query = query.replace('"', '""')
-    query = query.replace("^", " ").replace("*", " ")
+    # Strip FTS5 special characters that cause syntax errors
+    for c in '?/()*^~+':
+        query = query.replace(c, ' ')
+    # Hyphen: FTS5 NOT operator — replace standalone hyphens with space
+    query = query.replace(' - ', '   ')
+    # Dot: FTS5 column reference separator
+    query = query.replace('.', ' ')
+    import re
+    query = re.sub(r'\s+', ' ', query)
     return query.strip()
 
 
@@ -1120,39 +1201,79 @@ def _format_verse_result(v, score):
     }
 
 
-def _merge_results(list_a, list_b, mode):
-    """Merge two result lists. In hybrid mode, use RRF (Reciprocal Rank Fusion)."""
+def _merge_results(list_a, list_b, mode, list_c=None):
+    """Merge result lists using RRF (Reciprocal Rank Fusion).
+
+    Supports 2-way (vector + BM25) and 3-way (vector + BM25 + graph)
+    fusion. Graph signal gets adaptive weight: entity-heavy queries
+    favor graph, semantic queries favor vector, keyword queries favor BM25.
+
+    Args:
+        list_a: Primary results (BM25/keyword).
+        list_b: Secondary results (vector/semantic).
+        mode: 'vector', 'keyword', or 'hybrid'.
+        list_c: Optional 3rd signal (graph-search results).
+    """
     if mode == "vector":
         return list_b
     if mode == "keyword":
         return list_a if list_a else list_b
 
     # Hybrid RRF merge
-    seen = {}
-    for rank, r in enumerate(list_a + list_b):
-        vid = r["verse"]
-        if vid not in seen:
-            seen[vid] = {**r, "_rrf_score": 0.0, "_ranks": []}
-        seen[vid]["_ranks"].append(rank + 1)
-
-    # RRF: score = sum(1 / (60 + rank_i))
     K = 60
-    for vid, data in seen.items():
-        rrf = sum(1.0 / (K + rank) for rank in data["_ranks"])
-        data["_rrf_score"] = round(rrf, 4)
-        # Blend vec + bm25 scores for tiebreaking
-        data["similarity"] = round(
-            data.get("_score_vec", 0) * 0.6 + data.get("_score_bm25", 0) * 0.4,
-            4,
-        )
 
+    # Compute adaptive alphas for 3-way fusion
+    # Entity-heavy queries → boost graph signal
+    has_graph_data = list_c is not None and len(list_c) > 0
+    alpha_vec = 0.5
+    alpha_bm25 = 0.5
+    alpha_graph = 0.0
+
+    if has_graph_data:
+        # Heuristic: estimate entity content from graph explanations
+        entity_count = sum(1 for r in list_c if r.get("entity_match", False))
+        total_graph = len(list_c)
+        entity_ratio = entity_count / max(total_graph, 1)
+
+        if entity_ratio > 0.3:
+            # Entity-heavy query (e.g., "Abraham covenant") → favor graph
+            alpha_graph = 0.25
+            alpha_vec = 0.35
+            alpha_bm25 = 0.40
+        else:
+            # General query → smaller graph weight
+            alpha_graph = 0.15
+            alpha_vec = 0.40
+            alpha_bm25 = 0.45
+
+    seen = {}
+    all_lists = [list_a, list_b]
+    if has_graph_data:
+        all_lists.append(list_c)
+    alphas = [alpha_bm25, alpha_vec]
+    if has_graph_data:
+        alphas.append(alpha_graph)
+
+    for lst, alpha in zip(all_lists, alphas):
+        for rank, r in enumerate(lst):
+            vid = r["verse"]
+            if vid not in seen:
+                seen[vid] = {**r, "_rrf_score": 0.0, "_ranks": []}
+            seen[vid]["_rrf_score"] += alpha * (1.0 / (K + rank))
+            seen[vid]["_ranks"].append(rank + 1)
+            # Preserve graph explanation if present
+            if "explanation" in r:
+                seen[vid]["graph_explanation"] = r["explanation"]
+
+    # Sort by RRF score descending
     sorted_results = sorted(seen.values(), key=lambda x: -x["_rrf_score"])
     # Clean up internal fields
     for r in sorted_results:
-        r.pop("_rrf_score", None)
         r.pop("_ranks", None)
         r.pop("_score_vec", None)
         r.pop("_score_bm25", None)
+        # Keep _rrf_score as similarity for sorting
+        r["similarity"] = round(r.pop("_rrf_score", 0), 4)
     return sorted_results
 
 

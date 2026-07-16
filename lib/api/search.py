@@ -11,9 +11,22 @@ from lib.hebrew_util import rtl_mark, transliterate
 
 
 def _sanitize_fts_query(query):
-    """Sanitize a query string for FTS5 trigram search."""
+    """Sanitize a query string for FTS5 trigram search.
+
+    FTS5 interprets these characters as operators or syntax:
+      ? - / ( ) "  * ^ ~ + .
+    Strip them to prevent FTS5 syntax errors (unicity found 83% of
+    queries crashed because of `?` at end of questions).
+    """
     query = query.replace('"', '""')
-    query = query.replace("^", " ").replace("*", " ")
+    for c in '?/()*^~+':
+        query = query.replace(c, ' ')
+    # Hyphen: FTS5 NOT operator
+    query = query.replace(' - ', '   ')
+    # Dot: FTS5 column reference separator
+    query = query.replace('.', ' ')
+    import re
+    query = re.sub(r'\s+', ' ', query)
     return query.strip()
 
 
@@ -284,18 +297,26 @@ def semantic_search_text(conn, query, limit=20, mode="hybrid"):
             gr_results = _search_greek(conn, query, limit)
 
         if qtype in ("natural", "hebrew_word", "greek_word") or not results:
+            # Run graph search as 3rd signal
+            graph_results = []
+            try:
+                from lib.api.graph_search import graph_search as _gs
+                graph_results = _gs(conn, query, top_k=limit)
+            except Exception:
+                pass
+
             try:
                 from web.server import _get_embed_model
                 model = _get_embed_model()
                 if model is not None:
                     vec_results = _vector_search(conn, model, query, limit, mode)
-                    results = _merge_results(results, vec_results, mode)
+                    results = _merge_results(results, vec_results, mode, list_c=graph_results)
                 else:
                     kw_results = _keyword_search(conn, query, limit)
-                    results = _merge_results(results, kw_results, "keyword")
+                    results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
             except Exception:
                 kw_results = _keyword_search(conn, query, limit)
-                results = _merge_results(results, kw_results, "keyword")
+                results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
 
         return {
             "query": query,
