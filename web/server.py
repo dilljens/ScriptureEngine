@@ -278,7 +278,7 @@ CONNECTION_TYPE_MAP = {
 
 # ─── Verse & Passage Guide ───
 
-@app.get("/api/v1/verses/{ref:path}")
+@app.get("/api/v1/verses/{ref}")
 def get_verse(ref: str, show_signals: bool | None = Query(False, description="Enrich connections with quality signal breakdown"), context: int | None = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
     """Get verse text with connections — served from RAM cache or SQLite."""
     ref = ref.replace(":", ".").replace(" ", ".")
@@ -481,7 +481,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
     return {"ok": True, "data": resp}
 
 
-@app.get("/api/v1/verses/{ref:path}/connections")
+@app.get("/api/v1/verses/{ref}/connections")
 def get_verse_connections(ref: str, layer: str | None = None, min_quality: str | None = None, discovered_by: str | None = None, min_confidence: float | None = None, show_signals: bool | None = False):
     """Get filtered connections for a verse.
 
@@ -544,7 +544,7 @@ def get_verse_connections(ref: str, layer: str | None = None, min_quality: str |
     return {"ok": True, "data": {"verse": ref, "layers": list(conns.keys()), "connections": conns}}
 
 
-@app.get("/api/v1/verses/{ref:path}/disagreements")
+@app.get("/api/v1/verses/{ref}/disagreements")
 def get_verse_disagreements(ref: str):
     """Get interpretive disagreements for a verse — contradictory readings across traditions."""
     conn = get_db()
@@ -773,7 +773,7 @@ def sod(verse: str | None = None, atbash_word: str | None = None, acrostic_book:
 
 # ─── PaRDeS ───
 
-@app.get("/api/v1/verses/{ref:path}/guide")
+@app.get("/api/v1/verses/{ref}/guide")
 def get_passage_guide(ref: str):
     """Instant passage guide from RAM cache — sub-ms, zero disk."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()
@@ -1442,7 +1442,7 @@ MORPH_POS = {
     'AR': 'aramaic_preposition',
 }
 
-@app.get("/api/v1/verses/{ref:path}/grammar")
+@app.get("/api/v1/verses/{ref}/grammar")
 def get_grammar(ref: str):
     """Get a verse with morphologically-tagged words — grammar coloring data."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()
@@ -2962,7 +2962,7 @@ def create_forum_post(post: ForumPostCreate):
 
 # ─── Verse Annotations (per-verse comments) ───
 
-@app.get("/api/v1/verses/{ref:path}/annotations")
+@app.get("/api/v1/verses/{ref}/annotations")
 def get_verse_annotations(ref: str):
     """Get comments/annotations on a specific verse."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()

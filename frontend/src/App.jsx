@@ -36,6 +36,7 @@ const HebrewDiagnostic = React.lazy(() => import('./components/HebrewDiagnostic'
 const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
 const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
 const WikiArticleViewer = React.lazy(() => import('./components/WikiArticleViewer'))
+const HebrewPassageReader = React.lazy(() => import('./components/HebrewPassageReader'))
 const LearnView = React.lazy(() => import('./components/LearnView'))
 import TileDashboard from './components/TileDashboard'
 import SubjectTabBar from './components/SubjectTabBar'
@@ -454,6 +455,7 @@ function AppInner() {
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
+  const [passageStudyRef, setPassageStudyRef] = useState(null)
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
   const [showHubNotes, setShowHubNotes] = useState(false)
@@ -921,6 +923,15 @@ function AppInner() {
   // highlightVerse: from search results or tab highlights
   const highlightVerse = currentTab?.highlights?.[0] || null
 
+  // Passage study overlay
+  if (passageStudyRef) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white dark:bg-neutral-950">
+        <HebrewPassageReader verseRef={passageStudyRef} onClose={() => setPassageStudyRef(null)} />
+      </div>
+    )
+  }
+
   const renderMainContent = () => {
     if (showHebrewDiagnostic) {
       return (
@@ -1007,6 +1018,15 @@ function AppInner() {
             onNavigate={(eid) => updateTab(currentTab?.id, { view: 'wiki', viewRef: eid, label: `Wiki: ${eid}` })}
             onOpenTab={(b, ch, opts) => openTab(b, ch, opts)}
           />
+        </Suspense>
+      )
+    }
+
+    // Passage study view — Hebrew word-by-word reader
+    if (viewLevel === 'passage-study' && viewRef) {
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading passage reader...</div>}>
+          <HebrewPassageReader verseRef={viewRef} onClose={() => dispatch({ type: 'CLOSE_TAB' })} />
         </Suspense>
       )
     }
@@ -1233,6 +1253,11 @@ function AppInner() {
             </button>
             <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}><GearIcon /></button>
             <button onClick={() => openWikiTab()} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-xs" title="Wiki">📖</button>
+            {viewLevel === 'chapter' && (
+              <button onClick={() => setPassageStudyRef(passageStudyRef ? null : `${book}.${chapter}.${verse || 1}`)}
+                className={`p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-xs ${passageStudyRef ? 'bg-blue-100 dark:bg-blue-900/30' : ''}`}
+                title="Passage Study (Hebrew word-by-word)">📝</button>
+            )}
             <button onClick={() => setShowCommand(true)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Go to (${getHotkey('command')})`}><CommandIcon /></button>
           </div>
         </div>
