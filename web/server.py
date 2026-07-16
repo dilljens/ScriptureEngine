@@ -1280,7 +1280,7 @@ def _merge_results(list_a, list_b, mode, list_c=None):
 @app.get("/api/v1/pardes/{ref:path}")
 def get_pardes(ref: str, level: str | None = None):
     """Get connections grouped by PaRDeS interpretation level."""
-    resp = get_verse(ref)
+    resp = get_verse(ref, context=0, show_signals=False)
     if not resp["ok"]:
         return resp
     data = resp["data"]

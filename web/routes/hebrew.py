@@ -1,6 +1,7 @@
 """Hebrew learning + grammar reference routes."""
 import datetime
 import json
+import os
 import math
 import random
 import re
@@ -167,7 +168,7 @@ def fire_process(graph, node_id, correct, weight=0.3):
 
 BASE_DIR = Path(__file__).parent.parent.parent
 MEM_DB = BASE_DIR / "data" / "memorize.db"
-SCRIPTURE_DB = BASE_DIR / "data" / "processed" / "scripture.db"
+SCRIPTURE_DB = Path(os.environ.get("SCRIPTURE_DB_PATH", "")) if os.environ.get("SCRIPTURE_DB_PATH") else BASE_DIR / "data" / "processed" / "scripture.db"
 
 
 def get_db():
@@ -276,6 +277,7 @@ def get_hebrew_remediation(node_id: str, pattern: str = "confusion", user_id: st
         return {"ok": True, "data": _get_remediation_for_pattern(node_id, pattern)}
 
     conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
     remediation = _get_remediation_for_pattern(node_id, pattern, conn)
     conn.close()
 
