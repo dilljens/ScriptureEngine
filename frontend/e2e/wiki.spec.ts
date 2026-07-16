@@ -15,8 +15,8 @@ test.describe('Wiki — article viewer (desktop)', () => {
     const wikiItem = page.getByText('Wiki').first()
     await expect(wikiItem).toBeVisible()
     await wikiItem.click()
-    // Wiki view should load — sidebar or browse view
-    await expect(page.locator('aside').or(page.getByText('Browse').first())).toBeVisible({ timeout: 10000 })
+    // Wiki view should load — sidebar heading visible
+    await expect(page.getByRole('heading', { name: 'Wiki', exact: true }).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('wiki article renders with full desktop layout', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('Wiki — article viewer (desktop)', () => {
       await searchInput.fill('covenant')
       await searchInput.press('Enter')
       // Should show wiki search results from the command/search interface
-      await expect(page.locator('.max-w-4xl').first()).toBeVisible({ timeout: 10000 })
+      await expect(page.getByRole('heading', { name: 'Wiki', exact: true }).first()).toBeVisible({ timeout: 10000 })
     }
   })
 
@@ -92,7 +92,7 @@ test.describe('Wiki — article viewer (desktop)', () => {
     })
     await expect(page.getByText('Key Verses')).toBeVisible({ timeout: 10000 })
     // Click the first key verse
-    const firstVerse = page.locator('.max-w-4xl span.text-\\[10px\\].font-mono').first()
+    const firstVerse = page.locator('span.text-\\[10px\\].font-mono').first()
     if (await firstVerse.isVisible()) {
       await firstVerse.click()
       // Should navigate to chapter view — breadcrumb should update
