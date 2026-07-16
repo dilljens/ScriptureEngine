@@ -17,11 +17,30 @@ import unicodedata
 
 from biblical_transliteration import HebrewOptions, HebrewScheme, HebrewTransliterator
 
-# ── Shared engine ──────────────────────────────────────────────
-# Single instance, reused across all calls
-_HEB_TRANSLITERATOR = HebrewTransliterator(
+# ── Shared engines ─────────────────────────────────────────────
+# Three schemes for different contexts:
+#   SBL    — academic (bǝrēʾšîṯ) — diacritics, reversible
+#   SIMPLE — readable ASCII (bereshit) — no diacritics, typable
+#   PHONETIC — pronunciation (be-re-SHEET) — syllable stress
+_HEB_SBL = HebrewTransliterator(
     HebrewOptions(scheme=HebrewScheme.SBL)
 )
+_HEB_SIMPLE = HebrewTransliterator(
+    HebrewOptions(scheme=HebrewScheme.SIMPLE)
+)
+_HEB_PHONETIC = HebrewTransliterator(
+    HebrewOptions(scheme=HebrewScheme.PHONETIC)
+)
+
+# Default transliteration scheme for vocabulary display
+TR_SCHEME_DEFAULT = "simple"
+
+# Map scheme names to engines
+_SCHEMES = {
+    "sbl": _HEB_SBL,
+    "simple": _HEB_SIMPLE,
+    "phonetic": _HEB_PHONETIC,
+}
 
 # ── Unicode ranges (for accent stripping) ────────────────────
 CANTILLATION = set(range(0x0591, 0x05A2)) | {0x05A3, 0x05A4, 0x05A5, 0x05A6, 0x05A7, 0x05A8, 0x05A9, 0x05AA, 0x05AB, 0x05AC, 0x05AD, 0x05AE, 0x05AF}
@@ -61,29 +80,29 @@ def clean_hebrew(text):
     return text
 
 
-def transliterate(text, strip_accents=True):
-    """Convert pointed Hebrew text to scholarly SBL transliteration.
+def transliterate(text, scheme="sbl"):
+    """Convert pointed Hebrew text to transliteration in the chosen scheme.
 
     Uses `biblical-transliteration` (MIT) for correct handling of:
     - Qamats qatan vs gadol
     - Vocal vs silent shewa
-    - Full begadkefat spirantization (ḇ ḡ ḏ ḵ p̄ ṯ)
+    - Full begadkefat spirantization (SBL only)
     - Tetragrammaton avoidance (yhwh, not yəhwāh)
     - Mater lectionis, dagesh forte, shin/sin dots
 
     Args:
         text: Hebrew text (possibly with / separators from DB, cantillation, vowels)
-        strip_accents: Remove cantillation marks (default: True, ignored —
-                       biblical-transliteration handles this internally)
+        scheme: 'sbl' (academic, default), 'simple' (ASCII), or 'phonetic'
 
     Returns:
-        SBL transliteration string (left-to-right)
+        Transliteration string (left-to-right)
     """
     if not text:
         return ""
 
     text = clean_hebrew(text)
-    return _HEB_TRANSLITERATOR.transliterate(text)
+    engine = _SCHEMES.get(scheme, _HEB_SBL)
+    return engine.transliterate(text)
 
 
 def rtl_mark(text):
