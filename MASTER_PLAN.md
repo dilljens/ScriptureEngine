@@ -86,7 +86,7 @@
 | 2.5 | **Real null-text testing** — empirical p-values, `null_text.py` (130 lines) + `null_text_validation.py` (697 lines) | B1 🔴 | 6h | ✅ |
 | 2.6 | Interpretive disagreement model — DB table (140 rows), MCP tool, REST endpoint, frontend panel, 20 real seeds | B2 | 4h | ✅ |
 | 2.7 | Faith vs. historical-critical hermeneutic labels — tradition/hermeneutic added to verse connection output, badges in VerseBlock panel, KnowledgeGraph display | B3 | 3h | ✅ |
-| 2.8 | Ecumenical consensus scoring per verse | B4 | 4h | ❌ |
+| 2.8 | Ecumenical consensus scoring per verse | B4 | 4h | ✅ |
 
 ### Track C — Assessment Engine (`~50h, Phase 2 subset ~11h`)
 | # | Task | Source | Effort | Status |

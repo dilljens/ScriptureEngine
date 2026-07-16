@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import { getWikiArticle, getWikiBrowse, getWikiSearch } from '../api'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
+import ConnectionGraph from './ConnectionGraph'
 
 /**
  * WikiArticleViewer — Wikipedia-style wiki viewer with sidebar, search, and browse.
@@ -493,6 +494,9 @@ function SidebarPanel({
 function ArticleView({ article, onEntityClick, onOpenTab }) {
   const colors = TYPE_COLORS[article.article_type] || TYPE_COLORS.concept
   const icon = TYPE_ICONS[article.article_type] || '📖'
+  const [showGraph, setShowGraph] = useState(false)
+  // Use first key verse as graph center point, fall back to entity id
+  const centerVerse = article.key_verses?.[0] || (article.id?.includes('.') ? article.id : null)
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -592,6 +596,33 @@ function ArticleView({ article, onEntityClick, onOpenTab }) {
           )}
         </div>
       )}
+
+      {/* Connection Graph (collapsible) */}
+      <div className="mt-4 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+        <button onClick={() => setShowGraph(!showGraph)}
+          className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">
+          <span className="flex items-center gap-2">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.75v6.5m0 0h6.5m-6.5 0H5.5M12 17.75a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5zM7.75 19.25a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5zM16.25 19.25a2.75 2.75 0 100-5.5 2.75 2.75 0 000 5.5z" /></svg>
+            Connection Graph {article.total_connections > 0 ? `(${article.total_connections} connections)` : ''}
+          </span>
+          <svg className={`w-4 h-4 transition-transform ${showGraph ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </button>
+        {showGraph && centerVerse && (
+          <div className="h-72 md:h-96">
+            <ConnectionGraph
+              centerVerse={centerVerse}
+              onOpenTab={(b, ch, opts) => {
+                if (onOpenTab) onOpenTab(b, ch, opts)
+              }}
+            />
+          </div>
+        )}
+        {showGraph && !centerVerse && (
+          <div className="p-4 text-center text-[11px] text-neutral-400 dark:text-neutral-500">
+            No verse reference available for this entity's connection graph.
+          </div>
+        )}
+      </div>
     </div>
   )
 }
