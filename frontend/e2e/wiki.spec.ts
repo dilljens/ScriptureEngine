@@ -15,8 +15,8 @@ test.describe('Wiki — article viewer (desktop)', () => {
     const wikiItem = page.getByText('Wiki').first()
     await expect(wikiItem).toBeVisible()
     await wikiItem.click()
-    // Wiki view should load — article viewer or browse view
-    await expect(page.locator('.max-w-4xl').first()).toBeVisible({ timeout: 10000 })
+    // Wiki view should load — sidebar or browse view
+    await expect(page.locator('aside').or(page.getByText('Browse').first())).toBeVisible({ timeout: 10000 })
   })
 
   test('wiki article renders with full desktop layout', async ({ page }) => {
