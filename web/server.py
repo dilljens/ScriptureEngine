@@ -2344,8 +2344,59 @@ def isaiah_parallel(chapter: str):
 
 # ─── Isaiah Parallelism Visualization ───
 
+# IMPORTANT: Specific routes MUST be registered before parameterized routes
+# (structure before {chapter})
 
-@app.get("/api/v1/parallelism/isaiah/{chapter:path}")
+
+@app.get("/api/v1/parallelism/isaiah/structure")
+def isaiah_structure_overview():
+    """Get book-wide chiastic structure overview for Isaiah.
+
+    Returns all known chiasms with their section ranges, labels,
+    and scholar info, suitable for rendering a structure diagram.
+    """
+    import json as _json
+    conn = get_db()
+
+    kc_rows = conn.execute("""
+        SELECT * FROM known_chiasms WHERE book_id = 'isa' ORDER BY confidence DESC
+    """).fetchall()
+
+    structures = []
+    for r in kc_rows:
+        kc = dict(r)
+        sections = []
+        layers_raw = kc.get("layers_json")
+        if layers_raw:
+            try:
+                layers = _json.loads(layers_raw)
+                for layer in layers:
+                    sections.append({
+                        "label": layer.get("letter", "?"),
+                        "name": layer.get("label", ""),
+                        "start": layer.get("start", ""),
+                        "end": layer.get("end", ""),
+                    })
+            except (_json.JSONDecodeError, TypeError):
+                pass
+
+        structures.append({
+            "id": kc["id"],
+            "scholar": kc.get("scholar", ""),
+            "chiasm_type": kc.get("chiasm_type", ""),
+            "confidence": round(kc.get("confidence", 0.5), 2),
+            "start_verse": kc.get("start_verse", ""),
+            "end_verse": kc.get("end_verse", ""),
+            "pivot_verse": kc.get("pivot_verse", ""),
+            "notes": kc.get("notes", ""),
+            "sections": sections,
+        })
+
+    conn.close()
+    return {"ok": True, "data": {"structures": structures, "total": len(structures)}}
+
+
+@app.get("/api/v1/parallelism/isaiah/{chapter}")
 def isaiah_parallelism(chapter: str):
     """Get parallelism data for an Isaiah chapter.
 
@@ -2640,58 +2691,10 @@ def isaiah_parallelism(chapter: str):
     }}
 
 
-@app.get("/api/v1/parallelism/isaiah/structure")
-def isaiah_structure():
-    """Get book-wide chiastic structure overview for Isaiah.
-
-    Returns all known chiasms with their section ranges, labels,
-    and scholar info, suitable for rendering a structure diagram.
-    """
-    import json as _json
-    conn = get_db()
-
-    kc_rows = conn.execute("""
-        SELECT * FROM known_chiasms WHERE book_id = 'isa' ORDER BY confidence DESC
-    """).fetchall()
-
-    structures = []
-    for r in kc_rows:
-        kc = dict(r)
-        sections = []
-        layers_raw = kc.get("layers_json")
-        if layers_raw:
-            try:
-                layers = _json.loads(layers_raw)
-                for layer in layers:
-                    sections.append({
-                        "label": layer.get("letter", "?"),
-                        "name": layer.get("label", ""),
-                        "start": layer.get("start", ""),
-                        "end": layer.get("end", ""),
-                    })
-            except (_json.JSONDecodeError, TypeError):
-                pass
-
-        structures.append({
-            "id": kc["id"],
-            "scholar": kc.get("scholar", ""),
-            "chiasm_type": kc.get("chiasm_type", ""),
-            "confidence": round(kc.get("confidence", 0.5), 2),
-            "start_verse": kc.get("start_verse", ""),
-            "end_verse": kc.get("end_verse", ""),
-            "pivot_verse": kc.get("pivot_verse", ""),
-            "notes": kc.get("notes", ""),
-            "sections": sections,
-        })
-
-    conn.close()
-    return {"ok": True, "data": {"structures": structures, "total": len(structures)}}
-
-
 # ─── Generic Chapter Connections (any book) ───
 
 
-@app.get("/api/v1/chapter/{ref:path}")
+@app.get("/api/v1/chapter/{ref}")
 def get_chapter(ref: str):
     """Get a full chapter with connections, lines, and intra-verse parallelism.
 
@@ -2817,7 +2820,7 @@ def get_chapter(ref: str):
     }}
 
 
-@app.get("/api/v1/chapter/{ref:path}/entities")
+@app.get("/api/v1/chapter/{ref}/entities")
 def get_chapter_entities(ref: str):
     """Get all entities (people, places, concepts) for verses in a chapter.
 
