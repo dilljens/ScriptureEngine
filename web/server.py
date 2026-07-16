@@ -51,6 +51,7 @@ from lib.sod import atbash as atb
 
 _hebrew_trans = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.SIMPLE))
 _hebrew_trans_sbl = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.SBL))
+_hebrew_trans_phonetic = HebrewTransliterator(HebrewOptions(scheme=HebrewScheme.PHONETIC))
 
 # Track server start time for uptime reporting
 _start_time = time.time()
@@ -1467,6 +1468,10 @@ def get_chapter_grammar(ref: str):
             translit_sbl = _hebrew_trans_sbl.transliterate_word(word_clean)
         except Exception:
             translit_sbl = translit
+        try:
+            translit_phonetic = _hebrew_trans_phonetic.transliterate_word(word_clean)
+        except Exception:
+            translit_phonetic = translit
         # Look up gloss and lexicon data in Python
         raw_lemma = w["lemma"] or ""
         gloss = lookup_gloss(raw_lemma)
@@ -1476,6 +1481,7 @@ def get_chapter_grammar(ref: str):
             "hebrew_clean": word_clean,
             "transliteration": translit,
             "transliteration_sbl": translit_sbl,
+            "transliteration_phonetic": translit_phonetic,
             "english": gloss or w["word_english"] or "",
             "definition": lex.get("definition", ""),
             "morph": morph,

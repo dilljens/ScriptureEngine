@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 import { cleanHebrew as stripNiqqud, lineHasChiasmRole } from '../utils'
+import { useToggles } from './ToggleProvider'
 import WordPopup from './WordPopup'
 import DisagreementsPanel from './DisagreementsPanel'
 import JSTDiffViewer from './JSTDiffViewer'
@@ -263,6 +264,15 @@ function ConnectionPanel({ extraConnections, tskRefs, navigateToRef }) {
 }
 
 export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections, displayLang, showTranslit, showEnglish, hebrewDisplayMode = 'reading' }) {
+  // Transliteration scheme preference
+  let translitScheme = 'simple'
+  try {
+    const togglesCtx = useToggles()
+    translitScheme = togglesCtx.translitScheme || 'simple'
+  } catch (e) { /* context not available */ }
+  const translitField = translitScheme === 'sbl' ? 'transliteration_sbl'
+    : translitScheme === 'phonetic' ? 'transliteration_phonetic'
+    : 'transliteration'
   const [expanded, setExpanded] = useState(false)
   const [openFn, setOpenFn] = useState(null)
   const [openTsk, setOpenTsk] = useState(false)
@@ -314,6 +324,8 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
 
   // Language mode: show original language with reading/scholar/interlinear display
   if (displayLang !== 'english' && hasLang) {
+    // translitField is defined at component top level via hook
+
     const verseWordData = wordData || null
     const words = sourceText.trim().split(/\s+/).filter(Boolean)
     const hasWordGloss = verseWordData && verseWordData.length >= words.length && verseWordData.some(w => w.english?.trim())
@@ -356,7 +368,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
                   const wordMorph = verseWordData?.[i]?.morph || ''
                   const wordStrongs = verseWordData?.[i]?.strongs || ''
                   const wordRoot = verseWordData?.[i]?.root_letters || ''
-                  const wordTranslit = verseWordData?.[i]?.transliteration_sbl || verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
+                  const wordTranslit = verseWordData?.[i]?.[translitField] || verseWordData?.[i]?.transliteration || (translitFn ? translitFn(word) : '')
                   const wordEnglish = verseWordData?.[i]?.english || ''
 
                   // Color by part of speech

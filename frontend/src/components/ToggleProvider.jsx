@@ -72,7 +72,15 @@ export function ToggleProvider({ children }) {
   // Hebrew display mode
   const [hebrewDisplayMode, setHebrewDisplayMode] = useState('reading') // 'reading' | 'scholar' | 'interlinear'
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode, setHebrewDisplayMode }}>{children}</ToggleCtx.Provider>
+  // Transliteration scheme (persisted)
+  const [translitScheme, setTranslitScheme] = useState(() => {
+    try { return localStorage.getItem('scripture_translit_scheme') || 'simple' } catch { return 'simple' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('scripture_translit_scheme', translitScheme) } catch {}
+  }, [translitScheme])
+
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode, setHebrewDisplayMode, translitScheme, setTranslitScheme }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -204,6 +212,24 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
                 </div>
                 Show transliteration
               </label>
+              {showTranslit && (
+                <div className="flex gap-1 mt-1">
+                  {[
+                    { id: 'simple', label: 'Simple' },
+                    { id: 'sbl', label: 'SBL' },
+                    { id: 'phonetic', label: 'Phonetic' },
+                  ].map(s => (
+                    <button key={s.id} onClick={() => setTranslitScheme(s.id)}
+                      className={`flex-1 px-1.5 py-1 rounded text-[9px] font-medium transition-all cursor-pointer ${
+                        translitScheme === s.id
+                          ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
+                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border border-transparent hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                      }`}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
                 onClick={() => setShowEnglish(!showEnglish)}>
                 <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors ${showEnglish ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
