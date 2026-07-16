@@ -45,14 +45,58 @@ export default function LearnView({ userId = 'default', onBack }) {
   const [subjectFilter, setSubjectFilter] = useState('all')
   const [practiceCards, setPracticeCards] = useState([])
   const [answerState, setAnswerState] = useState({})
+  const [dueCount, setDueCount] = useState(0)
+  const [reviewCards, setReviewCards] = useState([])
 
   const loadModules = async () => {
     setLoading(true)
     try {
       const r = await fetch(`/api/v1/learn/modules?user_id=${userId}`)
       const d = await r.json()
-      if (d.ok) setModules(d.data.modules)
-      else setError(d.detail)
+      if (d.ok) {
+        setModules(d.data.modules)
+        setDueCount(d.data.due_count || 0)
+      } else setError(d.detail)
+    } catch (e) { setError(e.message) }
+    setLoading(false)
+  }
+
+  const startReview = async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/v1/learn/review?user_id=${userId}&limit=6`)
+      const d = await r.json()
+      if (d.ok && d.data.reviews.length > 0) {
+        // Flatten all questions from all due modules into interleaved cards
+        const allQuestions = []
+        d.data.reviews.forEach(rev => {
+          rev.questions.forEach(q => {
+            allQuestions.push({
+              id: q.id,
+              type: q.type === 'multiple_choice' ? 'learn_question' : 'knowledge',
+              data: {
+                question_id: q.id,
+                module_id: rev.module_id,
+                question: q.question,
+                options: q.options,
+                correct_answer: q.correct_answer,
+                explanation: q.explanation,
+                tier: q.tier,
+              },
+            })
+          })
+        })
+        // Simple interleave: shuffle
+        for (let i = allQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]]
+        }
+        setReviewCards(allQuestions)
+        setPhase('review')
+      } else {
+        // No due reviews
+        alert('No due reviews — study a module to generate reviews!')
+      }
     } catch (e) { setError(e.message) }
     setLoading(false)
   }
@@ -127,12 +171,19 @@ export default function LearnView({ userId = 'default', onBack }) {
 
     return (
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Learn Scripture</h2>
+        <div className="flex items-center gap-3 mb-1">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">Learn Scripture</h2>
+          {dueCount > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">
+              {dueCount} due
+            </span>
+          )}
+        </div>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
           Choose a subject or let the AI pick for you.
         </p>
 
-        {/* Subject filter chips + Surprise Me */}
+        {/* Subject filter chips + Surprise Me + Review */}
         <div className="flex flex-wrap gap-1.5 mb-4">
           {SUBJECTS.map(s => (
             <button key={s.id} onClick={() => setSubjectFilter(s.id)}
@@ -153,6 +204,14 @@ export default function LearnView({ userId = 'default', onBack }) {
           }}
             className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-medium cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors">
             🎲 Surprise Me
+          </button>
+          <button onClick={startReview}
+            className={`px-3 py-1 rounded-lg text-[10px] font-medium cursor-pointer transition-colors ${
+              dueCount > 0
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'
+            }`}>
+            🔄 Review {dueCount > 0 ? `(${dueCount})` : ''}
           </button>
         </div>
 
@@ -269,10 +328,53 @@ export default function LearnView({ userId = 'default', onBack }) {
     )
   }
 
+  // ── Review mode — interleaved due questions ──
+  if (phase === 'review') {
+    const handleRate = async (card, rating) => {
+      const isCorrect = rating >= 3
+      const moduleId = card.data?.module_id
+      if (moduleId) {
+        await fetch(`/api/v1/learn/modules/${moduleId}/practice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            question_id: card.data?.question_id || card.id,
+            correct: isCorrect,
+            rating,
+          }),
+        })
+      }
+    }
+
+    if (reviewCards.length === 0) {
+      return (
+        <div className="max-w-3xl mx-auto px-4 py-8 text-center">
+          <span className="text-4xl block mb-4">🎉</span>
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Review Complete!</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">No more due reviews. Great job keeping up!</p>
+          <button onClick={() => { setPhase('list'); setReviewCards([]); loadModules() }}
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium cursor-pointer hover:bg-indigo-700 transition-colors">
+            Back to Modules
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <CardQueue
+        cards={reviewCards}
+        onRate={handleRate}
+        onComplete={() => setReviewCards([])}
+        title="Due Reviews"
+        emptyMessage="No reviews due."
+      />
+    )
+  }
+
   // ── Practice mode — flashcard via CardQueue ──
   if (phase === 'practice' && currentModule) {
     const handleRate = async (card, rating) => {
-      // For MC questions, the correct/incorrect is based on the stored answer
       const isCorrect = rating >= 3
       await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
         method: 'POST',
@@ -281,6 +383,7 @@ export default function LearnView({ userId = 'default', onBack }) {
           user_id: userId,
           question_id: card.data?.question_id || card.id,
           correct: isCorrect,
+          rating,
         }),
       })
     }

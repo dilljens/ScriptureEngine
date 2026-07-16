@@ -242,27 +242,45 @@ def seed_modules():
 
 @router.get("/api/v1/learn/modules")
 def list_modules(user_id: str = "default"):
-    """List all learning modules with user progress."""
+    """List all learning modules with user progress and due review count."""
     seed_modules()
     conn = get_conn()
+    now = datetime.datetime.now()
 
     modules = conn.execute("""
         SELECT m.*,
                COALESCE(p.mastery, 0) as mastery,
                COALESCE(p.attempts, 0) as attempts,
                COALESCE(p.correct, 0) as correct,
+               COALESCE(p.stability, 1.0) as stability,
+               p.last_review,
+               p.next_review,
                (SELECT COUNT(*) FROM module_questions WHERE module_id=m.id) as question_count
         FROM learning_modules m
         LEFT JOIN learning_progress p ON p.module_id=m.id AND p.user_id=?
         ORDER BY m.sort_order
     """, (user_id,)).fetchall()
 
-    conn.close()
-
+    due_count = 0
     results = []
     for m in modules:
         mastered = m["mastery"] >= 0.8
         in_progress = m["mastery"] > 0 and m["mastery"] < 0.8
+
+        # Compute retrievability for FSRS scheduling
+        is_due = False
+        if m["last_review"] and not mastered:
+            try:
+                last = datetime.datetime.strptime(m["last_review"], "%Y-%m-%d %H:%M:%S")
+                days = (now - last).total_seconds() / 86400.0
+                ret = math.exp(-days / max(m["stability"], 0.5))
+                is_due = ret < 0.8
+            except Exception:
+                is_due = False
+
+        if is_due:
+            due_count += 1
+
         results.append({
             "id": m["id"],
             "title": m["title"],
@@ -273,9 +291,16 @@ def list_modules(user_id: str = "default"):
             "attempts": m["attempts"],
             "question_count": m["question_count"],
             "status": "mastered" if mastered else ("learning" if in_progress else "available"),
+            "is_due": is_due,
         })
 
-    return {"ok": True, "data": {"modules": results, "total": len(results)}}
+    conn.close()
+
+    return {"ok": True, "data": {
+        "modules": results,
+        "total": len(results),
+        "due_count": due_count,
+    }}
 
 
 @router.get("/api/v1/learn/modules/{module_id}")
@@ -374,10 +399,15 @@ def get_module(module_id: str, user_id: str = "default"):
 
 @router.post("/api/v1/learn/modules/{module_id}/practice")
 def submit_practice(module_id: str, body: dict):
-    """Submit a practice answer for a module question."""
+    """Submit a practice answer for a module question.
+
+    Uses FSRS-5 for spaced repetition scheduling.
+    Rating mapping: Again(1), Hard(2), Good(3), Easy(4).
+    """
     user_id = body.get("user_id", "default")
     question_id = body.get("question_id", 0)
     correct = body.get("correct", False)
+    rating = body.get("rating", 3 if correct else 1)
 
     conn = get_conn()
 
@@ -398,53 +428,94 @@ def submit_practice(module_id: str, body: dict):
             VALUES (?, ?, ?, 1, datetime('now'))
         """, (user_id, question_id, 1 if correct else 0))
 
-    # Update learning_progress
+    # ── FSRS-5 update ──
+    now = datetime.datetime.now()
+
     prog = conn.execute(
-        "SELECT mastery, attempts, correct FROM learning_progress WHERE user_id=? AND module_id=?",
+        "SELECT stability, difficulty, last_review, attempts, correct FROM learning_progress WHERE user_id=? AND module_id=?",
         (user_id, module_id)
     ).fetchone()
 
-    if prog:
-        a = prog["attempts"] + 1
-        c = prog["correct"] + (1 if correct else 0)
-    else:
-        a = 1
-        c = 1 if correct else 0
+    if prog and prog["last_review"]:
+        # Existing progression — update with FSRS
+        stability = prog["stability"]
+        difficulty = prog["difficulty"]
+        prev_attempts = prog["attempts"]
+        prev_correct = prog["correct"]
 
-    mastery = min(1.0, c / max(a, 1))
+        if correct:
+            new_s = stability * (1 + 0.5 * math.pow(max(difficulty, 1.0), -0.5))
+            new_d = max(1.0, min(10.0, difficulty + (-0.3 if rating >= 3 else 0.3)))
+        else:
+            new_s = max(1.0, stability * 0.5)
+            new_d = max(1.0, min(10.0, difficulty + 0.3))
+
+        last = datetime.datetime.strptime(prog["last_review"], "%Y-%m-%d %H:%M:%S")
+        days_elapsed = (now - last).total_seconds() / 86400.0
+        retrievability = math.exp(-days_elapsed / max(stability, 0.5))
+
+        mastery = min(1.0, max(0.05,
+            0.7 * retrievability +
+            0.3 * (1.0 if correct else 0.0) +
+            0.1 * (rating - 1) / 3.0
+        ))
+    else:
+        # First practice — init FSRS values
+        new_s = FSRS_W[0] if rating == 1 else FSRS_W[rating - 1] if 1 <= rating <= 4 else 1.0
+        new_d = 5.0
+        prev_attempts = 0
+        prev_correct = 0
+        mastery = 0.8 if correct else 0.3
+
+    interval = max(1, round(new_s))
+    next_review = now + datetime.timedelta(days=interval)
 
     conn.execute("""
-        INSERT OR REPLACE INTO learning_progress (user_id, module_id, mastery, attempts, correct, last_review)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-    """, (user_id, module_id, round(mastery, 3), a, c))
+        INSERT OR REPLACE INTO learning_progress
+            (user_id, module_id, mastery, attempts, correct, stability, difficulty, last_review, next_review)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        user_id, module_id,
+        round(mastery, 3),
+        prev_attempts + 1,
+        prev_correct + (1 if correct else 0),
+        round(new_s, 2),
+        round(new_d, 2),
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+        next_review.strftime("%Y-%m-%d %H:%M:%S"),
+    ))
 
     conn.commit()
     conn.close()
 
     return {"ok": True, "data": {
         "mastery": round(mastery, 3),
-        "attempts": a,
-        "correct": c,
+        "stability": round(new_s, 2),
+        "difficulty": round(new_d, 2),
+        "interval_days": interval,
+        "next_review": next_review.strftime("%Y-%m-%d"),
     }}
 
 
 @router.get("/api/v1/learn/review")
 def get_learn_reviews(user_id: str = "default", limit: int = 10):
-    """Get due module reviews (FSRS-scheduled)."""
+    """Get due module reviews with actual practice questions for interleaved review."""
     conn = get_conn()
     now = datetime.datetime.now()
 
     rows = conn.execute("""
-        SELECT p.module_id, m.title, p.mastery, p.attempts, p.stability, p.difficulty, p.last_review,
+        SELECT p.module_id, m.title, p.mastery, p.stability, p.difficulty, p.last_review,
                (SELECT COUNT(*) FROM module_questions WHERE module_id=p.module_id) as qcount
         FROM learning_progress p
         JOIN learning_modules m ON m.id = p.module_id
         WHERE p.user_id = ? AND p.mastery > 0 AND p.mastery < 0.95
-        ORDER BY p.last_review ASC
+        ORDER BY p.last_review ASC, p.stability ASC
         LIMIT ?
     """, (user_id, limit)).fetchall()
 
     reviews = []
+    seen_modules = set()
+
     for r in rows:
         if r["last_review"]:
             try:
@@ -456,13 +527,41 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
         else:
             ret = 0.0
 
-        if ret < 0.8:
+        if ret < 0.8 and r["module_id"] not in seen_modules:
+            seen_modules.add(r["module_id"])
+
+            # Get 2-3 practice questions from this module
+            questions = conn.execute("""
+                SELECT a.id, a.question_type, a.question_text, a.options_json, a.correct_answer,
+                       a.explanation, a.tier, a.bloom_level
+                FROM module_questions mq
+                JOIN assessment_items a ON a.id = mq.question_id
+                WHERE mq.module_id = ?
+                ORDER BY RANDOM()
+                LIMIT 3
+            """, (r["module_id"],)).fetchall()
+
+            qs = []
+            for q in questions:
+                opts = []
+                with contextlib.suppress(json.JSONDecodeError, ValueError):
+                    opts = json.loads(q["options_json"]) if q["options_json"] else []
+                qs.append({
+                    "id": q["id"],
+                    "type": q["question_type"],
+                    "question": q["question_text"],
+                    "options": opts,
+                    "correct_answer": q["correct_answer"],
+                    "explanation": q["explanation"] or "",
+                    "tier": q["tier"],
+                })
+
             reviews.append({
                 "module_id": r["module_id"],
                 "title": r["title"],
                 "mastery": r["mastery"],
                 "retrievability": round(ret, 3),
-                "questions_available": r["qcount"],
+                "questions": qs,
             })
 
     conn.close()
