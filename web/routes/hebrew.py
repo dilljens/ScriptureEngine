@@ -882,21 +882,38 @@ def add_hebrew_word_to_learning(word: str, user_id: str = "default"):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=OFF")
 
+    # Strip niqqud for matching
+    def strip_niqqud(t):
+        return re.sub(r'[\u0591-\u05C7]', '', t).strip()
+
+    word_norm = strip_niqqud(word_clean)
+    if not word_norm:
+        conn.close()
+        raise HTTPException(400, "Word required (non-niqqud)")
+
     # 1. Check if a vocab lesson already exists for this word
-    existing = conn.execute(
-        "SELECT id FROM hebrew_nodes WHERE category='word' AND id LIKE 'vocab_%' AND description LIKE ? LIMIT 1",
-        (f"%{word_clean}%",)
-    ).fetchone()
+    existing = None
+    for lesson_row in conn.execute(
+        "SELECT node_id, content_json FROM hebrew_lessons WHERE node_id LIKE 'vocab_%'"
+    ).fetchall():
+        try:
+            lesson_data = json.loads(lesson_row["content_json"])
+            h = lesson_data.get("hebrew", "")
+            if h and strip_niqqud(h) == word_norm:
+                existing = lesson_row
+                break
+        except (json.JSONDecodeError, TypeError):
+            continue
 
     if existing:
-        node_id = existing["id"]
+        node_id = existing["node_id"]
     else:
-        # 2. Look up the word in the lexicon/scripture DB
+        # 2. Look up the word in the lexicon/scripture DB using hebrew_plain (niqqud-stripped)
         scrip = get_db()
         lex_row = scrip.execute(
-            "SELECT lemma, hebrew, transliteration, definition, frequency, part_of_speech, root_letters "
-            "FROM lexicon WHERE hebrew = ? LIMIT 1",
-            (word_clean,)
+            "SELECT lemma, hebrew, hebrew_plain, transliteration, definition, frequency, part_of_speech, root_letters "
+            "FROM lexicon WHERE hebrew_plain = ? LIMIT 1",
+            (word_norm,)
         ).fetchone()
 
         # Try lemma_gloss for English gloss

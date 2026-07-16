@@ -515,6 +515,151 @@
         }
       }
     },
+    "/api/v1/hebrew/image/{word}": {
+      "get": {
+        "summary": "Get Hebrew Image",
+        "description": "Get an image associated with a Hebrew word.\n\nReturns image URL from word_images table (FreeBibleImages.org, etc.)\nor a 404 if no image is available.",
+        "operationId": "get_hebrew_image_api_v1_hebrew_image__word__get",
+        "parameters": [
+          {
+            "name": "word",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Word"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/images": {
+      "get": {
+        "summary": "Get Hebrew Images",
+        "description": "List all available word images, paginated.",
+        "operationId": "get_hebrew_images_api_v1_hebrew_images_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/add-word": {
+      "post": {
+        "summary": "Add Hebrew Word To Learning",
+        "description": "Add any Hebrew word to the user's FSRS learning queue.\n\nCreates a dynamic vocabulary node if no existing lesson exists.\nReturns the node_id for tracking.",
+        "operationId": "add_hebrew_word_to_learning_api_v1_hebrew_add_word_post",
+        "parameters": [
+          {
+            "name": "word",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Word"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hebrew/review-queue": {
       "get": {
         "summary": "Get Hebrew Review Queue",
@@ -4757,7 +4902,7 @@
     "/api/v1/semantic-search": {
       "get": {
         "summary": "Semantic Search",
-        "description": "Semantic search \u2014 find verses by meaning, not keywords.\n\nUses sqlite-vec vectors pre-computed by scripts/embed_verses.py.\nReturns verses ranked by cosine similarity to the query.",
+        "description": "Semantic search \u2014 find verses by meaning, not keywords.\n\nUses transformer-based embeddings (paraphrase-multilingual-MiniLM-L12-v2)\nvia sqlite-vec. Supports hybrid mode (vector + FTS5 BM25 fused with RRF).\n\nQuery modes (auto-detected):\n  - Verse refs (gen.1.1) \u2192 exact lookup\n  - Hebrew/Greek words \u2192 gematria + embedding search\n  - Natural language \u2192 hybrid vector + keyword\n  - \"exact phrase in quotes\" \u2192 FTS5 exact match\n\nArgs:\n    q: Search query\n    limit: Max results (default 20)\n    mode: 'hybrid' (default, RRF fusion), 'vector' (pure semantic), 'keyword' (pure BM25)",
         "operationId": "semantic_search_api_v1_semantic_search_get",
         "parameters": [
           {
@@ -4779,6 +4924,16 @@
               "type": "integer",
               "default": 20,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "hybrid",
+              "title": "Mode"
             }
           }
         ],

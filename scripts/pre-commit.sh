@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook: runs fast checks before allowing a commit.
+# Pre-commit hook: saves session context, runs fast checks before commit.
 # Install: ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
 #
 # Checks:
@@ -9,11 +9,18 @@
 # 4. Go backend tests pass (if Go files changed)
 
 set -e
+
+# Resolve project root: use git rev-parse (works from any subdirectory)
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$ROOT" ]; then
+  ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+fi
+
+echo "=== Session save ==="
+cd "$ROOT"
+python3 scripts/save_session.py 2>/dev/null && echo "  ✓ Session saved" || echo "  ⚠ Session save skipped"
 echo "=== Pre-commit checks ==="
 
-# Resolve project root: handle the case where this is run from .git/hooks/
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FAIL=0
 
 # ── 1. Frontend build ──
