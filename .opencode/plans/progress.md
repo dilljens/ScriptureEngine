@@ -47,6 +47,18 @@
 - [ ] CLT techniques (vocalization prompts, TPR, chanting)
 - [ ] Session persistence / context recovery
 
+### OpenTUI Freeze Workaround
+The TUI visual freeze (keyboard still works) is caused by OpenTUI bug #1147 —
+a detached text node silently drops render requests when the DOM is re-keyed
+during streaming. Fix is upstream (PR #1173). Until then:
+
+- **Recovery**: Resize the terminal/tmux pane → forces full re-layout,
+  reattaches orphaned nodes, resumes rendering
+- **Spillover threshold**: Raised from 100→200 lines. Fewer writes = less
+  render loop disruption. Old files pruned to 50.
+- **Note**: Terminal emulator choice doesn't affect this — it's a pure JS
+  render-request propagation bug.
+
 ### Quality Signal
 - Before: 0.5805
 - After: 0.5834 (+29 points, improvement)
