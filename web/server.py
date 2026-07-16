@@ -3155,64 +3155,125 @@ def truth_score(
     """Cross-canon consensus scoring.
 
     For a given topic/verse, shows how each canon treats it:
-    - Number of relevant verses per work
-    - Connection counts and tradition distribution
-    - Consensus score across canons
+    - Number of relevant verses per work (FTS5 trigram search)
+    - Connection counts, tradition distribution, hermeneutic breakdown
+    - Consensus score across canons based on connection graph
 
     The goal: let users see which interpretations are supported
     across multiple canons vs. unique to one.
     """
     conn = get_db()
-    result = {"query": q or verse, "works": [], "consensus": {}}
+    result = {"query": q or verse, "works": [], "consensus": {}, "traditions": {}}
 
     # Get all works
     works = conn.execute("SELECT id, title FROM works ORDER BY position").fetchall()
+    total_works = len(works)
+
+    # Find matching verses — try FTS5 trigram first, then LIKE fallback
+    all_verse_ids = set()
+    work_verse_map = {}  # work_id -> [verse_ids]
 
     for w in works:
         wid = w["id"]
-        wtitle = w["title"]
-
-        # Find matching verses in this work
         if verse:
-            # Specific verse analysis
             verses_data = conn.execute("""
-                SELECT v.id, v.text_english FROM verses v
+                SELECT v.id FROM verses v
                 JOIN books b ON b.id = v.book_id
                 WHERE v.id = ? AND b.work_id = ?
             """, (verse, wid)).fetchall()
         elif q:
-            # Search in this work's verses
-            verses_data = conn.execute("""
-                SELECT v.id, v.text_english FROM verses v
-                JOIN books b ON b.id = v.book_id
-                WHERE b.work_id = ? AND v.text_english LIKE ?
-                LIMIT ?
-            """, (wid, f"%{q}%", limit)).fetchall()
+            # Try trigram FTS5 first (fast, typo-tolerant)
+            try:
+                san = q.strip().replace('"', '""')
+                for c in '?/()*^~+.':
+                    san = san.replace(c, ' ')
+                import re
+                san = re.sub(r'\s+', ' ', san).strip()
+                verses_data = conn.execute(f"""
+                    SELECT v.id FROM verses_fts_trigram f
+                    JOIN verses v ON v.id = f.verse_id
+                    JOIN books b ON b.id = v.book_id
+                    WHERE verses_fts_trigram MATCH ? AND b.work_id = ?
+                    ORDER BY rank
+                    LIMIT ?
+                """, (san, wid, limit)).fetchall()
+            except Exception:
+                verses_data = []
+            # Fallback to LIKE if FTS5 returned nothing
+            if not verses_data:
+                verses_data = conn.execute("""
+                    SELECT v.id FROM verses v
+                    JOIN books b ON b.id = v.book_id
+                    WHERE b.work_id = ? AND v.text_english LIKE ?
+                    LIMIT ?
+                """, (wid, f"%{q}%", limit)).fetchall()
         else:
             verses_data = []
 
-        if not verses_data:
+        if verses_data:
+            vids = [v["id"] for v in verses_data]
+            work_verse_map[wid] = vids
+            all_verse_ids.update(vids)
+
+    if not all_verse_ids:
+        conn.close()
+        return {"ok": True, "data": {
+            "query": q or verse,
+            "works": [],
+            "consensus": {"works_found": 0, "consensus_score": 0.0,
+                         "interpretation": "no matching verses found"},
+            "traditions": {},
+        }}
+
+    # Build per-work stats and compute consensus
+    all_traditions = {}  # tradition -> total count across all works
+    total_conns = 0
+    works_with_conn = 0
+
+    for w in works:
+        wid = w["id"]
+        wtitle = w["title"]
+        vids = work_verse_map.get(wid, [])
+
+        if not vids:
+            result["works"].append({"work_id": wid, "title": wtitle, "verses_found": 0})
             continue
 
-        verse_ids = [v["id"] for v in verses_data]
+        placeholders = ",".join("?" for _ in vids)
 
-        # Count connections from/to these verses
-        placeholders = ",".join("?" for _ in verse_ids)
-
+        # Total non-deprecated connections
         conn_count = conn.execute(f"""
             SELECT COUNT(*) as c FROM connections
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
-        """, (*verse_ids, *verse_ids)).fetchone()["c"]
+        """, (*vids, *vids)).fetchone()["c"]
+        total_conns += conn_count
+        if conn_count > 0:
+            works_with_conn += 1
 
         # Tradition distribution
         trad_dist = conn.execute(f"""
-            SELECT COALESCE(tradition, 'unset') as t, COUNT(*) as cnt
+            SELECT tradition, COUNT(*) as cnt
             FROM connections
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
-            GROUP BY t ORDER BY cnt DESC
-        """, (*verse_ids, *verse_ids)).fetchall()
+              AND tradition IS NOT NULL AND tradition != 'none'
+            GROUP BY tradition ORDER BY cnt DESC
+        """, (*vids, *vids)).fetchall()
+
+        for r in trad_dist:
+            t = r["tradition"]
+            all_traditions[t] = all_traditions.get(t, 0) + r["cnt"]
+
+        # Hermeneutic distribution
+        herm_dist = conn.execute(f"""
+            SELECT hermeneutic, COUNT(*) as cnt
+            FROM connections
+            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+            AND deprecated = 0
+              AND hermeneutic IS NOT NULL AND hermeneutic != ''
+            GROUP BY hermeneutic ORDER BY cnt DESC
+        """, (*vids, *vids)).fetchall()
 
         # Layer distribution
         layer_dist = conn.execute(f"""
@@ -3221,56 +3282,92 @@ def truth_score(
             WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
             AND deprecated = 0
             GROUP BY layer ORDER BY cnt DESC
-        """, (*verse_ids, *verse_ids)).fetchall()
+        """, (*vids, *vids)).fetchall()
 
-        # JST changes for these verses
-        jst_count = conn.execute(f"""
-            SELECT COUNT(*) as c FROM connections
-            WHERE source_verse IN ({placeholders}) AND type LIKE 'jst_%'
-        """, (*verse_ids,)).fetchone()["c"]
+        # Consensus scores from connections (non-zero)
+        score_dist = conn.execute(f"""
+            SELECT consensus_score, COUNT(*) as cnt
+            FROM connections
+            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+            AND deprecated = 0 AND consensus_score > 0
+            GROUP BY consensus_score ORDER BY cnt DESC
+            LIMIT 5
+        """, (*vids, *vids)).fetchall()
 
-        # Gematria values
-        gem_count = conn.execute(f"""
-            SELECT COUNT(*) as c FROM gematria WHERE verse_id IN ({placeholders})
-        """, (*verse_ids,)).fetchone()["c"]
+        # Sample verses with text
+        samples = conn.execute(f"""
+            SELECT v.id, v.text_english FROM verses v
+            WHERE v.id IN ({placeholders}) LIMIT 3
+        """, (*vids,)).fetchall()
 
         result["works"].append({
             "work_id": wid,
             "title": wtitle,
-            "verses_found": len(verses_data),
-            "verse_samples": [{"id": v["id"], "text": (v["text_english"] or "")[:100]} for v in verses_data[:5]],
+            "verses_found": len(vids),
+            "verse_samples": [
+                {"id": s["id"], "text": (s["text_english"] or "")[:100]}
+                for s in samples
+            ],
             "total_connections": conn_count,
-            "tradition_distribution": {r["t"]: r["cnt"] for r in trad_dist},
+            "tradition_distribution": {r["tradition"]: r["cnt"] for r in trad_dist},
+            "hermeneutic_distribution": {r["hermeneutic"]: r["cnt"] for r in herm_dist},
             "layer_distribution": {r["layer"]: r["cnt"] for r in layer_dist},
-            "jst_changes": jst_count,
-            "gematria_entries": gem_count,
+            "consensus_scores": {str(r["consensus_score"]): r["cnt"] for r in score_dist},
         })
 
     conn.close()
 
-    # Compute consensus
-    works_found = len(result["works"])
+    # ── Consensus computation ──
+    works_found = len([w for w in result["works"] if w["verses_found"] > 0])
+    works_list = [w for w in result["works"] if w["verses_found"] > 0]
+
     if works_found > 0:
-        # Average connections per work
-        avg_conn = sum(w["total_connections"] for w in result["works"]) / works_found
-        # Works with connections
-        works_with_conn = sum(1 for w in result["works"] if w["total_connections"] > 0)
-        # Works with JST changes
-        works_with_jst = sum(1 for w in result["works"] if w["jst_changes"] > 0)
+        avg_conn = total_conns / works_found if works_found > 0 else 0
+
+        # Consensus score: weighted combination of:
+        # - Coverage: fraction of works that have connections
+        # - Traditions: number of distinct traditions touching this topic
+        # - Depth: average connections per work
+        coverage = works_with_conn / max(total_works, 1)
+        tradition_breadth = min(len(all_traditions) / 4.0, 1.0)  # 4+ traditions = max score
+        depth = min(avg_conn / 100.0, 1.0)  # 100+ average connections = max depth
+
+        consensus_score = round(coverage * 0.5 + tradition_breadth * 0.3 + depth * 0.2, 3)
+
+        # Interpretation label
+        if works_with_conn >= 3 and len(all_traditions) >= 2:
+            interpretation = "strongly supported across multiple canons and traditions"
+        elif works_with_conn >= 3:
+            interpretation = "supported across multiple canons"
+        elif works_with_conn >= 2:
+            interpretation = "found in multiple traditions"
+        elif works_with_conn == 1:
+            interpretation = "unique to one tradition"
+        else:
+            interpretation = "no connection data"
 
         result["consensus"] = {
             "works_found": works_found,
             "works_with_connections": works_with_conn,
-            "works_with_jst_changes": works_with_jst,
-            "average_connections": round(avg_conn, 1),
-            "consensus_score": round(works_with_conn / max(len(works), 1), 2),
-            "interpretation": (
-                "supported across multiple canons" if works_with_conn >= 3
-                else "found in multiple traditions" if works_with_conn >= 2
-                else "unique to one tradition" if works_with_conn == 1
-                else "no connection data"
-            ),
+            "works_list": [w["work_id"] for w in works_list],
+            "total_connections": total_conns,
+            "average_connections_per_work": round(avg_conn, 1),
+            "distinct_traditions": len(all_traditions),
+            "consensus_score": consensus_score,
+            "interpretation": interpretation,
         }
+    else:
+        result["consensus"] = {
+            "works_found": 0,
+            "consensus_score": 0.0,
+            "interpretation": "no matching verses found",
+        }
+
+    # Tradition overview (across all works)
+    sorted_trads = sorted(all_traditions.items(), key=lambda x: -x[1])
+    result["traditions"] = {
+        t: cnt for t, cnt in sorted_trads
+    }
 
     return {"ok": True, "data": result}
 
