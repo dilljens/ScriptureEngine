@@ -105,9 +105,13 @@ ssh "$HOST" "sudo ln -sf /etc/nginx/sites-available/scriptureengine /etc/nginx/s
 echo "Reloading systemd..."
 ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api"
 
-# 6. Restart API server
+# 6. Ensure .env exists (service requires it for DATABASE_PATH)
+echo "Ensuring .env..."
+ssh "$HOST" "test -f $REMOTE_DIR/.env || echo 'DATABASE_PATH=data/processed/scripture.db' | sudo tee $REMOTE_DIR/.env"
+
+# 7. Restart API server
 echo "Restarting API server..."
-ssh "$HOST" "sudo systemctl restart scripture-api"
+ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl restart scripture-api"
 
 echo "=== Done ==="
 echo "Frontend: https://scriptureengine.org"
