@@ -451,10 +451,11 @@ export function parseStandardRef(text) {
   const mNoSpace = text.match(/^([a-zA-Z]+)(\d+):([\d,\-]+)$/)
   if (mNoSpace) {
     const combined = (mNoSpace[1] + mNoSpace[2]).toLowerCase()
-    // D&C sections like "dc76:22" → book=dc76, chapter=1 (section), verses=[22]
+    // D&C sections like "dc76:22" → book=dc76, chapter=76, verses=[22]
     if (/^dc\d+$/.test(combined)) {
       const verses = parseVerses(mNoSpace[3])
-      return { book: combined, chapter: 1, verse: verses[0] || null, verses: verses.length > 0 ? verses : null }
+      const sectionNum = parseInt(mNoSpace[2])
+      return { book: combined, chapter: sectionNum, verse: verses[0] || null, verses: verses.length > 0 ? verses : null }
     }
     const book = resolveBook(mNoSpace[1])
     if (book) {
@@ -499,9 +500,10 @@ export function parseStandardRef(text) {
   const m4 = text.match(/^([a-zA-Z]+)(\d+)$/)
   if (m4) {
     const combined = (m4[1] + m4[2]).toLowerCase()
-    // Check for D&C sections like "dc76"
+    // Check for D&C sections like "dc76" → book=dc76, chapter=76
     if (/^dc\d+$/.test(combined)) {
-      return { book: combined, chapter: 1, verse: null, verses: null }
+      const sectionNum = parseInt(m4[2])
+      return { book: combined, chapter: sectionNum, verse: null, verses: null }
     }
     // Check for book:chapter like "isa3" (resolve "isa" + "3")
     const book = resolveBook(m4[1])

@@ -193,7 +193,14 @@ def _build_hebrew_graph():
     return graph
 
 
-HEBREW_GRAPH = _build_hebrew_graph()
+_HEBREW_GRAPH_CACHE = None
+
+def get_hebrew_graph():
+    """Lazy-load and cache the Hebrew knowledge graph."""
+    global _HEBREW_GRAPH_CACHE
+    if _HEBREW_GRAPH_CACHE is None:
+        _HEBREW_GRAPH_CACHE = _build_hebrew_graph()
+    return _HEBREW_GRAPH_CACHE
 
 
 # ── Targeted Remediation ──
@@ -347,7 +354,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     # FIRe: only if learning speed >= 0.5
     fire_results = {}
     if learning_speed >= 0.5:
-        fire_results = fire_process(HEBREW_GRAPH, node_id, rating >= 3, weight=0.3)
+        fire_results = fire_process(get_hebrew_graph(), node_id, rating >= 3, weight=0.3)
         for prereq_id, credit in fire_results.items():
             if credit > 0:
                 pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
@@ -1179,7 +1186,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         compressed_group = [item]
 
         # Get this item's prerequisites from the graph
-        prereqs_of_current = HEBREW_GRAPH.get(item['node_id'], [])
+        prereqs_of_current = get_hebrew_graph().get(item['node_id'], [])
 
         for j in range(i + 1, min(i + 5, len(interleaved))):
             later_item = interleaved[j]
@@ -1295,8 +1302,8 @@ def get_hebrew_lesson(node_id: str):
 
     # Get verse attestations (multiple witnesses)
     try:
-        scr_conn = sqlite3.connect(str(SCRIPTURE_DB))
-        scr_conn.row_factory = sqlite3.Row
+        scr_conn = get_db()
+        # Already has row_factory from get_db()
         att_rows = conn.execute("""
             SELECT a.verse_id, a.explanation, a.attestation_type
             FROM hebrew_attestations a
@@ -1539,7 +1546,7 @@ def _award_insight_xp(user_id, node_id, amount=5):
     # Get connections for this node from the scripture connection graph
     connections = []
     try:
-        scripture_conn = sqlite3.connect(str(SCRIPTURE_DB))
+        scripture_conn = get_db()
         rows = scripture_conn.execute(
             "SELECT DISTINCT connection_type, target_verse FROM knowledge_items WHERE verse_id=? AND star_rating >= 3 LIMIT 20",
             (f"{node_id}",)).fetchall()
@@ -1641,7 +1648,7 @@ def get_hebrew_insight(node_id: str, user_id: str = "default"):
     # Also return the connections that were found
     connections = []
     try:
-        scripture_conn = sqlite3.connect(str(SCRIPTURE_DB))
+        scripture_conn = get_db()
         rows = scripture_conn.execute(
             "SELECT connection_type, target_verse, star_rating FROM knowledge_items WHERE verse_id=? AND star_rating >= 3 ORDER BY star_rating DESC LIMIT 10",
             (f"{node_id}",)).fetchall()

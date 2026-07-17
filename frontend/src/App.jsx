@@ -447,6 +447,7 @@ function AppInner() {
   const history = useHistory()
 
   const [bookData, setBookData] = useState(null); const [serverInfo, setServerInfo] = useState(null)
+  const [apiConnected, setApiConnected] = useState(true)
   const [poetryMode, setPoetryMode] = useState(false) // default Narrative
   const [showLayers, setShowLayers] = useState(false)
   const [showMainMenu, setShowMainMenu] = useState(false)
@@ -498,7 +499,17 @@ function AppInner() {
     }
     doFetch()
   }, [])
-  useEffect(() => { getInfo().then(r => setServerInfo(r.data)).catch(() => {}) }, [])
+  useEffect(() => {
+    let cancelled = false
+    const check = () => {
+      getInfo()
+        .then(r => { if (!cancelled) { setServerInfo(r.data); setApiConnected(true) } })
+        .catch(() => { if (!cancelled) setApiConnected(false) })
+    }
+    check()
+    const interval = setInterval(check, 30000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
   // Close dropdown menus when clicking outside
   useEffect(() => {
     const handler = () => { setShowMainMenu(false) }
@@ -603,14 +614,25 @@ function AppInner() {
 
   const goPrevChapter = useCallback(() => {
     if (!currentTab?.id) return
+    // D&C: each section is its own book — use flat nav to go between sections
+    if (book?.startsWith?.('dc')) {
+      if (nav && nav.idx > 0) { const prev = nav.flat[nav.idx - 1]; goToChapter(currentTab.id, prev.bookId, prev.bookId.startsWith('dc') ? parseInt(prev.bookId.replace('dc', '')) : 1) }
+      return
+    }
     if (chapter > 1) updateTab(currentTab.id, { chapter: chapter - 1 })
-    else if (nav && nav.idx > 0) { const prev = nav.flat[nav.idx - 1]; goToChapter(currentTab.id, prev.bookId, 1) }
-  }, [currentTab?.id, chapter, nav])
+    else if (nav && nav.idx > 0) { const prev = nav.flat[nav.idx - 1]; goToChapter(currentTab.id, prev.bookId, prev.bookId.startsWith('dc') ? parseInt(prev.bookId.replace('dc', '')) : 1) }
+  }, [currentTab?.id, chapter, nav, book])
   const goNextChapter = useCallback(() => {
     if (!currentTab?.id) return
-    if (chapter < 150) updateTab(currentTab.id, { chapter: chapter + 1 })
-    else if (nav && nav.idx < nav.flat.length - 1) { const next = nav.flat[nav.idx + 1]; goToChapter(currentTab.id, next.bookId, 1) }
-  }, [currentTab?.id, chapter, nav])
+    // D&C: each section is its own book — use flat nav to go between sections
+    if (book?.startsWith?.('dc')) {
+      if (nav && nav.idx < nav.flat.length - 1) { const next = nav.flat[nav.idx + 1]; goToChapter(currentTab.id, next.bookId, next.bookId.startsWith('dc') ? parseInt(next.bookId.replace('dc', '')) : 1) }
+      return
+    }
+    const maxCh = getChapters(book).length > 0 ? Math.max(...getChapters(book)) : 150
+    if (chapter < maxCh) updateTab(currentTab.id, { chapter: chapter + 1 })
+    else if (nav && nav.idx < nav.flat.length - 1) { const next = nav.flat[nav.idx + 1]; goToChapter(currentTab.id, next.bookId, next.bookId.startsWith('dc') ? parseInt(next.bookId.replace('dc', '')) : 1) }
+  }, [currentTab?.id, chapter, nav, book])
   const goPrevBookStay = useCallback(() => {
     if (!nav || nav.idx < 0 || !currentTab?.id) return; const prev = nav.flat[nav.idx - 1]; if (prev) goToBook(currentTab.id, prev.bookId, prev.bookTitle)
   }, [nav, currentTab?.id])
@@ -1252,6 +1274,7 @@ function AppInner() {
               {darkMode ? <MoonIcon /> : <SunIcon />}
             </button>
             <button onClick={() => setShowSettings(true)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0" title={`Settings (${getHotkey('settingsPanel')})`}><GearIcon /></button>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${apiConnected ? 'bg-green-400' : 'bg-red-400'}`} title={apiConnected ? 'API connected' : 'API disconnected'} />
             <button onClick={() => openWikiTab()} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-xs" title="Wiki">📖</button>
             {viewLevel === 'chapter' && (
               <button onClick={() => setPassageStudyRef(passageStudyRef ? null : `${book}.${chapter}.${verse || 1}`)}

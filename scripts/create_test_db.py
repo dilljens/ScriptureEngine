@@ -45,6 +45,7 @@ def insert_test_data(conn):
     c.execute("INSERT INTO works (id, title, position) VALUES ('ot', 'Old Testament', 1)")
     c.execute("INSERT INTO works (id, title, position) VALUES ('nt', 'New Testament', 2)")
     c.execute("INSERT INTO works (id, title, position) VALUES ('bom', 'Book of Mormon', 3)")
+    c.execute("INSERT INTO works (id, title, position) VALUES ('dc', 'Doctrine and Covenants', 4)")
 
     # Books
     books = [
@@ -63,6 +64,10 @@ def insert_test_data(conn):
         ("rom", "nt", "Romans", 45),
         ("1ne", "bom", "1 Nephi", 1),
     ]
+    # D&C books
+    for sec in [1, 10, 76, 138]:
+        books.append((f"dc{sec}", "dc", f"D&C Section {sec}", 100 + sec))
+
     for bid, wid, title, pos in books:
         c.execute(
             "INSERT INTO books (id, work_id, title, position) VALUES (?, ?, ?, ?)",
@@ -144,6 +149,19 @@ def insert_test_data(conn):
          "",
          "",
          "", 0, 0),
+        # D&C verses — chapter = section number
+        ("dc1.1.1", "dc1", 1, 1,
+         "Hearken, O ye people of my church, saith the Lord your God.",
+         "", "", "", 0, 0),
+        ("dc1.1.6", "dc1", 1, 6,
+         "The voice of warning shall be unto all people.",
+         "", "", "", 0, 0),
+        ("dc138.138.1", "dc138", 138, 1,
+         "Thus the heavens and the earth were finished.",
+         "", "", "", 0, 0),
+        ("dc138.138.60", "dc138", 138, 60,
+         "For by the power of my Spirit created I them.",
+         "", "", "", 0, 0),
     ]
     for row in verses_data:
         vid, bid, ch, vs, en, he, he_tr, gr, heb, grk = row
