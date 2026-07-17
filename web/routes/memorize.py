@@ -650,9 +650,11 @@ def submit_review(queue_id: int, body: dict):
         VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?)
     """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review))
 
-    # FIRe credit propagation: successful reviews give credit to connected verses
+    # Unified FIRe credit propagation: verse review → credit to connected verses,
+    # Hebrew concepts in this verse, and related learning modules
     with contextlib.suppress(Exception):
-        compute_fire_credit(conn, verse_id, rating)
+        from lib.api.fire_unified import compute_fire_credit as fire_unified
+        fire_unified(conn, "verse", verse_id, rating, user_id)
 
     conn.commit()
     conn.close()

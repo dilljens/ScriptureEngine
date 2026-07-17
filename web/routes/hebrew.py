@@ -356,6 +356,13 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
                     conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
                                  (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
 
+        # Unified cross-domain FIRe: Hebrew concept review → credit to verses using this concept
+        try:
+            from lib.api.fire_unified import compute_fire_credit as fire_unified
+            fire_unified(conn, "hebrew_concept", node_id, rating, user_id)
+        except Exception:
+            pass
+
     # ── Gamification: XP + Streak + Badge check ──
     streak_count = _update_streak(user_id)
     # Base XP: 10 per review, bonus if streak > 0

@@ -492,7 +492,7 @@ def get_verse_connections(ref: str, layer: str | None = None, min_quality: str |
       min_confidence: minimum overall confidence (0.0-1.0)
       show_signals: if true, enrich each connection with the full signal breakdown
     """
-    resp = get_verse(ref)
+    resp = get_verse(ref, context=0, show_signals=False)
     if not resp["ok"]:
         return resp
     data = resp["data"]

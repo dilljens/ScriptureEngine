@@ -581,6 +581,13 @@ def submit_practice(module_id: str, body: dict):
         VALUES (?, ?, ?, ?, ?, ?)
     """, (user_id, new_xp, new_streak, today, best, new_completed))
 
+    # Unified FIRe: module review → credit to verses referenced in this module
+    try:
+        from lib.api.fire_unified import compute_fire_credit as fire_unified
+        fire_unified(conn, "learning_module", module_id, rating, user_id)
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
