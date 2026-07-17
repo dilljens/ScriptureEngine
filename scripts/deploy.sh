@@ -105,19 +105,10 @@ ssh "$HOST" "sudo ln -sf /etc/nginx/sites-available/scriptureengine /etc/nginx/s
 echo "Reloading systemd..."
 ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api"
 
-# 6. Ensure .env exists with required secrets
+# 6. Ensure .env exists (service requires it for DATABASE_PATH)
+# DEEPSEEK_API_KEY is already set on the server separately
 echo "Ensuring .env..."
-# Read DEEPSEEK_API_KEY from local .env or env var
-DEEPSEEK_KEY="${DEEPSEEK_API_KEY:-}"
-if [ -f .env ]; then
-    source .env
-    DEEPSEEK_KEY="${DEEPSEEK_API_KEY:-}"
-fi
-ssh "$HOST" "cat > $REMOTE_DIR/.env << 'ENVEOF'
-DATABASE_PATH=data/processed/scripture.db
-DEEPSEEK_API_KEY=${DEEPSEEK_KEY}
-ENVEOF
-chmod 600 $REMOTE_DIR/.env"
+ssh "$HOST" "test -f $REMOTE_DIR/.env || echo 'DATABASE_PATH=data/processed/scripture.db' | sudo tee $REMOTE_DIR/.env"
 
 # 7. Restart API server
 echo "Restarting API server..."
