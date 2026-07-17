@@ -347,7 +347,9 @@ export function parseAndFuzzy(input, allBooks) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 20)
       .map(b => {
-        const label = `${b.workLabel} → ${b.bookTitle}${chapterStr ? ` ch.${chapterStr}` : ''}`
+        const isDcResult = b.bookId?.startsWith?.('dc')
+        const chLabel = isDcResult ? 'sec.' : 'ch.'
+        const label = `${b.workLabel} → ${b.bookTitle}${chapterStr ? ` ${chLabel}${chapterStr}` : ''}`
         const hl = scoreFuzzy(label, bookInput)
         return {
           type: 'navigate',
@@ -415,7 +417,7 @@ export function parseAndFuzzy(input, allBooks) {
         workId: b.workId,
         book: b.bookId,
         chapter: chapterNum,
-        label: chapterNum > 1 ? `${label} ch.${chapterNum}` : label,
+        label: chapterNum > 1 ? `${label} ${b.bookId?.startsWith('dc') ? 'sec.' : 'ch.'}${chapterNum}` : label,
         newTab: isNewTab,
       }
     })

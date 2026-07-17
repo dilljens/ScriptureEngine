@@ -640,6 +640,8 @@ function AppInner() {
     if (!nav || nav.idx < 0 || !currentTab?.id) return; const next = nav.flat[nav.idx + 1]; if (next) goToBook(currentTab.id, next.bookId, next.bookTitle)
   }, [nav, currentTab?.id])
   const isDc = book?.startsWith?.('dc') || false
+  // Work-specific division labels (section, psalm, chapter, etc.)
+  const divisionLabel = isDc ? 'sec.' : book === 'psa' ? 'psalm' : book === 'prov' ? 'prov.' : 'ch.'
 
   const goUpLevel = useCallback(() => {
     if (!currentTab?.id) return
