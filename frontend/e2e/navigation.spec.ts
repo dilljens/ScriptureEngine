@@ -108,29 +108,29 @@ test.describe('Navigation — D&C sections', () => {
   })
 
   test('navigate to D&C section via command palette', async ({ page }) => {
+    // Open command palette — it's a modal overlay with a unique placeholder
     await page.locator('button[title*="Go to"]').click()
-    await expect(page.getByPlaceholder(/search|go to|find/i).first()).toBeVisible({ timeout: 5000 })
-    await page.getByPlaceholder(/search|go to|find/i).fill('/dc/138')
-    // Click the D&C result button (it shows the section number)
-    const resultBtn = page.locator('button').filter({ hasText: '138' }).first()
-    await expect(resultBtn).toBeVisible({ timeout: 8000 })
-    await resultBtn.click()
+    const cmdInput = page.getByPlaceholder('isa 55:6 · /search · /chat · /help')
+    await expect(cmdInput).toBeVisible({ timeout: 5000 })
+    await cmdInput.fill('/dc/138')
+    // Press ArrowDown then Enter to select and execute the result
+    await cmdInput.press('ArrowDown')
+    await cmdInput.press('Enter')
     // After navigation, breadcrumb should show D&C content
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText(/D.C|Doctrine|dc138|138/, { timeout: 15000 })
+    await expect(h1).toContainText(/D.C|Doctrine|dc138/, { timeout: 15000 })
   })
 
   test('navigate to D&C section with dcN format via search bar', async ({ page }) => {
-    const searchInput = page.locator('input[placeholder*="Search"]')
+    const searchInput = page.getByPlaceholder('Search, navigate, /commands...')
     await expect(searchInput).toBeVisible()
     await searchInput.fill('dc138')
-    // Wait for the dropdown result then click the one containing "138"
-    const resultBtn = page.locator('button').filter({ hasText: '138' }).first()
-    await expect(resultBtn).toBeVisible({ timeout: 8000 })
-    await resultBtn.click()
+    // ArrowDown to skip the ref header, then Enter to navigate
+    await searchInput.press('ArrowDown')
+    await searchInput.press('Enter')
     // Should navigate
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText(/D.C|Doctrine|dc138|138/, { timeout: 15000 })
+    await expect(h1).toContainText(/D.C|Doctrine|dc138/, { timeout: 15000 })
   })
 })
 
