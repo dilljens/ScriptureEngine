@@ -948,6 +948,187 @@
         }
       }
     },
+    "/api/v1/passage/{ref}/connections": {
+      "get": {
+        "summary": "Passage Connections",
+        "description": "Get passage-level connections for a verse range.",
+        "operationId": "passage_connections_api_v1_passage__ref__connections_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          },
+          {
+            "name": "min_density",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.0,
+              "title": "Min Density"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chapter/{book}/{chapter}/connections": {
+      "get": {
+        "summary": "Chapter Connections",
+        "description": "Get connection summary for a chapter.",
+        "operationId": "chapter_connections_api_v1_chapter__book___chapter__connections_get",
+        "parameters": [
+          {
+            "name": "book",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Book"
+            }
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Chapter"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/book/{book}/connection-summary": {
+      "get": {
+        "summary": "Book Connection Summary",
+        "description": "Get book-level connection summary.",
+        "operationId": "book_connection_summary_api_v1_book__book__connection_summary_get",
+        "parameters": [
+          {
+            "name": "book",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Book"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/connections/density": {
+      "get": {
+        "summary": "Density Clusters",
+        "description": "Find passage clusters above a density threshold.",
+        "operationId": "density_clusters_api_v1_connections_density_get",
+        "parameters": [
+          {
+            "name": "book",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Book"
+            }
+          },
+          {
+            "name": "min_density",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.3,
+              "title": "Min Density"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/wiki/search": {
       "get": {
         "summary": "Search Wiki",
@@ -6025,6 +6206,23 @@
         }
       }
     },
+    "/api/v1/parallelism/isaiah/structure": {
+      "get": {
+        "summary": "Isaiah Structure Overview",
+        "description": "Get book-wide chiastic structure overview for Isaiah.\n\nReturns all known chiasms with their section ranges, labels,\nand scholar info, suitable for rendering a structure diagram.",
+        "operationId": "isaiah_structure_overview_api_v1_parallelism_isaiah_structure_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/parallelism/isaiah/{chapter}": {
       "get": {
         "summary": "Isaiah Parallelism",
@@ -6057,23 +6255,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/parallelism/isaiah/structure": {
-      "get": {
-        "summary": "Isaiah Structure",
-        "description": "Get book-wide chiastic structure overview for Isaiah.\n\nReturns all known chiasms with their section ranges, labels,\nand scholar info, suitable for rendering a structure diagram.",
-        "operationId": "isaiah_structure_api_v1_parallelism_isaiah_structure_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           }
@@ -6565,7 +6746,7 @@
     "/api/v1/truth-score": {
       "get": {
         "summary": "Truth Score",
-        "description": "Cross-canon consensus scoring.\n\nFor a given topic/verse, shows how each canon treats it:\n- Number of relevant verses per work\n- Connection counts and tradition distribution\n- Consensus score across canons\n\nThe goal: let users see which interpretations are supported\nacross multiple canons vs. unique to one.",
+        "description": "Cross-canon consensus scoring.\n\nFor a given topic/verse, shows how each canon treats it:\n- Number of relevant verses per work (FTS5 trigram search)\n- Connection counts, tradition distribution, hermeneutic breakdown\n- Consensus score across canons based on connection graph\n\nThe goal: let users see which interpretations are supported\nacross multiple canons vs. unique to one.",
         "operationId": "truth_score_api_v1_truth_score_get",
         "parameters": [
           {
