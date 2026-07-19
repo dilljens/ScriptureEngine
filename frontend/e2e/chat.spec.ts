@@ -27,8 +27,9 @@ test.describe('Chat panel — verse links', () => {
 
   test('chat tab title shows heading', async ({ page }) => {
     await page.keyboard.press('?')
-    await expect(page.getByText('Chat').first()).toBeVisible({ timeout: 5000 })
-    // Should see the chat heading
-    await expect(page.getByRole('heading', { name: /chat/i })).toBeVisible({ timeout: 5000 })
+    // Wait for chat content to render
+    await expect(page.getByPlaceholder(/Ask about/i)).toBeVisible({ timeout: 8000 })
+    // Check the heading via text content (more reliable than role selector)
+    await expect(page.locator('h2:has-text("Chat")').first()).toBeVisible({ timeout: 5000 })
   })
 })

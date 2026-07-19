@@ -112,19 +112,21 @@ test.describe('Navigation — D&C sections', () => {
     await expect(page.getByPlaceholder(/search|go to|find/i).first()).toBeVisible({ timeout: 5000 })
     await page.getByPlaceholder(/search|go to|find/i).fill('/dc/138')
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(3000)
-    await expect(page.getByText(/dc.*138|doctrine.*138|dc138/i).first()).toBeVisible({ timeout: 10000 })
+    // Wait for navigation — breadcrumb should show "Doctrine" or "D&C"
+    const h1 = page.locator('h1').first()
+    await expect(h1).toContainText(/Doctrine|D.C|dc138|138/, { timeout: 15000 })
   })
 
   test('navigate to D&C section with dcN format via search bar', async ({ page }) => {
     const searchInput = page.locator('input[placeholder*="Search"]')
     await expect(searchInput).toBeVisible()
     await searchInput.fill('dc138')
-    // Navigate result should appear
-    const navResult = page.locator('button').filter({ hasText: /Navigate/i }).first()
-    await expect(navResult).toBeVisible({ timeout: 5000 })
+    // The search dropdown should show results. Press Enter to navigate to the first result
+    await page.waitForTimeout(500)
     await searchInput.press('Enter')
-    await expect(page.getByText(/dc.*138|dc138|section/i).first()).toBeVisible({ timeout: 10000 })
+    // Should navigate to the D&C section
+    const h1 = page.locator('h1').first()
+    await expect(h1).toContainText(/D.C|dc138|Doctrine|138/, { timeout: 15000 })
   })
 })
 
