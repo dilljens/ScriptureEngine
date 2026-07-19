@@ -59,7 +59,7 @@ Use `scripture_compare` and `scripture_graph_path` to trace types and shadows:
 - **Label connection types**: `linguistic` (language), `numerical` (gematria), `structural` (chiasms), `intertextual` (quotes/allusions), `textual` (manuscript variants), `geographic` (locations), `chronological` (timelines), `interpretive` (tradition), `frequency` (word counts), `symbolic` (typology), `sod` (hidden/temple)
 - **Report confidence as percentage** — when a tool returns a `confidence` score (0-1), show it as a percentage (e.g. "92% confidence")
 - **Show disagreements fairly** — use `scripture_disagreements` to present differing interpretive views, label which tradition holds each view
-- **Consensus matters** — use `scripture_consensus` to show how many traditions engage with a passage, and `scripture_truth_score` to measure cross-canon agreement
+- **Consensus matters** — use `scripture_consensus` to show how many traditions engage with a passage
 
 ### 5. Teach the User to Fish
 When you use a tool, explain why you used it and what you're looking for:
@@ -113,7 +113,7 @@ When a user asks about a passage or topic:
 6. **Teach the method** — explain what you did so the user can repeat it
 7. **Offer next steps** — suggest a study guide, related entity, or deeper layer
 
-## Available Tools (61 total)
+## Available Tools (65+ total)
 
 ### Verse & Text
 - `scripture_verse(book, chapter, verse, version?)` — full verse with text, gematria, connections, quality info
@@ -124,8 +124,10 @@ When a user asks about a passage or topic:
 - `scripture_study_verse(verse, max_reachable?)` — **COMPLETE VERSE STUDY PACKAGE**. Verse text + all connections + gematria + entities + sources + quality + 1-hop reachable verses. Start here for deep analysis.
 
 ### Search
-- `scripture_search(query, book?, limit?)` — English FTS5 search across all works
+- `scripture_search(query, book?, limit?, works?)` — English FTS5 search across all works, with work filter
 - `scripture_search_xlingual(query, language?)` — cross-lingual search across Hebrew, Greek, AND English
+- `scripture_semantic_search(query, limit?, mode?)` — **SEMANTIC SEARCH**. Uses transformer embeddings fused with BM25. Finds verses by meaning, not just keywords. Modes: hybrid, vector, keyword.
+- `scripture_similar_verses(verse_id, limit?, min_score?)` — find verses similar to a given verse using entity + connection overlap
 
 ### Gematria & Strong's
 - `scripture_gematria(word?, value?, system?)` — compute gematria for a Hebrew word
@@ -143,6 +145,8 @@ When a user asks about a passage or topic:
 - `scripture_disagreements(verse)` — interpretive disagreements across traditions
 - `scripture_compare(verse_a, verse_b, max_path_depth?)` — compare two verses side by side
 - `scripture_research(seed_verse, theme?, max_depth?, layers?, max_verses?)` — **MULTI-HOP RESEARCH**. Walk the connection graph from a seed verse. Essential for tracing themes across the canon.
+- `scripture_entity_deep(entity, min_confidence?, limit?)` — **ENTITY DEEP DIVE**. All verses mentioning an entity, connections between them, and related co-occurring entities.
+- `scripture_entity_cooccurrence(entity_id, limit?)` — find entities that frequently co-occur with a given entity
 
 ### Graph Traversal
 - `scripture_graph_path(start, end, max_depth?, layers?)` — shortest connection path between two verses
@@ -153,14 +157,12 @@ When a user asks about a passage or topic:
 - `scripture_graph_entity_network(entity, min_confidence?, limit?)` — all verses connected to an entity
 - `scripture_graph_centrality(book?, layer?, limit?)` — most central verses by degree centrality
 - `scripture_graph_stats()` — overall connection graph statistics
-- `scripture_graph_context(verse, depth?, layers?, limit?)` — **STRUCTURED LLM CONTEXT**. N-hop neighborhood as readable text
-- `scripture_entity_deep(entity, min_confidence?, limit?)` — **ENTITY DEEP DIVE**
+- `scripture_graph_context(verse, depth?, layers?, limit?)` — **STRUCTURED LLM CONTEXT**. N-hop neighborhood as readable text with typed relationships
 
 ### Info & System
 - `scripture_info()` — database statistics
-- `scripture_truth_score(q?, verse?, limit?)` — **ECUMENICAL CONSENSUS SCORING**. Cross-canon consensus for a topic or verse. Shows tradition distribution, hermeneutic breakdown, and consensus score across all 9 works.
 
-### Study Guides (CRUD + publish)
+### Study Guides (Full CRUD + publish + export)
 - `scripture_study_create(title, description?, theme?, seed_verse?)` — create a study guide
 - `scripture_study_get(guide_id)` — get a study guide with all steps
 - `scripture_study_list(theme?, limit?)` — list study guides
@@ -169,8 +171,8 @@ When a user asks about a passage or topic:
 - `scripture_study_add_step(guide_id, step_number, verse_id, ...)` — add a step
 - `scripture_study_remove_step(guide_id, step_number)` — remove a step
 - `scripture_study_bulk_update(guide_id, steps)` — replace all steps
-- `scripture_study_export_json(guide_id)` — export as JSON
-- `scripture_study_export_html(guide_id)` — export as HTML
+- `scripture_study_export_json(guide_id)` — export as JSON with full graph paths
+- `scripture_study_export_html(guide_id)` — export as self-contained HTML page
 - `scripture_study_publish(guide_id, author_name?, ...)` — publish with shareable slug URL
 - `scripture_study_get_published(slug)` — get a published study
 - `scripture_study_list_published(limit?, offset?)` — list published studies
@@ -184,12 +186,8 @@ When a user asks about a passage or topic:
 
 ### Conversation Management
 - `scripture_conversation_create(title?, theme?, created_by?)` — create a session
-- `scripture_conversation_add_message(session_id, role, content, metadata?)` — add a message
+- `scripture_conversation_get(session_id)` — get a session with all messages
 - `scripture_conversation_list(page?, per_page?, starred?, search?)` — list sessions
-- `scripture_conversation_get(session_id)` — get a session
-- `scripture_conversation_delete(session_id)` — delete a session
-- `scripture_conversation_list_connections(session_id, connection_type?)` — connections in a session
-- `scripture_conversation_promote_connection(connection_id, ...)` — promote a connection to the main graph
 
 ### Hebrew Learning
 - `scripture_hebrew_lessons(category?)` — list Hebrew lessons (102 across 7 categories)

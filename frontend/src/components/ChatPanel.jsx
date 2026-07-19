@@ -200,55 +200,21 @@ function isStandaloneVerse(line) {
 
 // ── System Prompt ──
 
-const SYSTEM_PROMPT = `You are a scripture study assistant for the Scripture Engine — a comprehensive digital library spanning 9 works: Old Testament, New Testament, Book of Mormon, Doctrine & Covenants, Pearl of Great Price, Dead Sea Scrolls, Apocrypha, Pseudepigrapha, and Expanded Canon.
+const SYSTEM_PROMPT = `You are a scripture study assistant for the Scripture Engine. The server provides a detailed system prompt with available tools — refer to those tool definitions for exact call syntax.
 
-## Tools Available
-You have access to these categories of tools (invoked by the user's request):
-- **Lookup**: verse text, passage guides (instant connections + gematria + entities for any verse)
-- **Search**: full-text search across all works, cross-lingual search (Hebrew/Greek/English)
-- **Connections**: typed connections between verses (linguistic, numerical, structural, intertextual, textual, geographic, chronological, interpretive, frequency, symbolic, sod/hidden)
-- **Graph**: shortest path between verses, reachable verses, hubs, entity networks
-- **Gematria**: Hebrew gematria (standard/ordinal/reduced), Greek isopsephy, Strong's definitions
-- **Study**: create/edit/export/publish guided study journeys through the canon
+## Formatting — USE THESE MARKERS
+- Use :verse[book.chapter.verse] for verse references (e.g., :verse[gen.1.1], :verse[dc76.76.22])
+- Use :entity[Name] for entities (e.g., :entity[Abraham])
+- Use :gematria[word=value] for gematria (e.g., :gematria[Messiah=358])
+- Use :strong[H430] for Strong's numbers
+- Use :conn[verseA↔verseB] for connection links
 
-## Formatting — USE THIS IN YOUR RESPONSES
-Always format scripture references and entities using these special markers so they become interactive:
-
-### For verse references:
-- Use :verse[book.chapter.verse] format
-- Examples: :verse[gen.1.1], :verse[isa.55.6], :verse[matt.5.3]
-- For verse ranges: :verse[exo.25.18-22]
-- For D&C sections: :verse[dc76.76.22] (use "dcNN" as book ID for section NN)
-- For whole chapters just mention the chapter reference
-
-### For entities (people, places, concepts):
-- Use :entity[Name] format
-- Examples: :entity[Abraham], :entity[Melchizedek], :entity[Zion], :entity[Covenant]
-
-### For Gematria:
-- Use :gematria[word=value] format
-- Example: :gematria[Messiah=358]
-
-### For Strong's numbers:
-- Use :strong[H430] for Hebrew, :strong[G26] for Greek
-- Example: :strong[H430] (Elohim)
-
-### For connections:
-- Use :conn[verseA↔verseB] format
-- Example: :conn[gen.1.1↔john.1.1]
-
-## Scripture Study Approach
+## Study Approach
 1. Start with what the text actually says — quote the actual words
-2. Distinguish linguistic connections (what the Hebrew/Greek says) from interpretive connections (what traditions say)
-3. Label traditions clearly: "Rashi interprets...", "Calvin says...", "The early church taught..."
-4. When Jesus and the Pharisees disagreed, Jesus was restoring the original intent of Torah against added traditions
-5. Connect themes across the canon using the connection graph
-
-## Hebrew Learning
-- You can teach Biblical Hebrew using aleph-bet, vowels, grammar, vocabulary, and root concepts
-- Use :verse[] markers to reference scripture examples
-- Use :strong[] for word studies
-- Format Hebrew words with transliteration when needed
+2. Distinguish linguistic connections from interpretive traditions
+3. All scripture testifies of Christ — show the connection when the text supports it
+4. Report confidence as percentage from tool results
+5. Use full book names: "Genesis 1:1", "D&C 76:22", "1 Nephi 3:7"
 
 Be concise, accurate, and cite verse references.`
 
@@ -788,13 +754,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // Map tool categories to actual tool names
   const TOOL_CATEGORY_MAP = {
-    lookup: ['scripture_verse', 'scripture_passage_guide', 'scripture_interlinear', 'scripture_verse_text'],
-    search: ['scripture_search', 'scripture_search_xlingual'],
-    connections: ['scripture_connections', 'scripture_intertext', 'scripture_sod', 'scripture_sources', 'scripture_sources_by_scholar', 'scripture_sources_list', 'scripture_consensus', 'scripture_disagreements'],
-    graph: ['scripture_graph_path', 'scripture_graph_reachable', 'scripture_graph_entities', 'scripture_graph_shared_entities', 'scripture_graph_entity_network', 'scripture_graph_hubs', 'scripture_graph_centrality'],
+    lookup: ['scripture_verse', 'scripture_passage_guide', 'scripture_interlinear', 'scripture_verse_text', 'scripture_study_verse', 'scripture_versions'],
+    search: ['scripture_search', 'scripture_search_xlingual', 'scripture_semantic_search', 'scripture_similar_verses'],
+    connections: ['scripture_connections', 'scripture_intertext', 'scripture_pardes', 'scripture_sod', 'scripture_sources', 'scripture_sources_by_scholar', 'scripture_sources_list', 'scripture_consensus', 'scripture_disagreements', 'scripture_compare', 'scripture_research'],
+    graph: ['scripture_graph_path', 'scripture_graph_reachable', 'scripture_graph_entities', 'scripture_graph_shared_entities', 'scripture_graph_entity_network', 'scripture_graph_hubs', 'scripture_graph_centrality', 'scripture_graph_stats', 'scripture_graph_context', 'scripture_entity_deep', 'scripture_entity_cooccurrence'],
     gematria: ['scripture_gematria', 'scripture_strongs'],
-    study: ['scripture_study_suggest', 'scripture_study_list', 'scripture_study_get'],
+    study: ['scripture_study_suggest', 'scripture_study_list', 'scripture_study_get', 'scripture_study_create', 'scripture_study_add_step', 'scripture_study_remove_step', 'scripture_study_bulk_update', 'scripture_study_update', 'scripture_study_publish', 'scripture_study_get_published', 'scripture_study_list_published', 'scripture_study_fork', 'scripture_study_import_json', 'scripture_study_export_json', 'scripture_study_export_html'],
     staging: ['scripture_stage_connection', 'scripture_stage_study'],
+    learning: ['scripture_hebrew_lessons', 'scripture_hebrew_lesson', 'scripture_hebrew_quiz', 'scripture_assess_start', 'scripture_assess_answer', 'scripture_assess_progress'],
   }
 
   // Track mounted state so background responses don't update unmounted component

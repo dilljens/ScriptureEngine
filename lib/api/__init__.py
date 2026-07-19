@@ -72,6 +72,7 @@ from lib.api.study import (
     update_guide,
 )
 from lib.api.verse import lookup_verse, passage_guide, study_verse
+from lib.api.passage import get_passage_connections, get_chapter_connections, get_book_summary
 from lib.api.versions import get_verse_text, list_versions
 
 # ─── Registry ───
@@ -1158,6 +1159,50 @@ register(
         "required": ["entity_id"],
     },
     "Find entities that frequently co-occur with a given entity in the same verse. Run scripts/build_materialized_views.py first.",
+)
+
+# ── Passage-level tools ────────────────────────────────────────────────
+
+register(
+    "scripture_passage_connections",
+    get_passage_connections,
+    {
+        "type": "object",
+        "properties": {
+            "start": {"type": "string", "description": "Start verse ID (e.g. 'gen.1.1')"},
+            "end": {"type": "string", "description": "End verse ID (e.g. 'gen.1.31')"},
+            "min_density": {"type": "number", "default": 0.0, "description": "Minimum density filter"},
+        },
+        "required": ["start", "end"],
+    },
+    "Get passage-level connections for a verse range — finds pericope and book-level connections.",
+)
+
+register(
+    "scripture_chapter_connections",
+    get_chapter_connections,
+    {
+        "type": "object",
+        "properties": {
+            "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+            "chapter": {"type": "integer", "description": "Chapter number"},
+        },
+        "required": ["book", "chapter"],
+    },
+    "Get connection summary for a chapter — passage-level and verse-level.",
+)
+
+register(
+    "scripture_book_connections",
+    get_book_summary,
+    {
+        "type": "object",
+        "properties": {
+            "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+        },
+        "required": ["book"],
+    },
+    "Get book-level connection summary with top connected books and layer distribution.",
 )
 
 # ─── Export all registered tool names ───

@@ -639,6 +639,338 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    # ── Hebrew Quiz ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_quiz",
+            "description": "Generate Hebrew knowledge quiz questions. Perfect for practicing letter names (aleph-bet), vowel recognition, and vocabulary.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Category: consonant, vowel, word, grammar, phrase, reading (default: consonant for aleph-bet practice)"},
+                    "count": {"type": "integer", "default": 5, "description": "Number of questions to generate"},
+                },
+                "required": [],
+            },
+        },
+    },
+    # ── Compare & Research ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_compare",
+            "description": "Compare two verses — shortest connection path, shared entities, overlapping connection types, side-by-side text, and PaRDeS level summary in ONE call",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse_a": {"type": "string", "description": "First verse ID (gen.1.1)"},
+                    "verse_b": {"type": "string", "description": "Second verse ID (john.1.1)"},
+                    "max_path_depth": {"type": "integer", "default": 4, "description": "Max path length in hops"},
+                },
+                "required": ["verse_a", "verse_b"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_research",
+            "description": "Multi-hop thematic research — walk the connection graph from a seed verse, collect all connected verses with texts and paths, return structured research brief. Essential for tracing themes across the canon.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "seed_verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+                    "theme": {"type": "string", "description": "Optional theme description"},
+                    "max_depth": {"type": "integer", "default": 3, "description": "Max hops to traverse"},
+                    "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
+                    "max_verses": {"type": "integer", "default": 30, "description": "Max verses to collect"},
+                },
+                "required": ["seed_verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_verse",
+            "description": "Complete verse study package — verse text + all connections + gematria + entities + sources + quality + 1-hop reachable verses in ONE call. Replaces scripture_verse + scripture_connections + scripture_gematria + scripture_graph_entities + scripture_sources + scripture_graph_reachable.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                    "max_reachable": {"type": "integer", "default": 10, "description": "Max 1-hop neighbor verses to include"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    # ── Entity Deep Dive ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_entity_deep",
+            "description": "Deep dive on a biblical entity — all verses mentioning it, all connections between those verses, and related entities that co-occur",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity": {"type": "string", "description": "Entity ID (person.abraham, place.zion, concept.covenant)"},
+                    "min_confidence": {"type": "number", "default": 0.3},
+                    "limit": {"type": "integer", "default": 100},
+                },
+                "required": ["entity"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_entity_cooccurrence",
+            "description": "Find entities that frequently co-occur with a given entity in the same verse.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "entity_id": {"type": "string", "description": "Entity ID (person.abraham)"},
+                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
+                },
+                "required": ["entity_id"],
+            },
+        },
+    },
+    # ── Semantic Search ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_semantic_search",
+            "description": "Hybrid semantic search — uses transformer embeddings (multilingual, Hebrew/Greek/English) fused with BM25. Finds verses by meaning, not just keywords.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query (auto-detects verse refs, Hebrew, Greek, natural language)"},
+                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
+                    "mode": {"type": "string", "enum": ["hybrid", "vector", "keyword"], "default": "hybrid", "description": "Search mode: hybrid (RRF fusion), vector (pure semantic), keyword (pure BM25)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_similar_verses",
+            "description": "Find verses similar to a given verse using pre-computed entity + connection overlap.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse_id": {"type": "string", "description": "Verse ID (gen.1.1)"},
+                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
+                    "min_score": {"type": "number", "default": 0.1, "description": "Minimum similarity score (0-1)"},
+                },
+                "required": ["verse_id"],
+            },
+        },
+    },
+    # ── Graph Context (structured LLM context) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_graph_context",
+            "description": "Get N-hop neighborhood as structured text for LLM reasoning — verse text + typed relationships with strength/confidence in readable format",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+                    "depth": {"type": "integer", "default": 2, "description": "How many hops to traverse"},
+                    "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
+                    "limit": {"type": "integer", "default": 20, "description": "Max verses to include"},
+                },
+                "required": ["verse"],
+            },
+        },
+    },
+    # ── Study Guide CRUD (expanded) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_remove_step",
+            "description": "Remove a step from a study guide and re-number remaining steps",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                    "step_number": {"type": "integer"},
+                },
+                "required": ["guide_id", "step_number"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_bulk_update",
+            "description": "Replace all steps of a study guide (deletes existing, inserts new)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                    "steps": {"type": "array", "items": {"type": "object"}, "description": "Array of step objects with verse_id, title, explanation"},
+                },
+                "required": ["guide_id", "steps"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_publish",
+            "description": "Publish a study as an immutable snapshot with a shareable URL",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                    "author_name": {"type": "string", "default": "anonymous"},
+                    "author_id": {"type": "string", "default": ""},
+                    "forked_from": {"type": "string", "default": ""},
+                },
+                "required": ["guide_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_get_published",
+            "description": "Get a published study by its slug",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "slug": {"type": "string"},
+                },
+                "required": ["slug"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_list_published",
+            "description": "List all published studies",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 20},
+                    "offset": {"type": "integer", "default": 0},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_fork",
+            "description": "Fork a published study into a new mutable study guide",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "slug": {"type": "string"},
+                    "created_by": {"type": "string", "default": "user"},
+                },
+                "required": ["slug"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_import_json",
+            "description": "Import a study from a JSON string",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "json_str": {"type": "string", "description": "Full study JSON string"},
+                    "created_by": {"type": "string", "default": "user"},
+                },
+                "required": ["json_str"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_export_json",
+            "description": "Export a study guide as JSON with full graph paths",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                },
+                "required": ["guide_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_study_export_html",
+            "description": "Export a study guide as a self-contained HTML page",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "guide_id": {"type": "integer"},
+                },
+                "required": ["guide_id"],
+            },
+        },
+    },
+    # ── Conversation Management ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_conversation_create",
+            "description": "Create a new conversation session for LLM chat",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "default": ""},
+                    "theme": {"type": "string", "default": ""},
+                    "created_by": {"type": "string", "default": "anonymous"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_conversation_get",
+            "description": "Get a conversation session with all messages, refs, and connections",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string"},
+                },
+                "required": ["session_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_conversation_list",
+            "description": "List conversation sessions, paginated",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "page": {"type": "integer", "default": 1},
+                    "per_page": {"type": "integer", "default": 20},
+                    "starred": {"type": "boolean"},
+                    "search": {"type": "string", "default": ""},
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──

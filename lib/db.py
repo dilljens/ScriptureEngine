@@ -128,6 +128,30 @@ CREATE TABLE IF NOT EXISTS connections (
     UNIQUE(source_verse, target_verse, layer, type, subtype)
 );
 
+-- Passage-level connections (ranges of verses, chapters, or books)
+CREATE TABLE IF NOT EXISTS passage_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_start TEXT NOT NULL,       -- gen.40.1
+    source_end TEXT NOT NULL,         -- gen.40.23
+    target_start TEXT NOT NULL,       -- exod.12.1
+    target_end TEXT NOT NULL,         -- exod.12.51
+    layer TEXT NOT NULL,
+    type TEXT NOT NULL,
+    subtype TEXT DEFAULT '',
+    strength REAL DEFAULT 0.5,
+    confidence REAL DEFAULT 0.5,
+    discovered_by TEXT DEFAULT 'algorithm',
+    metadata TEXT DEFAULT '{}',
+    hermeneutic TEXT DEFAULT NULL,
+    quality_version INTEGER DEFAULT 0,
+    UNIQUE(source_start, source_end, target_start, target_end, layer, type, subtype)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pc_source ON passage_connections(source_start, source_end);
+CREATE INDEX IF NOT EXISTS idx_pc_target ON passage_connections(target_start, target_end);
+CREATE INDEX IF NOT EXISTS idx_pc_layer ON passage_connections(layer);
+CREATE INDEX IF NOT EXISTS idx_pc_type ON passage_connections(type);
+
 -- Disagreements / contradictions between connections
 CREATE TABLE IF NOT EXISTS disagreements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

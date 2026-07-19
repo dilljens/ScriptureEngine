@@ -139,6 +139,17 @@ TYPE_LR = {
     "sacred_number": 1.3,
     "verse_gematria_total": 1.3,
     "divine_name_distribution": 1.3,
+    # ── Passage-level / macro-structural ──
+    "pericope_parallel": 2.5,
+    "section_parallel": 2.0,
+    "book_thematic": 2.0,
+    "quotation_chain": 3.0,
+    "macro_chiastic": 2.0,
+    "narrative_parallel": 2.5,
+    "fulfillment_arc": 3.0,
+    "covenant_pattern": 2.5,
+    "temple_trajectory": 2.0,
+    "symbolic_system": 2.0,
     # ── Frequency patterns ──
     "formula_count": 1.2,
     "7_fold_pattern": 1.2,

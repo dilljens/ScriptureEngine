@@ -413,6 +413,31 @@ GENERATOR_DEFS = [
         "requires": "gematria table (present), book=isa",
         "description": "Classifies Isaiah verses into 7 spiritual levels (Perdition→Jehovah)",
     },
+    # ── Passage-level (macro-structural) ────────────────────────────────
+    {
+        "name": "Passage — Density Cluster",
+        "module_path": ".passage.density_cluster",
+        "layers": ["intertextual"],
+        "automatic": True,
+        "requires": "connections table (present)",
+        "description": "Finds passage pairs with high connection density by sliding-window aggregation of verse-level connections.",
+    },
+    {
+        "name": "Passage — Book Coherence",
+        "module_path": ".passage.book_coherence",
+        "layers": ["intertextual"],
+        "automatic": True,
+        "requires": "connections table (present)",
+        "description": "Aggregates verse-level connections into book-level summaries showing inter-book connection strengths.",
+    },
+    {
+        "name": "Passage — Chiastic Promoter",
+        "module_path": ".passage.chiastic_promoter",
+        "layers": ["structural"],
+        "automatic": True,
+        "requires": "known_chiasms table (populated)",
+        "description": "Elevates known chiastic structures to passage-level connections with labeled parallel sections.",
+    },
 ]
 
 # Import all generator modules

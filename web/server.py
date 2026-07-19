@@ -103,11 +103,13 @@ from web.routes.conversations import router as conversations_router
 from web.routes.graph import router as graph_router
 from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
+from web.routes.passage import router as passage_router
 from web.routes.memorize import router as memorize_router
 from web.routes.studies import router as studies_router
 from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
+app.include_router(passage_router)
 app.include_router(wiki_router)
 app.include_router(audio_router)
 app.include_router(chat_router)
