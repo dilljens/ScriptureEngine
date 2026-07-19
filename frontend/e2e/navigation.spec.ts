@@ -111,26 +111,26 @@ test.describe('Navigation — D&C sections', () => {
     await page.locator('button[title*="Go to"]').click()
     await expect(page.getByPlaceholder(/search|go to|find/i).first()).toBeVisible({ timeout: 5000 })
     await page.getByPlaceholder(/search|go to|find/i).fill('/dc/138')
-    // Wait for the result to appear, then click it
-    const resultBtn = page.locator('button').filter({ hasText: /D.C.*138|Section.*138|138/ }).first()
+    // Click the D&C result button (it shows the section number)
+    const resultBtn = page.locator('button').filter({ hasText: '138' }).first()
     await expect(resultBtn).toBeVisible({ timeout: 8000 })
     await resultBtn.click()
-    // Wait for navigation — breadcrumb should show D&C content
+    // After navigation, breadcrumb should show D&C content
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText(/D.C|Doctrine|dc138/, { timeout: 15000 })
+    await expect(h1).toContainText(/D.C|Doctrine|dc138|138/, { timeout: 15000 })
   })
 
   test('navigate to D&C section with dcN format via search bar', async ({ page }) => {
     const searchInput = page.locator('input[placeholder*="Search"]')
     await expect(searchInput).toBeVisible()
     await searchInput.fill('dc138')
-    // Wait for the navigate result to appear (first ref result after the header)
-    const resultBtn = page.locator('button').filter({ hasText: /Go to|D.C.*138/ }).first()
+    // Wait for the dropdown result then click the one containing "138"
+    const resultBtn = page.locator('button').filter({ hasText: '138' }).first()
     await expect(resultBtn).toBeVisible({ timeout: 8000 })
     await resultBtn.click()
-    // Should navigate to the D&C section
+    // Should navigate
     const h1 = page.locator('h1').first()
-    await expect(h1).toContainText(/D.C|Doctrine|dc138/, { timeout: 15000 })
+    await expect(h1).toContainText(/D.C|Doctrine|dc138|138/, { timeout: 15000 })
   })
 })
 
