@@ -11,6 +11,7 @@ export default function MobileMenuDrawer({
   fontSize, onChangeFontSize,
   onSettings,
   onHebrew, onMemorize, onKnowledge, onHubNotes,
+  authUser, authAvatar, onSignIn, onSignOut,
 }) {
   if (!open) return null
 
@@ -37,6 +38,34 @@ export default function MobileMenuDrawer({
           <MenuButton icon="☰" label="Layers" onClick={onLayers} />
           <MenuButton icon="⊞" label="Structure" onClick={onStructure} />
           <MenuButton icon="🕐" label="History" onClick={onHistory} />
+        </div>
+
+        {/* Account Row */}
+        <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Account</p>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {onSignIn && !authUser ? (
+            <button onClick={onSignIn}
+              className="col-span-3 flex items-center gap-3 p-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer">
+              <span className="text-lg">👤</span>
+              <div className="text-left">
+                <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Sign In</div>
+                <div className="text-[9px] text-neutral-400">Sync conversations across devices</div>
+              </div>
+            </button>
+          ) : onSignOut && authUser ? (
+            <button onClick={onSignOut}
+              className="col-span-3 flex items-center gap-3 p-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer">
+              {authAvatar ? (
+                <img src={authAvatar} alt="" className="w-8 h-8 rounded-full" />
+              ) : (
+                <span className="text-lg">👤</span>
+              )}
+              <div className="text-left flex-1">
+                <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{authUser}</div>
+                <div className="text-[9px] text-neutral-400">Tap to sign out</div>
+              </div>
+            </button>
+          ) : null}
         </div>
 
         {/* Settings Row */}

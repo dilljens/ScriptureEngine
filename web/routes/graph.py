@@ -389,32 +389,33 @@ def graph_centrality(
     conn = get_conn()
     cursor = conn.cursor()
 
-    where_clauses = ["deprecated=0"]
-    params = []
+    filter_clauses = ["1=1"]
+    filter_params = []
 
     if book:
-        where_clauses.append("(source_verse LIKE ? OR target_verse LIKE ?)")
-        params.extend([f"{book}.%", f"{book}.%"])
+        filter_clauses.append("(source_verse LIKE ? OR target_verse LIKE ?)")
+        filter_params.extend([f"{book}.%", f"{book}.%"])
     if layer:
-        where_clauses.append("layer=?")
-        params.append(layer)
+        filter_clauses.append("layer=?")
+        filter_params.append(layer)
 
-    " AND ".join(where_clauses)
+    filter_sql = " AND ".join(filter_clauses)
 
-    # Count connections per verse (both as source and target)
-    rows = cursor.execute("""
+    # Count connections per verse (both as source and target), filtered by filter_sql
+    params_for_query = filter_params * 2 + [limit]
+    rows = cursor.execute(f"""
         SELECT v.id as verse_id, v.book_id, v.chapter, v.verse,
                (SELECT COUNT(*) FROM connections c1
-                WHERE c1.source_verse=v.id AND c1.deprecated=0) +
+                WHERE c1.source_verse=v.id AND ({filter_sql})) +
                (SELECT COUNT(*) FROM connections c2
-                WHERE c2.target_verse=v.id AND c2.deprecated=0)
+                WHERE c2.target_verse=v.id AND ({filter_sql}))
                as total_connections
         FROM verses v
         GROUP BY v.id
         HAVING total_connections > 0
         ORDER BY total_connections DESC
         LIMIT ?
-    """, [limit]).fetchall()
+    """, params_for_query).fetchall()
 
     conn.close()
 

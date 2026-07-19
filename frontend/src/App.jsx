@@ -1677,6 +1677,10 @@ function AppInner() {
         fontSize={fontSize}
         onChangeFontSize={changeFontSize}
         onSettings={() => { setShowMobileMenu(false); setShowSettings(true) }}
+        authUser={userName || null}
+        authAvatar={userAvatar || null}
+        onSignIn={() => { setShowMobileMenu(false); document.querySelector('#google-signin-btn')?.click() }}
+        onSignOut={() => { localStorage.removeItem('scripture_user_name'); localStorage.removeItem('scripture_user_avatar'); localStorage.removeItem('scripture_auth_user_id'); setUserName(''); setUserAvatar('') }}
       />
 
       {/* Spacer to prevent content from being hidden behind bottom nav — hidden when UI is hidden */}

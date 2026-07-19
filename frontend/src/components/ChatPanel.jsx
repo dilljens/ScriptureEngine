@@ -240,6 +240,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [previewRef, setPreviewRef] = useState(null) // { ref: "gen.1.1", label: "Genesis 1:1" }
   const [responseMode, setResponseMode] = useState('auto') // 'auto', 'short', 'medium', 'deep'
   const [showModeMenu, setShowModeMenu] = useState(false)
+  const [toolProgress, setToolProgress] = useState([]) // tool names called in current request
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
@@ -329,7 +330,8 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
       }
 
       try {
-        const res = await conversationCreate({ title: 'Chat Session' })
+        const userId = (() => { try { return localStorage.getItem('scripture_user_id') || localStorage.getItem('scripture_auth_user_id') || 'anonymous' } catch { return 'anonymous' } })()
+        const res = await conversationCreate({ title: 'Chat Session', created_by: userId })
         if (res.ok && res.data) {
           setSessionId(res.data.id)
           saveSessionId(res.data.id)
@@ -778,6 +780,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     abortRef.current = controller
 
     setWaiting(true)
+    setToolProgress([])
     try {
       // Build disabled tools list from enabledTools state
       let disabledTools = []
@@ -794,6 +797,10 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       // If not (user switched tabs), still save to server so it's there when they come back.
       if (res.ok && res.data) {
         const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
+        // Show tool progress from the response
+        if (toolResults?.length > 0) {
+          setToolProgress(toolResults.map(t => t.name))
+        }
         // If the LLM returned only tool calls with no content, show a cleaner placeholder
         const effectiveContent = content || (toolResults?.length > 0
           ? '_Let me look that up for you..._'
@@ -1246,6 +1253,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
               <span>Thinking</span>
+              {toolProgress.length > 0 && (
+                <span className="ml-1 text-[9px] text-neutral-400 dark:text-neutral-500 truncate max-w-[120px]">
+                  {toolProgress.length} tool{toolProgress.length > 1 ? 's' : ''}
+                </span>
+              )}
               <button onClick={() => {
                   if (abortRef.current) abortRef.current.abort()
                   setWaiting(false)

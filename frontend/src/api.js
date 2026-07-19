@@ -101,7 +101,7 @@ export function getBooks() {
 export function conversationCreate(data = {}) {
   return fetchJSON('/conversations', {
     method: 'POST',
-    body: JSON.stringify({ title: data.title || '', theme: data.theme || '' }),
+    body: JSON.stringify({ title: data.title || '', theme: data.theme || '', created_by: data.created_by || '' }),
     headers: { 'Content-Type': 'application/json' },
   })
 }

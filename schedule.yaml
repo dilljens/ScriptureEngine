@@ -1,0 +1,61 @@
+# ScriptureEngine Pipeline Schedule
+# Controls when generators and maintenance tasks run.
+# The schedule.py script reads this config and runs due steps.
+#
+# Usage:
+#   python3 scripts/schedule.py              # Run all due steps
+#   python3 scripts/schedule.py --status     # Show pipeline status
+#   python3 scripts/schedule.py --force      # Run everything regardless of schedule
+
+pipeline:
+  # ── Weekly: Full regeneration of all generators ──
+  - name: regenerate_all
+    description: "Run all connection generators (verse + passage level)"
+    interval_days: 7
+    command: "python3 scripts/generate_connections.py --all"
+    tier: periodic
+    timeout_seconds: 3600
+    if_stale: false
+
+  # ── Weekly: Build passage-level connections ──
+  - name: build_passage_connections
+    description: "Run all passage-level generators (density, book_coherence, chiastic, genre, theme)"
+    interval_days: 7
+    command: "python3 scripts/build_passage_connections.py"
+    tier: periodic
+    timeout_seconds: 1800
+    depends_on: ["regenerate_all"]
+
+  # ── Daily: Revalidate stale connections ──
+  - name: revalidate_stale
+    description: "Revalidate connections past their temporal half-life"
+    interval_days: 1
+    command: "python3 scripts/schedule.py --revalidate-stale"
+    tier: idle
+    timeout_seconds: 600
+
+  # ── Daily: Rebuild FTS index ──
+  - name: rebuild_fts
+    description: "Rebuild full-text search indexes"
+    interval_days: 1
+    command: "python3 scripts/build_fts_index.py"
+    tier: idle
+    timeout_seconds: 300
+
+  # ── Daily: Recompute quality calibration ──
+  - name: calibrate_quality
+    description: "Recompute quality scores for connections (agreement counts + calibration)"
+    interval_days: 1
+    command: "python3 scripts/validate_connections.py && python3 -c 'from lib.controls.calibration import compute_agreement_counts; from lib.db import get_db; compute_agreement_counts(get_db())'"
+    tier: idle
+    timeout_seconds: 600
+    depends_on: ["regenerate_all"]
+
+  # ── On-demand: Freshness check ──
+  - name: check_freshness
+    description: "Check data freshness and report staleness stats"
+    interval_days: 0  # manual only
+    command: "python3 scripts/schedule.py --status"
+    tier: periodic
+
+last_run: {}

@@ -660,7 +660,7 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_compare",
-            "description": "Compare two verses — shortest connection path, shared entities, overlapping connection types, side-by-side text, and PaRDeS level summary in ONE call",
+            "description": "**PREFERRED for comparing verses.** Returns verse text, connections, graph path, entities, PaRDeS levels, AND gematria for BOTH verses in ONE call. Replaces scripture_verse + scripture_passage_guide + scripture_graph_path + scripture_interlinear + scripture_gematria (7+ individual calls). Use this instead of calling individual tools for comparisons.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1166,6 +1166,14 @@ async def llm_chat(body: ChatRequest):
         msgs.append(msg)
         conn = get_db()
 
+        # Dedup: skip tool calls that were already made in this round with same name+args
+        existing_calls = set()
+        for existing_tc in tool_calls:
+            existing_calls.add((existing_tc["function"]["name"], existing_tc["function"]["arguments"]))
+
+        # Track progress for frontend display
+        round_tool_names = [tc["function"]["name"] for tc in tool_calls]
+
         # Separate staging (write) tools from read-only tools
         staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
         ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
@@ -1268,14 +1276,16 @@ async def llm_chat(body: ChatRequest):
 
     # If LLM only made tool calls without summarizing, force a summary
     # Also force summary if the content is just planning text (starts with "Let me")
+    # Or if it's a stub response like "Looked up N sources..." (tool listing without synthesis)
     is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
-    if (not final_content or is_planning) and tool_results:
+    is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    if (not final_content or is_planning or is_stub) and tool_results:
         msgs.append({"role": "user", "content":
             "You have all the data you need from the tool calls above. "
-            "Now synthesize a complete answer in natural language based on the information you found. "
-            "Cite the specific verses and data you found. "
-            "Use full book names like 'Genesis 1:1'. "
-            "Do not list the tools you used."})
+            "Now synthesize a complete thorough answer in natural language based on the information you found. "
+            "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
+            "Include specific gematria values, verse quotations, and connection details from the tool results. "
+            "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
         retry = await call_deepseek({
             "model": body.model, "messages": msgs,
             "max_tokens": body.max_tokens, "temperature": body.temperature,
