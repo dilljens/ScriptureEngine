@@ -680,6 +680,15 @@ CREATE TABLE IF NOT EXISTS word_images (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (word_hebrew, source)
 );
+
+-- Generator metadata for incremental generation
+CREATE TABLE IF NOT EXISTS generator_meta (
+    generator_name TEXT PRIMARY KEY,
+    last_run_at TEXT NOT NULL,
+    source_hash TEXT,        -- hash of input data at last run
+    connection_count INTEGER,
+    duration_ms INTEGER
+);
 """
 
 

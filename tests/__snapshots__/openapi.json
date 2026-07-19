@@ -3376,6 +3376,160 @@
         }
       }
     },
+    "/api/v1/auth/recovery-key": {
+      "post": {
+        "summary": "Create Recovery Key",
+        "description": "Generate a recovery key for an anonymous user.\n\nBody: { \"session_token\": \"...\", \"anonymous_id\": \"anon_abc123\" }\n\nReturns a human-friendly key the user can copy to another device.\nThe key is valid for 7 days and can only be claimed once.",
+        "operationId": "create_recovery_key_api_v1_auth_recovery_key_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/claim-key": {
+      "post": {
+        "summary": "Claim Recovery Key",
+        "description": "Claim a recovery key from another device.\n\nBody: { \"recovery_key\": \"ABCD-EFGH-IJKL-MNOP\", \"new_session_token\": \"...\",\n        \"anonymous_id\": \"anon_def_on_device_b\" }\n\nTransfers the user's identity and progress to the current device.\nThe key is invalidated after use.",
+        "operationId": "claim_recovery_key_api_v1_auth_claim_key_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/settings": {
+      "get": {
+        "summary": "Get User Settings",
+        "description": "Get synced user settings.\n\nQuery param: session_token=...\nReturns all preferences stored on the server.",
+        "operationId": "get_user_settings_api_v1_user_settings_get",
+        "parameters": [
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Save User Settings",
+        "description": "Save synced user settings.\n\nBody: { \"session_token\": \"...\", \"settings\": { ... } }\n\nStores the settings on the server so they sync to other devices.",
+        "operationId": "save_user_settings_api_v1_user_settings_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/user/progress/{user_id}": {
       "get": {
         "summary": "Get User Progress",

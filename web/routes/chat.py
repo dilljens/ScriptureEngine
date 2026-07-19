@@ -992,11 +992,11 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_truth_topic",
-            "description": "Run truth check on all scholarly claims for a topic. Topics: temple_microcosm (Beale/Barker/Walton), angel_yhwh_divine_council (Heiser/Barker), josiah_reform, queen_of_heaven_asherah (Dever/Patai/Barker), two_yahwehs_origins (Barker/Segal/Bauckham).",
+            "description": "Run truth check on all scholarly claims for a topic. Topics: temple_microcosm (Beale), angel_yhwh_divine_council (Heiser/Barker), josiah_reform, queen_of_heaven_asherah (Dever), two_yahwehs_origins (Barker/Bauckham), atonement_theosis (Barker), bom_temple (Butler).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "topic": {"type": "string", "enum": ["temple_microcosm", "angel_yhwh_divine_council", "josiah_reform", "queen_of_heaven_asherah", "two_yahwehs_origins"], "description": "Topic to analyze"},
+                    "topic": {"type": "string", "enum": ["temple_microcosm", "angel_yhwh_divine_council", "josiah_reform", "queen_of_heaven_asherah", "two_yahwehs_origins", "atonement_theosis", "bom_temple"], "description": "Topic to analyze"},
                 },
                 "required": ["topic"],
             },

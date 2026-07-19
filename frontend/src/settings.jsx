@@ -1,18 +1,25 @@
 /**
- * Settings and preferences — persisted in localStorage.
+ * Settings and preferences — persisted in localStorage, synced to server.
  *
  * Provides:
  *  - SettingsProvider (context)
  *  - useSettings() → { fontSize, changeFontSize, darkMode, toggleDarkMode,
  *                       getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys,
- *                       hotkeys, showQuickAsk, persist }
+ *                       hotkeys, showQuickAsk, hebrewOnly, onToggleHebrewOnly,
+ *                       sessionToken, setSessionToken, persist, syncStatus }
  *  - useHistory() → { goBack, goForward, push }
+ *
+ * Sync flow:
+ *  1. Settings are saved to localStorage immediately (offline-first)
+ *  2. If sessionToken is set, also POST to /api/v1/user/settings
+ *  3. On mount with sessionToken, GET /api/v1/user/settings and merge
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 
 const SETTINGS_KEY = 'scripture_settings'
 const HISTORY_KEY = 'scripture_history'
+const TOKEN_KEY = 'scripture_session_token'
 
 export const DEFAULT_HOTKEYS = {
   chat: '?',
@@ -68,13 +75,87 @@ function saveSettings(s) {
   } catch {}
 }
 
+async function syncSettingsToServer(settings, token) {
+  if (!token) return
+  try {
+    await fetch('/api/v1/user/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_token: token, settings }),
+    })
+  } catch { /* offline — will sync on next request */ }
+}
+
+async function loadServerSettings(token) {
+  if (!token) return null
+  try {
+    const r = await fetch(`/api/v1/user/settings?session_token=${encodeURIComponent(token)}`)
+    const d = await r.json()
+    if (d.ok && d.data?.settings) return d.data.settings
+  } catch {}
+  return null
+}
+
+function loadSessionToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || '' } catch { return '' }
+}
+
+function saveSessionToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {}
+}
+
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState(loadSettings)
+  const [sessionToken, setSessionTokenState] = useState(loadSessionToken)
+  const [syncStatus, setSyncStatus] = useState('offline') // offline | syncing | synced | error
+
+  // Load server settings on mount if token exists
+  useEffect(() => {
+    const token = loadSessionToken()
+    if (!token) return
+    setSyncStatus('syncing')
+    loadServerSettings(token).then(serverSettings => {
+      if (serverSettings) {
+        setSettings(prev => {
+          const merged = { ...serverSettings, ...prev }  // local wins for conflicts
+          saveSettings(merged)
+          return merged
+        })
+      }
+      setSyncStatus('synced')
+    }).catch(() => setSyncStatus('error'))
+  }, [])
+
+  const setSessionToken = useCallback((token) => {
+    saveSessionToken(token)
+    setSessionTokenState(token)
+    if (token) {
+      setSyncStatus('syncing')
+      loadServerSettings(token).then(serverSettings => {
+        if (serverSettings) {
+          setSettings(prev => {
+            const merged = { ...serverSettings, ...prev }
+            saveSettings(merged)
+            return merged
+          })
+        }
+        setSyncStatus('synced')
+      }).catch(() => setSyncStatus('synced'))
+    } else {
+      setSyncStatus('offline')
+    }
+  }, [])
 
   const persist = useCallback((partial) => {
     setSettings(prev => {
       const next = { ...prev, ...partial }
       saveSettings(next)
+      // Fire-and-forget sync to server
+      const token = loadSessionToken()
+      if (token) syncSettingsToServer(next, token)
       return next
     })
   }, [])
@@ -116,6 +197,9 @@ export function SettingsProvider({ children }) {
     showQuickAsk: settings.showQuickAsk ?? true,
     hebrewOnly: settings.hebrewOnly ?? false,
     onToggleHebrewOnly,
+    sessionToken,
+    setSessionToken,
+    syncStatus,
     persist,
   }
 
@@ -139,6 +223,9 @@ export function useSettings() {
       showQuickAsk: true,
       hebrewOnly: false,
       onToggleHebrewOnly: () => {},
+      sessionToken: '',
+      setSessionToken: () => {},
+      syncStatus: 'offline',
       persist: () => {},
     }
   }

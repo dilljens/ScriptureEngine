@@ -6,6 +6,7 @@ Endpoints:
   GET /api/v1/graph/search?q=X&limit=N
   GET /api/v1/connections/{verse_a}/{verse_b}/explain
 """
+from collections import deque
 import contextlib
 import json
 import os
@@ -100,13 +101,13 @@ def graph_explore(
     visited_nodes = set()
     all_nodes = []
     all_edges = []
-    queue = [(verse, 0)]  # (node_id, current_depth)
+    queue = deque([(verse, 0)])  # (node_id, current_depth)
 
     # Track node metadata (type-specific enrichment)
     node_meta = {}
 
     while queue and len(all_nodes) < limit:
-        current, current_depth = queue.pop(0)
+        current, current_depth = queue.popleft()
 
         if current in visited_nodes:
             continue

@@ -418,7 +418,7 @@ function AppInner() {
     moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab,
   } = useTabs()
 
-  const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, persist } = useSettings()
+  const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
   const { toggles, dispatch: toggleDispatch } = useToggles()
 
   // Agent control hook (testing, enabled via ?agent=true)
@@ -1570,6 +1570,9 @@ const [showAssessment, setShowAssessment] = useState(false)
           onToggleQuickAsk={() => persist({ showQuickAsk: !showQuickAsk })}
           hebrewOnly={hebrewOnly}
           onToggleHebrewOnly={() => persist({ hebrewOnly: !hebrewOnly })}
+          sessionToken={sessionToken}
+          setSessionToken={setSessionToken}
+          syncStatus={syncStatus}
         />
       )}
 

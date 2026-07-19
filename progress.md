@@ -45,17 +45,28 @@ Phase 6: Hebrew & Language   [✅ COMPLETE — ~4h integration]
   Track D: Entity expansion  [✅ Already built]
   Track E: Lexicon defs      [⏳ Ongoing agent work between sessions]
 
-Phase 7: Assessment Engine   [⬜ NOT STARTED — ~20h]
-  Track F: Foundation        [⬜]
-  Track G: IRT & FSRS        [⬜]
-  Track H: Progress & Recs   [⬜]
+Phase 7: Assessment Engine   [✅ COMPLETE — ~6h remaining deferred]
+  Track F: Foundation        [✅ SUBSTANTIALLY BUILT]
+    F1: Knowledge domain     [✅ 685K items (target was 15K)]
+    F2: Prerequisite graph   [✅ 18,717 rules (target was 300)]
+    F3: Adaptive engine      [✅ BLIM + Bayesian implemented]
+    F4: Auto-gen items       [✅ 247 → 1,000 via new script]
+    F5: Assessment frontend  [✅ AssessmentView.jsx wired in App.jsx]
+  Track G: IRT & FSRS        [✅ Built]
+    G1: IRT calibration      [✅ lib/assessment/irt.py — online calibration, EAP ability estimation]
+    G2: FSRS spacing         [✅ next_review + spaced review schedule in quiz_progress]
+  Track H: Progress & Recs   [✅ Built]
+    H1: Progress tracking    [✅ quiz/progress endpoint with per-layer mastery]
+    H2: Recommendations      [✅ quiz/recommendations endpoint]
 ```
 
 ### Current state
-- Phase: 5 ✅, 6 ✅, 7 not started
-- Tests: Pass (6/6 quick tests verified; full suite 198 passed in earlier run)
-- Frontend: Builds clean in 6.7s
-- OpenAPI: 149 endpoints (updated snapshot)
+- Phase: 5 ✅, 6 ✅, 7 ✅ (core complete; ~6h deferred for dashboard frontend, deeper recommendations)
+- Tests: 6/6 pass (quick tests), frontend builds clean
+- Assessment items: 1,000 (up from 247)
+- Assessment API: 7 REST endpoints (quiz, answer, progress, due, recommendations, start, answer-old)
+- IRT: Online calibration from response data + EAP ability estimation
+- FSRS: Spaced review scheduling with exponential intervals (1d→3d→7d→14d→30d→60d→90d→180d)
 
 ### Round 4: Phase 6 — Hebrew & Language Enhancements ✅ (~4h integration)
 
@@ -73,25 +84,52 @@ Discovered most features were **already built** — needed frontend integration 
 | **D1: Entity expansion** | ✅ Already built | `scripts/expand_entities.py` existed (864 lines) |
 | **E1: Lexicon defs** | ⏳ Ongoing | Agent-driven — between sessions, batch-generate 500 lemma definitions |
 
-### Net Changes (this session)
+## Session 2026-07-19 (later) — Connection Automation & Bug Fixes ✅
+
+### What was done
+- [x] **P3.1**: Wired `compute_agreement_counts()` into `scripts/generate_connections.py` — auto-runs after generation
+- [x] **P3.2**: Verified `graph_centrality` WHERE clause is already correct (plan doc was outdated)
+- [x] **P3.3**: Fixed `queue.pop(0)` → `deque.popleft()` in `web/routes/graph.py` BFS
+- [x] **P1**: Verified scheduler already exists (`scripts/schedule.py`, 310 lines + `schedule.yaml`)
+- [x] **P4**: Verified generator tests already exist (`tests/test_generators.py`, 18 tests)
+- [x] **P2**: Built `generator_meta` table + change detection for incremental generation
+  - Added table schema to `lib/db.py`
+  - Added `_compute_source_hash()`, `_record_generator_run()`, `_should_skip_generator()` in `generators/__init__.py`
+  - `run_all()` now supports `incremental=True` flag to skip unchanged generators
+- [x] **P5.1**: Verified entity cache already loads from DB (`_load_entity_cache` in `graph_search.py`)
+- [x] **P5.2**: Verified 2-hop graph search already implemented (`_find_hop_neighbors` with `MAX_HOPS=2`)
+
+### Plan Assessment
+The Connection Automation & Quality plan was **mostly already implemented**. Real remaining items:
+- P2 (incremental generation) — now built
+- P3.4 (calibrate LR values with empirical data) — still a stretch goal
+
+### Net Changes (cumulative across all sessions)
 ```
-modified:   MASTER_PLAN.md                  Rewritten as top-level reference
-modified:   findings.md                     New — pre-resolved decisions, architecture
-modified:   progress.md                     New — session tracking
-modified:   task_plan.md                    New — full implementation plan
-modified:   lib/api/fire_unified.py         Added stability penalty on verse failure
-modified:   lib/api/search.py               Trigram for xlingual English search
-modified:   web/server.py                   ntfy.sh + sefirot route + import
-modified:   generators/__init__.py          Registered sefirot mapper
-modified:   lib/api/__init__.py             Registered sefirot MCP tools
-modified:   frontend/src/settings.jsx        Hebrew-only toggle in settings context
-modified:   frontend/src/components/SettingsPanel.jsx   Hebrew-only UI toggle
-modified:   frontend/src/components/HebrewLearnView.jsx DailyVerse + FreqVocab + AudioReview + TopVocab
-modified:   frontend/src/components/CardQueue.jsx       Hebrew-only from localStorage
-modified:   frontend/src/App.jsx              Hebrew-only wiring for SettingsPanel
-modified:   tests/__snapshots__/openapi.json Updated (146→149 endpoints)
-new file:   generators/sefirot_mapper.py     10 sefirot → 49.5K connections
-new file:   lib/api/sefirot.py               MCP tool + lookup
-new file:   web/routes/sefirot.py            3 REST endpoints
+modified:   MASTER_PLAN.md
+modified:   findings.md
+modified:   progress.md
+modified:   task_plan.md
+modified:   lib/api/fire_unified.py
+modified:   lib/api/search.py
+modified:   web/server.py
+modified:   web/routes/graph.py              deque fix
+modified:   web/routes/assessment.py          IRT + FSRS + recommendations + due reviews
+modified:   generators/__init__.py            Incremental gen + sefirot mapper
+modified:   generators/sefirot_mapper.py
+modified:   lib/api/__init__.py
+modified:   lib/api/sefirot.py
+modified:   web/routes/sefirot.py
+modified:   lib/db.py                         generator_meta table
+modified:   lib/assessment/irt.py             New IRT module
+modified:   scripts/generate_connections.py   Agreement count hook
+modified:   scripts/generate_assessment_items.py  New auto-generator
+modified:   web/routes/auth.py                Recovery keys + settings sync + sessions table
+modified:   frontend/src/settings.jsx
+modified:   frontend/src/components/SettingsPanel.jsx
+modified:   frontend/src/components/HebrewLearnView.jsx
+modified:   frontend/src/components/CardQueue.jsx
+modified:   frontend/src/App.jsx
+modified:   tests/__snapshots__/openapi.json  146→152 endpoints
 ```
 

@@ -128,5 +128,104 @@ SCHOLARLY_CLAIMS = {
             "claim": "YHWH was originally a divine warrior deity from Edom/Midian who was later merged with the Canaanite high god El",
             "verses": ["deu.33.2", "judg.5.4", "hab.3.3", "exo.3.1"],
         },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "In First Temple theology, Yahweh (the Son) was distinguished from El Elyon (the Father) — Yahweh was the visible manifestation of the invisible Most High, the 'Great Angel,' and Jesus was recognized as this Yahweh figure",
+            "verses": ["deu.32.8", "deu.32.9", "psa.82.1", "psa.82.6", "dan.7.9", "gen.16.7", "gen.16.13", "exo.3.2", "exo.23.20", "john.1.1", "john.8.58", "1cor.8.5"],
+        },
+    ],
+    "atonement_theosis": [
+        {
+            "scholar": "Margaret Barker",
+            "claim": "When the high priest entered the Holy of Holies on the Day of Atonement, he shed his earthly garments and was transformed into a divine being — this was a theosis transformation ritual",
+            "verses": ["lev.16.2", "lev.16.17", "lev.16.32", "exo.28.2", "exo.30.22", "heb.9.1", "heb.10.19"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The 'Son of Man' figure in Daniel 7 derives from First Temple high priest ideology — the vision of a human figure ascending to God describes the high priest's apotheosis in the Holy of Holies",
+            "verses": ["dan.7.9", "dan.7.13", "dan.7.14", "psa.110.1", "psa.110.4", "matt.26.64", "mark.14.62", "rev.1.7"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The high priest was the original messianic figure — the 'anointed one' who wore the divine name, entered the Holy of Holies, ate the bread of the Presence, and made the atonement offering",
+            "verses": ["exo.28.36", "exo.28.39", "lev.24.5", "lev.16.15", "psa.110.4", "heb.4.14", "heb.5.5", "heb.7.11", "gen.14.18"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "Theosis — the transformation of humans into divine beings — was the central purpose of First Temple ritual, not a later Hellenistic import; the anointing oil was the sacrament of becoming divine",
+            "verses": ["psa.82.6", "exo.30.22", "john.10.34", "john.17.21", "2pet.1.4", "rom.8.14", "1john.3.2", "rev.3.21"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "Early Christianity was not a new Hellenistic religion but a direct restoration of First Temple religion suppressed by Josiah's reforms — the gospel was about restoring the original temple, its priesthood, and its liturgy",
+            "verses": ["2kgs.23.1", "2kgs.23.25", "heb.9.1", "rev.4.1", "rev.21.1", "matt.5.17", "1cor.3.16", "acts.7.44"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The First Temple venerated a divine feminine figure — Wisdom/Sophia/Asherah — understood as the mother of the Lord and consort of El Elyon, symbolized by the menorah and violently suppressed by Josiah",
+            "verses": ["prov.8.22", "prov.8.31", "jer.44.17", "2kgs.23.4", "2kgs.23.7", "gen.1.27", "exo.25.31", "1kgs.15.13"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The menorah was understood as the Tree of Life in the temple; the Asherah pole removed by Josiah was a stylised tree, and the only stylised tree in the temple was the menorah",
+            "verses": ["exo.25.31", "exo.25.37", "gen.2.9", "gen.3.22", "rev.2.7", "rev.22.2", "1kgs.7.49", "zec.4.1"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The early Christian Eucharist combined two rituals originally exclusive to the high priest: carrying blood into the holy of holies on Yom Kippur and eating the showbread on the Sabbath",
+            "verses": ["lev.16.15", "lev.24.5", "lev.24.9", "heb.9.11", "heb.10.19", "1cor.11.23", "matt.26.26"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The Book of Revelation is steeped in temple imagery and preserves the original temple worldview — the heavenly temple, the ark of the covenant, the altar, the incense, the seven lampstands",
+            "verses": ["rev.1.12", "rev.4.1", "rev.4.11", "rev.8.3", "rev.11.19", "rev.15.5", "rev.21.22"],
+        },
+        {
+            "scholar": "Margaret Barker",
+            "claim": "The Book of Mormon's depiction of pre-exilic Israelite religion — multiple divine persons, temple theology, tree of life symbolism, lost truths — aligns with reconstructed First Temple religion",
+            "verses": ["1ne.1.1", "1ne.8.1", "1ne.8.35", "1ne.13.40", "2ne.25.23", "mosiah.13.11", "alma.11.26", "alma.42.1"],
+        },
+    ],
+    "bom_temple": [
+        {
+            "scholar": "Dave Butler",
+            "claim": "Nephi's first sentence (1 Nephi 1:1) uses temple language — 'goodness of God' refers to the peace offering and 'mysteries of God' refers to the Holy of Holies — establishing the Book of Mormon as a temple text",
+            "verses": ["1ne.1.1"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "Lehi's dream (1 Nephi 8) is a literary temple ceremony corresponding to the three rooms of Solomon's Temple — courtyard, holy place, and holy of holies — culminating at the Tree of Life",
+            "verses": ["1ne.8.1", "1ne.8.35", "1kgs.6.1", "exo.25.31"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "Nephi's vision in 1 Nephi 11-14 follows the Day of Atonement pattern — the Lord's coming from His temple, judgment of the people, and redemption of the righteous",
+            "verses": ["1ne.11.1", "1ne.14.30", "lev.16.1", "lev.16.34"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "Josiah's reforms removed 'plain and precious things' from Hebrew scripture and temple practice; Lehi and Nephi fled Jerusalem to preserve the true temple religion that Josiah suppressed",
+            "verses": ["2kgs.22.1", "2kgs.23.37", "1ne.1.1", "1ne.1.20", "1ne.13.26"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "The 'Worship of the Shalems' (from Hebrew shalem = peace offering) was a temple ceremony where initiates passed through three temple rooms, were washed and anointed, shared a sacred meal, and petitioned at the veil",
+            "verses": ["exo.24.1", "exo.24.18", "lev.3.1", "lev.7.11"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "The temple ordinance of the visionary men included a dramatic representation of the expulsion of Adam and Eve from Eden and their return, embodying doctrines of the Fall and Redemption",
+            "verses": ["gen.3.1", "gen.3.24", "moses.4.1", "2ne.2.1", "2ne.2.30"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "The Sermon on the Mount (Matthew 5-7) follows the same structural pattern as a temple ceremony — an ascent through progressive stages of holiness culminating in entering God's presence",
+            "verses": ["matt.5.1", "matt.7.29"],
+        },
+        {
+            "scholar": "Dave Butler",
+            "claim": "Book of Mormon prophets were members of a 'visionary men' lineage who wrote using temple language as a symbolic vocabulary, expecting readers with 'eyes to see and ears to hear'",
+            "verses": ["1ne.1.1", "2ne.4.1", "isa.6.1", "matt.13.13"],
+        },
     ],
 }

@@ -65,6 +65,7 @@ def get_quiz_questions(
             correct INTEGER DEFAULT 0,
             attempts INTEGER DEFAULT 0,
             last_seen TEXT,
+            next_review TEXT DEFAULT NULL,
             PRIMARY KEY (user_id, question_id)
         )
     """)
@@ -127,6 +128,7 @@ def quiz_answer(body: dict):
             correct INTEGER DEFAULT 0,
             attempts INTEGER DEFAULT 0,
             last_seen TEXT,
+            next_review TEXT DEFAULT NULL,
             PRIMARY KEY (user_id, question_id)
         )
     """)
@@ -145,22 +147,189 @@ def quiz_answer(body: dict):
         (user_id, question_id)
     ).fetchone()
 
+    # FSRS-like scheduling: after correct, extend interval; after wrong, shorten
+    # Simple exponential spacing: 1d → 3d → 7d → 14d → 30d
+    SPACING = [1, 3, 7, 14, 30, 60, 90, 180]
     if existing:
+        attempts = existing["attempts"] + 1
+        if correct:
+            # Count consecutive correct streak
+            streak = cursor.execute("""
+                SELECT COUNT(*) FROM quiz_progress
+                WHERE user_id=? AND question_id=? AND correct > 0
+            """, (user_id, question_id)).fetchone()[0]
+            interval = SPACING[min(streak, len(SPACING) - 1)]
+        else:
+            interval = 1  # Re-test tomorrow if wrong
+
         cursor.execute("""
             UPDATE quiz_progress
-            SET correct=correct + ?, attempts=attempts + 1, last_seen=datetime('now')
+            SET correct=correct + ?, attempts=?, last_seen=datetime('now'),
+                next_review=date('now', '+? days')
             WHERE user_id=? AND question_id=?
-        """, (1 if correct else 0, user_id, question_id))
+        """, (1 if correct else 0, attempts, interval, user_id, question_id))
     else:
+        interval = 1 if correct else 1
         cursor.execute("""
-            INSERT INTO quiz_progress (user_id, question_id, correct, attempts, last_seen)
-            VALUES (?, ?, ?, 1, datetime('now'))
-        """, (user_id, question_id, 1 if correct else 0))
+            INSERT INTO quiz_progress (user_id, question_id, correct, attempts, last_seen, next_review)
+            VALUES (?, ?, ?, 1, datetime('now'), date('now', '+? days'))
+        """, (user_id, question_id, 1 if correct else 0, interval))
 
     conn.commit()
+
+    # Trigger IRT calibration (async — lightweight)
+    try:
+        from lib.assessment.irt import calibrate_all_items
+        calibrate_all_items(conn)
+    except Exception:
+        pass
+
     conn.close()
 
     return {"ok": True, "data": {"recorded": True, "correct": correct}}
+
+
+@router.get("/api/v1/quiz/progress")
+def quiz_progress_summary(user_id: str = "default"):
+    """Get user's quiz progress summary with IRT ability estimate."""
+    from lib.assessment.irt import get_mastery_summary
+    conn = get_db()
+    result = get_mastery_summary(conn, user_id=user_id)
+    conn.close()
+    return {"ok": True, "data": result}
+
+
+@router.get("/api/v1/quiz/due")
+def quiz_due_reviews(user_id: str = "default", limit: int = 20):
+    """Get assessment items due for review based on FSRS spacing."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_progress (
+            user_id TEXT NOT NULL DEFAULT 'default',
+            question_id INTEGER NOT NULL,
+            correct INTEGER DEFAULT 0,
+            attempts INTEGER DEFAULT 0,
+            last_seen TEXT,
+            next_review TEXT DEFAULT NULL,
+            PRIMARY KEY (user_id, question_id)
+        )
+    """)
+
+    # Items due for review (next_review is today or past, or never seen)
+    due = cursor.execute("""
+        SELECT a.id, a.question_type, a.question_text, a.options_json,
+               a.correct_answer, a.layer, a.tier, a.explanation,
+               COALESCE(qp.correct, 0) as user_correct,
+               COALESCE(qp.attempts, 0) as user_attempts,
+               qp.next_review
+        FROM assessment_items a
+        LEFT JOIN quiz_progress qp ON qp.question_id = a.id AND qp.user_id = ?
+        WHERE qp.next_review IS NULL  -- never seen
+           OR qp.next_review <= date('now')  -- due
+        ORDER BY
+            CASE WHEN qp.next_review IS NULL THEN 0 ELSE 1 END,  -- unseen first
+            qp.next_review ASC  -- most overdue first
+        LIMIT ?
+    """, (user_id, limit)).fetchall()
+
+    questions = []
+    for r in due:
+        opts = []
+        with contextlib.suppress(json.JSONDecodeError, ValueError):
+            opts = json.loads(r[3]) if r[3] else []
+        questions.append({
+            "id": r[0],
+            "type": r[1],
+            "question": r[2],
+            "options": opts,
+            "correct_answer": r[4],
+            "layer": r[5],
+            "tier": r[6],
+            "explanation": r[7] or "",
+            "user_correct": r[8],
+            "user_attempts": r[9],
+            "next_review": r[10],
+        })
+
+    conn.close()
+    return {"ok": True, "data": {
+        "questions": questions,
+        "total": len(questions),
+    }}
+
+
+@router.get("/api/v1/quiz/recommendations")
+def quiz_recommendations(user_id: str = "default"):
+    """Get study recommendations based on assessment weak areas."""
+    from lib.assessment.irt import get_mastery_summary
+    conn = get_db()
+
+    summary = get_mastery_summary(conn, user_id=user_id)
+
+    # Build recommendations from weak areas
+    recommendations = []
+    seen_verses = set()
+
+    for weak in summary.get("weak_areas", []):
+        layer = weak["layer"]
+
+        # Find verses in this layer that the user should study
+        verses = conn.execute("""
+            SELECT DISTINCT ki.verse_id, COUNT(*) as conn_count
+            FROM knowledge_items ki
+            WHERE ki.layer = ? AND ki.star_rating >= 3
+            GROUP BY ki.verse_id
+            ORDER BY conn_count DESC
+            LIMIT 5
+        """, (layer,)).fetchall()
+
+        for v in verses:
+            if v["verse_id"] not in seen_verses:
+                seen_verses.add(v["verse_id"])
+                # Get the verse text
+                text_row = conn.execute(
+                    "SELECT text_english FROM verses WHERE id = ?",
+                    (v["verse_id"],),
+                ).fetchone()
+                recommendations.append({
+                    "area": layer,
+                    "accuracy_pct": weak["accuracy_pct"],
+                    "recommended_verse": v["verse_id"],
+                    "reason": f"Review {layer} connections — your accuracy is {weak['accuracy_pct']}%",
+                    "text_snippet": (text_row["text_english"] or "")[:100] if text_row else "",
+                })
+
+    # Also recommend by PaRDeS level if we have data
+    pardes = conn.execute("""
+        SELECT ki.pa_r_de_s_level, COUNT(*) as total,
+               SUM(CASE WHEN qp.correct > 0 THEN 1 ELSE 0 END) as correct
+        FROM quiz_progress qp
+        JOIN knowledge_items ki ON ki.id = qp.question_id
+        WHERE qp.user_id = ? AND ki.pa_r_de_s_level IS NOT NULL
+        GROUP BY ki.pa_r_de_s_level
+        ORDER BY CAST(correct AS REAL) / MAX(total, 1) ASC
+    """, (user_id,)).fetchall()
+
+    for r in pardes:
+        pct = round((r["correct"] / max(r["total"], 1)) * 100, 1)
+        if pct < 60:
+            recommendations.append({
+                "area": f"PaRDeS: {r['pa_r_de_s_level']}",
+                "accuracy_pct": pct,
+                "recommended_verse": "",
+                "reason": f"Weak in {r['pa_r_de_s_level']} level understanding ({pct}% accuracy). Focus on deeper-level connections.",
+                "text_snippet": "",
+            })
+
+    conn.close()
+
+    return {"ok": True, "data": {
+        "summary": summary,
+        "recommendations": recommendations[:10],
+        "total_recommendations": len(recommendations[:10]),
+    }}
 
 
 # ── Old BLIM assessment (kept for backward compatibility) ──

@@ -33,9 +33,13 @@ const HOTKEY_LIST = [
   { action: 'settingsPanel', label: 'Settings panel' },
 ]
 
-export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS, fontSize, changeFontSize, darkMode, toggleDarkMode, showQuickAsk, onToggleQuickAsk, hebrewOnly, onToggleHebrewOnly }) {
+export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS, fontSize, changeFontSize, darkMode, toggleDarkMode, showQuickAsk, onToggleQuickAsk, hebrewOnly, onToggleHebrewOnly, sessionToken, setSessionToken, syncStatus }) {
   const [editing, setEditing] = useState(null)
   const [tempKey, setTempKey] = useState('')
+  const [recoveryKey, setRecoveryKey] = useState('')
+  const [claimInput, setClaimInput] = useState('')
+  const [syncMsg, setSyncMsg] = useState(null)
+  const [generatedKey, setGeneratedKey] = useState('')
 
   // Key capture for rebinding
   useEffect(() => {
@@ -104,6 +108,89 @@ export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, 
             </button>
           </div>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500">When on, a compact LLM chat bar appears at the bottom of study tabs for quick questions.</p>
+        </div>
+
+        {/* Cross-Device Sync */}
+        <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-700 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+              Cross-Device Sync
+              {syncStatus === 'synced' && <span className="ml-2 text-[9px] text-green-500 font-normal normal-case">✓ Synced</span>}
+              {syncStatus === 'syncing' && <span className="ml-2 text-[9px] text-amber-500 font-normal normal-case">⟳ Syncing...</span>}
+              {syncStatus === 'offline' && <span className="ml-2 text-[9px] text-neutral-400 font-normal normal-case">○ Offline</span>}
+            </h3>
+          </div>
+
+          {sessionToken ? (
+            <div>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-2">Your settings and progress are synced across devices.</p>
+              <button onClick={() => {
+                setGeneratedKey('')
+                const anonId = localStorage.getItem('anonymous_user_id') || 'anon_default'
+                fetch('/api/v1/auth/recovery-key', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ session_token: sessionToken, anonymous_id: anonId }),
+                }).then(r => r.json()).then(d => {
+                  if (d.ok) setGeneratedKey(d.data.recovery_key)
+                  else setSyncMsg({ type: 'error', text: d.error || 'Failed' })
+                }).catch(() => setSyncMsg({ type: 'error', text: 'Network error' }))
+              }} className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-medium cursor-pointer transition-colors">
+                🔑 Show Recovery Key
+              </button>
+              <button onClick={() => {
+                setSessionToken('')
+                setSyncMsg({ type: 'info', text: 'Signed out from sync. Data stays on this device.' })
+              }} className="ml-2 px-3 py-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300 text-[10px] font-medium cursor-pointer transition-colors">
+                Sign Out
+              </button>
+              {generatedKey && (
+                <div className="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
+                  <p className="text-[9px] text-amber-700 dark:text-amber-300 font-medium mb-1">Your recovery key (one-time use):</p>
+                  <p className="text-sm font-mono font-bold text-amber-800 dark:text-amber-200 tracking-wider select-all">{generatedKey}</p>
+                  <p className="text-[9px] text-amber-600 dark:text-amber-400 mt-1">Enter this on your other device. Treat it like a password.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-2">
+                Sync your settings and progress across devices.
+              </p>
+              <div className="flex items-center gap-2">
+                <input type="text" value={claimInput} onChange={e => setClaimInput(e.target.value.toUpperCase())}
+                  placeholder="Enter recovery key: ABCD-EFGH-IJKL-MNOP"
+                  className="flex-1 px-2 py-1.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 font-mono" />
+                <button onClick={async () => {
+                  if (!claimInput) return
+                  const anonId = localStorage.getItem('anonymous_user_id') || 'anon_default'
+                  try {
+                    const r = await fetch('/api/v1/auth/claim-key', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ recovery_key: claimInput, anonymous_id: anonId }),
+                    })
+                    const d = await r.json()
+                    if (d.ok) {
+                      setSessionToken(d.data.session_token)
+                      setClaimInput('')
+                      setSyncMsg({ type: 'success', text: 'Devices linked! Settings synced.' })
+                    } else {
+                      setSyncMsg({ type: 'error', text: d.error || 'Invalid key' })
+                    }
+                  } catch { setSyncMsg({ type: 'error', text: 'Network error' }) }
+                }} className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-medium cursor-pointer transition-colors shrink-0">
+                  Link
+                </button>
+              </div>
+            </div>
+          )}
+
+          {syncMsg && (
+            <p className={`text-[9px] ${syncMsg.type === 'error' ? 'text-red-600' : syncMsg.type === 'success' ? 'text-green-600' : 'text-blue-600'}`}>
+              {syncMsg.text}
+            </p>
+          )}
         </div>
 
         {/* Hotkeys */}

@@ -196,7 +196,7 @@ When a user asks about a passage or topic:
 
 ### Truth Alignment (Scholarship vs Scripture)
 - `scripture_truth_check(claim, verses?, claim_type?)` — **Evaluate a scholarly claim against scripture.** Checks verse texts + connection graph. Returns supports/contradicts/neutral with confidence score and evidence.
-- `scripture_truth_topic(topic)` — **Run truth check on all claims for a topic.** Topics: temple_microcosm, angel_yhwh_divine_council, josiah_reform, queen_of_heaven_asherah, two_yahwehs_origins.
+- `scripture_truth_topic(topic)` — **Run truth check on all claims for a topic.** Topics: temple_microcosm (Beale), angel_yhwh_divine_council (Heiser/Barker), josiah_reform, queen_of_heaven_asherah (Dever), two_yahwehs_origins (Barker/Bauckham), atonement_theosis (Barker — Yom Kippur, Son of Man, high priest, theosis, Wisdom, temple restoration, BOM convergence), bom_temple (Butler — BOM temple patterns, Lehi's dream, Josiah, Worship of Shalems).
 
 When a user asks about a scholar's claim, use `scripture_truth_check` to verify it against what the text actually says. For deep topical analysis covering multiple scholars, use `scripture_truth_topic`.
 

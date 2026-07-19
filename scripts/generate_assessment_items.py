@@ -133,8 +133,8 @@ def generate_mc_cross_reference(conn, ki, layers, target_count, existing):
         "question_text": question,
         "options_json": json.dumps(options),
         "correct_answer": correct_label,
-        "layer": ki.get("layer", ""),
-        "difficulty": 1.0 - (ki.get("star_rating", 3) / 5.0),
+        "layer": ki["layer"] or "",
+        "difficulty": 1.0 - ((ki["star_rating"] or 3) / 5.0),
         "discrimination": 0.8,
         "guess_param": 0.25,
         "slip_param": 0.15,
@@ -145,7 +145,7 @@ def generate_mc_type_identification(conn, ki, conn_types):
     """Generate multiple-choice: identify the connection type between two verses."""
     source = ki["verse_id"]
     target = ki["target_verse"]
-    correct_type = ki["connection_type"]
+    correct_type = ki["connection_type"] or "unknown"
 
     # Get 3 wrong connection types as distractors
     distractors = random.sample(
@@ -170,8 +170,8 @@ def generate_mc_type_identification(conn, ki, conn_types):
         "question_text": question,
         "options_json": json.dumps(options),
         "correct_answer": correct_label,
-        "layer": ki.get("layer", ""),
-        "difficulty": 1.0 - (ki.get("star_rating", 3) / 5.0),
+        "layer": ki["layer"] or "",
+        "difficulty": 1.0 - ((ki["star_rating"] or 3) / 5.0),
         "discrimination": 0.7,
         "guess_param": 0.25,
         "slip_param": 0.20,
@@ -196,8 +196,8 @@ def generate_short_answer(conn, ki):
         "question_text": question,
         "options_json": "[]",
         "correct_answer": conn_type,
-        "layer": ki.get("layer", ""),
-        "difficulty": 1.0 - (ki.get("star_rating", 3) / 5.0),
+        "layer": ki["layer"] or "",
+        "difficulty": 1.0 - ((ki["star_rating"] or 3) / 5.0),
         "discrimination": 0.6,
         "guess_param": 0.0,
         "slip_param": 0.25,

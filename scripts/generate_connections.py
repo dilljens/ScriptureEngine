@@ -90,6 +90,16 @@ def main():
         _print_layer_stats(conn)
         print(f"\n  Total: {total} connections created in {elapsed:.1f}s")
 
+        # Recompute agreement counts after generation
+        print("\n--- Computing Agreement Counts ---", flush=True)
+        try:
+            from lib.controls.calibration import compute_agreement_counts
+            result = compute_agreement_counts(conn)
+            print(f"  Groups with agreement: {result['groups_with_agreement']}")
+            print(f"  Connections updated: {result['connections_updated']}")
+        except Exception as e:
+            print(f"  ⚠ Agreement counts: {e}")
+
     conn.close()
 
 

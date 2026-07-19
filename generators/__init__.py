@@ -4,7 +4,9 @@ Each generator module exports a `run(conn, book_ids=None) -> int` function.
 The registry discovers all generators and provides a unified runner.
 """
 
+import hashlib
 import importlib
+import time
 
 # Generator registry — populated at import time
 REGISTRY = {}
@@ -479,14 +481,72 @@ def _import_all():
             gen_def["load_error"] = str(e)
 
 
+def _compute_source_hash(conn, gen_def):
+    """Compute a quick hash of source tables for change detection.
+
+    Hashes the row count of the generator's primary input table(s).
+    Used to skip re-generation when data hasn't changed.
+    """
+    requires = gen_def.get("requires", "")
+    # Map requirements to tables we can hash
+    table_map = {
+        "gematria": "gematria",
+        "verses": "verses",
+        "connections": "connections",
+        "known_chiasms": "known_chiasms",
+        "structural_formulas": "structural_formulas",
+    }
+    hash_input = ""
+    for key, table in table_map.items():
+        if key in requires:
+            try:
+                row = conn.execute(f"SELECT COUNT(*) as c, COALESCE(MAX(rowid), 0) as m FROM {table}").fetchone()
+                hash_input += f"{table}:{row['c']}:{row['m']};"
+            except Exception:
+                hash_input += f"{table}:0;"
+    return hashlib.md5(hash_input.encode()).hexdigest()[:12] if hash_input else ""
+
+
+def _record_generator_run(conn, gen_def, count, duration_ms):
+    """Record generator run in generator_meta table."""
+    try:
+        source_hash = _compute_source_hash(conn, gen_def)
+        conn.execute("""
+            INSERT OR REPLACE INTO generator_meta
+            (generator_name, last_run_at, source_hash, connection_count, duration_ms)
+            VALUES (?, datetime('now'), ?, ?, ?)
+        """, (gen_def["name"], source_hash, count, duration_ms))
+    except Exception:
+        pass
+
+
+def _should_skip_generator(conn, gen_def):
+    """Check if generator can be skipped (data hasn't changed since last run)."""
+    try:
+        row = conn.execute(
+            "SELECT source_hash FROM generator_meta WHERE generator_name = ?",
+            (gen_def["name"],),
+        ).fetchone()
+        if row is None:
+            return False  # Never run — must run
+        current_hash = _compute_source_hash(conn, gen_def)
+        return current_hash == row["source_hash"]
+    except Exception:
+        return False
+
+
 def run_generator(conn, name, book_ids=None):
     """Run a single generator by name."""
     for gen in GENERATOR_DEFS:
         if gen["name"] == name:
             if not gen.get("loaded"):
                 return {"error": f"Generator '{name}' not loaded: {gen.get('load_error', 'unknown')}"}
+            t0 = time.time()
             try:
                 count = gen["module"].run(conn, book_ids)
+                conn.commit()
+                duration_ms = int((time.time() - t0) * 1000)
+                _record_generator_run(conn, gen, count, duration_ms)
                 conn.commit()
                 return {"generator": name, "connections": count, "layers": gen["layers"]}
             except Exception as e:
@@ -495,8 +555,18 @@ def run_generator(conn, name, book_ids=None):
     return {"error": f"Generator '{name}' not found"}
 
 
-def run_all(conn, book_ids=None, automatic_only=True):
-    """Run all loaded generators and return stats."""
+def run_all(conn, book_ids=None, automatic_only=True, incremental=False):
+    """Run all loaded generators and return stats.
+
+    Args:
+        conn: SQLite connection
+        book_ids: Optional list of book IDs to scope generation
+        automatic_only: Skip non-automatic generators
+        incremental: If True, skip generators whose source data hasn't changed
+
+    Returns:
+        list of result dicts
+    """
     results = []
     for gen in GENERATOR_DEFS:
         if automatic_only and not gen["automatic"]:
@@ -504,8 +574,18 @@ def run_all(conn, book_ids=None, automatic_only=True):
         if not gen.get("loaded"):
             results.append({"generator": gen["name"], "status": "skipped", "error": gen.get("load_error", "not loaded")})
             continue
+
+        # Incremental: skip if source data unchanged
+        if incremental and _should_skip_generator(conn, gen):
+            results.append({"generator": gen["name"], "status": "skipped", "reason": "source unchanged since last run"})
+            continue
+
+        t0 = time.time()
         try:
             count = gen["module"].run(conn, book_ids)
+            conn.commit()
+            duration_ms = int((time.time() - t0) * 1000)
+            _record_generator_run(conn, gen, count, duration_ms)
             conn.commit()
             results.append({"generator": gen["name"], "connections": count, "layers": gen["layers"], "status": "ok"})
         except Exception as e:
