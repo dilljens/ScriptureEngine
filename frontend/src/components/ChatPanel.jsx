@@ -272,11 +272,30 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
   const [visitedRefs, setVisitedRefs] = useState(new Set())
   const [previewRef, setPreviewRef] = useState(null) // { ref: "gen.1.1", label: "Genesis 1:1" }
+  const [responseMode, setResponseMode] = useState('auto') // 'auto', 'short', 'medium', 'deep'
+  const [showModeMenu, setShowModeMenu] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
   const abortRef = useRef(null)
   const titleSet = useRef(false)
+
+  // Estimate response length based on question content for auto mode
+  const estimateTokens = useCallback((text) => {
+    if (responseMode !== 'auto') {
+      const modeMap = { short: 4096, medium: 32000, deep: 128000 }
+      return modeMap[responseMode] || 128000
+    }
+    // Auto-detect: examine message length and keywords
+    const len = text.length
+    const hasDeepKeywords = /explain|compare|contrast|trace|analyze|walk through|break down|describe in detail|comprehensive|thorough|deep/i.test(text)
+    const hasManyQuestions = (text.match(/\?/g) || []).length > 2
+    const isLongQuery = len > 200
+
+    if (hasDeepKeywords || (isLongQuery && hasManyQuestions)) return 128000 // deep
+    if (isLongQuery || hasManyQuestions) return 32000 // medium
+    return 4096 // short
+  }, [responseMode])
 
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
 
@@ -802,7 +821,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           }
         }
       }
-      const res = await chat(allMessages, { max_tokens: 128000, disabled_tools: disabledTools, signal: controller.signal })
+      const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
+      const res = await chat(allMessages, { max_tokens: maxTokens, disabled_tools: disabledTools, signal: controller.signal })
       // Still mounted? Update state to show the result.
       // If not (user switched tabs), still save to server so it's there when they come back.
       if (res.ok && res.data) {
@@ -1198,14 +1218,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 )}
                 {renderContent(msg.content)}
 
-                {/* Reasoning — collapsible thought process */}
+                {/* Reasoning — visible by default, shows thought process */}
                 {msg.reasoning_content && (
-                  <details className="group mt-1">
-                    <summary className="text-[9px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
+                  <details open className="group mt-1">
+                    <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
                       <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
-                      <span className="italic">reasoning</span>
+                      <span className="italic font-medium">thinking</span>
                     </summary>
-                    <div className="mt-0.5 px-2 py-1 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
+                    <div className="mt-0.5 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
                       {msg.reasoning_content}
                     </div>
                   </details>
@@ -1259,9 +1279,25 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
               <span>Thinking</span>
+              <button onClick={() => {
+                  if (abortRef.current) abortRef.current.abort()
+                  setWaiting(false)
+                  // Find the last user message and open it for editing
+                  const lastUserIdx = messages.length - 1
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].role === 'user') {
+                      startEditing(i, messages[i].content)
+                      break
+                    }
+                  }
+                }}
+                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors border border-amber-200 dark:border-amber-700"
+                title="Stop thinking and refine your message">
+                Refine
+              </button>
               <button onClick={() => { if (abortRef.current) abortRef.current.abort(); setWaiting(false) }}
-                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
-                title="Cancel this request">
+                className="px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
+                title="Cancel this request entirely">
                 Cancel
               </button>
             </div>
@@ -1295,7 +1331,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             </div>
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 items-stretch">
           <input
             ref={inputRef}
             type="text"
@@ -1306,12 +1342,56 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
             }}
             placeholder="Ask about scriptures... (type a verse ref to preview)"
-            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
+            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
             disabled={waiting || restoring}
           />
+
+          {/* Response mode selector */}
+          <div className="relative shrink-0">
+            <button onClick={() => setShowModeMenu(p => !p)}
+              className={`h-full px-2 py-2 rounded-lg text-[10px] font-mono font-medium border transition-colors cursor-pointer ${
+                responseMode === 'auto'
+                  ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-700'
+                  : responseMode === 'deep'
+                  ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700'
+                  : responseMode === 'medium'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700'
+                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
+              }`}
+              title={`Response: ${responseMode}`}>
+              {responseMode === 'auto' ? 'Auto' : responseMode === 'short' ? 'S' : responseMode === 'medium' ? 'M' : 'D'}
+            </button>
+            {showModeMenu && (
+              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px]"
+                onMouseLeave={() => setShowModeMenu(false)}>
+                {[
+                  { id: 'auto', label: 'Auto', desc: 'Estimates based on question' },
+                  { id: 'short', label: 'Short', desc: 'Concise answer' },
+                  { id: 'medium', label: 'Medium', desc: 'Balanced response' },
+                  { id: 'deep', label: 'Deep', desc: 'Detailed analysis' },
+                ].map(mode => (
+                  <button key={mode.id}
+                    onClick={() => { setResponseMode(mode.id); setShowModeMenu(false) }}
+                    className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                      responseMode === mode.id ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-neutral-700 dark:text-neutral-300'
+                    }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      mode.id === 'auto' ? 'bg-indigo-400' :
+                      mode.id === 'short' ? 'bg-neutral-400' :
+                      mode.id === 'medium' ? 'bg-blue-400' :
+                      'bg-purple-400'
+                    }`} />
+                    <span>{mode.label}</span>
+                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-auto">{mode.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium
-              hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors">
+            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium
+              hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors shrink-0">
             Send
           </button>
         </div>

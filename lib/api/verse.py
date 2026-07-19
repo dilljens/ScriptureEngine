@@ -11,7 +11,7 @@ import unicodedata
 from collections import defaultdict
 
 from lib.api.consensus import get_consensus
-from lib.controls.calibration import get_quality_color, get_quality_stars
+from lib.controls.calibration import get_quality_color, get_quality_score_for_tier
 from lib.db import get_connections_by_layer, get_gematria_for_verse, get_verse_gematria_total
 from lib.greek_util import clean_greek
 from lib.greek_util import transliterate as greek_translit
@@ -140,7 +140,7 @@ def lookup_verse(conn, book, chapter, verse, version=None):
                 "discovered_by": c.get("discovered_by", ""),
                 "quality": {
                     "level": quality,
-                    "stars": get_quality_stars(quality),
+                    "quality_score": get_quality_score_for_tier(quality),
                     "color": get_quality_color(quality),
                 },
                 "p_value": c.get("p_value"),

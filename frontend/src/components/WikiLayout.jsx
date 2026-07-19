@@ -34,13 +34,14 @@ const LAYER_LABELS = {
   frequency: 'Frequency', symbolic: 'Symbolic', sod: 'Sod',
 }
 
-/** Render quality stars (★☆☆☆☆ – ★★★★★) */
-function QualityStars({ level }) {
-  const n = typeof level === 'number' ? Math.round(level) : 0
-  const clamped = Math.max(0, Math.min(5, n))
+/** Render quality score (0-100) with color coding */
+function QualityStars({ quality_score }) {
+  const score = typeof quality_score === 'number' ? Math.round(quality_score) : 0
+  const clamped = Math.max(0, Math.min(100, score))
+  const color = clamped >= 80 ? '#2E7D32' : clamped >= 60 ? '#F57C00' : clamped >= 35 ? '#757575' : '#9E9E9E'
   return (
-    <span className="text-[10px] tracking-tighter whitespace-nowrap" title={`${clamped}/5 quality`}>
-      {'★'.repeat(clamped)}{'☆'.repeat(5 - clamped)}
+    <span className="text-[11px] font-mono whitespace-nowrap" style={{ color }} title={`Quality: ${clamped}/100`}>
+      {clamped}
     </span>
   )
 }
@@ -91,7 +92,7 @@ function ConnectionSection({ layer, connections, defaultOpen }) {
             <div key={i} className="px-3 py-2 text-[11px] text-neutral-700 dark:text-neutral-300 space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-medium">{conn.type}</span>
-                {conn.confidence && <QualityStars level={Math.round(conn.confidence * 5)} />}
+                {conn.quality_score != null && <QualityStars quality_score={conn.quality_score} />}
               </div>
               {conn.subtype && <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{conn.subtype}</span>}
               {conn.target_verse && (() => {
@@ -419,7 +420,7 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
                             <span className="mx-0.5">→</span>
                             <button onClick={() => { const p = (c.target_verse || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
                               className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors">{c.target_verse?.split('.').pop()}</button>
-                            {c.confidence && <QualityStars level={Math.round(c.confidence * 5)} />}
+                            {c.quality_score != null && <QualityStars quality_score={c.quality_score} />}
                           </div>
                         ))}
                         {conns.length > 5 && (

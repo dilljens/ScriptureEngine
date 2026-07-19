@@ -109,7 +109,7 @@ def lookup(book, chapter, verse):
     connections = get_connections_by_layer(conn, verse_id)
 
     # Detailed connection view per layer with quality
-    from lib.controls.calibration import get_quality_color, get_quality_stars
+    from lib.controls.calibration import get_quality_color, get_quality_score_for_tier
     connection_detail = {}
     for layer, conns in connections.items():
         connection_detail[layer] = {
@@ -131,7 +131,7 @@ def lookup(book, chapter, verse):
                 "discovered_by": c.get("discovered_by", ""),
                 "quality": {
                     "level": quality,
-                    "stars": get_quality_stars(quality),
+                    "quality_score": get_quality_score_for_tier(quality),
                     "color": get_quality_color(quality),
                 },
                 "p_value": c.get("p_value"),
