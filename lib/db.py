@@ -152,6 +152,22 @@ CREATE INDEX IF NOT EXISTS idx_pc_target ON passage_connections(target_start, ta
 CREATE INDEX IF NOT EXISTS idx_pc_layer ON passage_connections(layer);
 CREATE INDEX IF NOT EXISTS idx_pc_type ON passage_connections(type);
 
+-- Passage-level genre classification
+CREATE TABLE IF NOT EXISTS passage_genres (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    start_verse TEXT NOT NULL,
+    end_verse TEXT NOT NULL,
+    genre TEXT NOT NULL,
+    subgenre TEXT DEFAULT '',
+    confidence REAL DEFAULT 0.7,
+    assigned_by TEXT DEFAULT 'algorithm',
+    notes TEXT DEFAULT '',
+    UNIQUE(start_verse, end_verse, genre)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pg_genre ON passage_genres(genre);
+CREATE INDEX IF NOT EXISTS idx_pg_range ON passage_genres(start_verse, end_verse);
+
 -- Disagreements / contradictions between connections
 CREATE TABLE IF NOT EXISTS disagreements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

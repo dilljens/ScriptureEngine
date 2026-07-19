@@ -17,6 +17,25 @@ export default class ErrorBoundary extends React.Component {
     if (errorInfo?.componentStack) {
       console.error('Component stack:', errorInfo.componentStack)
     }
+    // Send error to server for diagnosis
+    try {
+      const body = JSON.stringify({
+        level: 'error',
+        message: error?.message || String(error),
+        stack: error?.stack || '',
+        componentStack: errorInfo?.componentStack || '',
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+      })
+      // Fire-and-forget — use sendBeacon for reliability on page unload
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/v1/debug/log', body)
+      } else {
+        fetch('/api/v1/debug/log', { method: 'POST', body, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {})
+      }
+    } catch (e) {
+      // Don't throw in error handler
+    }
   }
 
   render() {

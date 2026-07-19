@@ -38,6 +38,14 @@ def run_generators(conn, book_ids=None, gen_filter=None):
         from generators.passage.chiastic_promoter import run as run_chiastic
         generators.append(("chiastic_promoter", run_chiastic))
 
+    if not gen_filter or gen_filter == "genre":
+        from generators.passage.genre_tagger import run as run_genre
+        generators.append(("genre_tagger", run_genre))
+
+    if not gen_filter or gen_filter == "theme":
+        from generators.passage.theme_tracer import run as run_theme
+        generators.append(("theme_tracer", run_theme))
+
     total = 0
     for name, gen_fn in generators:
         t0 = time.time()
@@ -56,7 +64,7 @@ def run_generators(conn, book_ids=None, gen_filter=None):
 def main():
     parser = argparse.ArgumentParser(description="Build passage-level connections")
     parser.add_argument("--books", help="Comma-separated book IDs (default: all)")
-    parser.add_argument("--generator", choices=["density", "book_coherence", "chiastic"],
+    parser.add_argument("--generator", choices=["density", "book_coherence", "chiastic", "genre", "theme"],
                         help="Specific generator to run (default: all)")
     args = parser.parse_args()
 

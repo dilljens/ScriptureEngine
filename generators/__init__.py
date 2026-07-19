@@ -438,6 +438,22 @@ GENERATOR_DEFS = [
         "requires": "known_chiasms table (populated)",
         "description": "Elevates known chiastic structures to passage-level connections with labeled parallel sections.",
     },
+    {
+        "name": "Passage — Genre Tagger",
+        "module_path": ".passage.genre_tagger",
+        "layers": ["interpretive"],
+        "automatic": True,
+        "requires": "verses table (present)",
+        "description": "Classifies passages by literary genre and creates same-genre passage connections across the canon.",
+    },
+    {
+        "name": "Passage — Theme Tracer",
+        "module_path": ".passage.theme_tracer",
+        "layers": ["interpretive"],
+        "automatic": True,
+        "requires": "verses table (present), text_english column",
+        "description": "Traces 16 biblical themes (temple, covenant, exile, etc.) through the canon and creates passage-level connections between same-theme passages.",
+    },
 ]
 
 # Import all generator modules

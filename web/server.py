@@ -904,16 +904,16 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
         if model is not None:
             try:
                 vec_results = _vector_search(conn, model, q, limit, mode)
-                results = _merge_results(results, vec_results, mode, list_c=graph_results)
+                results = _merge_results(results, vec_results, mode, list_c=graph_results, query=q)
             except Exception as e:
                 import logging
                 logging.warning(f"Vector search failed: {e}, falling back to keyword")
                 kw_results = _keyword_search(conn, q, limit)
-                results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
+                results = _merge_results(results, kw_results, "keyword", list_c=graph_results, query=q)
         else:
             # Fallback to FTS5/keyword if vector search unavailable
             kw_results = _keyword_search(conn, q, limit)
-            results = _merge_results(results, kw_results, "keyword", list_c=graph_results)
+            results = _merge_results(results, kw_results, "keyword", list_c=graph_results, query=q)
 
     # Optional cross-encoder reranking (graceful if unavailable)
     try:
@@ -1203,18 +1203,73 @@ def _format_verse_result(v, score):
     }
 
 
-def _merge_results(list_a, list_b, mode, list_c=None):
+def _get_dat_alphas(query: str, entity_ratio: float = 0.0) -> tuple[float, float, float]:
+    """Compute query-adaptive 3D alpha weights for hybrid search fusion.
+
+    Uses DAT (Dynamic Alpha Tuning, arXiv 2503.23013) heuristics:
+    - Long queries → favor semantic (vector)
+    - Question structure → favor semantic
+    - Entity mentions → favor graph
+    - Hebrew/Greek Unicode → favor exact BM25
+    - Verse reference → favor BM25 + graph
+
+    Returns (alpha_vec, alpha_bm25, alpha_graph) summing to 1.0.
+    """
+    alpha_vec, alpha_bm25, alpha_graph = 0.40, 0.45, 0.15
+    q = query.strip()
+
+    # Length signal: long queries are more semantic
+    words = q.split()
+    if len(words) > 5:
+        alpha_vec += 0.10
+        alpha_bm25 -= 0.05
+
+    # Question signal
+    if q.lower().startswith(("what", "how", "why", "when", "where", "which", "who", "is", "are", "can", "does", "did", "was")):
+        alpha_vec += 0.10
+        alpha_bm25 -= 0.05
+
+    # Entity mention signal
+    if entity_ratio > 0.3:
+        alpha_graph += 0.10
+        alpha_bm25 -= 0.05
+    elif entity_ratio > 0.15:
+        alpha_graph += 0.05
+        alpha_bm25 -= 0.03
+
+    # Hebrew/Greek Unicode → exact-match heavy
+    if any(ord(c) > 0x05D0 for c in q):
+        alpha_bm25 += 0.20
+        alpha_vec -= 0.10
+
+    # Verse reference pattern (book.chapter.verse or chapter:verse)
+    if re.search(r'\b[a-z]{2,5}\.\d+\.\d+\b|\b\d+:\d+\b', q):
+        alpha_bm25 += 0.15
+        alpha_graph += 0.10
+        alpha_vec -= 0.10
+
+    # Short query (≤3 words) → favor BM25
+    if len(words) <= 3:
+        alpha_bm25 += 0.05
+        alpha_graph -= 0.03
+
+    # Normalize to sum = 1.0
+    total = alpha_vec + alpha_bm25 + alpha_graph
+    return (alpha_vec / total, alpha_bm25 / total, alpha_graph / total)
+
+
+def _merge_results(list_a, list_b, mode, list_c=None, query=""):
     """Merge result lists using RRF (Reciprocal Rank Fusion).
 
     Supports 2-way (vector + BM25) and 3-way (vector + BM25 + graph)
-    fusion. Graph signal gets adaptive weight: entity-heavy queries
-    favor graph, semantic queries favor vector, keyword queries favor BM25.
+    fusion. Uses DAT 3D alphas for query-adaptive weighting.
 
     Args:
         list_a: Primary results (BM25/keyword).
         list_b: Secondary results (vector/semantic).
         mode: 'vector', 'keyword', or 'hybrid'.
         list_c: Optional 3rd signal (graph-search results).
+        query: Original search query (for DAT alphas).
     """
     if mode == "vector":
         return list_b
@@ -1224,29 +1279,23 @@ def _merge_results(list_a, list_b, mode, list_c=None):
     # Hybrid RRF merge
     K = 60
 
-    # Compute adaptive alphas for 3-way fusion
-    # Entity-heavy queries → boost graph signal
+    # Compute DAT 3D alphas
     has_graph_data = list_c is not None and len(list_c) > 0
-    alpha_vec = 0.5
-    alpha_bm25 = 0.5
-    alpha_graph = 0.0
-
+    entity_ratio = 0.0
     if has_graph_data:
-        # Heuristic: estimate entity content from graph explanations
         entity_count = sum(1 for r in list_c if r.get("entity_match", False))
         total_graph = len(list_c)
         entity_ratio = entity_count / max(total_graph, 1)
 
-        if entity_ratio > 0.3:
-            # Entity-heavy query (e.g., "Abraham covenant") → favor graph
-            alpha_graph = 0.25
-            alpha_vec = 0.35
-            alpha_bm25 = 0.40
-        else:
-            # General query → smaller graph weight
-            alpha_graph = 0.15
-            alpha_vec = 0.40
-            alpha_bm25 = 0.45
+    alpha_vec, alpha_bm25, alpha_graph = _get_dat_alphas(query, entity_ratio)
+
+    # Graph is only used when data exists
+    if not has_graph_data:
+        alpha_graph = 0.0
+        # Redistribute graph weight to vec + bm25 proportionally
+        total = alpha_vec + alpha_bm25
+        alpha_vec /= total
+        alpha_bm25 /= total
 
     seen = {}
     all_lists = [list_a, list_b]
