@@ -119,7 +119,7 @@ test.describe('Navigation — D&C sections', () => {
   test('navigate to D&C section with dcN format via search bar', async ({ page }) => {
     const searchInput = page.locator('input[placeholder*="Search"]')
     await expect(searchInput).toBeVisible()
-    await searchInput.fill('dc 138')
+    await searchInput.fill('dc138')
     // Navigate result should appear
     const navResult = page.locator('button').filter({ hasText: /Navigate/i }).first()
     await expect(navResult).toBeVisible({ timeout: 5000 })

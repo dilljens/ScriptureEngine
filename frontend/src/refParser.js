@@ -103,6 +103,7 @@ const BOOK_ALIASES = {
   '3john': '3john',
   'jude': 'jude',
   'rev': 'rev', 'revelation': 'rev',
+  'dc': 'dc', 'd&c': 'dc', 'doctrine and covenants': 'dc',
   '1ne': '1ne', '1nephi': '1ne',
   '2ne': '2ne', '2nephi': '2ne',
   'jacob': 'jacob',
