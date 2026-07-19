@@ -298,7 +298,10 @@ def list_sessions(conn, page=1, per_page=20, starred=None, search=""):
         where.append("(title LIKE ? OR id IN (SELECT DISTINCT session_id FROM conversation_messages WHERE content LIKE ?))")
         params.extend([f"%{search}%", f"%{search}%"])
 
-    where_clause = ("WHERE " + " AND ".join(where)) if where else ""
+    # Exclude empty sessions (created by opening the chat panel but never used)
+    where.append("message_count > 0")
+
+    where_clause = "WHERE " + " AND ".join(where)
 
     # Total count
     total = conn.execute(
