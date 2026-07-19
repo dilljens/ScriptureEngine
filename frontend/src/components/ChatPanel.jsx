@@ -778,16 +778,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     staging: ['scripture_stage_connection', 'scripture_stage_study'],
   }
 
-  // Shared core: send message list to LLM, append assistant response
-  // Abort in-flight request if component unmounts (e.g. user navigates to Read)
+  // Track mounted state so background responses don't update unmounted component
+  const mountedRef = useRef(true)
   useEffect(() => {
-    return () => {
-      if (abortRef.current) abortRef.current.abort()
-    }
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
   }, [])
 
   const performChat = async (allMessages) => {
-    // Cancel any previous in-flight request
+    // Cancel any previous in-flight request (from a new message being sent)
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -804,6 +803,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         }
       }
       const res = await chat(allMessages, { max_tokens: 128000, disabled_tools: disabledTools, signal: controller.signal })
+      // Still mounted? Update state to show the result.
+      // If not (user switched tabs), still save to server so it's there when they come back.
       if (res.ok && res.data) {
         const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
         // If the LLM returned only tool calls with no content, show a cleaner placeholder
@@ -811,30 +812,38 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           ? '_Let me look that up for you..._'
           : '')
         const assistantMsg = { role: 'assistant', content: effectiveContent, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
-        setMessages(prev => [...prev, assistantMsg])
+        if (mountedRef.current) {
+          setMessages(prev => [...prev, assistantMsg])
+        }
         saveMessage('assistant', effectiveContent, { reasoning_content: reasoningContent, usage, cost, model, toolResults })
       } else {
         const errorMsg = res?.error || 'Unknown error'
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `**LLM unavailable**: ${errorMsg}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
-          timestamp: new Date().toISOString(),
-        }])
+        if (mountedRef.current) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `**LLM unavailable**: ${errorMsg}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
+            timestamp: new Date().toISOString(),
+          }])
+        }
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        // Component unmounted while LLM was thinking — silently abort
+        // User manually cancelled — silently abort, don't show error
         abortRef.current = null
         setWaiting(false)
         return
       }
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
-        timestamp: new Date().toISOString(),
-      }])
+      if (mountedRef.current) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
+          timestamp: new Date().toISOString(),
+        }])
+      }
     }
-    setWaiting(false)
+    if (mountedRef.current) {
+      setWaiting(false)
+    }
     abortRef.current = null
   }
 
@@ -1250,6 +1259,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
               <span>Thinking</span>
+              <button onClick={() => { if (abortRef.current) abortRef.current.abort(); setWaiting(false) }}
+                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
+                title="Cancel this request">
+                Cancel
+              </button>
             </div>
           </div>
         )}

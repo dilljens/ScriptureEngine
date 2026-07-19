@@ -481,6 +481,14 @@ function AppInner() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [renamingWs, setRenamingWs] = useState(null); const [renameValue, setRenameValue] = useState('')
 
+  // Mobile nav search state
+  const [mobileNavVal, setMobileNavVal] = useState('')
+  const [mobileNavResults, setMobileNavResults] = useState([])
+  const [mobileNavSel, setMobileNavSel] = useState(0)
+  const [showMobileNav, setShowMobileNav] = useState(false)
+  const mobileNavRef = useRef(null)
+  const mobileNavDebounce = useRef(null)
+
   const [bookError, setBookError] = useState(null)
   useEffect(() => {
     let retries = 0
@@ -888,6 +896,73 @@ function AppInner() {
     setChatInitialMsg(message || '')
     setShowChat(true)
     setShowCommand(false)
+  }, [])
+
+  // ── Mobile nav search handler ──
+  const executeMobileNav = useCallback((result) => {
+    if (!result) return
+    setShowMobileNav(false)
+    setMobileNavVal('')
+    if (result.type === 'navigate' && result.book) {
+      handleCommandNav(result.book, result.chapter, false)
+    } else if (result.type === 'chat') {
+      handleCommandChat(result.message || '')
+    } else if (result.type === 'search' && result.query) {
+      // Open command palette with a /search prefix
+      setShowCommand(true)
+    } else if (result.type === 'command') {
+      handleSearchCommand(result)
+    } else if (result.type === 'history') {
+      setShowHistory(true)
+    } else if (result.type === 'structure') {
+      setShowStructure(true)
+    }
+  }, [handleCommandNav, handleCommandChat, handleSearchCommand])
+
+  const handleMobileNavInput = useCallback((val) => {
+    setMobileNavVal(val)
+    setMobileNavSel(0)
+    if (!val.trim()) { setMobileNavResults([]); setShowMobileNav(false); return }
+    setShowMobileNav(true)
+
+    clearTimeout(mobileNavDebounce.current)
+    mobileNavDebounce.current = setTimeout(() => {
+      // Try fuzzy navigation parsing first
+      const parsed = parseAndFuzzy(val.trim(), allBooks || [])
+      if (parsed.type === 'navigate' && parsed.results?.length > 0) {
+        setMobileNavResults(parsed.results.map(r => ({
+          ...r,
+          icon: '📖',
+          label: r.label || `${r.book} ${r.chapter}`,
+        })))
+        return
+      }
+      // Try /commands
+      if (parsed.type === 'chat' || parsed.type === 'search' || parsed.type === 'command' ||
+          parsed.type === 'toggle' || parsed.type === 'history' || parsed.type === 'structure') {
+        setMobileNavResults(parsed.results || [parsed].map(r => ({
+          ...r, icon: r.icon || '⚡',
+          label: r.label || r.message || r.query || r.type,
+        })))
+        return
+      }
+      // Fallback: show full-text search option
+      setMobileNavResults([{
+        type: 'search', query: val.trim(), icon: '🔍',
+        label: `Search: "${val.trim()}"`,
+      }])
+    }, 200)
+  }, [allBooks])
+
+  // Close mobile nav dropdown on click outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target)) {
+        setShowMobileNav(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
   // ── Touch / pinch handlers for mobile zoom ──
@@ -1329,13 +1404,42 @@ function AppInner() {
             )}
           </h1>
         </div>
-        {/* Right side: nav arrows + Tiles */}
+        {/* Right side: compact nav search + Tiles */}
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={doHistoryBack} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer" title="Back (Alt+←)"><ChevronLeft /></button>
-          <button onClick={doHistoryForward} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer" title="Forward (Alt+→)"><ChevronRight /></button>
+          <div ref={mobileNavRef} className="relative">
+            <input
+              type="search" inputMode="search" enterKeyHint="go"
+              value={mobileNavVal} onChange={e => handleMobileNavInput(e.target.value)}
+              onFocus={() => { if (mobileNavVal.trim()) setShowMobileNav(true) }}
+              onKeyDown={e => {
+                if (e.key === 'Escape') { setShowMobileNav(false); e.target.blur() }
+                if (e.key === 'ArrowDown') { e.preventDefault(); setMobileNavSel(i => Math.min(i + 1, mobileNavResults.length - 1)) }
+                if (e.key === 'ArrowUp') { e.preventDefault(); setMobileNavSel(i => Math.max(i - 1, 0)) }
+                if (e.key === 'Enter') { e.preventDefault(); executeMobileNav(mobileNavResults[mobileNavSel]) }
+              }}
+              placeholder="🔍 Go to…"
+              className="w-20 sm:w-28 text-[10px] px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" />
+            {showMobileNav && mobileNavResults.length > 0 && (
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-h-72 overflow-y-auto z-50 min-w-[220px]">
+                {mobileNavResults.map((r, i) => (
+                  <button key={i}
+                    onClick={() => { executeMobileNav(r); setShowMobileNav(false) }}
+                    onMouseEnter={() => setMobileNavSel(i)}
+                    className={`w-full text-left px-3 py-2 flex items-center gap-2 cursor-pointer transition-colors text-[11px] ${
+                      i === mobileNavSel ? 'bg-blue-100 dark:bg-blue-900/30' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
+                    }`}>
+                    <span className="shrink-0">{r.icon || (r.book ? '📖' : r.type === 'chat' ? '💬' : r.type === 'search' ? '🔍' : '⚡')}</span>
+                    <span className="truncate text-neutral-700 dark:text-neutral-300">{r.label}</span>
+                    {r.book && <span className="ml-auto text-[9px] text-neutral-400 shrink-0">↵ go</span>}
+                    {r.type === 'search' && <span className="ml-auto text-[9px] text-neutral-400 shrink-0">↵ search</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={openTilesView}
             className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
-            ▦ Tiles
+            ▦
           </button>
         </div>
       </div>

@@ -154,14 +154,16 @@ export const BOOK_TITLES = {
 export function parseRef(ref) {
   if (!ref) return null
 
-  // Handle D&C sections: "dc76.1" or "dc76"
-  const dcMatch = ref.match(/^(dc)(\d+)(?:\.(\d+))?$/)
+  // Handle D&C sections: "dc76", "dc76.1", "dc76.76.22"
+  const dcMatch = ref.match(/^(dc)(\d+)(?:\.(\d+)(?:\.(\d+))?)?$/)
   if (dcMatch) {
-    const book = `dc${dcMatch[2]}`
-    const chapter = 1
-    const verse = dcMatch[3] ? parseInt(dcMatch[3]) : null
-    const label = `D&C ${dcMatch[2]}${verse ? `:${verse}` : ''}`
-    return { label, book, chapter, verse, bookName: `D&C ${dcMatch[2]}`, workId: 'dc' }
+    const sectionNum = dcMatch[2]
+    const book = `dc${sectionNum}`
+    const chapter = 1  // D&C sections are single-chapter
+    // Group 4 = verse (3-part format "dc76.76.22"), Group 3 = single part ("dc76.1")
+    const verse = dcMatch[4] ? parseInt(dcMatch[4]) : (dcMatch[3] ? parseInt(dcMatch[3]) : null)
+    const label = `D&C ${sectionNum}${verse ? `:${verse}` : ''}`
+    return { label, book, chapter, verse, bookName: `D&C ${sectionNum}`, workId: 'dc' }
   }
 
   const parts = ref.split('.')
@@ -173,11 +175,19 @@ export function parseRef(ref) {
 
   if (isNaN(chapter)) return null
 
-  const bookTitle = BOOK_TITLES[bookId]
+  // D&C books are stored as dcN (e.g., "dc76") — handle general fallback
+  if (bookId.startsWith('dc')) {
+    const sectionNum = bookId.replace('dc', '')
+    const label = `D&C ${sectionNum}${verse != null ? `:${verse}` : ''}`
+    return { label, book: bookId, chapter: 1, verse, bookName: `D&C ${sectionNum}`, workId: 'dc' }
+  }
+
+  // Case-insensitive lookup (DSS books use uppercase IDs like '1QS')
+  const bookTitle = BOOK_TITLES[bookId] || BOOK_TITLES[Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === bookId)]
   if (!bookTitle) return null
 
-  // Determine workId (D&C books are stored as dcN)
-  let workId = WORK_MAP[bookId]
+  // Determine workId (case-insensitive lookup for DSS books)
+  let workId = WORK_MAP[bookId] || WORK_MAP[Object.keys(WORK_MAP).find(k => k.toLowerCase() === bookId)]
   if (!workId && bookId.startsWith('dc')) workId = 'dc'
 
   let label = `${bookTitle} ${chapter}`

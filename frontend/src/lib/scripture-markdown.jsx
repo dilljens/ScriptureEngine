@@ -30,7 +30,8 @@ function formatVerseRef(ref) {
     const verse = rest.join('.')
     return verse ? `D&C ${section}:${verse}` : `D&C ${section}`
   }
-  const bookName = BOOK_TITLES[bookId]
+  // Case-insensitive lookup (DSS books use uppercase IDs like '1QS')
+  const bookName = BOOK_TITLES[bookId] || BOOK_TITLES[Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === bookId.toLowerCase())]
   if (!bookName) return ref
   const verse = rest.join('.')
   return verse ? `${bookName} ${chapter}:${verse}` : `${bookName} ${chapter}`

@@ -1,7 +1,8 @@
 const BASE = '/api/v1'
-const TIMEOUT_MS = 10_000
+const TIMEOUT_MS = 60_000
+const MAX_RETRIES = 1
 
-export async function fetchJSON(url, options = {}) {
+export async function fetchJSON(url, options = {}, _retry = 0) {
   // AbortController for timeout
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -14,11 +15,24 @@ export async function fetchJSON(url, options = {}) {
     })
     if (!res.ok) {
       const body = await res.text()
-      throw new Error(`API ${res.status}: ${body.slice(0, 200)}`)
+      // Retry on 5xx (server errors including 524) — one retry with 2s backoff
+      if (res.status >= 500 && _retry < MAX_RETRIES) {
+        clearTimeout(timer)
+        await new Promise(r => setTimeout(r, 2000))
+        return fetchJSON(url, options, _retry + 1)
+      }
+      // Clean up error: strip HTML from Cloudflare error pages
+      const cleanBody = body.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+      throw new Error(`API ${res.status}: ${cleanBody.slice(0, 200)}`)
     }
     return res.json()
   } catch (err) {
     if (err.name === 'AbortError') {
+      // Retry on timeout — one retry
+      if (_retry < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 2000))
+        return fetchJSON(url, options, _retry + 1)
+      }
       throw new Error(`API request to ${url} timed out`)
     }
     throw err

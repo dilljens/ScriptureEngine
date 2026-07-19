@@ -13,10 +13,12 @@ const LS_WIKI_KEY = 'scriptureengine.wikiMode'
 function useChapterData(book, chapter) {
   const cache = {}
   const [d, sd] = useState(null); const [l, sl] = useState(true); const [e, se] = useState(null)
+  // Expose a retry counter so the caller can trigger a refetch
+  const [retryCount, setRetryCount] = useState(0)
   useEffect(() => {
     const key = `${book}.${chapter}`
     const c = cache[key]
-    if (c) { sd(c); sl(false); se(null); return }
+    if (c && retryCount === 0) { sd(c); sl(false); se(null); return }
     let cancel = false; let att = 0
     const tf = () => {
       if (cancel) return
@@ -39,13 +41,14 @@ function useChapterData(book, chapter) {
     }
     tf()
     return () => { cancel = true }
-  }, [book, chapter])
-  return { data: d, loading: l, error: e }
+  }, [book, chapter, retryCount])
+  const retry = () => setRetryCount(c => c + 1)
+  return { data: d, loading: l, error: e, retry }
 }
 
 export default function ChapterView({ book, chapter, poetryMode, highlightVerse, onSplit, companionLabel, onCloseCompanion }) {
   const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode } = useToggles()
-  const { data, loading, error } = useChapterData(book, chapter)
+  const { data, loading, error, retry } = useChapterData(book, chapter)
   const [footnotes, setFootnotes] = useState(null)
   const [tskRefs, setTskRefs] = useState(null)
   const [wordData, setWordData] = useState(null)
@@ -189,6 +192,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         ) : error ? (
           <div className="mx-4 mt-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
             {error}
+            <button onClick={retry} className="ml-3 underline hover:text-red-800 cursor-pointer">Retry</button>
           </div>
         ) : (
           <WikiLayout data={data} book={book} chapter={chapter} toggles={toggles} chapterConnections={chapterConnections}
@@ -207,7 +211,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   if (error) return (
     <div className="mx-4 mt-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
       {error}
-      <button onClick={() => window.location.reload()} className="ml-3 underline hover:text-red-800 cursor-pointer">Retry</button>
+      <button onClick={retry} className="ml-3 underline hover:text-red-800 cursor-pointer">Retry</button>
     </div>
   )
   if (!data) return null

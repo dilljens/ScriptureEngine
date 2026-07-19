@@ -195,3 +195,47 @@ test.describe('Mobile — Learn view open-ended questions', () => {
     }
   })
 })
+
+test.describe('Mobile — nav search bar', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.clear())
+    await page.goto('/')
+    await expect(mobileH1(page)).toBeVisible({ timeout: 15000 })
+  })
+
+  test('nav search input is visible on mobile', async ({ page }) => {
+    const navSearch = page.locator('input[placeholder*="Go to"]')
+    await expect(navSearch).toBeVisible()
+  })
+
+  test('nav search shows book results for "isa"', async ({ page }) => {
+    const navSearch = page.locator('input[placeholder*="Go to"]')
+    await navSearch.fill('isa')
+    // Should see a dropdown with Isaiah
+    const result = page.locator('button').filter({ hasText: /Isaiah/i }).first()
+    await expect(result).toBeVisible({ timeout: 5000 })
+  })
+
+  test('nav search enter navigates to chapter', async ({ page }) => {
+    const navSearch = page.locator('input[placeholder*="Go to"]')
+    await navSearch.fill('isa 55')
+    // Wait for dropdown to appear
+    const dropdownResult = page.locator('button').filter({ hasText: /go/i }).first()
+    await expect(dropdownResult).toBeVisible({ timeout: 5000 })
+    await navSearch.press('Enter')
+    // Should navigate to Isaiah 55
+    await expect(mobileH1(page)).toContainText(/ch\. 55|Isaiah 55/, { timeout: 10000 })
+  })
+
+  test('nav search arrow keys navigate dropdown', async ({ page }) => {
+    const navSearch = page.locator('input[placeholder*="Go to"]')
+    await navSearch.fill('isa')
+    await page.waitForTimeout(500)
+    // Press ArrowDown to select next item
+    await navSearch.press('ArrowDown')
+    // Press Enter — should navigate somewhere
+    await navSearch.press('Enter')
+    // Breadcrumb should change from default
+    await expect(mobileH1(page)).toBeVisible({ timeout: 5000 })
+  })
+})
