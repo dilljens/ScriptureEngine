@@ -58,6 +58,7 @@ function loadSettings() {
     darkMode: false,
     hotkeys: { ...DEFAULT_HOTKEYS },
     showQuickAsk: true,
+    hebrewOnly: false,
   }
 }
 
@@ -98,6 +99,10 @@ export function SettingsProvider({ children }) {
     persist({ hotkeys: { ...DEFAULT_HOTKEYS } })
   }, [persist])
 
+  const onToggleHebrewOnly = useCallback(() => {
+    persist({ hebrewOnly: !settings.hebrewOnly })
+  }, [settings.hebrewOnly, persist])
+
   const value = {
     fontSize: settings.fontSize ?? 100,
     changeFontSize,
@@ -109,6 +114,8 @@ export function SettingsProvider({ children }) {
     resetHotkeys,
     hotkeys: settings.hotkeys ?? DEFAULT_HOTKEYS,
     showQuickAsk: settings.showQuickAsk ?? true,
+    hebrewOnly: settings.hebrewOnly ?? false,
+    onToggleHebrewOnly,
     persist,
   }
 
@@ -130,6 +137,8 @@ export function useSettings() {
       resetHotkeys: () => {},
       hotkeys: DEFAULT_HOTKEYS,
       showQuickAsk: true,
+      hebrewOnly: false,
+      onToggleHebrewOnly: () => {},
       persist: () => {},
     }
   }

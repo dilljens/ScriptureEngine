@@ -121,6 +121,13 @@ def compute_fire_credit(
             "type": item_type, "id": target_id, "boost": round(boost, 4)
         })
 
+    # ── Phase 1b: Stability penalty on failure (verse only) ──
+    # When failing a verse, reduce FSRS stability of more complex connected verses.
+    # This makes them due sooner — the gap the memorize route's compute_fire_credit
+    # handled but the unified module was missing.
+    if item_type == "verse" and not is_success and rating >= 1 and rating < 3:
+        _apply_verse_stability_penalty(conn, item_id, rating, same_type_conns)
+
     # ── Phase 2: Cross-domain propagation (via entity bridge) ──
     if item_type == "verse":
         # Verse reviewed → credit Hebrew concepts in that verse
@@ -216,6 +223,79 @@ def _apply_credit(conn, user_id, item_type, item_id, boost, is_success,
         (user_id, item_type, item_id, credit, last_updated, source_item_type, source_item_id)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (user_id, item_type, item_id, new_credit, now, source_type, source_id))
+
+
+def _get_connection_count(conn, verse_id: str) -> int:
+    """Count non-deprecated connections for a verse (complexity proxy)."""
+    try:
+        row = conn.execute("""
+            SELECT COUNT(*) as c FROM connections
+            WHERE (source_verse=? OR target_verse=?) AND deprecated=0
+        """, (verse_id, verse_id)).fetchone()
+        return row["c"] if row else 0
+    except Exception:
+        return 0
+
+
+def _apply_verse_stability_penalty(conn, verse_id: str, rating: int,
+                                    same_type_conns: list):
+    """Reduce FSRS stability of more complex connected verses on failure.
+
+    Penalty direction: simpler → complex.
+    If you fail Gen 1:1, connected verses that are MORE complex
+    (have MORE connections) get their stability reduced.
+
+    Args:
+        conn: DB connection
+        verse_id: The verse that was reviewed
+        rating: 1 (Again) or 2 (Hard)
+        same_type_conns: list of (target_id, strength) from _get_same_type_connections
+    """
+    reviewed_count = _get_connection_count(conn, verse_id)
+
+    penalty_factor = 1.0 if rating == 1 else 0.3  # Again=full, Hard=partial
+
+    for target_id, strength in same_type_conns:
+        if target_id == verse_id:
+            continue
+
+        # Check if connected verse is more complex
+        target_count = _get_connection_count(conn, target_id)
+        if target_count <= reviewed_count:
+            continue  # Don't penalize simpler/equal verses
+
+        # Calculate penalty from connection strength
+        conn_strength = strength or 0.5
+        penalty = min(0.5, conn_strength * penalty_factor * 0.5)
+        if penalty < 0.01:
+            continue
+
+        # Reduce stability in memorize_progress table
+        try:
+            prog = conn.execute(
+                "SELECT stability FROM memorize_progress WHERE user_id='default' AND verse_id=?",
+                (target_id,)
+            ).fetchone()
+            if prog and prog["stability"]:
+                new_stability = prog["stability"] / (1.0 + penalty)
+                conn.execute(
+                    "UPDATE memorize_progress SET stability=? WHERE user_id='default' AND verse_id=?",
+                    (round(new_stability, 2), target_id)
+                )
+
+            # Also reduce fi_re_credit in memorize_progress
+            credit_row = conn.execute(
+                "SELECT fi_re_credit FROM memorize_progress WHERE user_id='default' AND verse_id=?",
+                (target_id,)
+            ).fetchone()
+            if credit_row and credit_row["fi_re_credit"]:
+                new_credit = max(0.0, credit_row["fi_re_credit"] - penalty)
+                conn.execute(
+                    "UPDATE memorize_progress SET fi_re_credit=? WHERE user_id='default' AND verse_id=?",
+                    (round(new_credit, 3), target_id)
+                )
+        except Exception:
+            continue
 
 
 def _get_same_type_connections(conn, item_type: str, item_id: str) -> list:

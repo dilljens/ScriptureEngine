@@ -17,7 +17,13 @@ import CardRenderer from './CardRenderer'
  *   answerState: object — extra state to pass to CardRenderer (e.g. LLM grade)
  *   hebrewOnly: boolean — hide English transliteration on vocab cards
  */
-export default function CardQueue({ cards, onRate, onComplete, title, emptyMessage, onAnswer, answerState, hebrewOnly }) {
+export default function CardQueue({ cards, onRate, onComplete, title, emptyMessage, onAnswer, answerState, hebrewOnly: hebrewOnlyProp }) {
+  // Read hebrewOnly from settings context, fall back to prop
+  let hebrewOnly = hebrewOnlyProp
+  try {
+    const settings = JSON.parse(localStorage.getItem('settings') || '{}')
+    if (settings.hebrewOnly !== undefined) hebrewOnly = settings.hebrewOnly
+  } catch {}
   const [idx, setIdx] = useState(0)
   const [rating, setRating] = useState(null)
   const [showAnswer, setShowAnswer] = useState(false)

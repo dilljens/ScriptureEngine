@@ -454,6 +454,15 @@ GENERATOR_DEFS = [
         "requires": "verses table (present), text_english column",
         "description": "Traces 16 biblical themes (temple, covenant, exile, etc.) through the canon and creates passage-level connections between same-theme passages.",
     },
+    # ── Kabbalistic ─────────────────────────────────────────────────────
+    {
+        "name": "Sefirot — Kabbalistic Tree of Life",
+        "module_path": ".sefirot_mapper",
+        "layers": ["symbolic", "sod"],
+        "automatic": True,
+        "requires": "gematria table (present), verses table (present)",
+        "description": "Tags verses with sefirah labels (10 sefirot of the Kabbalistic tree of life) using Hebrew/English keyword matching, and creates connections between verses sharing a sefirah label.",
+    },
 ]
 
 # Import all generator modules

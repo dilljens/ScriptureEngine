@@ -194,6 +194,12 @@ When a user asks about a passage or topic:
 - `scripture_hebrew_lesson(node_id)` — full lesson content
 - `scripture_hebrew_quiz(category?, count?)` — generate Hebrew quiz questions
 
+### Truth Alignment (Scholarship vs Scripture)
+- `scripture_truth_check(claim, verses?, claim_type?)` — **Evaluate a scholarly claim against scripture.** Checks verse texts + connection graph. Returns supports/contradicts/neutral with confidence score and evidence.
+- `scripture_truth_topic(topic)` — **Run truth check on all claims for a topic.** Topics: temple_microcosm, angel_yhwh_divine_council, josiah_reform, queen_of_heaven_asherah, two_yahwehs_origins.
+
+When a user asks about a scholar's claim, use `scripture_truth_check` to verify it against what the text actually says. For deep topical analysis covering multiple scholars, use `scripture_truth_topic`.
+
 ## Interactive Response Markers
 
 **Quiz card** — renders multiple-choice questions. Present 1-5 at a time:

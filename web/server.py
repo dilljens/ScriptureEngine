@@ -105,10 +105,12 @@ from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
 from web.routes.passage import router as passage_router
 from web.routes.memorize import router as memorize_router
+from web.routes.sefirot import router as sefirot_router
 from web.routes.studies import router as studies_router
 from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
+app.include_router(sefirot_router)
 app.include_router(passage_router)
 app.include_router(wiki_router)
 app.include_router(audio_router)
@@ -3067,6 +3069,29 @@ def create_annotation(ann: AnnotationCreate):
 
 # ─── Health Check ───
 
+# ntfy.sh push notification — fires on health degradation
+_NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
+_NTFY_SERVER = os.environ.get("NTFY_SERVER", "https://ntfy.sh")
+
+
+def _send_ntfy_alert(title: str, message: str, priority: int = 3):
+    """Send a push notification via ntfy.sh. No-op if NTFY_TOPIC not set."""
+    if not _NTFY_TOPIC:
+        return False
+    try:
+        import urllib.request
+        import json as _json
+        data = _json.dumps({"topic": _NTFY_TOPIC, "title": title, "message": message,
+                            "priority": priority, "tags": ["warning"]}).encode()
+        req = urllib.request.Request(f"{_NTFY_SERVER}/{_NTFY_TOPIC}",
+                                     data=data,
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
 @app.get("/api/v1/health")
 def health_check():
     """Health check with DB integrity, cache status, version, and uptime."""
@@ -3087,8 +3112,18 @@ def health_check():
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
 
+    status = "ok" if quick_ok else "degraded"
+
+    # Fire ntfy alert on degradation
+    if status == "degraded":
+        _send_ntfy_alert(
+            title="Scripture Engine — Health Degraded",
+            message=f"DB integrity check failed. verses={verse_count} connections={conn_count}",
+            priority=4,
+        )
+
     return {"ok": True, "data": {
-        "status": "ok" if quick_ok else "degraded",
+        "status": status,
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
         "verses": verse_count,

@@ -171,6 +171,47 @@ def search_text(conn, query, book=None, works=None, limit=25):
     }
 
 
+def _xlingual_trigram_search(conn, query, limit):
+    """Search English via trigram FTS5 for xlingual endpoint format."""
+    if len(query) < 2:
+        return []
+    sanitized = _sanitize_fts_query(query)
+
+    # 1. Try AND query (exact trigram overlap — best ranking)
+    try:
+        rows = conn.execute("""
+            SELECT verse_id, search_text
+            FROM verses_fts_trigram
+            WHERE verses_fts_trigram MATCH ?
+            ORDER BY rank
+            LIMIT ?
+        """, (sanitized, limit)).fetchall()
+        if rows:
+            return rows
+    except Exception:
+        pass
+
+    # 2. Try OR query (typo-tolerant — match any trigram)
+    ngrams = _ngrams(sanitized, 3)
+    if len(ngrams) >= 2:
+        try:
+            or_query = " OR ".join(f'"{g}"' for g in ngrams if len(g) == 3)
+            if or_query:
+                rows = conn.execute("""
+                    SELECT verse_id, search_text
+                    FROM verses_fts_trigram
+                    WHERE verses_fts_trigram MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                """, (or_query, limit)).fetchall()
+                if rows:
+                    return rows
+        except Exception:
+            pass
+
+    return []
+
+
 def search_xlingual(conn, query, language="all"):
     """Search across English, Hebrew, and Greek simultaneously.
 
@@ -184,14 +225,23 @@ def search_xlingual(conn, query, language="all"):
     limit = 20
 
     if language in ("all", "english"):
-        rows = conn.execute(
-            "SELECT id, text_english FROM verses WHERE text_english LIKE ? LIMIT ?",
-            (f"%{query}%", limit),
-        ).fetchall()
-        results.extend(
-            {"verse": r["id"], "text": r["text_english"][:120], "language": "english"}
-            for r in rows
-        )
+        # 1. Try trigram FTS5 first (substring matching, BM25 ranked)
+        trigram_hits = _xlingual_trigram_search(conn, query, limit)
+        if trigram_hits:
+            results.extend(
+                {"verse": r["verse_id"], "text": r["search_text"][:120], "language": "english"}
+                for r in trigram_hits
+            )
+        else:
+            # 2. Fallback to LIKE for typo tolerance / very short queries
+            rows = conn.execute(
+                "SELECT id, text_english FROM verses WHERE text_english LIKE ? LIMIT ?",
+                (f"%{query}%", limit),
+            ).fetchall()
+            results.extend(
+                {"verse": r["id"], "text": r["text_english"][:120], "language": "english"}
+                for r in rows
+            )
 
     if language in ("all", "hebrew"):
         rows = conn.execute(

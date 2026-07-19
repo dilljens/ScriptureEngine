@@ -1,97 +1,74 @@
-# Progress: Full Codebase Audit & Search Enhancement
+# Progress: Scripture Engine — Implementation
 
-## Session 2026-07-13 — Codebase Audit COMPLETE
+## Session 2026-07-19 — Plan Created + Execution Rounds 1-3
 
-### Track A: Convention Fixes ✅
-| Phase | Before | After | What |
-|-------|--------|-------|------|
-| A1 | 8 errors | 0 | Bare excepts in generators (8 files) |
-| A2 | 73 errors | 0 | Bare excepts in lib/web/scripts/data (30+ files) |
-| A3 | 47 warnings | 0 | print() → logging in web routes + lib code |
-| A4 | 4 warnings | 0 | console.log → DEV guard in frontend |
-| A5 | 1 error | 0 | Go panic → log.Fatalf |
+### Round 1: Plan Created
+- [x] Created `task_plan.md` — full implementation plan covering all remaining ~40h
+- [x] Created `findings.md` — pre-resolved decisions, architecture notes, risk assessment
+- [x] Created `progress.md` — session tracking
+- [x] Rewrote `MASTER_PLAN.md` — concise system status cross-ref to task_plan.md
 
-### Track B: Static Analysis ✅
-5969 → 2023 Ruff errors (style-only). All real bugs fixed: undefined names, duplicate dict keys, closure-captured loop variables, exception chain breaks, bare KeyboardInterrupt catches.
+### Round 2: Track 0 — Trigram FTS5 ✅
+- [x] **0A**: `scripts/build_fts_index.py` **already existed** (fully built, 223 lines)
+- [x] **0B**: `web/server.py` — `_trigram_search`, `_keyword_search` **already wired**
+- [x] **0C**: `lib/api/search.py` — `search_text` uses trigram **already done**; updated `search_xlingual` for trigram English branch
+- [x] **0D**: `_search_hebrew` / `_search_greek` in server.py **already use trigram first**
+- [x] **Table built**: `verses_fts_trigram` has 70,956 rows
+- [x] **Search verified**: Hebrew (ברית), Greek (λόγος), English substring all working
 
-### Track C: Test Suite Health ✅
-All 38 tests pass. FastAPI lifespan deprecation fixed, duplicate route handlers removed.
+### Round 3: Phase 5 — Polish & Quick Wins ✅
+- [x] **5A1**: ntfy.sh push notifications on health failure — `_send_ntfy_alert()` in `web/server.py`
+- [x] **5B2**: FIRe penalty flow — added `_apply_verse_stability_penalty()` to `lib/api/fire_unified.py` (was missing from unified module; the memorize route had it but was never called)
+- [x] **5B1**: Sefirotic mapping — full implementation:
+  - `generators/sefirot_mapper.py` — 10 sefirot definitions, keyword matching, connection creation
+  - Registered in `generators/__init__.py`
+  - `lib/api/sefirot.py` — MCP tools: `scripture_sefirot`, `scripture_sefirah_info`
+  - `web/routes/sefirot.py` — REST endpoints: GET sefirot for verse, list sefirot, get sefirah verses
+  - Registered route + tools in server and tool registry
+  - 17,706 verse labels, 49,500 connections created
 
-### Track D: Runtime Verification ✅
-API server smoke tests (7/7 endpoints 200), frontend build clean, Go vet clean.
+### Plan Execution Status
 
-## Session 2026-07-15 — Search Enhancement (Unicity-Inspired) COMPLETE
-
-### Track A: Query Sanitization ✅
-- Fixed `_sanitize_fts_query` in web/server.py and lib/api/search.py
-- Strips FTS5 special chars: `? / ( ) + . - " * ^ ~`
-- Prevents FTS5 syntax errors (unicity found 83% of BEIR queries crashed)
-
-### Track B: Query Cache ✅
-- New `lib/api/query_cache.py` — SQLite-backed persistent cache
-- SHA256 key, TTL-based (300s), auto-eviction at 10K entries
-- Wired into both /api/v1/search and /api/v1/semantic-search
-
-### Track C: Graph-Enhanced Search (3-Way RRF) ✅
-- New `lib/api/graph_search.py` — leverages 1.7M connections as 3rd search signal
-- Entity extraction from query → entity_links match → verse_entities → 1-hop connections
-- 3-way RRF fusion with adaptive alpha weighting
-- Explains each result ("Matched: entity 'Abraham' + entity 'Isaac'")
-
-### Track D: Scalar Quantization ⏭️ Not applicable (sqlite-vec 0.1.x limitation)
-
-### Track E: Cross-Encoder Reranker ✅
-- New `lib/api/reranker.py` — optional reranker, graceful degradation
-- SEE early-exit for 3.5× speedup
-
-## Session 2026-07-16 — Infrastructure & Testing COMPLETE
-
-### Track A: CI Pipeline ✅
-- Added `python-lint` job: runs `ruff check` on every push/PR
-- Added `python-tests` job: builds test DB → runs pytest
-- Frontend + Go + Python now all tested in CI
-
-### Track B: Deployment Blockers ✅
-- All 6 gitignored frontend files verified present
-- App.jsx verified clean (MemorizeIcon + openMemorizeTab resolved)
-- Frontend builds clean in 3.5s
-- No stale IPs in deployment docs
-
-### Track C: Test Database Fixture ✅
-- New `scripts/create_test_db.py` — builds 4KB test DB from production schema
-- 13 verses, 8 connections, 3 assessment items, 12 entities, 16 verse-entity links
-- `conftest.py` auto-detects test DB, falls back to production
-- Tests run in 35s (vs 69s with 2.3GB prod DB)
-- Deterministic, CI-runnable, no huge data dependency
-
-### Net Changes
 ```
- .github/workflows/ci.yml          | +37    CI pipeline (ruff + pytest)
- lib/api/graph_search.py           | +396   New: graph-enhanced search
- lib/api/query_cache.py            | +180   New: SQLite query cache
- lib/api/reranker.py               | +180   New: cross-encoder reranker
- lib/api/search.py                 | +31    Sanitization + graph signal in MCP path
- scripts/create_test_db.py         | +450   New: test DB builder
- tests/conftest.py                 | +30    Auto-detect test/prod DB
- tests/test_graph.py               | +3     Skip handling
- tests/test_verses.py              | +9     Broader assertion
- web/server.py                     | +177   Cache + graph + reranker + sanitization
+Phase 5: Polish & Quick Wins [✅ COMPLETE — ~5h]
+  Track A: Infrastructure    [✅]
+    A1: ntfy.sh              [✅]
+  Track B: Memorization      [✅]
+    B1: Sefirotic mapping    [✅]
+    B2: FIRe penalty flow    [✅]
+
+Track 0: Trigram FTS5        [✅ COMPLETE — ~2h]
+  All 4 phases               [✅]
+
+Phase 6: Hebrew & Language   [⬜ NOT STARTED — ~15h]
+  Track C: 7 Hebrew features [⬜]
+  Track D: Entity expansion  [⬜]
+  Track E: Lexicon defs      [⬜]
+
+Phase 7: Assessment Engine   [⬜ NOT STARTED — ~20h]
+  Track F: Foundation        [⬜]
+  Track G: IRT & FSRS        [⬜]
+  Track H: Progress & Recs   [⬜]
 ```
 
-## What's Next (Highest Priority)
+### Current state
+- Phase: 5 complete, 6+7 not started
+- Tests: 198 passed, 1 skipped, 1 deselected (pre-existing Hebrew test failure)
+- OpenAPI: 149 endpoints (updated snapshot)
 
-### 1. Add API Test Coverage (8h)
-Only ~10% of 152 endpoints are tested. Priority targets:
-- Study guides CRUD (18 endpoints) — create, publish, fork, export
-- Hebrew learning (20 endpoints) — lessons, drills
-- Memorization (10 endpoints) — FSRS, palaces, FIRe
-- Conversations/chat (12 endpoints)
-
-### 2. Agent-Written Lexicon Definitions (ongoing)
-Only 411 of 11,515 lemmas have definitions. LLM can batch-generate the remaining ~11,100.
-
-### 3. Expand entity_links (4h)
-Only 87 entities for 70K verses. Algorithmic extraction from verse text would dramatically improve graph search.
-
-### 4. Adaptive Knowledge Assessment Engine (~50h)
-MASTER_PLAN items 2.9-2.16: domain definition, prerequisite graph, BLIM + Bayesian, IRT calibration, FSRS assessment, progress tracking, recommendations.
+### Net Changes (this session)
+```
+modified:   MASTER_PLAN.md          Rewritten as top-level reference
+modified:   findings.md             New — pre-resolved decisions, architecture
+modified:   progress.md             New — session tracking
+modified:   task_plan.md            New — full implementation plan
+modified:   lib/api/fire_unified.py Added stability penalty on verse failure
+modified:   lib/api/search.py       Trigram for xlingual English search
+modified:   web/server.py           ntfy.sh + sefirot route + import
+modified:   generators/__init__.py  Registered sefirot mapper
+modified:   lib/api/__init__.py     Registered sefirot MCP tools
+modified:   tests/__snapshots__/openapi.json Updated (146→149 endpoints)
+new file:   generators/sefirot_mapper.py  10 sefirot → 49.5K connections
+new file:   lib/api/sefirot.py            MCP tool + lookup
+new file:   web/routes/sefirot.py         3 REST endpoints
+```

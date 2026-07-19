@@ -971,6 +971,37 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    # ── Truth Alignment Tools ──
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_truth_check",
+            "description": "Evaluate a scholarly claim against scripture using the connection graph. Returns supports/contradicts/neutral with confidence score and evidence. Use this when a user asks whether a scholar's claim aligns with what scripture actually says.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "claim": {"type": "string", "description": "The scholarly claim to evaluate (e.g., 'The Angel of YHWH is a created being')"},
+                    "verses": {"type": "array", "items": {"type": "string"}, "description": "Verse references the claim relates to (e.g., ['gen.16.7', 'exo.3.2'])"},
+                    "claim_type": {"type": "string", "enum": ["linguistic", "historical", "theological", "textual", "interpretive"], "description": "Optional claim type override"},
+                },
+                "required": ["claim"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_truth_topic",
+            "description": "Run truth check on all scholarly claims for a topic. Topics: temple_microcosm (Beale/Barker/Walton), angel_yhwh_divine_council (Heiser/Barker), josiah_reform, queen_of_heaven_asherah (Dever/Patai/Barker), two_yahwehs_origins (Barker/Segal/Bauckham).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {"type": "string", "enum": ["temple_microcosm", "angel_yhwh_divine_council", "josiah_reform", "queen_of_heaven_asherah", "two_yahwehs_origins"], "description": "Topic to analyze"},
+                },
+                "required": ["topic"],
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──

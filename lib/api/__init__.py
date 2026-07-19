@@ -73,6 +73,7 @@ from lib.api.study import (
 )
 from lib.api.verse import lookup_verse, passage_guide, study_verse
 from lib.api.passage import get_passage_connections, get_chapter_connections, get_book_summary
+from lib.api.sefirot import lookup_sefirot, get_sefirah_info
 from lib.api.versions import get_verse_text, list_versions
 
 # ─── Registry ───
@@ -735,6 +736,34 @@ register(
     "Get ecumenical consensus data for a verse — which traditions engage with it",
 )
 
+# ─── Sefirot (Kabbalistic Tree of Life) ───
+
+register(
+    "scripture_sefirot",
+    lookup_sefirot,
+    {
+        "type": "object",
+        "properties": {
+            "verse_ref": {"type": "string", "description": "Verse ID (gen.1.1)"},
+        },
+        "required": ["verse_ref"],
+    },
+    "Get sefirah labels for a verse — Kabbalistic tree of life mappings through keyword matching",
+)
+
+register(
+    "scripture_sefirah_info",
+    get_sefirah_info,
+    {
+        "type": "object",
+        "properties": {
+            "sefirah": {"type": "string", "description": "Sefirah name (keter, chokhmah, binah, chesed, gevurah, tiferet, netzach, hod, yesod, malkhut)"},
+        },
+        "required": ["sefirah"],
+    },
+    "Get information about a specific sefirah — name, meaning, color, verse count",
+)
+
 register(
     "scripture_research",
     research_topic,
@@ -1203,6 +1232,52 @@ register(
         "required": ["book"],
     },
     "Get book-level connection summary with top connected books and layer distribution.",
+)
+
+# ─── Truth Check Tools ───
+
+from lib.api.truth import check_claim, batch_check, generate_report, classify_claim
+from tools.truth_check import SCHOLARLY_CLAIMS
+
+def _truth_check(conn, claim="", verses=None, claim_type=""):
+    """Evaluate a scholarly claim against the scripture text."""
+    from lib.api.truth import check_claim as _cc
+    if not verses:
+        verses = []
+    ct = claim_type or None
+    return _cc(conn, claim, verses, ct)
+
+register(
+    "scripture_truth_check",
+    _truth_check,
+    {
+        "type": "object",
+        "properties": {
+            "claim": {"type": "string", "description": "The scholarly claim to evaluate"},
+            "verses": {"type": "array", "items": {"type": "string"}, "description": "Verse references (e.g. ['gen.1.1', 'psa.82.1'])"},
+            "claim_type": {"type": "string", "enum": ["linguistic", "historical", "theological", "textual", "interpretive"], "description": "Optional claim type override"},
+        },
+        "required": ["claim"],
+    },
+    "Evaluate a scholarly claim against scripture using the connection graph. Returns supports/contradicts/neutral with confidence score and evidence.",
+)
+
+register(
+    "scripture_truth_topic",
+    lambda conn, topic="": (
+        batch_check(conn, [
+            {**c, "verses": c.pop("verses", [])}
+            for c in SCHOLARLY_CLAIMS.get(topic, [])
+        ]) if topic else {"error": f"Unknown topic. Available: {', '.join(SCHOLARLY_CLAIMS.keys())}"}
+    ),
+    {
+        "type": "object",
+        "properties": {
+            "topic": {"type": "string", "enum": list(SCHOLARLY_CLAIMS.keys()), "description": "Topic to analyze"},
+        },
+        "required": ["topic"],
+    },
+    "Run truth check on all scholarly claims for a topic. Topics: temple_microcosm, angel_yhwh_divine_council, josiah_reform, queen_of_heaven_asherah, two_yahwehs_origins",
 )
 
 # ─── Export all registered tool names ───

@@ -33,7 +33,7 @@ const HOTKEY_LIST = [
   { action: 'settingsPanel', label: 'Settings panel' },
 ]
 
-export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS, fontSize, changeFontSize, darkMode, toggleDarkMode, showQuickAsk, onToggleQuickAsk }) {
+export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS, fontSize, changeFontSize, darkMode, toggleDarkMode, showQuickAsk, onToggleQuickAsk, hebrewOnly, onToggleHebrewOnly }) {
   const [editing, setEditing] = useState(null)
   const [tempKey, setTempKey] = useState('')
 
@@ -83,6 +83,14 @@ export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, 
               <button onClick={() => changeFontSize(1)} className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-sm cursor-pointer">+</button>
             </div>
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">Hebrew-only vocab mode</span>
+            <button onClick={onToggleHebrewOnly}
+              className={`px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors ${hebrewOnly ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'}`}>
+              {hebrewOnly ? 'On' : 'Off'}
+            </button>
+          </div>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500">When on, vocab cards show only Hebrew text (no English) until revealed. Useful for recall practice.</p>
         </div>
 
         {/* LLM settings */}

@@ -3,6 +3,8 @@ import HebrewVerbDrill from './HebrewVerbDrill'
 import CardQueue from './CardQueue'
 import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
+import DailyVerse from './DailyVerse'
+import AudioReviewSession from './AudioReviewSession'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 
 /**
@@ -48,6 +50,11 @@ export default function HebrewLearnView({ onOpenLesson }) {
   const [timeLeft, setTimeLeft] = useState(300)
   const [quickScore, setQuickScore] = useState(0)
   const [toast, setToast] = useState(null) // {message, type}
+  const [showDailyVerse, setShowDailyVerse] = useState(false)
+  const [showFreqVocab, setShowFreqVocab] = useState(false)
+  const [freqVocabCards, setFreqVocabCards] = useState([])
+  const [showAudioReview, setShowAudioReview] = useState(false)
+  const [audioWords, setAudioWords] = useState([])
 
   // Load curriculum + gamification in parallel
   const loadAll = () => {
@@ -200,6 +207,76 @@ export default function HebrewLearnView({ onOpenLesson }) {
     )
   }
 
+  // Daily Verse mode
+  if (showDailyVerse) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📆 Verse of the Day</h2>
+          <button onClick={() => setShowDailyVerse(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <DailyVerse />
+      </div>
+    )
+  }
+
+  // Audio review mode
+  if (showAudioReview) {
+    if (audioWords.length === 0) {
+      return (
+        <div className="max-w-lg mx-auto px-6 py-12 text-center">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">No audio words loaded.</p>
+          <button onClick={() => setShowAudioReview(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="max-w-lg mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">🎧 Audio Review</h2>
+          <button onClick={() => setShowAudioReview(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back
+          </button>
+        </div>
+        <AudioReviewSession words={audioWords} onComplete={() => setShowAudioReview(false)} />
+      </div>
+    )
+  }
+
+  // Frequency vocab mode
+  if (showFreqVocab) {
+    if (freqVocabCards.length === 0) {
+      return (
+        <div className="max-w-lg mx-auto px-6 py-12 text-center">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Loading top vocabulary...</p>
+          <button onClick={() => setShowFreqVocab(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+      )
+    }
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📊 Top 100 Vocabulary</h2>
+          <button onClick={() => setShowFreqVocab(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <CardQueue cards={freqVocabCards} title="Frequency Vocab" emptyMessage="All done!" />
+      </div>
+    )
+  }
+
   // Quick mode rendering
   if (quickMode) {
     const q = quickQuestions[quickIdx]
@@ -310,6 +387,10 @@ export default function HebrewLearnView({ onOpenLesson }) {
           className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           ⏱ 5-min quick
         </button>
+        <button onClick={() => setShowDailyVerse(true)}
+          className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          📆 Verse of Day
+        </button>
         <button onClick={() => setShowPassageReader(true)}
           className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           📖 Read Passage
@@ -317,6 +398,44 @@ export default function HebrewLearnView({ onOpenLesson }) {
         <button onClick={() => setShowVerbDrill(true)}
           className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           ע Verb Drills
+        </button>
+        <button onClick={async () => {
+          try {
+            const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10')
+            const d = await r.json()
+            const cards = (d.words || []).map(w => ({
+              id: `vocab-${w.rank}-${w.hebrew?.replace(/[^a-zA-Z\u0590-\u05ff]/g, '')}`,
+              type: 'vocab',
+              data: {
+                word: w.hebrew,
+                definition: w.gloss,
+                transliteration: w.transliteration,
+                lemma: w.root || '',
+                language: 'hebrew',
+              },
+            }))
+            setFreqVocabCards(cards)
+          } catch {}
+          setShowFreqVocab(true)
+        }}
+          className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          📊 Top Vocab
+        </button>
+        <button onClick={async () => {
+          try {
+            const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10')
+            const d = await r.json()
+            const words = (d.words || []).filter(w => w.hebrew && w.gloss).map(w => ({
+              hebrew: w.hebrew,
+              english: w.gloss,
+              transliteration: w.transliteration,
+            }))
+            setAudioWords(words)
+          } catch {}
+          setShowAudioReview(true)
+        }}
+          className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          🎧 Audio Review
         </button>
         <button onClick={async () => {
           // Load both node cards and drill cards, interleave them
