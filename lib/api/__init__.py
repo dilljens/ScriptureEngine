@@ -1237,7 +1237,7 @@ register(
 # ─── Truth Check Tools ───
 
 from lib.api.truth import check_claim, batch_check, generate_report, classify_claim
-from tools.truth_check import SCHOLARLY_CLAIMS
+from lib.api.truth_data import SCHOLARLY_CLAIMS
 
 def _truth_check(conn, claim="", verses=None, claim_type=""):
     """Evaluate a scholarly claim against the scripture text."""

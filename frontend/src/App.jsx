@@ -37,6 +37,7 @@ const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'
 const HebrewLearnView = React.lazy(() => import('./components/HebrewLearnView'))
 const WikiArticleViewer = React.lazy(() => import('./components/WikiArticleViewer'))
 const HebrewPassageReader = React.lazy(() => import('./components/HebrewPassageReader'))
+const AssessmentView = React.lazy(() => import('./components/AssessmentView'))
 const LearnView = React.lazy(() => import('./components/LearnView'))
 import TileDashboard from './components/TileDashboard'
 import SubjectTabBar from './components/SubjectTabBar'
@@ -454,6 +455,7 @@ function AppInner() {
   const layersBtnRef = useRef(null)
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
+const [showAssessment, setShowAssessment] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [passageStudyRef, setPassageStudyRef] = useState(null)
@@ -1319,6 +1321,7 @@ function AppInner() {
                   <button onClick={() => { setShowMainMenu(false); openLearnTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📚 Learn</button>
                   <button onClick={() => { setShowMainMenu(false); openHebrewTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">א Hebrew</button>
                   <button onClick={() => { setShowMainMenu(false); openMemorizeTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🧠 Memorize</button>
+                  <button onClick={() => { setShowMainMenu(false); setShowAssessment(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📝 Assess</button>
                   <button onClick={() => { setShowMainMenu(false); openHubNoteTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🗺️ Study Paths</button>
                   <button onClick={() => { setShowMainMenu(false); openWikiTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📖 Wiki</button>
                   <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
@@ -1568,6 +1571,23 @@ function AppInner() {
           hebrewOnly={hebrewOnly}
           onToggleHebrewOnly={() => persist({ hebrewOnly: !hebrewOnly })}
         />
+      )}
+
+      {showAssessment && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 bg-black/30 dark:bg-black/50">
+          <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">📝 Scripture Assessment</h2>
+              <button onClick={() => setShowAssessment(false)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-lg">&times;</button>
+            </div>
+            <div className="p-4">
+              <Suspense fallback={<div className="p-8 text-center text-sm text-neutral-400 animate-pulse">Loading assessment...</div>}>
+                <AssessmentView user_id={userId} onBack={() => setShowAssessment(false)} />
+              </Suspense>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Global Hebrew keyboard (floating at bottom) */}
