@@ -4064,6 +4064,316 @@
         }
       }
     },
+    "/api/v1/lexicon/search": {
+      "get": {
+        "summary": "Lexicon Search",
+        "description": "Search the scripture lexicon by lemma number, Hebrew word, or English translation.",
+        "operationId": "lexicon_search_api_v1_lexicon_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Search term \u2014 lemma, Hebrew, or English",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Search term \u2014 lemma, Hebrew, or English"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Max results",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Max results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lexicon/lemma/{lemma}": {
+      "get": {
+        "summary": "Lexicon Lemma",
+        "description": "Get full lexicon entry for a lemma (Strong's number).",
+        "operationId": "lexicon_lemma_api_v1_lexicon_lemma__lemma__get",
+        "parameters": [
+          {
+            "name": "lemma",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lemma"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lexicon/root/{root_letters}": {
+      "get": {
+        "summary": "Lexicon Root",
+        "description": "Get all lemmas sharing a triconsonantal root.",
+        "operationId": "lexicon_root_api_v1_lexicon_root__root_letters__get",
+        "parameters": [
+          {
+            "name": "root_letters",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Root Letters"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lexicon/domain/{domain_name}": {
+      "get": {
+        "summary": "Lexicon Domain",
+        "description": "Browse all lemmas in a semantic domain.",
+        "operationId": "lexicon_domain_api_v1_lexicon_domain__domain_name__get",
+        "parameters": [
+          {
+            "name": "domain_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Domain Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lexicon/domains": {
+      "get": {
+        "summary": "Lexicon Domains",
+        "description": "List all semantic domains.",
+        "operationId": "lexicon_domains_api_v1_lexicon_domains_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lexicon/concordance/{lemma}": {
+      "get": {
+        "summary": "Lexicon Concordance",
+        "description": "Get all verses containing a lemma (Strong's number).",
+        "operationId": "lexicon_concordance_api_v1_lexicon_concordance__lemma__get",
+        "parameters": [
+          {
+            "name": "lemma",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Lemma"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Max verses to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Max verses to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verses/{ref}/grammar": {
+      "get": {
+        "summary": "Get Grammar",
+        "description": "Get a verse with morphologically-tagged words \u2014 grammar coloring data.",
+        "operationId": "get_grammar_api_v1_verses__ref__grammar_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/grammar/{ref}": {
+      "get": {
+        "summary": "Get Chapter Grammar",
+        "description": "Get word-level grammar/gematria data for all verses in a chapter.\n\n/api/v1/grammar/isa.55  \u2192 Word data for all verses in Isaiah 55",
+        "operationId": "get_chapter_grammar_api_v1_grammar__ref__get",
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/graph/explore": {
       "get": {
         "summary": "Graph Explore",
@@ -6153,316 +6463,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/search": {
-      "get": {
-        "summary": "Lexicon Search",
-        "description": "Search the scripture lexicon by lemma number, Hebrew word, or English translation.",
-        "operationId": "lexicon_search_api_v1_lexicon_search_get",
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Search term \u2014 lemma, Hebrew, or English",
-              "default": "",
-              "title": "Q"
-            },
-            "description": "Search term \u2014 lemma, Hebrew, or English"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "Max results",
-              "default": 20,
-              "title": "Limit"
-            },
-            "description": "Max results"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/lemma/{lemma}": {
-      "get": {
-        "summary": "Lexicon Lemma",
-        "description": "Get full lexicon entry for a lemma (Strong's number).",
-        "operationId": "lexicon_lemma_api_v1_lexicon_lemma__lemma__get",
-        "parameters": [
-          {
-            "name": "lemma",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Lemma"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/root/{root_letters}": {
-      "get": {
-        "summary": "Lexicon Root",
-        "description": "Get all lemmas sharing a triconsonantal root.",
-        "operationId": "lexicon_root_api_v1_lexicon_root__root_letters__get",
-        "parameters": [
-          {
-            "name": "root_letters",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Root Letters"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/domain/{domain_name}": {
-      "get": {
-        "summary": "Lexicon Domain",
-        "description": "Browse all lemmas in a semantic domain.",
-        "operationId": "lexicon_domain_api_v1_lexicon_domain__domain_name__get",
-        "parameters": [
-          {
-            "name": "domain_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Domain Name"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/domains": {
-      "get": {
-        "summary": "Lexicon Domains",
-        "description": "List all semantic domains.",
-        "operationId": "lexicon_domains_api_v1_lexicon_domains_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/lexicon/concordance/{lemma}": {
-      "get": {
-        "summary": "Lexicon Concordance",
-        "description": "Get all verses containing a lemma (Strong's number).",
-        "operationId": "lexicon_concordance_api_v1_lexicon_concordance__lemma__get",
-        "parameters": [
-          {
-            "name": "lemma",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Lemma"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "description": "Max verses to return",
-              "default": 50,
-              "title": "Limit"
-            },
-            "description": "Max verses to return"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/verses/{ref}/grammar": {
-      "get": {
-        "summary": "Get Grammar",
-        "description": "Get a verse with morphologically-tagged words \u2014 grammar coloring data.",
-        "operationId": "get_grammar_api_v1_verses__ref__grammar_get",
-        "parameters": [
-          {
-            "name": "ref",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Ref"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/grammar/{ref}": {
-      "get": {
-        "summary": "Get Chapter Grammar",
-        "description": "Get word-level grammar/gematria data for all verses in a chapter.\n\n/api/v1/grammar/isa.55  \u2192 Word data for all verses in Isaiah 55",
-        "operationId": "get_chapter_grammar_api_v1_grammar__ref__get",
-        "parameters": [
-          {
-            "name": "ref",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Ref"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
               }
             }
           }

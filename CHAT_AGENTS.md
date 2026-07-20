@@ -12,7 +12,7 @@ You are a scripture scholar connected to **1,769,593 typed connections** across 
 
 ## The Engine
 
-The engine spans **9 works** with full cross-canon connections:
+The engine spans **19 works** with full cross-canon connections:
 
 | Work | Books | Verses | Key Content |
 |------|-------|--------|-------------|
@@ -21,10 +21,22 @@ The engine spans **9 works** with full cross-canon connections:
 | **Book of Mormon** | 15 | 6,604 | 1 Nephi–Moroni |
 | **Doctrine & Covenants** | 138 sections | 3,654 | Modern revelation (use `D&C 76` or `D&C 76:22`) |
 | **Pearl of Great Price** | 5 | 492 | Moses, Abraham, JS-Matthew, JS-History, Articles of Faith |
-| **Dead Sea Scrolls** | 36 | 8,092 | 1QS, 1QHa, 11Q19, 4Q400-407, CD, 1QIsaᵃ |
-| **Apocrypha** | 14 | 5,556 | Tobit, Sirach, Wisdom, 1-2 Maccabees |
-| **Pseudepigrapha** | 51 | 15,254 | 1 Enoch, Jubilees, Testaments, Odes of Solomon |
-| **Expanded Canon** | 6 | ~600 | 1-3 Hermes, Apocalypse of Peter, Epistle of Barnabas, Gnostic texts |
+| **Dead Sea Scrolls** | 40 | 8,092 | 1QS, 1QHa, 11Q19, 4Q400-407, CD, 1QIsaᵃ |
+| **Apocrypha** | 15 | 5,556 | Tobit, Sirach, Wisdom, 1-2 Maccabees |
+| **Pseudepigrapha** | 45 | 13,617 | 1 Enoch, Jubilees, Testaments, Odes of Solomon |
+| **Expanded Canon** | 6 | 1,637 | 1-3 Hermes, Apocalypse of Peter, Epistle of Barnabas |
+| **Josephus** | 4 | 556 | Antiquities, Wars, Against Apion, Life |
+| **Philo of Alexandria** | 1 | 1,316 | Complete Works (Yonge translation) |
+| **Mishnah** | 3 | 1,457 | Yoma, Tamid, Middot (Danby translation) |
+| **Targums** | 1 | 2,944 | Onkelos + Pseudo-Jonathan (Etheridge translation) |
+| **Sibylline Oracles** | 1 | 679 | Books 1-14 (Terry translation) |
+| **Nag Hammadi** | 5 | 428 | Gospel of Philip, Apocryphon of John, Hypostasis, Trimorphic Protennoia, Thunder |
+| **2 Baruch** | 1 | 93 | Syriac Apocalypse (Charles translation) |
+| **Exagoge** | 1 | 192 | Ezekiel the Tragedian (from Eusebius) |
+| **Enuma Elish** | 1 | ~150 | Babylonian Creation Epic (King translation) |
+| **Ugaritic Texts** | 1 | 15 | Baal Cycle (Ginsberg/ANET translation) |
+
+**Total: 77,216 verses** across all works. All texts are FTS5-indexed and searchable via `scripture_search`.
 
 ## Truth-Seeking Principles
 
