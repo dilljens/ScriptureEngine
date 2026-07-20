@@ -416,6 +416,7 @@ const [showAssessment, setShowAssessment] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [passageStudyRef, setPassageStudyRef] = useState(null)
+  const [readingLessonId, setReadingLessonId] = useState(null)  // set when passageStudyRef is opened from a reading lesson
   const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
   const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
   const [showHubNotes, setShowHubNotes] = useState(false)
@@ -985,7 +986,7 @@ const [showAssessment, setShowAssessment] = useState(false)
   if (passageStudyRef) {
     return (
       <div className="fixed inset-0 z-50 bg-white dark:bg-neutral-950">
-        <HebrewPassageReader verseRef={passageStudyRef} onClose={() => setPassageStudyRef(null)} />
+        <HebrewPassageReader verseRef={passageStudyRef} readingLessonId={readingLessonId} onClose={() => { setPassageStudyRef(null); setReadingLessonId(null) }} />
       </div>
     )
   }
@@ -1015,7 +1016,7 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (showHebrewLearn) {
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading curriculum...</div>}>
-          <HebrewLearnView onOpenLesson={(nodeId) => setHebrewLessonId(nodeId)} />
+          <HebrewLearnView onOpenLesson={(nodeId) => setHebrewLessonId(nodeId)} onOpenPassage={(ref, lessonId) => { setPassageStudyRef(ref); setReadingLessonId(lessonId || null) }} />
         </Suspense>
       )
     }

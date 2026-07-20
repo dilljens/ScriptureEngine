@@ -32,7 +32,7 @@ const CATEGORY_STYLES = {
   phrase: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300 dark:border-yellow-700', text: 'text-yellow-800 dark:text-yellow-200', label: 'Phrases', icon: 'כ' },
 }
 
-export default function HebrewLearnView({ onOpenLesson }) {
+export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [curriculum, setCurriculum] = useState(null)
   const [gamification, setGamification] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -550,7 +550,18 @@ export default function HebrewLearnView({ onOpenLesson }) {
                   const isLocked = !node.unlocked
 
                   return (
-                    <button key={node.id} onClick={() => { if (!isLocked) onOpenLesson?.(node.id) }} disabled={isLocked}
+                    <button key={node.id} onClick={() => {
+                      if (isLocked) return
+                      // Reading lessons open the PassageReader instead of the lesson view
+                      if (node.category === 'reading' && node.description) {
+                        const refMatch = node.description.match(/Read\s+([\w]+)\.(\d+)/)
+                        if (refMatch) {
+                          onOpenPassage?.(`${refMatch[1]}.${refMatch[2]}`, node.id)
+                          return
+                        }
+                      }
+                      onOpenLesson?.(node.id)
+                    }} disabled={isLocked}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
                         ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
                           : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
