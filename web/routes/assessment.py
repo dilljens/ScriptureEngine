@@ -1,8 +1,11 @@
 """Knowledge Assessment — direct HTTP endpoints."""
 import contextlib
 import json
+import logging
 import sys
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -73,7 +76,7 @@ def get_quiz_questions(
     # Get questions with adaptive ordering
     rows = cursor.execute(f"""
         SELECT a.question_type, a.question_text, a.options_json, a.correct_answer, a.bloom_level, a.tier,
-               a.id as question_id, a.explanation,
+               a.id as question_id, a.explanation, a.layer,
                COALESCE(qp.correct, 0) as user_correct,
                COALESCE(qp.attempts, 0) as user_attempts
         FROM assessment_items a
@@ -101,9 +104,11 @@ def get_quiz_questions(
             "tier": r[5] or "text",
             "question_id": r[6],
             "explanation": r[7] or "",
+            "layer": r[8] or "",
+            "user_correct": r[9],
+            "user_attempts": r[10],
         })
 
-    # Rebuild with question_ids included
     questions_with_ids = questions
 
     conn.close()
@@ -115,9 +120,43 @@ def get_quiz_questions(
     }}
 
 
+# ── FSRS scheduling helpers (adapted from memorize.py) ──────────────────
+
+_FSRS_SPACING = [1, 3, 7, 14, 30, 60, 90, 180]  # days
+
+
+def _fsrs_initial_stability(rating):
+    """Initial stability based on first rating (1-4)."""
+    return {1: 0.3, 2: 1.0, 3: 2.5, 4: 4.0}.get(rating, 2.5)
+
+
+def _fsrs_next_interval(stability, request_retention=0.9):
+    """Compute next interval in days from stability."""
+    interval = round(stability * (1 / request_retention - 1))
+    return max(1, interval)
+
+
+def _fsrs_stability_after_success(stability, rating):
+    """Increase stability after a successful recall."""
+    factor = {1: 0.5, 2: 0.8, 3: 1.0, 4: 1.3}.get(rating, 1.0)
+    return stability * (1.0 + factor * 0.5)
+
+
+def _fsrs_stability_after_failure(stability, rating):
+    """Decrease stability after a failed recall."""
+    factor = {1: 0.8, 2: 0.5, 3: 0.3, 4: 0.1}.get(rating, 0.5)
+    return max(0.1, stability * factor)
+
+
+# ── Quiz answer endpoint (FSRS 4-point rating) ─────────────────────────
+
 @router.post("/api/v1/quiz/answer")
 def quiz_answer(body: dict):
-    """Record a quiz answer and update adaptive progress."""
+    """Record a quiz answer with FSRS 4-point rating (1=Again, 2=Hard, 3=Good, 4=Easy).
+
+    Body: { "user_id": "...", "question_id": N, "rating": 1|2|3|4 }
+    Replaces old binary correct/incorrect with full FSRS scheduling.
+    """
     conn = get_db()
     cursor = conn.cursor()
 
@@ -127,6 +166,8 @@ def quiz_answer(body: dict):
             question_id INTEGER NOT NULL,
             correct INTEGER DEFAULT 0,
             attempts INTEGER DEFAULT 0,
+            stability REAL DEFAULT 1.0,
+            difficulty REAL DEFAULT 5.0,
             last_seen TEXT,
             next_review TEXT DEFAULT NULL,
             PRIMARY KEY (user_id, question_id)
@@ -135,45 +176,49 @@ def quiz_answer(body: dict):
 
     user_id = body.get("user_id", "default")
     question_id = body.get("question_id", 0)
-    correct = body.get("correct", False)
+    rating = body.get("rating", 0)
 
     if not question_id:
         conn.close()
         raise HTTPException(400, "question_id required")
 
-    # Upsert progress
+    if rating not in (1, 2, 3, 4):
+        conn.close()
+        raise HTTPException(400, "rating must be 1 (Again), 2 (Hard), 3 (Good), or 4 (Easy)")
+
+    is_correct = rating >= 3
+
+    # Get existing progress
     existing = cursor.execute(
-        "SELECT correct, attempts FROM quiz_progress WHERE user_id=? AND question_id=?",
+        "SELECT correct, attempts, stability FROM quiz_progress WHERE user_id=? AND question_id=?",
         (user_id, question_id)
     ).fetchone()
 
-    # FSRS-like scheduling: after correct, extend interval; after wrong, shorten
-    # Simple exponential spacing: 1d → 3d → 7d → 14d → 30d
-    SPACING = [1, 3, 7, 14, 30, 60, 90, 180]
     if existing:
         attempts = existing["attempts"] + 1
-        if correct:
-            # Count consecutive correct streak
-            streak = cursor.execute("""
-                SELECT COUNT(*) FROM quiz_progress
-                WHERE user_id=? AND question_id=? AND correct > 0
-            """, (user_id, question_id)).fetchone()[0]
-            interval = SPACING[min(streak, len(SPACING) - 1)]
+        stability = existing["stability"] or 1.0
+
+        # FSRS stability update
+        if is_correct:
+            new_stability = _fsrs_stability_after_success(stability, rating)
         else:
-            interval = 1  # Re-test tomorrow if wrong
+            new_stability = _fsrs_stability_after_failure(stability, rating)
+
+        interval = _fsrs_next_interval(new_stability)
 
         cursor.execute("""
             UPDATE quiz_progress
-            SET correct=correct + ?, attempts=?, last_seen=datetime('now'),
+            SET correct=correct + ?, attempts=?, stability=?, last_seen=datetime('now'),
                 next_review=date('now', '+? days')
             WHERE user_id=? AND question_id=?
-        """, (1 if correct else 0, attempts, interval, user_id, question_id))
+        """, (1 if is_correct else 0, attempts, round(new_stability, 2), interval, user_id, question_id))
     else:
-        interval = 1 if correct else 1
+        stability = _fsrs_initial_stability(rating)
+        interval = _fsrs_next_interval(stability)
         cursor.execute("""
-            INSERT INTO quiz_progress (user_id, question_id, correct, attempts, last_seen, next_review)
-            VALUES (?, ?, ?, 1, datetime('now'), date('now', '+? days'))
-        """, (user_id, question_id, 1 if correct else 0, interval))
+            INSERT INTO quiz_progress (user_id, question_id, correct, attempts, stability, last_seen, next_review)
+            VALUES (?, ?, ?, 1, ?, datetime('now'), date('now', '+? days'))
+        """, (user_id, question_id, 1 if is_correct else 0, round(stability, 2), interval))
 
     conn.commit()
 
@@ -183,11 +228,34 @@ def quiz_answer(body: dict):
         calibrate_all_items(conn)
     except Exception:
         log.warning("silent_exception", exc_info=True)
-        pass
+
+    # FIRe credit: correct assessment answers → implicit repetition for connected verses
+    if is_correct:
+        try:
+            # Find which verses this assessment item is about via knowledge_items
+            ki = cursor.execute("""
+                SELECT ki.verse_id, ki.target_verse
+                FROM knowledge_items ki
+                JOIN assessment_items ai ON ai.knowledge_item_id = ki.id
+                WHERE ai.id = ?
+            """, (question_id,)).fetchone()
+            if ki and ki["verse_id"] and ki["target_verse"]:
+                from lib.api.fire_unified import compute_fire_credit as fire_unified
+                # Credit flows to the source verse and its connections
+                fire_unified(conn, "verse", ki["verse_id"], 4, user_id)
+                fire_unified(conn, "verse", ki["target_verse"], 4, user_id)
+        except Exception:
+            log.warning("silent_exception", exc_info=True)
 
     conn.close()
 
-    return {"ok": True, "data": {"recorded": True, "correct": correct}}
+    return {"ok": True, "data": {
+        "recorded": True,
+        "rating": rating,
+        "correct": is_correct,
+        "stability": round(stability, 2),
+        "next_review": interval,
+    }}
 
 
 @router.get("/api/v1/quiz/progress")

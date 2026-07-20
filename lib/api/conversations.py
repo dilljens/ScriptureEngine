@@ -428,19 +428,37 @@ def add_message(conn, session_id, role, content, metadata=None):
     # Auto-detect connections from co-occurring refs in same message
     if len(valid_refs) >= 2 and not connections:
         verse_ids = [r["verse_id"] for r in valid_refs]
+        # Batch-check all pairs: build a set of existing connections for O(1) lookup
+        if len(verse_ids) > 2:
+            placeholders = ",".join("?" for _ in verse_ids)
+            existing_pairs = set()
+            try:
+                rows = conn.execute(f"""
+                    SELECT source_verse, target_verse FROM connections
+                    WHERE (source_verse IN ({placeholders}) AND target_verse IN ({placeholders}))
+                       OR (target_verse IN ({placeholders}) AND source_verse IN ({placeholders}))
+                    LIMIT 500
+                """, (*verse_ids, *verse_ids, *verse_ids, *verse_ids)).fetchall()
+                for r in rows:
+                    key = tuple(sorted([r["source_verse"], r["target_verse"]]))
+                    existing_pairs.add(key)
+            except Exception:
+                pass
+
         for i in range(len(verse_ids)):
             for j in range(i + 1, len(verse_ids)):
                 src, tgt = verse_ids[i], verse_ids[j]
                 try:
-                    # Check if this pair exists in connections table
-                    existing = conn.execute("""
-                        SELECT id FROM connections
-                        WHERE (source_verse = ? AND target_verse = ?)
-                           OR (source_verse = ? AND target_verse = ?)
-                        LIMIT 1
-                    """, (src, tgt, tgt, src)).fetchone()
+                    pair_key = tuple(sorted([src, tgt]))
+                    has_existing = pair_key in existing_pairs if len(verse_ids) > 2 else bool(
+                        conn.execute("""
+                            SELECT 1 FROM connections
+                            WHERE (source_verse=? AND target_verse=?) OR (source_verse=? AND target_verse=?)
+                            LIMIT 1
+                        """, (src, tgt, tgt, src)).fetchone()
+                    )
 
-                    conn_type = "retrieved" if existing else "discovered"
+                    conn_type = "retrieved" if has_existing else "discovered"
                     conn.execute("""
                         INSERT OR IGNORE INTO conversation_connections
                             (session_id, source_verse, target_verse, relationship,
@@ -449,7 +467,7 @@ def add_message(conn, session_id, role, content, metadata=None):
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         session_id, src, tgt, "",
-                        conn_type, existing["id"] if existing else None,
+                        conn_type, None,
                         0.5, content[:200],
                     ))
                 except Exception:

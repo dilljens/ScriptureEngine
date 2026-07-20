@@ -42,6 +42,8 @@ export default function CardRenderer({ card, showAnswer, onAnswer, answerState, 
       return <TranslationCardRenderer card={card} showAnswer={showAnswer} />
     case 'learn_question':
       return <LearnQuestionRenderer card={card} showAnswer={showAnswer} onAnswer={onAnswer} answerState={answerState} />
+    case 'assessment_question':
+      return <AssessmentQuestionRenderer card={card} showAnswer={showAnswer} onAnswer={onAnswer} />
     default:
       return <div className="text-sm text-red-500">Unknown card type: {card.type}</div>
   }
@@ -273,131 +275,227 @@ function StudyStepCardRenderer({ card, showAnswer }) {
 
 // ── Learn Question Card ──
 // Handles both MC and open-ended questions from LearnView modules.
-// Front: shows question + input (MC options or textarea)
+// Front: shows question + adaptive MC options (if user struggled) or pure recall prompt
 // Back: shows correct answer + explanation + LLM grade
+// Adaptive MC (TMAW Ch 20): options hidden for pure recall if user has been correct before
 function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
-  const { question, options, correct_answer, explanation, tier, bloom_level, is_open } = card.data || {}
+  const { question, options, correct_answer, explanation, tier, bloom_level, is_open, show_options } = card.data || {}
   const [selected, setSelected] = useState(null)
   const [openInput, setOpenInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  // If answer was already submitted (via onAnswer), show back content
-  if (showAnswer) {
+  // Front (not yet revealed): show question + adaptive MC options or pure recall prompt
+  if (!showAnswer) {
     return (
-      <div className="space-y-3">
+      <div>
         <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
             {preprocess(question || '')}
           </ReactMarkdown>
         </div>
-        {is_open && answerState?.llmGrade && (
-          <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">AI Evaluation</p>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {['text_engagement', 'reasoning', 'depth', 'context'].map(k => {
-                const score = answerState.llmGrade?.scores?.[k] || answerState.llmGrade?.[k]
-                if (score === undefined) return null
-                return (
-                  <div key={k}>
-                    <div className="text-[9px] text-neutral-400 capitalize mb-0.5">{k.replace('_', ' ')}</div>
-                    <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                      <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(score / 10) * 100}%` }} />
-                    </div>
-                    <span className="text-[10px] font-mono text-neutral-500">{score}/10</span>
-                  </div>
-                )
-              })}
-            </div>
-            {answerState.llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{answerState.llmGrade.feedback}</p>}
-          </div>
+
+        {/* Source module */}
+        {card.data?.source && (
+          <p className="text-[10px] text-neutral-400 mt-2 italic">from {card.data.source}</p>
         )}
-        {!is_open && (
-          <div className="space-y-1.5">
-            {(options || []).map((opt, i) => {
-              const isCorrect = String(opt) === String(correct_answer)
-              return (
-                <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
-                  isCorrect
-                    ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
+
+        {/* Adaptive MC options — only shown if user previously struggled */}
+        {!is_open && show_options && options?.length > 0 && (
+          <div className="space-y-1.5 mt-3">
+            {options.map((opt, i) => (
+              <button key={i} onClick={() => {
+                setSelected(opt)
+                onAnswer?.({ selected: opt })
+              }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs border transition-all cursor-pointer ${
+                  selected === opt
+                    ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
                 }`}>
-                  <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
-                  {opt}
-                </div>
-              )
-            })}
+                {opt}
+              </button>
+            ))}
           </div>
         )}
-        {explanation && (
-          <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
-              {preprocess(explanation)}
-            </ReactMarkdown>
+
+        {/* Pure recall prompt — no options shown */}
+        {!is_open && (!show_options || !options?.length) && (
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center mt-4">
+            Recall the answer, then click to reveal
+          </p>
+        )}
+
+        {/* Open-ended input */}
+        {is_open && (
+          <div className="mt-3">
+            <textarea value={openInput} onChange={e => setOpenInput(e.target.value)}
+              placeholder="Type your answer..."
+              className="w-full px-3 py-2 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 resize-none"
+              rows={3} />
+            <button onClick={() => {
+              if (openInput.trim()) onAnswer?.({ openInput: openInput.trim() })
+            }}
+              className="mt-2 px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors">
+              Submit for AI Evaluation
+            </button>
           </div>
         )}
       </div>
     )
   }
 
-  // Front: show question + input
+  // Back (answer revealed): show correct answer + explanation + LLM grade
   return (
-    <div className="w-full">
-      {/* Tier badge */}
-      {tier && (
-        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium inline-block mb-2 ${
-          tier === 'text' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-          tier === 'analysis' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
-          'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-        }`}>{tier}</span>
-      )}
-      {bloom_level && <span className="text-[9px] text-neutral-400 ml-1">{bloom_level}</span>}
-
-      {/* Question text */}
-      <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-4 whitespace-pre-wrap">
+    <div className="space-y-3">
+      <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
           {preprocess(question || '')}
         </ReactMarkdown>
       </div>
-
-      {/* Input area */}
-      {is_open ? (
-        <textarea
-          value={openInput}
-          onChange={e => setOpenInput(e.target.value)}
-          rows={3}
-          placeholder="Write your analysis here… Reference specific words, phrases, and connections."
-          className="w-full px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 outline-none transition-all resize-y"
-        />
-      ) : (
+      {is_open && answerState?.llmGrade && (
+        <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">AI Evaluation</p>
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            {['text_engagement', 'reasoning', 'depth', 'context'].map(k => {
+              const score = answerState.llmGrade?.scores?.[k] || answerState.llmGrade?.[k]
+              if (score === undefined) return null
+              return (
+                <div key={k}>
+                  <div className="text-[9px] text-neutral-400 capitalize mb-0.5">{k.replace('_', ' ')}</div>
+                  <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(score / 10) * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] font-mono text-neutral-500">{score}/10</span>
+                </div>
+              )
+            })}
+          </div>
+          {answerState.llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{answerState.llmGrade.feedback}</p>}
+        </div>
+      )}
+      {!is_open && (
         <div className="space-y-1.5">
           {(options || []).map((opt, i) => {
-            const isSelected = selected === opt || selected === i
+            const isCorrect = String(opt) === String(correct_answer)
             return (
-              <button key={i} onClick={() => { setSelected(opt); if (onAnswer) onAnswer({ selected: opt }) }}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
-                    : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
-                }`}>
+              <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
+                isCorrect
+                  ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
+                  : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
+              }`}>
                 <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
                 {opt}
-              </button>
+              </div>
             )
           })}
         </div>
       )}
+      {explanation && (
+        <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
+            {preprocess(explanation)}
+          </ReactMarkdown>
+        </div>
+    )}
+  </div>
+  )
+}
 
-      {/* Submit button (for open-ended) */}
-      {is_open && onAnswer && (
-        <button onClick={() => onAnswer({ openInput })}
-          disabled={!openInput.trim()}
-          className="mt-3 w-full py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          Submit for AI Evaluation
-        </button>
+// ── Assessment Question Card ──
+// Front: passage + question (adaptive: shows MC options if user previously struggled)
+// Back: correct answer + explanation + tier/type badges
+// Follows The Math Academy Way Ch 20: retrieval before reveal
+function AssessmentQuestionRenderer({ card, showAnswer, onAnswer }) {
+  const { question, answer, explanation, options, tier, bloom_level, layer, show_options } = card.data || {}
+  const [selected, setSelected] = useState(null)
+
+  const handleSelect = (opt) => {
+    if (selected) return
+    setSelected(opt)
+    onAnswer?.({ selected: opt })
+  }
+
+  return (
+    <div>
+      {/* Question text (shown on both front and back) */}
+      <div className="prose prose-sm dark:prose-invert max-w-none mb-3">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+          {question || ''}
+        </ReactMarkdown>
+      </div>
+
+      {/* Tier/type badges */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {tier && (
+          <span className="text-[9px] px-2 py-0.5 rounded-full font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700">
+            {tier === 'text' ? '🔬' : tier === 'analysis' ? '🔍' : '🤝'} {tier}
+          </span>
+        )}
+        {bloom_level && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700 text-neutral-500">
+            {bloom_level}
+          </span>
+        )}
+        {layer && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">
+            {layer}
+          </span>
+        )}
+      </div>
+
+      {/* Adaptive MC options — only shown if user previously struggled */}
+      {!showAnswer && show_options && options?.length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          {options.map((opt, i) => (
+            <button key={i} onClick={() => handleSelect(opt)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-xs border transition-all cursor-pointer ${
+                selected === opt
+                  ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                  : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
+              }`}>
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* No options shown — prompt user to recall */}
+      {!showAnswer && (!show_options || !options?.length) && (
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center py-2">
+          {options?.length ? 'Select an option above, then flip to check' : 'Recall the answer, then click to reveal'}
+        </p>
+      )}
+
+      {/* Back: answer + explanation */}
+      {showAnswer && (
+        <div className="space-y-3 mt-2 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 mb-1">
+              {selected ? (selected === answer ? '✅ Correct' : '❌ Incorrect') : 'Answer'}
+            </p>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                {answer || ''}
+              </ReactMarkdown>
+            </div>
+          </div>
+          {explanation && (
+            <div className="p-3 rounded-lg bg-white dark:bg-neutral-800 border border-indigo-100 dark:border-neutral-700">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">Explanation</p>
+              <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                  {explanation}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
+
+
 
 // ── Cloze Deletion Card ──
 // Front: shows verse with a word replaced by [___]

@@ -75,7 +75,7 @@ const TYPE_COLORS = {
   autocomplete: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-700/50',
 }
 
-function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
+function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, onToggle, onToggleHistory, onToggleStructure }) {
   const [val, setVal] = useState('')
   const [results, setResults] = useState([])
   const [resultType, setResultType] = useState('empty')
@@ -101,7 +101,7 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
       out.push({
         type: 'navigate',
         matchIdxs: [],
-        score: Infinity,  // no relevance bar shown
+        score: Infinity,
         workId: b.workId,
         workLabel: b.workLabel,
         book: b.bookId,
@@ -127,22 +127,6 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
     setResults(parsed.results || [])
   }
 
-  // /search execution — fetches and shows first matching verse
-  const handleSearchResult = async (query) => {
-    if (!query) return
-    try {
-      const res = await searchVerses(query, { limit: 5 })
-      if (res.ok && res.data?.results?.length > 0) {
-        const first = res.data.results[0]
-        const ref = first.verse_id || first.ref || ''
-        const parts = ref.split('.')
-        if (parts.length >= 2) {
-          onNavigate(parts[0], parseInt(parts[1]), false)
-        }
-      }
-    } catch {}
-  }
-
   const executeResult = (r) => {
     if (!r) return
     switch (r.type) {
@@ -153,56 +137,32 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
         onChat(r.message || '')
         onClose(); break
       case 'search':
-        handleSearchResult(r.query)
+        onCommand?.('search', r.query)
         onClose(); break
       case 'dark':
-        toggleDarkMode()
+        onCommand?.('dark')
         onClose(); break
       case 'font':
-        if (r.direction === 'up') changeFontSize(1)
-        else if (r.direction === 'down') changeFontSize(-1)
-        else if (r.size) changeFontSize(r.size)
+        onCommand?.('font', r.direction || 'up', r.size)
         onClose(); break
       case 'toggle':
-        if (r.toggle) {
-          // Map display names to dispatch action names
-          const toggleMap = {
-            'footnotes': 'footnotes', 'fn': 'footnotes',
-            'gematria': 'gematria', 'gem': 'gematria',
-            'lemma': 'lemma', 'strongs': 'lemma',
-            'synonymous': 'synonymous',
-            'antithetic': 'antithetic',
-            'synthetic': 'synthetic',
-            'staircase': 'staircase',
-            'chiasmus': 'chiasmus', 'chiastic': 'chiasmus',
-            'tsk': 'tsk', 'crossref': 'tsk', 'cross-ref': 'tsk',
-            'direct': 'direct', 'quotation': 'direct',
-            'allusion': 'allusion',
-            'echo': 'echo',
-            'times': 'times', 'time': 'times', 'chronological': 'times',
-            'places': 'places', 'geographic': 'places',
-            'isaiah': 'isaiah', 'giliadi': 'isaiah',
-          }
-          const action = toggleMap[r.toggle.toLowerCase()] || r.toggle
-          toggleDispatch(action)
-        }
+        if (r.toggle) onToggle?.(r.toggle)
         onClose(); break
       case 'history':
-        setShowHistory(true)
+        onToggleHistory?.()
         onClose(); break
       case 'structure':
-        setShowStructure(true)
+        onToggleStructure?.()
         onClose(); break
     }
   }
 
   const executeCurrent = () => {
     const r = results[sel]
-    if (r?.type === 'header') return  // can't execute headers
+    if (r?.type === 'header') return
     if (r) executeResult(r)
   }
 
-  // Tab toggles chapter preview for the selected book result
   const toggleChapterPreview = () => {
     const r = results[sel]
     if (r?.type === 'navigate' && r.book) {
@@ -236,10 +196,8 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
     'expanded': 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-300',
   }
 
-  // Get the currently selected result (not a header)
   const selResult = results[sel]?.type === 'navigate' ? results[sel] : null
 
-  // fzf-style match highlighting
   function HighlightedLabel({ label, matchIdxs }) {
     if (!matchIdxs || matchIdxs.length === 0) return <>{label}</>
     const chars = [...label]
@@ -263,7 +221,6 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks }) {
 
         {/* Results area (fzf: results above input) */}
         <div ref={resultsRef} className="overflow-y-auto max-h-[50vh] min-h-0" style={{ scrollBehavior: 'smooth' }}>
-          {/* When query is empty, show all books with work headers */}
           {results.length === 0 && val.trim() === '' && (
             <div className="px-4 py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">Loading books...</div>
           )}
@@ -1712,23 +1669,6 @@ const [showAssessment, setShowAssessment] = useState(false)
       <div className={`sm:hidden transition-all duration-300 ${uiVisible ? 'h-14' : 'h-0'}`} />
 
     </div>
-  )
-}
-
-// ── Mobile Bottom Tab Button ──
-
-function TabButton({ icon, label, active, onClick }) {
-  return (
-    <button onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-        active
-          ? 'text-indigo-600 dark:text-indigo-400'
-          : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400'
-      }`}
-      title={label}>
-      <span className={active ? '' : 'opacity-70'}>{icon}</span>
-      <span className="text-[9px] font-medium leading-tight">{label}</span>
-    </button>
   )
 }
 

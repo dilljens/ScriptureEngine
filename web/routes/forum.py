@@ -18,7 +18,7 @@ def get_db():
     return _get_db()
 
 
-@router.get("/api/v1/forum/topics")
+@router.get("/api/v1/forum/topics", operation_id="forum_list_topics")
 def list_forum_topics(category: str = ""):
     """List forum topics, optionally filtered by category."""
     conn = get_db()
@@ -36,7 +36,7 @@ def list_forum_topics(category: str = ""):
     }}
 
 
-@router.get("/api/v1/forum/topics/{topic_id:path}")
+@router.get("/api/v1/forum/topics/{topic_id:path}", operation_id="forum_get_topic")
 def get_forum_topic(topic_id: str):
     """Get a forum topic with its posts."""
     conn = get_db()
@@ -54,7 +54,7 @@ def get_forum_topic(topic_id: str):
     return {"ok": True, "data": {"topic": dict(topic), "posts": [dict(p) for p in posts]}}
 
 
-@router.post("/api/v1/forum/posts")
+@router.post("/api/v1/forum/posts", operation_id="forum_create_post")
 def create_forum_post(post: ForumPostCreate):
     """Create a new post in a forum topic."""
     conn = get_db()

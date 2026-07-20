@@ -54,11 +54,11 @@ def calibrate_item(difficulty, discrimination, guess, slip,
 
     # Update guess: bounded by observed minimum performance
     # (guess should be ≤ observed proportion for low-ability users)
-    new_guess = max(0.05, min(0.4, guess * 0.9 + observed_p * 0.1 * 0.2))
+    new_guess = max(0.05, min(0.4, guess * 0.7 + observed_p * 0.3 * 0.5))
 
     # Update slip: bounded by observed error rate
     # (slip should be ≤ 1 - observed proportion for high-ability users)
-    new_slip = max(0.02, min(0.3, slip * 0.9 + (1.0 - observed_p) * 0.1 * 0.2))
+    new_slip = max(0.02, min(0.3, slip * 0.7 + (1.0 - observed_p) * 0.3 * 0.5))
 
     # Update difficulty: shift toward logit of observed proportion
     # logit(p) = ln(p / (1-p))
@@ -66,7 +66,7 @@ def calibrate_item(difficulty, discrimination, guess, slip,
     observed_logit = math.log(p_clamped / (1.0 - p_clamped))
     # Scale logit to difficulty range [-2, 2]
     target_difficulty = max(-2.0, min(2.0, -observed_logit * 0.5))
-    new_difficulty = difficulty * 0.7 + target_difficulty * 0.3
+    new_difficulty = max(-2.0, min(2.0, difficulty * 0.7 + target_difficulty * 0.3))
 
     # Update discrimination: increase with more data (more certainty)
     # Starts at 1.0, asymptotically approaches max based on response count

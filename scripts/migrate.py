@@ -81,6 +81,17 @@ MIGRATIONS = [
             CREATE INDEX IF NOT EXISTS idx_recovery_user ON recovery_keys(user_id);
         """,
     },
+    # Version 2: Performance indexes for review queries and filtering
+    {
+        "version": 2,
+        "description": "Add performance indexes for FSRS review, quality filtering",
+        "sql": """
+            CREATE INDEX IF NOT EXISTS idx_connections_quality ON connections(quality_level);
+            CREATE INDEX IF NOT EXISTS idx_connections_deprecated ON connections(deprecated);
+            CREATE INDEX IF NOT EXISTS idx_mp_user_review ON memorize_progress(user_id, next_review);
+            CREATE INDEX IF NOT EXISTS idx_fire_credits_user ON fi_re_credits(user_id, item_type, item_id);
+        """,
+    },
 ]
 
 

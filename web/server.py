@@ -62,6 +62,10 @@ import contextlib
 @contextlib.asynccontextmanager
 async def lifespan(app):
     """Startup: create debug table, load caches. Shutdown: no-op."""
+    # Initialize file logging
+    if _init_file_logging():
+        log.info("File logging initialized")
+
     _startup_debug()
     load_ram_cache()
     _build_lexicon_cache_index()
@@ -97,6 +101,129 @@ app.add_middleware(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# ── Metrics (in-memory, exposed at /metrics) ─────────────────────────────
+
+_METRICS = {
+    "requests_total": 0,
+    "requests_by_path": {},        # path → count
+    "requests_by_status": {},      # status_code → count
+    "latency_total_ms": 0,
+    "latency_buckets": {50: 0, 100: 0, 200: 0, 500: 0, 1000: 0, 2000: 0, 5000: 0},
+    "errors_total": 0,
+    "db_queries_total": 0,
+}
+
+
+@app.middleware("http")
+async def _metrics_middleware(request: Request, call_next):
+    """Track request count, latency, and error rate."""
+    import time as _time
+    path = request.url.path
+    _METRICS["requests_total"] += 1
+    _METRICS["requests_by_path"][path] = _METRICS["requests_by_path"].get(path, 0) + 1
+
+    start = _time.perf_counter()
+    response = await call_next(request)
+    latency_ms = int((_time.perf_counter() - start) * 1000)
+
+    _METRICS["latency_total_ms"] += latency_ms
+    for bucket in sorted(_METRICS["latency_buckets"].keys()):
+        if latency_ms <= bucket:
+            _METRICS["latency_buckets"][bucket] += 1
+            break
+
+    status_code = response.status_code
+    status_group = f"{status_code // 100}xx"
+    _METRICS["requests_by_status"][status_group] = _METRICS["requests_by_status"].get(status_group, 0) + 1
+    if status_code >= 500:
+        _METRICS["errors_total"] += 1
+
+    # Add server timing header
+    response.headers["X-Process-Time"] = str(latency_ms)
+    return response
+
+
+# ── Metrics endpoint ────────────────────────────────────────────────────
+
+@app.get("/metrics")
+def prometheus_metrics():
+    """Expose in-memory metrics in Prometheus text format."""
+    uptime = int(time.time() - _start_time)
+    lines = [
+        "# HELP scripture_requests_total Total HTTP requests",
+        "# TYPE scripture_requests_total counter",
+        f'scripture_requests_total {_METRICS["requests_total"]}',
+        "",
+        "# HELP scripture_requests_by_path Requests by URL path",
+        "# TYPE scripture_requests_by_path counter",
+    ]
+    for path, count in sorted(_METRICS["requests_by_path"].items()):
+        lines.append(f'scripture_requests_by_path{{path="{path}"}} {count}')
+
+    lines += [
+        "",
+        "# HELP scripture_requests_by_status Requests by HTTP status group",
+        "# TYPE scripture_requests_by_status counter",
+    ]
+    for group, count in sorted(_METRICS["requests_by_status"].items()):
+        lines.append(f'scripture_requests_by_status{{status="{group}"}} {count}')
+
+    lines += [
+        "",
+        "# HELP scripture_latency_ms Request latency in milliseconds",
+        "# TYPE scripture_latency_ms histogram",
+    ]
+    for bucket, count in sorted(_METRICS["latency_buckets"].items()):
+        lines.append(f'scripture_latency_ms_bucket{{le="{bucket}"}} {count}')
+
+    avg_latency = _METRICS["latency_total_ms"] / max(_METRICS["requests_total"], 1)
+    lines += [
+        f'scripture_latency_ms_sum {_METRICS["latency_total_ms"]}',
+        f'scripture_latency_ms_count {_METRICS["requests_total"]}',
+        f'scripture_latency_avg_ms {avg_latency:.1f}',
+        "",
+        "# HELP scripture_errors_total Total HTTP 5xx errors",
+        "# TYPE scripture_errors_total counter",
+        f'scripture_errors_total {_METRICS["errors_total"]}',
+        "",
+        "# HELP scripture_uptime_seconds Server uptime",
+        "# TYPE scripture_uptime_seconds gauge",
+        f'scripture_uptime_seconds {uptime}',
+    ]
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("\n".join(lines) + "\n")
+
+
+# ── Structured logging to rotating files (lazy init in lifespan) ────────
+
+_LOG_FILE_HANDLER = None
+
+
+def _init_file_logging():
+    """Set up rotating file logging. Called during startup."""
+    global _LOG_FILE_HANDLER
+    try:
+        _log_dir = Path(__file__).resolve().parent.parent / "logs"
+        _log_dir.mkdir(parents=True, exist_ok=True)
+        from logging.handlers import RotatingFileHandler
+        _LOG_FILE_HANDLER = RotatingFileHandler(
+            str(_log_dir / "scripture.log"),
+            maxBytes=50 * 1024 * 1024,
+            backupCount=5,
+        )
+        _LOG_FILE_HANDLER.setLevel(logging.INFO)
+        _LOG_FILE_HANDLER.setFormatter(logging.Formatter(
+            '{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","message":"%(message)s"}',
+            datefmt="%Y-%m-%dT%H:%M:%S",
+        ))
+        root_logger = logging.getLogger()
+        root_logger.addHandler(_LOG_FILE_HANDLER)
+        return True
+    except Exception as e:
+        print(f"[startup] File logging not available: {e}")
+        return False
 
 
 # ── Request validation middleware ────────────────────────────────────────
@@ -177,8 +304,10 @@ from web.routes.auth import router as auth_router
 from web.routes.chat import router as chat_router
 from web.routes.conversations import router as conversations_router
 from web.routes.admin import router as admin_router
+from web.routes.admin import router as admin_router
 from web.routes.forum import router as forum_router
 from web.routes.graph import router as graph_router
+from web.routes.js import router as js_router
 from web.routes.js import router as js_router
 from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
@@ -199,6 +328,8 @@ app.include_router(studies_router)
 app.include_router(conversations_router)
 app.include_router(assessment_router)
 app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(js_router)
 app.include_router(graph_router)
 app.include_router(memorize_router)
 app.include_router(learn_router)
@@ -267,7 +398,9 @@ def load_ram_cache():
 
     Set SCRIPTURE_WORKERS=1 to force RAM cache, SCRIPTURE_WORKERS=0 to skip.
     """
+    import time as _time
     workers = int(os.environ.get("SCRIPTURE_WORKERS", "1"))
+    _t0 = _time.time()
 
     log.info("Loading cache", phase="start")
     db_path = DEFAULT_DB_PATH
@@ -280,6 +413,7 @@ def load_ram_cache():
 
     # Load books/work tree — always cache (tiny data, ~2KB)
     global BOOKS_CACHE
+    _bt0 = _time.time()
     works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY position").fetchall()
     books_result = []
     for w in works_rows:
@@ -294,17 +428,18 @@ def load_ram_cache():
             "books": [{"id": b["id"], "title": b["title"], "subtitle": b["subtitle"]} for b in books],
         })
     BOOKS_CACHE = {"works": books_result, "total": len(books_result)}
-    log.info("Cache loaded", cache="books", count=len(books_result))
+    log.info("Cache loaded", cache="books", count=len(books_result), duration_ms=int((_time.time()-_bt0)*1000))
 
     # Multi-worker mode: skip heavy caches, books already loaded above
     if workers != 1:
         log.info("Skipping RAM cache (multi-worker)", workers=workers, mode="direct_sqlite")
         conn.close()
         total = len(books_result)
-        log.info("Cache load complete", total_items=total)
+        log.info("Cache load complete", total_items=total, duration_ms=int((_time.time()-_t0)*1000))
         return
 
     # Load verses
+    _bt0 = _time.time()
     rows = conn.execute("""
         SELECT v.*, b.title as book_title
         FROM verses v JOIN books b ON b.id = v.book_id
@@ -312,9 +447,10 @@ def load_ram_cache():
     for r in rows:
         d = dict(r)
         VERSE_CACHE[d["id"]] = d
-    log.info("Cache loaded", cache="verses", count=len(VERSE_CACHE))
+    log.info("Cache loaded", cache="verses", count=len(VERSE_CACHE), duration_ms=int((_time.time()-_bt0)*1000))
 
     # Load passage guides
+    _bt0 = _time.time()
     rows = conn.execute("""
         SELECT verse_id, connections_json, gematria_json, quality_summary,
                layer_count, total_connections
@@ -323,19 +459,21 @@ def load_ram_cache():
     for r in rows:
         d = dict(r)
         GUIDE_CACHE[d["verse_id"]] = d
-    log.info("Cache loaded", cache="passage_guides", count=len(GUIDE_CACHE))
+    log.info("Cache loaded", cache="passage_guides", count=len(GUIDE_CACHE), duration_ms=int((_time.time()-_bt0)*1000))
 
     # Load entity links
+    _bt0 = _time.time()
     rows = conn.execute("SELECT * FROM entity_links").fetchall()
     for r in rows:
         ENTITY_CACHE.append(dict(r))
-    log.info("Cache loaded", cache="entity_links", count=len(ENTITY_CACHE))
+    log.info("Cache loaded", cache="entity_links", count=len(ENTITY_CACHE), duration_ms=int((_time.time()-_bt0)*1000))
 
     # Load lexicon
+    _bt0 = _time.time()
     lex_rows = conn.execute("SELECT * FROM lexicon").fetchall()
     for r in lex_rows:
         LEXICON_CACHE[r["lemma"]] = dict(r)
-    log.info("Cache loaded", cache="lexicon", count=len(LEXICON_CACHE))
+    log.info("Cache loaded", cache="lexicon", count=len(LEXICON_CACHE), duration_ms=int((_time.time()-_bt0)*1000))
 
     # Check vector availability — without loading vec0 module
     vec_table = conn.execute("""
@@ -350,7 +488,7 @@ def load_ram_cache():
 
     conn.close()
     total = len(VERSE_CACHE) + len(GUIDE_CACHE) + len(ENTITY_CACHE) + len(books_result)
-    log.info("Cache load complete", total_items=total)
+    log.info("Cache load complete", total_items=total, duration_ms=int((_time.time()-_t0)*1000))
 
 CONNECTION_TYPE_MAP = {
     "linguistic": "Linguistic", "numerical": "Numerical",
@@ -3128,17 +3266,49 @@ def _send_ntfy_alert(title: str, message: str, priority: int = 3):
 
 @app.get("/api/v1/health")
 def health_check():
-    """Health check with DB integrity, cache status, version, and uptime."""
+    """Health check with DB integrity, cache status, version, uptime, and sub-systems."""
     import time as _time
     uptime_seconds = int(_time.time() - _start_time)
 
-    # Fast db check — quick_count pragma is near-instant; skip full integrity_check
+    # Fast db check
     conn = get_db()
     verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
     conn_count = conn.execute("SELECT COUNT(*) FROM connections WHERE deprecated=0").fetchone()[0]
-    # Quick sanity: check first page isn't corrupt
     quick_ok = conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()[0] > 0
+    
+    # Check FTS index
+    fts_ok = False
+    try:
+        fts_count = conn.execute("SELECT COUNT(*) as c FROM verses_fts_trigram").fetchone()["c"]
+        fts_ok = fts_count > 0
+    except Exception:
+        fts_count = 0
+
+    # Check generator_meta table exists
+    gen_meta_ok = False
+    try:
+        gen_meta_ok = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_meta'"
+        ).fetchone() is not None
+    except Exception:
+        pass
+
+    # DB schema version
+    try:
+        schema_version = conn.execute("PRAGMA user_version").fetchone()[0]
+    except Exception:
+        schema_version = 0
+
     conn.close()
+
+    # Check Go SRS backend
+    go_srs_ok = False
+    try:
+        import urllib.request
+        go_resp = urllib.request.urlopen("http://localhost:8090/health", timeout=2)
+        go_srs_ok = go_resp.status == 200
+    except Exception:
+        pass
 
     # Audio alignments count
     audio_count = 0
@@ -3146,13 +3316,18 @@ def health_check():
     if align_dir.exists():
         audio_count = len(list(align_dir.glob("*.json")))
 
-    status = "ok" if quick_ok else "degraded"
+    # Vector search availability
+    vec_ok = VEC_CACHE.get("available", False)
+
+    # Overall status
+    all_ok = quick_ok and fts_ok
+    status = "ok" if all_ok else "degraded"
 
     # Fire ntfy alert on degradation
-    if status == "degraded":
+    if not all_ok:
         _send_ntfy_alert(
             title="Scripture Engine — Health Degraded",
-            message=f"DB integrity check failed. verses={verse_count} connections={conn_count}",
+            message=f"DB={quick_ok} FTS={fts_ok} GoSRS={go_srs_ok} verses={verse_count} conns={conn_count}",
             priority=4,
         )
 
@@ -3160,15 +3335,26 @@ def health_check():
         "status": status,
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
+        "schema_version": schema_version,
+        "subsystems": {
+            "database": quick_ok,
+            "fts_index": fts_ok,
+            "vector_search": vec_ok,
+            "go_srs": go_srs_ok,
+            "generator_meta": gen_meta_ok,
+        },
         "verses": verse_count,
         "connections": conn_count,
         "audio_alignments": audio_count,
+        "fts_verses_indexed": fts_count,
         "tools": len(TOOL_REGISTRY),
         "lexicon": len(LEXICON_CACHE),
         "cache_sizes": {
             "wiki_articles": len(WIKI_CACHE),
             "lexicon_entries": len(LEXICON_CACHE),
             "tool_registry": len(TOOL_REGISTRY),
+            "verses": len(VERSE_CACHE),
+            "passage_guides": len(GUIDE_CACHE),
         },
     }}
 
@@ -3177,379 +3363,7 @@ def health_check():
 
 # ─── LLM Chat Proxy moved to web/routes/chat.py ───
 
-# ─── Staging API (read-only list endpoints for web UI) ───
-
-@app.get("/api/v1/staging/connections")
-def staging_list_connections(status: str = "pending", layer: str = "", limit: int = 50):
-    """List staging connections (proposed by LLM/UI)."""
-    try:
-        from lib.api.staging import list_staging_connections
-        conn = get_db()
-        kwargs = {"status": status, "limit": limit}
-        if layer:
-            kwargs["layer"] = layer
-        items = list_staging_connections(conn, **kwargs)
-        conn.close()
-        return {"ok": True, "data": items, "count": len(items)}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-# ─── Client-side error logging (for debugging) ───
-
-@app.post("/api/v1/debug/log")
-def client_error_log(data: dict):
-    try:
-        conn = get_db()
-        conn.execute('CREATE TABLE IF NOT EXISTS client_logs ('
-            'id INTEGER PRIMARY KEY AUTOINCREMENT,'
-            'level TEXT DEFAULT "error",'
-            'message TEXT,'
-            'stack TEXT DEFAULT "",'
-            'url TEXT DEFAULT "",'
-            'user_agent TEXT DEFAULT "",'
-            'created_at TEXT DEFAULT (datetime("now"))'
-        ')')
-        conn.execute(
-            'INSERT INTO client_logs (level, message, stack, url, user_agent) VALUES (?, ?, ?, ?, ?)',
-            (data.get("level", "error"), data.get("message", "")[:500],
-             data.get("stack", "")[:2000], data.get("url", ""), data.get("userAgent", ""))
-        )
-        conn.commit()
-        conn.close()
-    except Exception:
-        log.warning("silent_exception", exc_info=True)
-        pass
-    return {"ok": True}
-
-@app.get("/api/v1/debug/logs")
-def get_client_logs(limit: int = 50):
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM client_logs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-    conn.close()
-    return {"ok": True, "data": [dict(r) for r in rows]}
-
-@app.get("/api/v1/debug/check")
-def debug_check():
-    import os
-    import sys
-    conn = get_db()
-    try:
-        verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
-        conn_count = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
-        audio_count = 0
-        for _root, _dirs, files in os.walk("data/audio/alignments"):
-            audio_count = len(files)
-    except Exception:
-        verse_count = conn_count = audio_count = 0
-    conn.close()
-    return {"ok": True, "data": {
-        "python": sys.version,
-        "platform": __import__("platform").platform(),
-        "verses": verse_count,
-        "connections": conn_count,
-        "audio_alignments": audio_count,
-        "assets": os.listdir("frontend/dist/assets/") if os.path.isdir("frontend/dist/assets/") else [],
-    }}
-
-@app.get("/api/v1/staging/studies")
-def staging_list_studies(status: str = "submitted", limit: int = 20):
-    """List staging studies (proposed by LLM/UI)."""
-    try:
-        from lib.api.staging import list_staging_studies
-        conn = get_db()
-        items = list_staging_studies(conn, status, limit)
-        conn.close()
-        return {"ok": True, "data": items, "count": len(items)}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-# ─── Cross-Canon Truth Score API ───
-
-@app.get("/api/v1/truth-score")
-def truth_score(
-    q: str = Query("", description="Topic or search term"),
-    verse: str = Query("", description="Specific verse to analyze"),
-    limit: int = Query(20, description="Max verses per work"),
-):
-    """Cross-canon consensus scoring.
-
-    For a given topic/verse, shows how each canon treats it:
-    - Number of relevant verses per work (FTS5 trigram search)
-    - Connection counts, tradition distribution, hermeneutic breakdown
-    - Consensus score across canons based on connection graph
-
-    The goal: let users see which interpretations are supported
-    across multiple canons vs. unique to one.
-    """
-    conn = get_db()
-    result = {"query": q or verse, "works": [], "consensus": {}, "traditions": {}}
-
-    # Get all works
-    works = conn.execute("SELECT id, title FROM works ORDER BY position").fetchall()
-    total_works = len(works)
-
-    # Find matching verses — try FTS5 trigram first, then LIKE fallback
-    all_verse_ids = set()
-    work_verse_map = {}  # work_id -> [verse_ids]
-
-    for w in works:
-        wid = w["id"]
-        if verse:
-            verses_data = conn.execute("""
-                SELECT v.id FROM verses v
-                JOIN books b ON b.id = v.book_id
-                WHERE v.id = ? AND b.work_id = ?
-            """, (verse, wid)).fetchall()
-        elif q:
-            # Try trigram FTS5 first (fast, typo-tolerant)
-            try:
-                san = q.strip().replace('"', '""')
-                for c in '?/()*^~+.':
-                    san = san.replace(c, ' ')
-                import re
-                san = re.sub(r'\s+', ' ', san).strip()
-                verses_data = conn.execute(f"""
-                    SELECT v.id FROM verses_fts_trigram f
-                    JOIN verses v ON v.id = f.verse_id
-                    JOIN books b ON b.id = v.book_id
-                    WHERE verses_fts_trigram MATCH ? AND b.work_id = ?
-                    ORDER BY rank
-                    LIMIT ?
-                """, (san, wid, limit)).fetchall()
-            except Exception:
-                verses_data = []
-            # Fallback to LIKE if FTS5 returned nothing
-            if not verses_data:
-                verses_data = conn.execute("""
-                    SELECT v.id FROM verses v
-                    JOIN books b ON b.id = v.book_id
-                    WHERE b.work_id = ? AND v.text_english LIKE ?
-                    LIMIT ?
-                """, (wid, f"%{q}%", limit)).fetchall()
-        else:
-            verses_data = []
-
-        if verses_data:
-            vids = [v["id"] for v in verses_data]
-            work_verse_map[wid] = vids
-            all_verse_ids.update(vids)
-
-    if not all_verse_ids:
-        conn.close()
-        return {"ok": True, "data": {
-            "query": q or verse,
-            "works": [],
-            "consensus": {"works_found": 0, "consensus_score": 0.0,
-                         "interpretation": "no matching verses found"},
-            "traditions": {},
-        }}
-
-    # Build per-work stats and compute consensus
-    all_traditions = {}  # tradition -> total count across all works
-    total_conns = 0
-    works_with_conn = 0
-
-    for w in works:
-        wid = w["id"]
-        wtitle = w["title"]
-        vids = work_verse_map.get(wid, [])
-
-        if not vids:
-            result["works"].append({"work_id": wid, "title": wtitle, "verses_found": 0})
-            continue
-
-        placeholders = ",".join("?" for _ in vids)
-
-        # Total non-deprecated connections
-        conn_count = conn.execute(f"""
-            SELECT COUNT(*) as c FROM connections
-            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
-            AND deprecated = 0
-        """, (*vids, *vids)).fetchone()["c"]
-        total_conns += conn_count
-        if conn_count > 0:
-            works_with_conn += 1
-
-        # Tradition distribution
-        trad_dist = conn.execute(f"""
-            SELECT tradition, COUNT(*) as cnt
-            FROM connections
-            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
-            AND deprecated = 0
-              AND tradition IS NOT NULL AND tradition != 'none'
-            GROUP BY tradition ORDER BY cnt DESC
-        """, (*vids, *vids)).fetchall()
-
-        for r in trad_dist:
-            t = r["tradition"]
-            all_traditions[t] = all_traditions.get(t, 0) + r["cnt"]
-
-        # Hermeneutic distribution
-        herm_dist = conn.execute(f"""
-            SELECT hermeneutic, COUNT(*) as cnt
-            FROM connections
-            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
-            AND deprecated = 0
-              AND hermeneutic IS NOT NULL AND hermeneutic != ''
-            GROUP BY hermeneutic ORDER BY cnt DESC
-        """, (*vids, *vids)).fetchall()
-
-        # Layer distribution
-        layer_dist = conn.execute(f"""
-            SELECT layer, COUNT(*) as cnt
-            FROM connections
-            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
-            AND deprecated = 0
-            GROUP BY layer ORDER BY cnt DESC
-        """, (*vids, *vids)).fetchall()
-
-        # Consensus scores from connections (non-zero)
-        score_dist = conn.execute(f"""
-            SELECT consensus_score, COUNT(*) as cnt
-            FROM connections
-            WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
-            AND deprecated = 0 AND consensus_score > 0
-            GROUP BY consensus_score ORDER BY cnt DESC
-            LIMIT 5
-        """, (*vids, *vids)).fetchall()
-
-        # Sample verses with text
-        samples = conn.execute(f"""
-            SELECT v.id, v.text_english FROM verses v
-            WHERE v.id IN ({placeholders}) LIMIT 3
-        """, (*vids,)).fetchall()
-
-        result["works"].append({
-            "work_id": wid,
-            "title": wtitle,
-            "verses_found": len(vids),
-            "verse_samples": [
-                {"id": s["id"], "text": (s["text_english"] or "")[:100]}
-                for s in samples
-            ],
-            "total_connections": conn_count,
-            "tradition_distribution": {r["tradition"]: r["cnt"] for r in trad_dist},
-            "hermeneutic_distribution": {r["hermeneutic"]: r["cnt"] for r in herm_dist},
-            "layer_distribution": {r["layer"]: r["cnt"] for r in layer_dist},
-            "consensus_scores": {str(r["consensus_score"]): r["cnt"] for r in score_dist},
-        })
-
-    conn.close()
-
-    # ── Consensus computation ──
-    works_found = len([w for w in result["works"] if w["verses_found"] > 0])
-    works_list = [w for w in result["works"] if w["verses_found"] > 0]
-
-    if works_found > 0:
-        avg_conn = total_conns / works_found if works_found > 0 else 0
-
-        # Consensus score: weighted combination of:
-        # - Coverage: fraction of works that have connections
-        # - Traditions: number of distinct traditions touching this topic
-        # - Depth: average connections per work
-        coverage = works_with_conn / max(total_works, 1)
-        tradition_breadth = min(len(all_traditions) / 4.0, 1.0)  # 4+ traditions = max score
-        depth = min(avg_conn / 100.0, 1.0)  # 100+ average connections = max depth
-
-        consensus_score = round(coverage * 0.5 + tradition_breadth * 0.3 + depth * 0.2, 3)
-
-        # Interpretation label
-        if works_with_conn >= 3 and len(all_traditions) >= 2:
-            interpretation = "strongly supported across multiple canons and traditions"
-        elif works_with_conn >= 3:
-            interpretation = "supported across multiple canons"
-        elif works_with_conn >= 2:
-            interpretation = "found in multiple traditions"
-        elif works_with_conn == 1:
-            interpretation = "unique to one tradition"
-        else:
-            interpretation = "no connection data"
-
-        result["consensus"] = {
-            "works_found": works_found,
-            "works_with_connections": works_with_conn,
-            "works_list": [w["work_id"] for w in works_list],
-            "total_connections": total_conns,
-            "average_connections_per_work": round(avg_conn, 1),
-            "distinct_traditions": len(all_traditions),
-            "consensus_score": consensus_score,
-            "interpretation": interpretation,
-        }
-    else:
-        result["consensus"] = {
-            "works_found": 0,
-            "consensus_score": 0.0,
-            "interpretation": "no matching verses found",
-        }
-
-    # Tradition overview (across all works)
-    sorted_trads = sorted(all_traditions.items(), key=lambda x: -x[1])
-    result["traditions"] = {
-        t: cnt for t, cnt in sorted_trads
-    }
-
-    return {"ok": True, "data": result}
-
-
 # ─── Joseph Smith Teachings Search ───
-
-@app.get("/api/v1/js/search")
-def search_js(q: str = "", limit: int = 20, year: int = 0):
-    """Search Joseph Smith's teachings/discourses by keyword."""
-    conn = get_db()
-
-    if not q.strip():
-        rows = conn.execute(
-            "SELECT id, title, source, year, length(content) as content_len FROM js_texts ORDER BY id DESC LIMIT ?",
-            (limit,)
-        ).fetchall()
-    else:
-        # Use FTS5 if available, fall back to LIKE
-        try:
-            rows = conn.execute("""
-                SELECT j.id, j.title, j.source, j.year, length(j.content) as content_len
-                FROM js_texts_fts f JOIN js_texts j ON j.id = f.rowid
-                WHERE js_texts_fts MATCH ?
-                ORDER BY rank LIMIT ?
-            """, (q, limit)).fetchall()
-        except Exception:
-            rows = conn.execute(
-                "SELECT id, title, source, year, length(content) as content_len FROM js_texts WHERE content LIKE ? ORDER BY id LIMIT ?",
-                (f"%{q}%", limit)
-            ).fetchall()
-
-    if year > 0:
-        rows = [r for r in rows if r["year"] == year]
-
-    results = []
-    for r in rows:
-        results.append({
-            "id": r["id"],
-            "title": (r["title"] or "")[:200],
-            "source": r["source"],
-            "year": r["year"],
-            "content_length": r["content_len"],
-        })
-
-    total = conn.execute("SELECT COUNT(*) FROM js_texts").fetchone()[0]
-    conn.close()
-    return {"ok": True, "data": {"results": results, "total": total, "matched": len(results)}}
-
-
-@app.get("/api/v1/js/text/{text_id}")
-def get_js_text(text_id: int):
-    """Get full text of a Joseph Smith discourse."""
-    conn = get_db()
-    row = conn.execute("SELECT id, title, content, source, year FROM js_texts WHERE id=?", (text_id,)).fetchone()
-    conn.close()
-    if not row:
-        return {"ok": False, "error": "Text not found"}
-    return {"ok": True, "data": dict(row)}
-
-
-# ─── Daily Verse / Maintenance Mode ───
 
 @app.get("/api/v1/verse-of-day")
 def verse_of_day(user_id: str = "default"):

@@ -43,6 +43,10 @@ def print_result(result, indent=0):
     """Pretty-print a truth check result."""
     prefix = " " * indent
     align_icons = {
+        "supported": "✅ SUPPORTED",
+        "plausible": "🔶 PLAUSIBLE",
+        "uncertain": "⚪ UNCERTAIN",
+        "contradicted": "❌ CONTRADICTED",
         "supports": "✅ SUPPORTS",
         "partially_supports": "🔶 PARTIALLY SUPPORTS",
         "neutral": "⚪ NEUTRAL",
@@ -52,28 +56,30 @@ def print_result(result, indent=0):
     
     icon = align_icons.get(result["alignment"], "❓ " + result["alignment"])
     print(f'{prefix}{icon} (confidence: {result["confidence"]:.1%})')
-    print(f'{prefix}  Claim type: {result["claim_type"]}')
-    print(f'{prefix}  Total connections checked: {result["total_connections"]}')
+    print(f'{prefix}  Level: {result.get("level", "?")} | Scholar: {result.get("scholar", "?")}')
     
-    if result["verse_texts"]:
+    sigs = result.get("signals", {})
+    if sigs:
+        print(f'{prefix}  Signals: text={sigs.get("text_match", 0):.2f} graph={sigs.get("graph_total", 0)} scholar={sigs.get("scholar_weight", 0):.2f}')
+    
+    contra = result.get("contradiction", {})
+    if contra and contra.get("has_contradiction"):
+        print(f'{prefix}  ⚠ Contradiction detected! Score: {contra.get("contradiction_score", 0)}')
+    
+    if result.get("verse_texts"):
         print(f'{prefix}  Key verse texts:')
-        for ref, text in list(result["verse_texts"].items())[:3]:
+        for ref, text in list(result["verse_texts"].items())[:2]:
             print(f'{prefix}    {ref}: {text[:80]}...')
     
-    if result["strong_connections"]:
-        print(f'{prefix}  Strongest evidence:')
-        for c in result["strong_connections"][:3]:
-            print(f'{prefix}    [{c["layer"]}] {c["type"]} → {c["target"]} (quality: {c["quality"]})')
+    graph = result.get("graph_evidence", {})
+    if graph and graph.get("strong"):
+        print(f'{prefix}  Strongest graph connections:')
+        for c in graph["strong"][:3]:
+            print(f'{prefix}    [{c["layer"]}] {c["type"]} → {c["target"]}')
     
-    if result.get("top_connections"):
-        print(f'{prefix}  Top connections in graph:')
-        for c in result["top_connections"][:3]:
-            print(f'{prefix}    {c["source"]} → {c["target"]} ({c["layer"]}.{c["type"]})')
-    
-    conn_by_layer = result.get("connections_by_layer", {})
-    if conn_by_layer:
-        print(f'{prefix}  By layer:')
-        for layer, count in sorted(conn_by_layer.items(), key=lambda x: -x[1]):
+    if graph and graph.get("by_layer"):
+        print(f'{prefix}  Graph connections by layer:')
+        for layer, count in sorted(graph["by_layer"].items(), key=lambda x: -x[1]):
             print(f'{prefix}    {layer}: {count}')
 
 
