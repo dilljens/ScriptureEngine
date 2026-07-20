@@ -1,13 +1,19 @@
 """
-Truth Alignment Engine — evaluate scholarly claims against the scripture text.
+Truth Alignment Engine v2 — Multi-signal truth evaluation.
 
-Compares what scholars claim about scripture against:
-  1. The actual text (linguistic layer — highest confidence)
-  2. The connection graph (what other verses say about the same topic)
-  3. Textual evidence (manuscript variants, original language meaning)
-  4. Intertextual evidence (how the verse is used elsewhere in canon)
+Evaluates scholarly claims against the scripture text using multiple signals:
+  1. TEXT_MATCH: Does the text literally contain the claim's key terms?
+  2. GRAPH_SUPPORT: What does the 1.36M connection graph show?
+  3. CONTRADICTION_PENALTY: Does clear scripture contradict this?
+  4. SCHOLAR_WEIGHT: Multiply by scholar credibility
+  5. ATTESTATION: How many scholars/connections independently affirm this?
 
-Returns: supports | partially_supports | neutral | contradicts | insufficient_evidence
+Evidence levels:
+  L1_LITERAL      — The text explicitly says this
+  L1_HISTORICAL   — The text narrates a historical event
+  L2_CONTEXTUAL   — Implied by context, plausible pattern
+  L3_INTERPRETIVE — A scholar's reading/interpretation
+  L3_SPECULATIVE  — Reconstructed claim, no direct support
 """
 
 import json
@@ -15,31 +21,55 @@ import re
 from typing import Optional
 
 from lib.controls.calibration import rate_connection_row
+from lib.api.truth_scholars import get_scholar_weight
+from lib.api.truth_contradictions import check_contradictions, find_supporting_connections
 
-# ── Layers ordered by confidence weight ──
-# Linguistic evidence is highest (what the text actually says).
-# Sod/interpretive is lowest (later interpretive traditions).
-LAYER_WEIGHTS = {
-    "linguistic": 1.0,
-    "textual": 0.95,
-    "numerical": 0.85,
-    "geographic": 0.85,
-    "chronological": 0.85,
-    "intertextual": 0.80,
-    "structural": 0.70,
-    "frequency": 0.65,
-    "symbolic": 0.60,
-    "sod": 0.50,
-    "interpretive": 0.40,
+# ── Evidence Level Weights ──
+
+LEVEL_WEIGHTS = {
+    "L1_LITERAL":      {"base": 1.0, "text": 0.50, "graph": 0.30, "scholar": 0.20},
+    "L1_HISTORICAL":   {"base": 0.9, "text": 0.40, "graph": 0.30, "scholar": 0.30},
+    "L2_CONTEXTUAL":   {"base": 0.6, "text": 0.20, "graph": 0.40, "scholar": 0.40},
+    "L3_INTERPRETIVE": {"base": 0.4, "text": 0.15, "graph": 0.25, "scholar": 0.60},
+    "L3_SPECULATIVE":  {"base": 0.2, "text": 0.05, "graph": 0.10, "scholar": 0.85},
 }
 
-# ── Claim type classification ──
-CLAIM_TYPES = {
-    "linguistic": "What the original language actually says — highest authority",
-    "historical": "Historical claim about events, people, or practices",
-    "theological": "Theological interpretation or doctrine",
-    "textual": "Claim about manuscript evidence or textual variants",
-    "interpretive": "What a tradition or scholar says a passage means",
+# ── Layer weights for graph evidence ──
+LAYER_WEIGHTS = {
+    "linguistic": 1.0, "textual": 0.95, "numerical": 0.85,
+    "geographic": 0.85, "chronological": 0.85, "intertextual": 0.80,
+    "structural": 0.70, "frequency": 0.65, "symbolic": 0.60,
+    "sod": 0.50, "interpretive": 0.40,
+}
+
+# ── Key concept map for text matching ──
+KEY_CONCEPTS = {
+    'yahweh': ['lord', 'yhwh', 'god', 'almighty'],
+    'angel': ['angel', 'messenger', 'malach'],
+    'council': ['council', 'congregation', 'assembly', 'host'],
+    'divine': ['divine', 'god', 'heavenly', 'holy'],
+    'judge': ['judge', 'judgeth', 'judged', 'judging', 'judgment'],
+    'stand': ['stand', 'standeth', 'stood', 'standing'],
+    'create': ['create', 'created', 'createth', 'creator', 'making', 'made'],
+    'temple': ['temple', 'sanctuary', 'tabernacle', 'house', 'dwelling'],
+    'heaven': ['heaven', 'heavens', 'heavenly', 'sky', 'firmament'],
+    'earth': ['earth', 'land', 'world', 'ground'],
+    'king': ['king', 'kingdom', 'royal', 'reign', 'rule'],
+    'priest': ['priest', 'priesthood', 'minister', 'serve'],
+    'sacrifice': ['sacrifice', 'offering', 'altar', 'blood'],
+    'covenant': ['covenant', 'promise', 'oath', 'testament'],
+    'asherah': ['asherah', 'grove', 'pole', 'image'],
+    'baal': ['baal', 'baalim'],
+    'atonement': ['atonement', 'cover', 'kippur', 'propitiation'],
+    'fall': ['fall', 'transgress', 'sin', 'disobey'],
+    'redeem': ['redeem', 'redeemer', 'salvation', 'save', 'deliver'],
+    'glory': ['glory', 'kavod', 'shekinah', 'presence'],
+    'name': ['name', 'shem', 'memorial'],
+    'wisdom': ['wisdom', 'sophia', 'understanding', 'knowledge'],
+    'tree': ['tree', 'wood', 'cross', 'branch'],
+    'veil': ['veil', 'curtain', 'poreketh', 'katapetasma'],
+    'throne': ['throne', 'seat', 'merkabah', 'chariot'],
+    'anointed': ['anointed', 'messiah', 'christ', 'messianic'],
 }
 
 
@@ -53,115 +83,6 @@ def extract_verse_refs(text: str) -> list[str]:
     return sorted(refs)
 
 
-def classify_claim(claim_text: str) -> str:
-    """Classify what type of claim this is."""
-    claim_lower = claim_text.lower()
-    
-    linguistic_indicators = [
-        'hebrew', 'greek', 'word means', 'literally', 'the term',
-        'in the original', 'the verb', 'the noun', 'etymology',
-    ]
-    historical_indicators = [
-        'josiah', 'reform', 'deuteronomic', 'assyrian', 'babylonian',
-        'century', 'bce', 'ce', 'archaeolog', 'inscription', 'excavated',
-        'ancient near eastern', 'ugarit', 'egyptian', 'mesopotamian',
-    ]
-    theological_indicators = [
-        'trinity', 'binitarian', 'christology', 'divine', 'incarnation',
-        'salvation', 'atonement', 'covenant', 'god is', 'jesus is',
-        'holy spirit', 'resurrection', 'eschaton', 'glorif',
-    ]
-    textual_indicators = [
-        'manuscript', 'variant', 'septuagint', 'masoretic', 'lxx', 'dss',
-        'dead sea scroll', 'scribe', 'copyist', 'original text',
-        'textual criticism', 'oldest', 'codex',
-    ]
-
-    for indicator in historical_indicators:
-        if indicator in claim_lower:
-            return "historical"
-    for indicator in linguistic_indicators:
-        if indicator in claim_lower:
-            return "linguistic"
-    for indicator in textual_indicators:
-        if indicator in claim_lower:
-            return "textual"
-    for indicator in theological_indicators:
-        if indicator in claim_lower:
-            return "theological"
-    return "interpretive"
-
-
-def _get_connections_for_verses(conn, verse_refs: list[str], layer: Optional[str] = None) -> list:
-    """Get all connections involving any of the given verses."""
-    if not verse_refs:
-        return []
-    
-    placeholders = ",".join("?" for _ in verse_refs)
-    sql = f"""
-        SELECT c.*, v.text_english as source_text
-        FROM connections c
-        JOIN verses v ON v.id = c.source_verse
-        WHERE (c.source_verse IN ({placeholders}) OR c.target_verse IN ({placeholders}))
-    """
-    params = verse_refs + verse_refs
-    
-    if layer:
-        sql += " AND c.layer = ?"
-        params.append(layer)
-    
-    sql += " LIMIT 500"
-    rows = conn.execute(sql, params).fetchall()
-    return [dict(r) for r in rows]
-
-
-def _rate_connections(rows: list) -> dict:
-    """Rate a batch of connections and return quality summary."""
-    if not rows:
-        return {"total": 0, "by_quality": {}, "by_layer": {}, "strong_connections": []}
-    
-    by_quality = {"verified": 0, "strong": 0, "probable": 0, "suggested": 0, "pattern": 0}
-    by_layer = {}
-    strong = []
-    
-    for r in rows:
-        meta_str = r.get("metadata") or "{}"
-        if isinstance(meta_str, str):
-            try:
-                meta = json.loads(meta_str)
-            except json.JSONDecodeError:
-                meta = {}
-        else:
-            meta = meta_str
-        quality = rate_connection_row({
-            "discovered_by": r.get("discovered_by", "algorithm"),
-            "type": r.get("type", ""),
-            "confidence": r.get("confidence", 0.5),
-            "confirmation_count": r.get("confirmation_count", 0),
-            "metadata": meta,
-        })
-        stars = quality.get("stars", 1)
-        level = {5: "verified", 4: "strong", 3: "probable", 2: "suggested", 1: "pattern"}.get(stars, "suggested")
-        by_quality[level] = by_quality.get(level, 0) + 1
-        by_layer[r["layer"]] = by_layer.get(r["layer"], 0) + 1
-        
-        if stars >= 4:
-            strong.append({
-                "type": r["type"],
-                "layer": r["layer"],
-                "target": r["target_verse"],
-                "confidence": r["confidence"],
-                "quality": level,
-            })
-    
-    return {
-        "total": len(rows),
-        "by_quality": by_quality,
-        "by_layer": by_layer,
-        "strong_connections": strong[:10],
-    }
-
-
 def _get_verse_text(conn, ref: str) -> Optional[str]:
     """Get the English text for a verse reference."""
     row = conn.execute(
@@ -170,36 +91,15 @@ def _get_verse_text(conn, ref: str) -> Optional[str]:
     return row[0] if row else None
 
 
-def _text_supports_claim(claim: str, verse_text: str) -> float:
+def _text_match_score(claim: str, verse_text: str) -> float:
     """
-    Quick heuristic: does the verse text support the claim?
-    Handles archaic English (judgeth/judging, standeth/stands) and
-    proper names (YHWH/LORD/GOD).
+    Score how well a verse text supports a claim.
+    Uses KEY_CONCEPTS mapping to handle synonyms and archaic English.
+    Returns 0.0-1.0.
     """
     claim_lower = claim.lower()
     verse_lower = verse_text.lower()
     
-    # Key concept map for archaic/modern equivalents
-    KEY_CONCEPTS = {
-        'yahweh': ['lord', 'yhwh', 'god', 'almighty'],
-        'angel': ['angel', 'messenger', 'malach'],
-        'council': ['council', 'congregation', 'assembly', 'host'],
-        'divine': ['divine', 'god', 'heavenly', 'holy'],
-        'judge': ['judge', 'judgeth', 'judged', 'judging', 'judgment'],
-        'stand': ['stand', 'standeth', 'stood', 'standing'],
-        'create': ['create', 'created', 'createth', 'creator', 'making', 'made'],
-        'temple': ['temple', 'sanctuary', 'tabernacle', 'house', 'dwelling'],
-        'heaven': ['heaven', 'heavens', 'heavenly', 'sky', 'firmament'],
-        'earth': ['earth', 'land', 'world', 'ground'],
-        'king': ['king', 'kingdom', 'royal', 'reign', 'rule'],
-        'priest': ['priest', 'priesthood', 'minister', 'serve'],
-        'sacrifice': ['sacrifice', 'offering', 'altar', 'blood'],
-        'covenant': ['covenant', 'promise', 'oath', 'testament'],
-        'asherah': ['asherah', 'grove', 'pole', 'image'],
-        'baal': ['baal', 'baalim'],
-    }
-    
-    # Score based on how many key concepts appear in BOTH claim and verse
     matches = 0
     total_concepts = 0
     
@@ -217,168 +117,212 @@ def _text_supports_claim(claim: str, verse_text: str) -> float:
     return matches / total_concepts
 
 
-def check_claim(conn, claim: str, verse_refs: list[str], 
-                claim_type: Optional[str] = None) -> dict:
-    """
-    Evaluate a scholarly claim against the scripture text.
+def _graph_evidence_score(conn, verse_refs: list[str]) -> dict:
+    """Score the connection graph evidence for given verses."""
+    if not verse_refs:
+        return {"score": 0.0, "total": 0, "by_layer": {}, "strong": []}
     
-    The evaluation uses three signals:
-      1. Direct text match — do the verses actually say what the claim asserts?
-      2. Connection graph — what does the intertextual/web of verses show?
-      3. Layer quality — which layers support the claim (linguistic > sod)?
-    """
-    if not claim_type:
-        claim_type = classify_claim(claim)
+    placeholders = ",".join("?" for _ in verse_refs)
+    rows = conn.execute(f"""
+        SELECT *
+        FROM connections
+        WHERE (source_verse IN ({placeholders}) OR target_verse IN ({placeholders}))
+        LIMIT 1000
+    """, verse_refs + verse_refs).fetchall()
     
-    # Get the texts of referenced verses
+    if not rows:
+        return {"score": 0.0, "total": 0, "by_layer": {}, "strong": []}
+    
+    total = len(rows)
+    by_layer = {}
+    weighted_score = 0.0
+    total_weight = 0.0
+    strong_connections = []
+    
+    for r in rows:
+        d = dict(r)
+        layer = d["layer"]
+        by_layer[layer] = by_layer.get(layer, 0) + 1
+        
+        weight = LAYER_WEIGHTS.get(layer, 0.5)
+        conf = d.get("confidence", 0.5)
+        
+        weighted_score += weight * conf
+        total_weight += weight
+        
+        if conf > 0.7 and weight > 0.6:
+            strong_connections.append({
+                "type": d["type"],
+                "layer": layer,
+                "target": d["target_verse"],
+                "confidence": conf,
+            })
+    
+    avg_score = weighted_score / max(total_weight, 1)
+    # Normalize to 0-1
+    normalized = min(1.0, avg_score)
+    
+    return {
+        "score": round(normalized, 3),
+        "total": total,
+        "by_layer": by_layer,
+        "strong": strong_connections[:5],
+    }
+
+
+def evaluate_claim(conn, claim: str, verse_refs: list[str],
+                   scholar: str = "", level: str = "L2_CONTEXTUAL") -> dict:
+    """
+    Multi-signal truth evaluation.
+    
+    Combines: text match, graph evidence, contradiction check, scholar weight.
+    """
+    # 1. Get evidence level weights
+    level_info = LEVEL_WEIGHTS.get(level, LEVEL_WEIGHTS["L2_CONTEXTUAL"])
+    base_weight = level_info["base"]
+    
+    # 2. Text match signal
     verse_texts = {}
-    text_support_scores = []
+    text_scores = []
     for ref in verse_refs:
         text = _get_verse_text(conn, ref)
         if text:
             verse_texts[ref] = text
-            score = _text_supports_claim(claim, text)
-            text_support_scores.append(score)
+            score = _text_match_score(claim, text)
+            text_scores.append(score)
     
-    # Signal 1: Direct text match (highest weight)
-    avg_text_support = sum(text_support_scores) / max(len(text_support_scores), 1) if text_support_scores else 0.0
-    has_direct_text_match = avg_text_support > 0.1  # Some keyword overlap
+    avg_text_match = sum(text_scores) / max(len(text_scores), 1) if text_scores else 0.0
+    text_signal = avg_text_match * level_info["text"]
     
-    # Get all connections involving these verses
-    connections = _get_connections_for_verses(conn, verse_refs)
-    conn_summary = _rate_connections(connections)
+    # 3. Graph support signal
+    graph = _graph_evidence_score(conn, verse_refs)
+    graph_signal = graph["score"] * level_info["graph"]
     
-    # Signal 2: Connection graph by layer
-    layer_evidence = {}
-    for layer in LAYER_WEIGHTS:
-        layer_conns = [c for c in connections if c["layer"] == layer]
-        if layer_conns:
-            layer_evidence[layer] = {
-                "count": len(layer_conns),
-                "quality": _rate_connections(layer_conns),
-                "weight": LAYER_WEIGHTS[layer],
-            }
+    # 4. Scholar credibility signal
+    scholar_weight = get_scholar_weight(scholar) if scholar else 0.5
+    scholar_signal = scholar_weight * level_info["scholar"]
     
-    # Calculate weighted graph score
-    total_weight = 0
-    graph_score = 0
+    # 5. Contradiction check
+    contradiction = check_contradictions(claim, verse_refs, conn)
+    contradiction_penalty = contradiction["contradiction_score"] * 0.5  # Max 50% penalty
     
-    for layer, evidence in layer_evidence.items():
-        w = evidence["weight"]
-        total_weight += w
-        q = evidence["quality"]
-        # Count all connections, weighted by quality
-        verified_count = q["by_quality"].get("verified", 0)
-        strong_count = q["by_quality"].get("strong", 0)
-        probable_count = q["by_quality"].get("probable", 0)
-        total = max(q["total"], 1)
-        layer_score = (verified_count * 1.0 + strong_count * 0.8 + probable_count * 0.5) / total
-        graph_score += w * layer_score
+    # 6. Combined score
+    raw_score = text_signal + graph_signal + scholar_signal
+    # Apply base weight and contradiction penalty
+    final_score = raw_score * base_weight * (1.0 - contradiction_penalty)
+    final_score = min(1.0, max(0.0, final_score))
     
-    overall_graph_score = graph_score / max(total_weight, 1) if total_weight > 0 else 0.0
-    
-    # Signal 3: Combine text match + graph evidence
-    # Text match gets 60% weight, graph gets 40%
-    combined_score = avg_text_support * 0.6 + overall_graph_score * 0.4
-    
-    # Classify alignment
-    has_linguistic = layer_evidence.get("linguistic", {}).get("count", 0) > 0
-    has_strong_graph = conn_summary["by_quality"].get("verified", 0) > 0 or conn_summary["by_quality"].get("strong", 0) > 0
-    has_connections = conn_summary["total"] > 0
-    textual_match_found = has_direct_text_match or has_linguistic
-    
-    if textual_match_found and combined_score >= 0.3:
-        alignment = "supports"
-        confidence = min(0.95, 0.4 + combined_score * 0.6)
-    elif has_strong_graph and combined_score >= 0.15:
-        alignment = "partially_supports"
-        confidence = min(0.8, 0.3 + combined_score * 0.5)
-    elif has_connections:
-        alignment = "neutral"
-        confidence = 0.5
+    # 7. Determine alignment
+    if final_score >= 0.6 and avg_text_match > 0.3:
+        alignment = "supported"
+        confidence = final_score
+    elif final_score >= 0.4:
+        alignment = "plausible"
+        confidence = final_score
+    elif final_score >= 0.2:
+        alignment = "uncertain"
+        confidence = final_score
+    elif contradiction["has_contradiction"]:
+        alignment = "contradicted"
+        confidence = contradiction["contradiction_score"]
     else:
-        alignment = "insufficient_evidence"
-        confidence = 0.0
-    
-    # Top evidence
-    top_connections = []
-    for c in connections[:5]:
-        top_connections.append({
-            "type": c["type"],
-            "layer": c["layer"],
-            "source": c["source_verse"],
-            "target": c["target_verse"],
-            "confidence": c["confidence"],
-        })
+        alignment = "uncertain"
+        confidence = final_score
     
     return {
         "claim": claim,
-        "claim_type": claim_type,
-        "verse_refs": verse_refs,
-        "verse_texts": verse_texts,
+        "scholar": scholar,
+        "level": level,
         "alignment": alignment,
-        "confidence": round(confidence, 3),
-        "text_match_score": round(avg_text_support, 3),
-        "graph_score": round(overall_graph_score, 3),
-        "combined_score": round(combined_score, 3),
-        "total_connections": conn_summary["total"],
-        "connections_by_quality": conn_summary["by_quality"],
-        "connections_by_layer": conn_summary["by_layer"],
-        "strong_connections": conn_summary["strong_connections"],
-        "top_connections": top_connections,
-        "layer_evidence": {
-            layer: {
-                "count": e["count"],
-                "weight": e["weight"],
-            }
-            for layer, e in layer_evidence.items()
+        "confidence": round(min(0.95, confidence), 3),
+        "signals": {
+            "text_match": round(avg_text_match, 3),
+            "text_signal": round(text_signal, 3),
+            "graph_signal": round(graph_signal, 3),
+            "graph_total": graph["total"],
+            "scholar_signal": round(scholar_signal, 3),
+            "scholar_weight": round(scholar_weight, 3),
+            "contradiction_penalty": round(contradiction_penalty, 3),
         },
+        "contradiction": contradiction,
+        "graph_evidence": {
+            "total": graph["total"],
+            "by_layer": graph["by_layer"],
+            "strong_connections": graph["strong"],
+        },
+        "verse_texts": verse_texts,
+        "verse_refs": verse_refs,
     }
 
 
-def batch_check(conn, claims: list[dict]) -> list[dict]:
-    """Check multiple claims at once. Each claim: {claim, verse_refs, claim_type?}"""
+def batch_evaluate(conn, claims: list[dict]) -> list[dict]:
+    """Evaluate multiple claims at once. Each claim needs: claim, verses, scholar, level."""
     results = []
-    for item in claims:
-        result = check_claim(
-            conn,
-            item["claim"],
-            item.get("verse_refs", []),
-            item.get("claim_type"),
+    for c in claims:
+        result = evaluate_claim(
+            conn, c["claim"], c.get("verses", []),
+            scholar=c.get("scholar", ""),
+            level=c.get("level", "L2_CONTEXTUAL"),
         )
+        result["topic"] = c.get("topic", "")
         results.append(result)
     return results
 
 
-def generate_report(results: list[dict]) -> dict:
-    """Generate a summary report from batch claim results."""
+def generate_audit_report(results: list[dict]) -> dict:
+    """Generate a summary audit report from batch evaluation results."""
     total = len(results)
     by_alignment = {}
-    by_type = {}
+    by_level = {}
+    by_topic = {}
     
     for r in results:
         a = r["alignment"]
         by_alignment[a] = by_alignment.get(a, 0) + 1
-        t = r["claim_type"]
-        by_type[t] = by_type.get(t, 0) + 1
-    
-    strong_evidence = []
-    for r in results:
-        for c in r.get("strong_connections", []):
-            strong_evidence.append({
-                "claim": r["claim"][:100],
-                "type": c["type"],
-                "layer": c["layer"],
-                "target": c["target"],
-                "quality": c["quality"],
-            })
+        l = r["level"]
+        by_level[l] = by_level.get(l, 0) + 1
+        t = r.get("topic", "?")
+        if t not in by_topic:
+            by_topic[t] = {"total": 0, "supported": 0, "plausible": 0, "uncertain": 0, "contradicted": 0}
+        by_topic[t]["total"] += 1
+        by_topic[t][a] = by_topic[t].get(a, 0) + 1
     
     return {
         "total_claims": total,
         "by_alignment": by_alignment,
-        "by_claim_type": by_type,
-        "alignment_rate": round(by_alignment.get("supports", 0) / max(total, 1), 3),
-        "contradiction_rate": round(by_alignment.get("contradicts", 0) / max(total, 1), 3),
-        "strong_evidence": strong_evidence[:10],
+        "by_evidence_level": by_level,
+        "by_topic": by_topic,
         "results": results,
     }
+
+
+# ── Legacy wrapper for backward compat ──
+
+def check_claim(conn, claim: str, verse_refs: list[str],
+                claim_type: Optional[str] = None) -> dict:
+    """Legacy wrapper — evaluates at default L2 level."""
+    return evaluate_claim(conn, claim, verse_refs, level="L2_CONTEXTUAL")
+
+
+def batch_check(conn, claims: list[dict]) -> list[dict]:
+    """Legacy wrapper for batch_check."""
+    return batch_evaluate(conn, claims)
+
+
+def generate_report(results: list[dict]) -> dict:
+    """Legacy wrapper for generate_report."""
+    return generate_audit_report(results)
+
+
+def classify_claim(text: str) -> str:
+    """Simple claim type classifier (kept for backward compat)."""
+    text_lower = text.lower()
+    if any(w in text_lower for w in ['hebrew', 'greek', 'word means', 'literally', 'the term']):
+        return "linguistic"
+    if any(w in text_lower for w in ['josiah', 'century', 'archaeolog', 'inscription', 'excavated']):
+        return "historical"
+    if any(w in text_lower for w in ['trinity', 'binitarian', 'christology', 'divine', 'incarnation']):
+        return "theological"
+    if any(w in text_lower for w in ['manuscript', 'variant', 'septuagint', 'lxx', 'dss']):
+        return "textual"
+    return "interpretive"

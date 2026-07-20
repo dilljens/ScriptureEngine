@@ -961,6 +961,7 @@ def grade_answer(body: GradingRequest):
                 if parts:
                     user_context = "\nUser's learning context:\n" + "\n".join(parts) + "\n"
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     # Format the grading request for the LLM

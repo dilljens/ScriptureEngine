@@ -195,10 +195,11 @@ When a user asks about a passage or topic:
 - `scripture_hebrew_quiz(category?, count?)` — generate Hebrew quiz questions
 
 ### Truth Alignment (Scholarship vs Scripture)
-- `scripture_truth_check(claim, verses?, claim_type?)` — **Evaluate a scholarly claim against scripture.** Checks verse texts + connection graph. Returns supports/contradicts/neutral with confidence score and evidence.
-- `scripture_truth_topic(topic)` — **Run truth check on all claims for a topic.** Topics: temple_microcosm (Beale), angel_yhwh_divine_council (Heiser/Barker), josiah_reform, queen_of_heaven_asherah (Dever), two_yahwehs_origins (Barker/Bauckham), atonement_theosis (Barker — Yom Kippur, Son of Man, high priest, theosis, Wisdom, temple restoration, BOM convergence), bom_temple (Butler — BOM temple patterns, Lehi's dream, Josiah, Worship of Shalems).
+- `scripture_truth_check(claim, verses?, scholar?, level?)` — **Multi-signal truth evaluation.** Checks: text match (does the text actually say this?), graph evidence (what do connections show?), contradictions (does clear scripture disagree?), scholar credibility (how authoritative is the scholar?). Returns: `supported` | `plausible` | `uncertain` | `contradicted` with confidence score.
+  - `level` parameter controls strictness: `L1_LITERAL` (text explicitly says it), `L1_HISTORICAL` (text narrates it), `L2_CONTEXTUAL` (implied), `L3_INTERPRETIVE` (scholar's reading), `L3_SPECULATIVE` (reconstructed).
+- `scripture_truth_topic(topic)` — **Multi-signal audit for a topic.** Topics: temple_microcosm, angel_yhwh_divine_council, josiah_reform, queen_of_heaven_asherah, two_yahwehs_origins, atonement_theosis, bom_temple.
 
-When a user asks about a scholar's claim, use `scripture_truth_check` to verify it against what the text actually says. For deep topical analysis covering multiple scholars, use `scripture_truth_topic`.
+When a user asks about a scholar's claim, use `scripture_truth_check` with the `scholar` parameter to get credibility-weighted results. The system is HONEST about what the text actually says vs what scholars claim it means — L1 claims get highest confidence, L3 claims are marked as interpretive.
 
 ## Interactive Response Markers
 

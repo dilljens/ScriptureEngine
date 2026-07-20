@@ -29,11 +29,11 @@ BASE_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from lib.api.truth import (
-    check_claim,
-    batch_check,
+    evaluate_claim,
+    batch_evaluate,
     classify_claim,
     extract_verse_refs,
-    generate_report,
+    generate_audit_report,
 )
 from lib.api.truth_data import SCHOLARLY_CLAIMS
 from lib.db import get_db
@@ -101,20 +101,20 @@ def handle_cli():
         print(f'\n=== Checking topic: {topic} ({len(claims)} claims) ===\n')
         results = []
         for item in claims:
-            print(f'Claim by {item["scholar"]}:')
+            print(f'Claim by {item["scholar"]} ({item.get("level", "L2")}):')
             print(f'  "{item["claim"]}"')
-            result = check_claim(conn, item["claim"], item.get("verses", []))
+            result = evaluate_claim(conn, item["claim"], item.get("verses", []),
+                                     scholar=item.get("scholar", ""),
+                                     level=item.get("level", "L2_CONTEXTUAL"))
             results.append(result)
             print_result(result, indent=2)
             print()
         
-        report = generate_report(results)
+        report = generate_audit_report(results)
         print(f'\n=== TOPIC SUMMARY ===')
         print(f'  Total claims: {report["total_claims"]}')
         print(f'  By alignment: {json.dumps(report["by_alignment"])}')
-        print(f'  By claim type: {json.dumps(report["by_claim_type"])}')
-        print(f'  Alignment rate: {report["alignment_rate"]:.1%}')
-        print(f'  Contradiction rate: {report["contradiction_rate"]:.1%}')
+        print(f'  By evidence level: {json.dumps(report["by_evidence_level"])}')
         print(f'\nFull results:')
         print(json.dumps(report, indent=2, default=str))
     
@@ -128,15 +128,14 @@ def handle_cli():
                     all_claims.append({**c, "topic": topic})
             claims = all_claims
         
-        results = []
-        for item in claims:
-            result = check_claim(conn, item["claim"], item.get("verses", []))
-            result["scholar"] = item.get("scholar", "")
-            result["topic"] = item.get("topic", "")
-            results.append(result)
+        results = batch_evaluate(conn, [
+            {**c, "verses": c.get("verses", []),
+             "scholar": c.get("scholar", ""),
+             "level": c.get("level", "L2_CONTEXTUAL")}
+            for c in claims
+        ])
         
-        report = generate_report(results)
-        report["claims"] = results
+        report = generate_audit_report(results)
         print(json.dumps(report, indent=2, default=str))
     
     else:  # single claim check
@@ -148,15 +147,16 @@ def handle_cli():
                 print("No verses found. Provide 'verses' list or include refs in claim text.")
                 return
         
-        claim_type = args.get("claim_type") or classify_claim(claim)
+        scholar = args.get("scholar", "")
+        level = args.get("level", "L2_CONTEXTUAL")
         print(f'\nClaim: "{claim}"')
-        print(f'Type: {claim_type}')
+        print(f'Said by: {scholar if scholar else "(unknown)"}')
+        print(f'Level: {level}')
         print(f'Verses: {", ".join(verses)}\n')
         
-        result = check_claim(conn, claim, verses, claim_type)
+        result = evaluate_claim(conn, claim, verses, scholar=scholar, level=level)
         print_result(result)
         
-        # Machine-readable output
         print(f'\n---\nJSON:')
         print(json.dumps(result, indent=2, default=str))
     

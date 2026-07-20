@@ -20,12 +20,58 @@ import json
 import logging
 import os
 import random
+import re
 import sqlite3
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 logger = logging.getLogger(__name__)
-from lib.assessment.items_old import fmt_ref, truncate_text
+
+# Moved from items_old.py (which is now deleted)
+FULL_BOOK_NAMES = {
+    'gen': 'Genesis', 'exo': 'Exodus', 'lev': 'Leviticus', 'num': 'Numbers',
+    'deu': 'Deuteronomy', 'josh': 'Joshua', 'judg': 'Judges', 'ruth': 'Ruth',
+    '1sam': '1 Samuel', '2sam': '2 Samuel', '1kgs': '1 Kings', '2kgs': '2 Kings',
+    '1chr': '1 Chronicles', '2chr': '2 Chronicles', 'ezra': 'Ezra', 'neh': 'Nehemiah',
+    'esth': 'Esther', 'job': 'Job', 'psa': 'Psalms', 'prov': 'Proverbs',
+    'eccl': 'Ecclesiastes', 'song': 'Song of Solomon',
+    'isa': 'Isaiah', 'jer': 'Jeremiah', 'lam': 'Lamentations', 'ezek': 'Ezekiel',
+    'dan': 'Daniel', 'hos': 'Hosea', 'joel': 'Joel', 'amos': 'Amos',
+    'obad': 'Obadiah', 'jonah': 'Jonah', 'mic': 'Micah', 'nah': 'Nahum',
+    'hab': 'Habakkuk', 'zeph': 'Zephaniah', 'hag': 'Haggai', 'zech': 'Zechariah',
+    'mal': 'Malachi', 'matt': 'Matthew', 'mark': 'Mark', 'luke': 'Luke',
+    'john': 'John', 'acts': 'Acts', 'rom': 'Romans',
+    '1cor': '1 Corinthians', '2cor': '2 Corinthians', 'gal': 'Galatians',
+    'eph': 'Ephesians', 'phil': 'Philippians', 'col': 'Colossians',
+    '1thes': '1 Thessalonians', '2thes': '2 Thessalonians',
+    '1tim': '1 Timothy', '2tim': '2 Timothy', 'titus': 'Titus',
+    'philem': 'Philemon', 'heb': 'Hebrews', 'james': 'James',
+    '1pet': '1 Peter', '2pet': '2 Peter', '1john': '1 John',
+    '2john': '2 John', '3john': '3 John', 'jude': 'Jude', 'rev': 'Revelation',
+}
+
+
+def fmt_ref(verse_id):
+    """Format a verse reference like 'gen.1.1' into 'Genesis 1:1'."""
+    parts = verse_id.split('.')
+    if len(parts) >= 3:
+        book = FULL_BOOK_NAMES.get(parts[0], parts[0].upper())
+        return f"{book} {parts[1]}:{parts[2]}"
+    elif len(parts) == 2:
+        book = FULL_BOOK_NAMES.get(parts[0], parts[0].upper())
+        return f"{book} {parts[1]}"
+    return verse_id
+
+
+def truncate_text(text, max_chars=150):
+    """Truncate text to max_chars, adding ellipsis if needed."""
+    if not text:
+        return ""
+    text = re.sub(r'\s+', ' ', text).strip()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rsplit(' ', 1)[0] + '...'
+
 
 CANONICAL_BOOKS = {
     'gen','exo','lev','num','deu','josh','judg','ruth',

@@ -34,49 +34,13 @@ GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo?id_token="
 
 
 def get_conn():
-    """Get DB connection with auth tables created."""
+    """Get DB connection — auth tables are created by lib/db.py SCHEMA_SQL.
+    
+    This function ensures indexes exist (belt-and-suspenders: SCHEMA_SQL
+    in lib/db.py creates the tables; this ensures indexes survive schema changes).
+    """
     from lib.db import get_db as _get_db
     conn = _get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            google_id TEXT UNIQUE,
-            email TEXT UNIQUE,
-            name TEXT DEFAULT '',
-            avatar_url TEXT DEFAULT '',
-            anon_id TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            last_login TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS sessions (
-            id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            token_hash TEXT NOT NULL,
-            created_at TEXT DEFAULT (datetime('now')),
-            last_seen TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS recovery_keys (
-            key_hash TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            user_data TEXT DEFAULT '{}',   -- JSON with anonymous_id, settings snapshot
-            created_at TEXT DEFAULT (datetime('now')),
-            claimed_at TEXT,
-            claimed_by TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS user_preferences (
-            user_id TEXT NOT NULL,
-            pref_key TEXT NOT NULL,
-            pref_value TEXT NOT NULL DEFAULT '',
-            updated_at TEXT DEFAULT (datetime('now')),
-            PRIMARY KEY (user_id, pref_key)
-        )
-    """)
     with contextlib.suppress(Exception):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_anon ON users(anon_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
@@ -99,6 +63,7 @@ def _generate_session_token(user_id):
         conn.commit()
         conn.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
     return token_hash
 
@@ -123,6 +88,7 @@ def _resolve_user_from_token(session_token):
             return row["user_id"]
         conn.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
     return None
 
@@ -250,6 +216,7 @@ def merge_anonymous_progress(body: dict):
             )
             count += 1
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
     merged["memorize_queue"] = count
     conn.execute("DELETE FROM memorize_queue WHERE user_id=?", (anonymous_id,))
@@ -270,6 +237,7 @@ def merge_anonymous_progress(body: dict):
                   p["stability"], p["difficulty"], p["last_review"], p["next_review"]))
             count += 1
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
     merged["memorize_progress"] = count
     conn.execute("DELETE FROM memorize_progress WHERE user_id=?", (anonymous_id,))
@@ -298,6 +266,7 @@ def merge_anonymous_progress(body: dict):
                 """, (user_id, q["question_id"], q["correct"], q["attempts"], q["last_seen"]))
             count += 1
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
     merged["quiz_progress"] = count
     conn.execute("DELETE FROM quiz_progress WHERE user_id=?", (anonymous_id,))
@@ -327,6 +296,7 @@ def merge_anonymous_progress(body: dict):
                 """, (user_id, h["node_id"], h["mastery"], h["attempts"], h["correct"], h["last_practiced"]))
             count += 1
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
     merged["hebrew_progress"] = count
     conn.execute("DELETE FROM hebrew_progress WHERE user_id=?", (anonymous_id,))

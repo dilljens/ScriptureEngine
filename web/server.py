@@ -25,7 +25,7 @@ from biblical_transliteration import HebrewOptions, HebrewScheme, HebrewTranslit
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -84,14 +84,90 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: restrict to configured origins (comma-separated in CORS_ORIGINS env var)
+# Defaults to localhost dev origins; never "*" in production with credentials
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5176,http://localhost:3000")
+_cors_origin_list = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# ── Request validation middleware ────────────────────────────────────────
+
+_MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+@app.middleware("http")
+async def _validate_request(request: Request, call_next):
+    """Validate Content-Type and body size on write requests."""
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_type = request.headers.get("content-type", "").lower()
+        cl = request.headers.get("content-length", "0")
+        try:
+            content_length = int(cl)
+            if content_length > _MAX_BODY_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={"ok": False, "error": f"Request too large: {content_length} > {_MAX_BODY_SIZE}"},
+                )
+        except (ValueError, TypeError):
+            pass  # No content-length header — will be parsed by the endpoint
+
+        # JSON endpoints must have JSON content-type
+        path = str(request.url.path)
+        if path.startswith("/api/v1/") and content_type and "multipart" not in content_type:
+            if "json" not in content_type and "form" not in content_type:
+                return JSONResponse(
+                    status_code=415,
+                    content={"ok": False, "error": f"Unsupported Content-Type: {content_type}. Use application/json."},
+                )
+
+    return await call_next(request)
+
+
+# ── Security headers middleware ──────────────────────────────────────────
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    """Add security headers to every response."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Permissive CSP for scripture engine (needs inline styles for Tailwind + fonts)
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self' https://*.googleapis.com https://oauth2.googleapis.com; "
+        "frame-ancestors 'none'"
+    )
+    return response
+
+
+# ── Global exception handler ─────────────────────────────────────────────
+
+@app.exception_handler(Exception)
+async def _global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions and return structured JSON."""
+    import traceback
+    log.error("unhandled_exception", path=str(request.url), method=request.method,
+              error=str(exc), traceback=traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={"ok": False, "error": str(exc), "type": type(exc).__name__},
+    )
 
 # Include route modules
 
@@ -100,7 +176,10 @@ from web.routes.audio import router as audio_router
 from web.routes.auth import router as auth_router
 from web.routes.chat import router as chat_router
 from web.routes.conversations import router as conversations_router
+from web.routes.admin import router as admin_router
+from web.routes.forum import router as forum_router
 from web.routes.graph import router as graph_router
+from web.routes.js import router as js_router
 from web.routes.hebrew import router as hebrew_router
 from web.routes.learn import router as learn_router
 from web.routes.passage import router as passage_router
@@ -111,6 +190,7 @@ from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
 app.include_router(sefirot_router)
+app.include_router(forum_router)
 app.include_router(passage_router)
 app.include_router(wiki_router)
 app.include_router(audio_router)
@@ -175,6 +255,7 @@ def _startup_debug():
         _c.commit()
         _c.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
 def load_ram_cache():
@@ -335,6 +416,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
         conn2.commit()
         conn2.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass  # Non-critical — don't fail the response if tracking fails
 
     # Guide from RAM cache or SQLite
@@ -358,6 +440,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
                 lxx_fallback = _lxx["text"]
             _conn.close()
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass  # Non-critical
     resp = {
         "verse_id": vid,
@@ -389,6 +472,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
                 resp["jst_diff"] = _diff["type"]  # "jst_change" or "jst_addition"
         _jst.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     if guide:
@@ -445,6 +529,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
                             _item["hermeneutic"] = _meta.get("hermeneutic", "linguistic")
             _conn_meta.close()
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass  # Non-critical — enrichment failure shouldn't break verse lookup
 
         # Interpretive disagreements — contradictory readings across traditions
@@ -601,6 +686,7 @@ def search(
                 conn.close()
                 return cached
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     # Parse query syntax: extract book/work filter, exclude terms, phrase terms
@@ -652,6 +738,7 @@ def search(
                 for r in rows:
                     results.append({"verse": r["id"], "text": r["text_english"][:200], "book": r["title"], "language": "english"})
             except Exception:
+                log.warning("silent_exception", exc_info=True)
                 pass
 
     if lang in ("all", "hebrew") and search_query:
@@ -711,6 +798,7 @@ def search(
             cache_key = _make_key("search", (q.strip(), lang, limit, offset, book), {})
             _set_cache(conn, cache_key, response)
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     conn.close()
@@ -855,6 +943,7 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
             conn.close()
             return cached
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # ── Query classifier ──
@@ -880,6 +969,7 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
                     if v:
                         results.append(_format_verse_result(v, 1.0))
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     elif qtype == "hebrew_word":
@@ -899,6 +989,7 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
             from lib.api.graph_search import graph_search as _gs
             graph_results = _gs(conn, q, top_k=limit)
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
         # Try vector search (requires pre-computed embeddings)
@@ -924,6 +1015,7 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
         if reranked:
             results = reranked
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     response = {"ok": True, "data": {
@@ -940,6 +1032,7 @@ def semantic_search(q: str = Query(..., description="Query text"), limit: int = 
         cache_key = _make_key("semantic_search", (q.strip(), limit, mode), {})
         _set_cache(conn, cache_key, response)
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     conn.close()
@@ -1076,6 +1169,7 @@ def _trigram_search(conn, query, limit):
         if rows:
             return [_format_verse_result(v, 0.5) for v in rows]
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # 2. Try OR query (typo-tolerant — match any trigram)
@@ -1097,6 +1191,7 @@ def _trigram_search(conn, query, limit):
                 if rows:
                     return [_format_verse_result(v, 0.4) for v in rows]
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     return []
@@ -2952,67 +3047,6 @@ def get_chapter_entities(ref: str):
 
 # ─── Study Guides moved to web/routes/studies.py ───
 
-# ─── Forum System ───
-
-@app.get("/api/v1/forum/topics")
-def list_forum_topics(category: str = ""):
-    """List forum topics, optionally filtered by category."""
-    conn = get_db()
-    query = "SELECT * FROM forum_topics"
-    params = []
-    if category:
-        query += " WHERE category = ?"
-        params.append(category)
-    query += " ORDER BY post_count DESC, created_at DESC"
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return {"ok": True, "data": {
-        "topics": [dict(r) for r in rows],
-        "total": len(rows),
-    }}
-
-
-@app.get("/api/v1/forum/topics/{topic_id:path}")
-def get_forum_topic(topic_id: str):
-    """Get a forum topic with its posts."""
-    conn = get_db()
-    topic = conn.execute("SELECT * FROM forum_topics WHERE id = ? OR slug = ?",
-                        (topic_id, topic_id)).fetchone()
-    if not topic:
-        conn.close()
-        return {"ok": False, "error": "Topic not found"}
-
-    posts = conn.execute("""
-        SELECT * FROM forum_posts WHERE topic_id = ? ORDER BY created_at ASC
-    """, (topic["id"],)).fetchall()
-
-    conn.close()
-    return {"ok": True, "data": {"topic": dict(topic), "posts": [dict(p) for p in posts]}}
-
-
-class ForumPostCreate(BaseModel):
-    topic_id: int
-    content: str
-    author: str = "anonymous"
-    parent_id: int | None = None
-
-@app.post("/api/v1/forum/posts")
-def create_forum_post(post: ForumPostCreate):
-    """Create a new post in a forum topic."""
-    if not post.content.strip():
-        return {"ok": False, "error": "Content is required"}
-    conn = get_db()
-    conn.execute("""
-        INSERT INTO forum_posts (topic_id, author, content, parent_id)
-        VALUES (?, ?, ?, ?)
-    """, (post.topic_id, post.author, post.content.strip(), post.parent_id))
-    conn.execute("UPDATE forum_topics SET post_count = post_count + 1 WHERE id = ?", (post.topic_id,))
-    conn.commit()
-    post_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-    conn.close()
-    return {"ok": True, "data": {"post_id": post_id, "message": "Post created"}}
-
-
 # ─── Verse Annotations (per-verse comments) ───
 
 @app.get("/api/v1/verses/{ref}/annotations")
@@ -3184,6 +3218,7 @@ def client_error_log(data: dict):
         conn.commit()
         conn.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
     return {"ok": True}
 

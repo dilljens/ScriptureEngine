@@ -689,6 +689,40 @@ CREATE TABLE IF NOT EXISTS generator_meta (
     connection_count INTEGER,
     duration_ms INTEGER
 );
+
+-- Auth / cross-device sync
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    google_id TEXT UNIQUE,
+    email TEXT UNIQUE,
+    name TEXT DEFAULT '',
+    avatar_url TEXT DEFAULT '',
+    anon_id TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_login TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_seen TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS recovery_keys (
+    key_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_data TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now')),
+    claimed_at TEXT,
+    claimed_by TEXT
+);
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id TEXT NOT NULL,
+    pref_key TEXT NOT NULL,
+    pref_value TEXT NOT NULL DEFAULT '',
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, pref_key)
+);
 """
 
 

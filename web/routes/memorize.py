@@ -214,6 +214,7 @@ def compute_fire_credit(conn, verse_id, rating, decay_days=7):
                 decay_rate = math.pow(0.9, days_since * slide_factor)
                 existing_credit *= decay_rate
             except Exception:
+                log.warning("silent_exception", exc_info=True)
                 pass
 
         if rating >= 3:
@@ -445,6 +446,7 @@ def add_chapter_to_queue(body: dict):
             """, (user_id, v["id"]))
             added_count += 1
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     conn.commit()
@@ -746,6 +748,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
             })
         mconn.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # 3. Learn module review cards
@@ -766,6 +769,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
             })
         lconn.close()
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # Interleave: no more than 2 consecutive from same source
@@ -836,6 +840,7 @@ def get_non_interference_distance(conn, verse_a, verse_b):
         if row:
             return row[0]
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     return 0.0

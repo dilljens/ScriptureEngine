@@ -1236,16 +1236,14 @@ register(
 
 # ─── Truth Check Tools ───
 
-from lib.api.truth import check_claim, batch_check, generate_report, classify_claim
+from lib.api.truth import evaluate_claim, batch_evaluate, generate_audit_report, classify_claim
 from lib.api.truth_data import SCHOLARLY_CLAIMS
 
-def _truth_check(conn, claim="", verses=None, claim_type=""):
+def _truth_check(conn, claim="", verses=None, claim_type="", scholar="", level="L2_CONTEXTUAL"):
     """Evaluate a scholarly claim against the scripture text."""
-    from lib.api.truth import check_claim as _cc
     if not verses:
         verses = []
-    ct = claim_type or None
-    return _cc(conn, claim, verses, ct)
+    return evaluate_claim(conn, claim, verses, scholar=scholar, level=level)
 
 register(
     "scripture_truth_check",
@@ -1255,18 +1253,21 @@ register(
         "properties": {
             "claim": {"type": "string", "description": "The scholarly claim to evaluate"},
             "verses": {"type": "array", "items": {"type": "string"}, "description": "Verse references (e.g. ['gen.1.1', 'psa.82.1'])"},
-            "claim_type": {"type": "string", "enum": ["linguistic", "historical", "theological", "textual", "interpretive"], "description": "Optional claim type override"},
+            "scholar": {"type": "string", "description": "Scholar name for credibility weighting"},
+            "level": {"type": "string", "enum": ["L1_LITERAL", "L1_HISTORICAL", "L2_CONTEXTUAL", "L3_INTERPRETIVE", "L3_SPECULATIVE"], "description": "Evidence level"},
         },
         "required": ["claim"],
     },
-    "Evaluate a scholarly claim against scripture using the connection graph. Returns supports/contradicts/neutral with confidence score and evidence.",
+    "Multi-signal truth evaluation. Checks text match, graph evidence, contradictions, and scholar credibility. Returns supported/plausible/uncertain/contradicted.",
 )
 
 register(
     "scripture_truth_topic",
     lambda conn, topic="": (
-        batch_check(conn, [
-            {**c, "verses": c.pop("verses", [])}
+        batch_evaluate(conn, [
+            {**c, "verses": c.get("verses", []),
+             "scholar": c.get("scholar", ""),
+             "level": c.get("level", "L2_CONTEXTUAL")}
             for c in SCHOLARLY_CLAIMS.get(topic, [])
         ]) if topic else {"error": f"Unknown topic. Available: {', '.join(SCHOLARLY_CLAIMS.keys())}"}
     ),
@@ -1277,7 +1278,7 @@ register(
         },
         "required": ["topic"],
     },
-    "Run truth check on all scholarly claims for a topic. Topics: temple_microcosm, angel_yhwh_divine_council, josiah_reform, queen_of_heaven_asherah, two_yahwehs_origins",
+    "Multi-signal truth audit for a topic. Checks all claims using text match, graph evidence, contradictions, and scholar credibility.",
 )
 
 # ─── Export all registered tool names ───

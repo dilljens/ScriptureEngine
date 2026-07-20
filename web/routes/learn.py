@@ -393,6 +393,7 @@ def get_module(module_id: str, user_id: str = "default"):
                 wiki_parts.append(f"\n**{w['title']}**: {w['summary'][:300] if w['summary'] else ''}")
             wiki_content = "\n".join(wiki_parts)
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     q_list = []
@@ -586,6 +587,7 @@ def submit_practice(module_id: str, body: dict):
         from lib.api.fire_unified import compute_fire_credit as fire_unified
         fire_unified(conn, "learning_module", module_id, rating, user_id)
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     conn.commit()

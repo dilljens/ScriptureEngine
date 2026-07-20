@@ -368,6 +368,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
             from lib.api.fire_unified import compute_fire_credit as fire_unified
             fire_unified(conn, "hebrew_concept", node_id, rating, user_id)
         except Exception:
+            log.warning("silent_exception", exc_info=True)
             pass
 
     # ── Gamification: XP + Streak + Badge check ──
@@ -1078,6 +1079,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
             confusable_pairs.add((a, b))
             confusable_pairs.add((b, a))
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # 3. Sort categories by their lowest retrievability (most urgent first)
@@ -1553,6 +1555,7 @@ def _award_insight_xp(user_id, node_id, amount=5):
         scripture_conn.close()
         connections = [{"type": r[0], "target": r[1]} for r in rows]
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     # Count how many are new to this user
@@ -1655,6 +1658,7 @@ def get_hebrew_insight(node_id: str, user_id: str = "default"):
         scripture_conn.close()
         connections = [{"type": r[0], "target": r[1], "quality": r[2]} for r in rows]
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     return {"ok": True, "data": {

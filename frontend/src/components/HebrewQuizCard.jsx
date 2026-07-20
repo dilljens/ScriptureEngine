@@ -185,9 +185,8 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
                           questionType === 'transliteration' ? 'Type the transliteration...' :
                           questionType === 'cloze' ? 'Type the missing word...' :
                           'Type your answer...'}
-              className="flex-1 px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 dark:focus:ring-indigo-500 outline-none transition-all"
+              className={'flex-1 px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-400 dark:focus:ring-indigo-500 outline-none transition-all' + (questionType === 'typing' ? ' font-hebrew-biblical text-xl' : '')}
               dir={questionType === 'typing' || (hebrewGlyph) ? 'rtl' : 'ltr'}
-              className={questionType === 'typing' ? 'font-hebrew-biblical text-xl' : ''}
               autoComplete="off"
               spellCheck={false}
             />

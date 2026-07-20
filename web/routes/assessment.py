@@ -182,6 +182,7 @@ def quiz_answer(body: dict):
         from lib.assessment.irt import calibrate_all_items
         calibrate_all_items(conn)
     except Exception:
+        log.warning("silent_exception", exc_info=True)
         pass
 
     conn.close()
