@@ -32,7 +32,7 @@ def search_js(q: str = "", limit: int = 20, year: int = 0):
 def get_js_text(text_id: int):
     """Get full text of a JS teaching/discourse."""
     conn = get_db()
-    row = conn.execute("SELECT * FROM js_sources WHERE id = ?", (text_id,)).fetchone()
+    row = conn.execute("SELECT * FROM js_sources WHERE ref_id = ?", (text_id,)).fetchone()
     conn.close()
     if not row:
         return {"ok": False, "error": "Not found"}

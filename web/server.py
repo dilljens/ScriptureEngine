@@ -344,6 +344,7 @@ class JSONLogger:
 
     def info(self, msg, **extra): self._log("info", msg, **extra)
     def warn(self, msg, **extra): self._log("warn", msg, **extra)
+    def warning(self, msg, **extra): self._log("warn", msg, **extra)  # alias for API parity
     def error(self, msg, **extra): self._log("error", msg, **extra)
 
 log = JSONLogger()
