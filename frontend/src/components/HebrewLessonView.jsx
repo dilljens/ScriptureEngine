@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import CardQueue from './CardQueue'
 import HebrewKeyboard from './HebrewKeyboard'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 
@@ -216,6 +217,8 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
   const [remediation, setRemediation] = useState(null) // { node_id, title }[] for wrong answers
   const [kpState, setKpState] = useState({ kp1: null, kp2: null, kp3: null }) // which KPs passed
   const [currentKP, setCurrentKP] = useState(1) // 1,2,3
+  const [flashcardMode, setFlashcardMode] = useState(false) // use CardQueue instead of batch
+  const [fcards, setFcards] = useState([]) // flashcard card array
   const [audioPlaying, setAudioPlaying] = useState(null)
   const audioRef = useRef(null)
   const timersRef = useRef({})
@@ -273,6 +276,46 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batch, nodeId])
 
+  // Convert practice questions to cards for CardQueue flashcard mode
+  const practiceToCards = useCallback((items) => {
+    return items.map((q, i) => {
+      const hebWord = node?.hebrew || node?.title?.match(/\(([^)]+)\)/)?.[1] || ''
+      let opts = []
+      try { opts = JSON.parse(q.options_json || '[]') } catch {}
+      return {
+        id: `heb-practice-${nodeId}-${i}`,
+        type: 'drill',
+        data: {
+          question: q.question_text,
+          options: opts,
+          correct: q.correct_answer,
+          explanation: q.explanation || '',
+          hebrew_word: hebWord,
+          question_type: q.question_type,
+          node_id: nodeId,
+        },
+      }
+    })
+  }, [nodeId, node])
+
+  // Flashcard mode: handle rate callback
+  const handleFlashcardRate = useCallback(async (card, rating) => {
+    const correct = rating >= 3
+    try {
+      await fetch('/api/v1/hebrew/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: card.data?.node_id || nodeId, correct, user_id: 'default' }),
+      })
+    } catch {}
+  }, [nodeId])
+
+  // Start flashcard mode
+  const startFlashcards = useCallback(() => {
+    setFcards(practiceToCards(practice))
+    setFlashcardMode(true)
+  }, [practice, practiceToCards])
+
   const playAudio = useCallback(async (word) => {
     if (!word) return
     try {
@@ -289,7 +332,15 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
     } catch {}
   }, [])
 
-  useEffect(() => () => { if (audioRef.current) audioRef.current.pause() }, [])
+  // Listen for play-hebrew-audio events from CardQueue/DrillCardRenderer
+  useEffect(() => {
+    const handler = (e) => playAudio(e.detail?.word)
+    window.addEventListener('play-hebrew-audio', handler)
+    return () => {
+      window.removeEventListener('play-hebrew-audio', handler)
+      if (audioRef.current) audioRef.current.pause()
+    }
+  }, [playAudio])
 
   const startIdx = batch * batchSize
   const batchQuestions = practice.slice(startIdx, startIdx + batchSize)
@@ -450,6 +501,17 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 cursor-pointer transition-colors">
               <span>{audioPlaying === hebrewWord ? '🔊' : '🔈'}</span>
               <span>{audioPlaying === hebrewWord ? 'Playing...' : 'Play'}</span>
+            </button>
+          )}
+          {/* Flashcard mode toggle */}
+          {practice.length > 0 && !completed && (
+            <button onClick={flashcardMode ? () => setFlashcardMode(false) : startFlashcards}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                flashcardMode
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50'
+              }`}>
+              🃏 {flashcardMode ? 'Flashcard Mode' : 'Flashcards'}
             </button>
           )}
           {/* KP indicator */}
@@ -622,8 +684,18 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
         {results.streak > 1 && <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono">🔥{results.streak}</span>}
       </div>
 
-      {/* Completed */}
-      {completed ? (
+      {/* Flashcard mode — CardQueue */}
+      {flashcardMode && fcards.length > 0 ? (
+        <div className="mb-6">
+          <CardQueue
+            cards={fcards}
+            onRate={handleFlashcardRate}
+            onComplete={() => { setFlashcardMode(false); setCompleted(true) }}
+            title={`${node?.title || ''} Practice`}
+            emptyMessage="All done!"
+          />
+        </div>
+      ) : completed ? (
         <div className="p-6 rounded-xl bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-center">
           <span className="text-3xl block mb-2">🎉</span>
           <h3 className="text-base font-semibold text-green-800 dark:text-green-200 mb-1">Complete!</h3>

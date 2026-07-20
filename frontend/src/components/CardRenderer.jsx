@@ -190,14 +190,34 @@ function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
 // Front: show multiple-choice question
 // Back: show correct answer + explanation
 function DrillCardRenderer({ card, showAnswer }) {
-  const { question, options, correct, explanation } = card.data || {}
+  const { question, options, correct, explanation, hebrew_word, show_options } = card.data || {}
   const opts = Array.isArray(options) ? options : (typeof options === 'string' ? JSON.parse(options || '[]') : [])
+  const hasAudio = Boolean(hebrew_word)
+
+  const handlePlay = (word) => {
+    if (!word) return
+    // Dispatch a custom event that the parent can listen to
+    window.dispatchEvent(new CustomEvent('play-hebrew-audio', { detail: { word } }))
+  }
+
   return (
     <div>
+      {/* Audio button for Hebrew words */}
+      {hasAudio && !showAnswer && (
+        <div className="flex justify-center mb-3">
+          <button onClick={() => handlePlay(hebrew_word)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 cursor-pointer transition-colors"
+            title="Play audio">
+            🔊 Play
+          </button>
+        </div>
+      )}
+
       <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-3">{question || ''}</p>
+
       {showAnswer ? (
         <div className="space-y-2">
-          {opts.map((opt, i) => {
+          {opts.length > 0 && opts.map((opt, i) => {
             const isCorrect = String(opt) === String(correct)
             return (
               <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
@@ -210,6 +230,11 @@ function DrillCardRenderer({ card, showAnswer }) {
               </div>
             )
           })}
+          {!opts.length && correct && (
+            <div className="px-3 py-2 rounded-lg text-sm border border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium">
+              {correct}
+            </div>
+          )}
           {explanation && (
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 p-2 rounded bg-neutral-50 dark:bg-neutral-800/50">
               {explanation}
@@ -218,12 +243,17 @@ function DrillCardRenderer({ card, showAnswer }) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {opts.map((opt, i) => (
+          {opts.length > 0 && opts.map((opt, i) => (
             <div key={i} className="px-3 py-2 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
               <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>
               {opt}
             </div>
           ))}
+          {!opts.length && (
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center">
+              Type your answer, then click to reveal
+            </p>
+          )}
         </div>
       )}
     </div>

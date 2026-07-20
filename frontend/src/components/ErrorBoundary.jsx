@@ -19,17 +19,19 @@ export default class ErrorBoundary extends React.Component {
     }
     // Send error to server for diagnosis
     try {
-      const body = JSON.stringify({
+      const payload = {
         level: 'error',
         message: error?.message || String(error),
         stack: error?.stack || '',
         componentStack: errorInfo?.componentStack || '',
         url: window.location.href,
         userAgent: navigator.userAgent,
-      })
-      // Fire-and-forget — use sendBeacon for reliability on page unload
+      }
+      const body = JSON.stringify(payload)
+      // Fire-and-forget — use sendBeacon for reliability
       if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/v1/debug/log', body)
+        const blob = new Blob([body], { type: 'application/json' })
+        navigator.sendBeacon('/api/v1/debug/log', blob)
       } else {
         fetch('/api/v1/debug/log', { method: 'POST', body, headers: { 'Content-Type': 'application/json' }, keepalive: true }).catch(() => {})
       }

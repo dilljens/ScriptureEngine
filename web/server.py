@@ -307,6 +307,7 @@ from web.routes.passage import router as passage_router
 from web.routes.memorize import router as memorize_router
 from web.routes.sefirot import router as sefirot_router
 from web.routes.studies import router as studies_router
+from web.routes.tabs import router as tabs_router
 from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
@@ -323,6 +324,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(js_router)
 app.include_router(lexicon_router)
+app.include_router(tabs_router)
 app.include_router(graph_router)
 app.include_router(memorize_router)
 app.include_router(learn_router)
