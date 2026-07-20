@@ -1286,6 +1286,98 @@ def get_hebrew_verb_drill(count: int = 5, user_id: str = "default"):
     return {"ok": True, "data": {"drills": drills[:count], "total": len(drills)}}
 
 
+@router.get("/api/v1/hebrew/quiz")
+def get_hebrew_quiz(count: int = 8, user_id: str = "default"):
+    """Generate a cumulative interleaved quiz from recently studied material.
+
+    Selects practice items from the most recently studied nodes across
+    multiple categories, no two consecutive questions from the same category.
+    """
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"questions": []}}
+
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+
+    # Get recently practiced nodes (up to 20) with some history
+    recent = conn.execute("""
+        SELECT p.node_id, p.mastery, p.last_practiced
+        FROM hebrew_progress p
+        JOIN hebrew_nodes n ON n.id = p.node_id
+        WHERE p.user_id = ? AND p.last_practiced IS NOT NULL
+          AND (n.category = 'word' OR n.category = 'grammar'
+               OR n.category = 'verb' OR n.category = 'phrase')
+        ORDER BY p.last_practiced DESC
+        LIMIT 20
+    """, (user_id,)).fetchall()
+
+    # Fallback: if not enough practiced nodes, include unlocked nodes
+    if len(recent) < 4:
+        unlocked = conn.execute("""
+            SELECT n.id as node_id, 0.0 as mastery, NULL as last_practiced
+            FROM hebrew_nodes n
+            WHERE n.category IN ('word','grammar','verb','phrase')
+              AND n.id NOT IN (SELECT node_id FROM hebrew_progress WHERE user_id=?)
+            LIMIT 20
+        """, (user_id,)).fetchall()
+        recent.extend(unlocked)
+
+    # Collect practice items from these nodes
+    all_questions = []
+    node_categories = {}
+
+    for node_row in recent[:15]:  # limit to 15 source nodes
+        nid = node_row['node_id']
+        # Get category
+        cat = conn.execute("SELECT category FROM hebrew_nodes WHERE id=?", (nid,)).fetchone()
+        if not cat:
+            continue
+        node_categories[nid] = cat['category']
+
+        # Get 2 practice items per node
+        items = conn.execute("""
+            SELECT id, question_type, question_text, options_json, correct_answer, difficulty
+            FROM hebrew_practice_items
+            WHERE node_id = ? AND question_type IN ('multiple_choice','true_false','transliteration','cloze')
+            ORDER BY RANDOM() LIMIT 2
+        """, (nid,)).fetchall()
+
+        for item in items:
+            all_questions.append({
+                "node_id": nid,
+                "question_id": item['id'],
+                "type": item['question_type'],
+                "question": item['question_text'],
+                "options": json.loads(item['options_json']) if item['options_json'] else [],
+                "correct": item['correct_answer'],
+                "category": cat['category'],
+                "difficulty": item['difficulty'],
+            })
+
+    # Interleave: no two consecutive same-category
+    random.shuffle(all_questions)  # initial shuffle for randomness
+    interleaved = []
+    last_cat = None
+    # Sort by difficulty first, then ensure no consecutive same cat
+    remaining = list(all_questions)
+
+    while remaining and len(interleaved) < count:
+        best_idx = -1
+        for i, q in enumerate(remaining):
+            if q['category'] != last_cat:
+                best_idx = i
+                break
+        if best_idx < 0:
+            # All remaining are same category — pick one anyway
+            best_idx = 0
+        chosen = remaining.pop(best_idx)
+        interleaved.append(chosen)
+        last_cat = chosen['category']
+
+    conn.close()
+    return {"ok": True, "data": {"questions": interleaved[:count], "total_available": len(all_questions)}}
+
+
 @router.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     if not MEM_DB.exists():

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
+import HebrewQuiz from './HebrewQuiz'
 import CardQueue from './CardQueue'
 import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
@@ -55,6 +56,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [freqVocabCards, setFreqVocabCards] = useState([])
   const [showAudioReview, setShowAudioReview] = useState(false)
   const [audioWords, setAudioWords] = useState([])
+  const [showQuiz, setShowQuiz] = useState(false)
 
   // Load curriculum + gamification in parallel
   const loadAll = () => {
@@ -246,6 +248,20 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           </button>
         </div>
         <AudioReviewSession words={audioWords} onComplete={() => setShowAudioReview(false)} />
+      </div>
+    )
+  }
+
+  // Quiz mode
+  if (showQuiz) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <HebrewQuiz
+          count={8}
+          onComplete={() => { setShowQuiz(false); loadAll() }}
+          onBack={() => setShowQuiz(false)}
+          onOpenLesson={(nid) => { setShowQuiz(false); onOpenLesson?.(nid) }}
+        />
       </div>
     )
   }
@@ -452,6 +468,10 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         }}
           className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
           🔄 Review 🔀
+        </button>
+        <button onClick={() => setShowQuiz(true)}
+          className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+          📝 Quiz
         </button>
       </div>
 
