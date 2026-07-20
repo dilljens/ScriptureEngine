@@ -231,6 +231,9 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
     )
   }, [browseLayer, connectionsByLayer])
 
+  const verses = data?.verses || []
+  const bookInfo = data?.book || {}
+
   // Build graph elements for the simple chapter graph
   const graphElements = useMemo(() => {
     if (!chapterConnections || !verses.length) return { nodes: [], edges: [] }
@@ -251,9 +254,6 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
     }
     return { nodes, edges: edges.slice(0, 100) }
   }, [chapterConnections, verses])
-
-  const verses = data?.verses || []
-  const bookInfo = data?.book || {}
 
   if (!data) return null
 

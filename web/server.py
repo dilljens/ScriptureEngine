@@ -2102,41 +2102,6 @@ def get_connection_status(connection_id: int):
     return {"ok": True, "data": result}
 
 
-# ─── Tab State ───
-
-UI_TABS = {}  # In-memory, resets with server. For persistence use DB.
-
-class TabCreate(BaseModel):
-    type: str = "verse"
-    title: str = ""
-    ref: str = ""
-    query: str = ""
-    parent: str | None = None
-
-@app.get("/api/v1/tabs")
-def list_tabs():
-    return {"ok": True, "data": {"tabs": list(UI_TABS.values())}}
-
-@app.post("/api/v1/tabs")
-def create_tab(tab: TabCreate):
-    import uuid
-    tid = f"tab_{uuid.uuid4().hex[:8]}"
-    UI_TABS[tid] = {"id": tid, "type": tab.type, "title": tab.title, "ref": tab.ref, "query": tab.query, "parent": tab.parent}
-    return {"ok": True, "data": UI_TABS[tid]}
-
-@app.delete("/api/v1/tabs/{tab_id}")
-def delete_tab(tab_id: str):
-    if tab_id in UI_TABS:
-        del UI_TABS[tab_id]
-    return {"ok": True, "data": {"deleted": tab_id}}
-
-@app.patch("/api/v1/tabs/{tab_id}")
-def update_tab(tab_id: str, body: dict):
-    if tab_id in UI_TABS:
-        UI_TABS[tab_id].update(body)
-    return {"ok": True, "data": UI_TABS.get(tab_id, {})}
-
-
 # ─── Generic Tool Endpoint (auto-generated from TOOL_REGISTRY) ───
 # Every tool registered in lib/api/__init__.py is available here.
 # GET for simple args, POST for complex args (body JSON).
