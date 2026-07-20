@@ -115,6 +115,10 @@ const BOOK_NAME_MAP = {
 }
 
 function resolveBookName(name) {
+  // Use the comprehensive alias table from refParser first (covers all OT/NT/BoM/PGP books)
+  const bookId = resolveBook(name)
+  if (bookId) return bookId
+  // Fallback: check BOOK_NAME_MAP (has some DSS/Pseudepigrapha aliases not in BOOK_ALIASES)
   const key = name.trim().toLowerCase().replace(/[—–]/g, '—')
   if (BOOK_NAME_MAP[key]) return BOOK_NAME_MAP[key]
   const firstWord = key.split(/\s/)[0]
@@ -142,7 +146,7 @@ function preprocessVerses(markdown) {
   // Handles: Genesis 1:1, Isaiah 2:3-4, **📖 Genesis 1:1**, 📖Genesis 1.1, etc.
   // Also matches number-prefixed books: "1 Nephi 3:7", "2 Corinthians 5:17"
   result = result.replace(
-    /\*{0,2}📖?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&-]+?)\s*(\d+)(?:([:.])(\d+(?:\s*[-,]\s*\d+)*))?\*{0,2}/g,
+    /\*{0,2}📖?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&.-]+?)\s*(\d+)(?:([:.])(\d+(?:\s*[-,]\s*\d+)*))?\*{0,2}/g,
     (match, chapter, _sep, verseStr) => {
       // Extract the book name: strip leading ** and 📖, take everything before the chapter number
       let clean = match.replace(/^\*{0,2}📖?\s*/, '').replace(/\s*\d+(?:[:.]\d+(?:\s*[-,]\s*\d+)*)?\*{0,2}$/, '').trim()
@@ -179,6 +183,21 @@ function preprocessVerses(markdown) {
     (match, book, ch) => {
       if (book) return `:verse[${book.toLowerCase()}.${ch}.1]`
       return match // already a marker
+    }
+  )
+
+  // 4. Catch-all: remaining "Book ch:vs" or "Book ch.vs" patterns missed by passes 1-3
+  // Handles edge cases like "Gen. 1:1", "(see Isa 55:6)", "Ex 20:1-5", etc.
+  result = result.replace(
+    /:verse\[[^\]]+\]|([a-zA-Z][a-zA-Z\s]*?)\.?\s*(\d+)[.:](\d+)(?:[-,]\s*(\d+))?/g,
+    (match, book, ch, vs, vsEnd) => {
+      if (!book) return match // already a :verse[...] marker
+      let clean = book.trim().replace(/[.,;:!?)\]}>"']+$/, '').trim()
+      if (!clean) return match
+      const bookId = resolveBookName(clean)
+      if (!bookId) return match
+      const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
+      return `:verse[${bookId}.${ch}.${versePart}]`
     }
   )
 
