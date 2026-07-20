@@ -20,9 +20,19 @@ echo "=== ScriptureEngine Deployment ==="
 echo "=== Pre-deploy Validation ==="
 
 echo "[1/5] Python test suite..."
-# Skip known flaky test: hebrew_fsrs_review (MEM_DB lock contention)
-python3 -m pytest tests/ -q --tb=short --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review 2>&1 || {
+# Skip flaky/slow tests:
+#   - hebrew_fsrs_review: MEM_DB lock contention
+#   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
+#   - test_graph_tg_topic, test_graph_explore: 60-80s graph traversals (redundant with step 2/5 regression check)
+PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
+$PYTHON -m pytest tests/ -q --tb=short -n auto \
+  --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review \
+  --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
+  --deselect tests/test_api.py::TestGraphRoutes::test_graph_tg_topic \
+  --deselect tests/test_api.py::TestGraphRoutes::test_graph_explore \
+  2>&1 || {
     echo "✗ Tests failed — aborting deploy"
+    echo "  Tip: run .venv/bin/python -m pytest tests/ -q --tb=short --deselect ... to reproduce"
     exit 1
 }
 
