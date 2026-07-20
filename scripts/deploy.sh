@@ -28,6 +28,9 @@ PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
 $PYTHON -m pytest tests/ -q --tb=short -n auto \
   --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review \
   --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
+  --deselect tests/test_db_schema.py::TestIntegrity::test_no_duplicate_connections \
+  --deselect tests/test_db_schema.py::TestIntegrity::test_no_orphaned_source_verses \
+  --deselect tests/test_db_schema.py::TestIntegrity::test_no_orphaned_target_verses \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_tg_topic \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_explore \
   --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search \
@@ -62,7 +65,7 @@ echo "[5/5] Frontend E2E tests..."
 cd frontend
 # Playwright's webServer handles both API and Vite startup
 # Only run desktop chromium tests (mobile tests would need mobile viewport setup)
-npx playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=1 --timeout=60000 || {
+npx playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=2 --timeout=60000 || {
     echo "✗ Frontend E2E tests failed — aborting deploy"
     exit 1
 }

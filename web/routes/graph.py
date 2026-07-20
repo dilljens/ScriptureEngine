@@ -402,18 +402,28 @@ def graph_centrality(
 
     filter_sql = " AND ".join(filter_clauses)
 
-    # Count connections per verse (both as source and target), filtered by filter_sql
+    # Count connections per verse using single-pass aggregation (not correlated subqueries)
+    # filter_sql appears in both src and tgt subqueries, so params need to be duplicated
     params_for_query = filter_params * 2 + [limit]
     rows = cursor.execute(f"""
-        SELECT v.id as verse_id, v.book_id, v.chapter, v.verse,
-               (SELECT COUNT(*) FROM connections c1
-                WHERE c1.source_verse=v.id AND ({filter_sql})) +
-               (SELECT COUNT(*) FROM connections c2
-                WHERE c2.target_verse=v.id AND ({filter_sql}))
-               as total_connections
-        FROM verses v
-        GROUP BY v.id
-        HAVING total_connections > 0
+        SELECT * FROM (
+            SELECT v.id as verse_id, v.book_id, v.chapter, v.verse,
+                   COALESCE(src.cnt, 0) + COALESCE(tgt.cnt, 0) as total_connections
+            FROM verses v
+            LEFT JOIN (
+                SELECT source_verse, COUNT(*) as cnt
+                FROM connections
+                WHERE deprecated=0 AND ({filter_sql})
+                GROUP BY source_verse
+            ) src ON src.source_verse = v.id
+            LEFT JOIN (
+                SELECT target_verse, COUNT(*) as cnt
+                FROM connections
+                WHERE deprecated=0 AND ({filter_sql})
+                GROUP BY target_verse
+            ) tgt ON tgt.target_verse = v.id
+        )
+        WHERE total_connections > 0
         ORDER BY total_connections DESC
         LIMIT ?
     """, params_for_query).fetchall()
