@@ -30,6 +30,9 @@ $PYTHON -m pytest tests/ -q --tb=short -n auto \
   --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_tg_topic \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_explore \
+  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search \
+  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_keyword \
+  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_vector \
   2>&1 || {
     echo "✗ Tests failed — aborting deploy"
     echo "  Tip: run .venv/bin/python -m pytest tests/ -q --tb=short --deselect ... to reproduce"

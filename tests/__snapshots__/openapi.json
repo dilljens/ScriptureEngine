@@ -741,6 +741,65 @@
             }
           },
           {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Category"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/quiz": {
+      "get": {
+        "summary": "Get Hebrew Quiz",
+        "description": "Generate a cumulative interleaved quiz from recently studied material.\n\nSelects practice items from the most recently studied nodes across\nmultiple categories, no two consecutive questions from the same category.",
+        "operationId": "get_hebrew_quiz_api_v1_hebrew_quiz_get",
+        "parameters": [
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 8,
+              "title": "Count"
+            }
+          },
+          {
             "name": "user_id",
             "in": "query",
             "required": false,
