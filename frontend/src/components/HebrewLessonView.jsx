@@ -542,6 +542,22 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate, batchSize
         {node.description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{node.description}</p>}
       </div>
 
+      {/* Prerequisites cross-links */}
+      {node?.prerequisites?.length > 0 && batch === 0 && Object.keys(submitted).length === 0 && (
+        <div className="mb-4">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1.5 block">Prerequisites</span>
+          <div className="flex flex-wrap gap-1.5">
+            {node.prerequisites.map((prereq, i) => (
+              <button key={i} onClick={() => onNavigate?.(prereq.node_id || prereq.id)}
+                className="text-[9px] px-2 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-700 cursor-pointer transition-colors"
+                title={`Open prerequisite: ${prereq.title || ''}`}>
+                {prereq.title || prereq.id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lesson content — explanation, key points, worked examples */}
       {batch === 0 && node?.lesson && Object.keys(submitted).length === 0 && (
         <div className="mb-6 space-y-4">

@@ -220,7 +220,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             ← Back to Curriculum
           </button>
         </div>
-        <DailyVerse />
+        <DailyVerse onOpenLesson={(nid) => { setShowDailyVerse(false); onOpenLesson?.(nid) }} />
       </div>
     )
   }

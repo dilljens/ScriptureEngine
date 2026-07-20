@@ -12,12 +12,16 @@ import rehypeRaw from 'rehype-raw'
  * Plays real audio from Schmueloff recordings when available,
  * falls back to browser TTS.
  */
-export default function DailyVerse({ onNavigate }) {
+export default function DailyVerse({ onNavigate, onOpenLesson }) {
   const [verse, setVerse] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [audioInfo, setAudioInfo] = useState(null)
+  const [studiedWords, setStudiedWords] = useState(new Set())
+  const [unmasteredInVerse, setUnmasteredInVerse] = useState([])
+  const [showStudyMode, setShowStudyMode] = useState(false)
+  const [studyIdx, setStudyIdx] = useState(0)
   const audioRef = useRef(null)
 
   const loadVerse = async () => {
@@ -40,6 +44,36 @@ export default function DailyVerse({ onNavigate }) {
   }
 
   useEffect(() => { loadVerse() }, [])
+
+  // Fetch studied vocabulary to highlight known words
+  useEffect(() => {
+    fetch('/api/v1/hebrew/curriculum').then(r => r.json()).then(d => {
+      if (d.ok && d.data?.nodes) {
+        const studied = new Set()
+        for (const node of d.data.nodes) {
+          if (node.category === 'word' && node.unlocked && node.mastery > 0) {
+            const heb = node.title?.split(' — ')[0]?.trim()
+            if (heb) studied.add(heb)
+          }
+        }
+        setStudiedWords(studied)
+      }
+    }).catch(() => {})
+  }, [])
+
+  // When verse loads, find unmastered words
+  useEffect(() => {
+    if (!verse?.text_hebrew || studiedWords.size === 0) return
+    const words = verse.text_hebrew.split(/\s+/).filter(Boolean)
+    const unmastered = []
+    for (const w of words) {
+      const clean = w.replace(/[\/\u0591-\u05bd\u05bf\u05c1-\u05c7]/g, '').replace(/[^a-zA-Z\u0590-\u05fe]/g, '')
+      if (clean && !studiedWords.has(clean)) {
+        unmastered.push(clean)
+      }
+    }
+    setUnmasteredInVerse([...new Set(unmastered)].slice(0, 10))
+  }, [verse, studiedWords])
 
   const handleSpeak = () => {
     if (!verse?.text_hebrew) return
@@ -101,7 +135,62 @@ export default function DailyVerse({ onNavigate }) {
     </div>
   )
 
+  // Study mode: show unmastered words one at a time for practice
+  if (showStudyMode) {
+    const word = unmasteredInVerse[studyIdx]
+    if (!word) {
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-8 text-center">
+          <p className="text-sm text-green-600 dark:text-green-400 mb-4">All words studied! 🎉</p>
+          <button onClick={() => setShowStudyMode(false)} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Back to verse</button>
+        </div>
+      )
+    }
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-amber-200 dark:border-amber-800 shadow-sm text-center">
+          <span className="text-[9px] font-medium text-neutral-400 uppercase tracking-wider">Study Word {studyIdx + 1} of {unmasteredInVerse.length}</span>
+          <p className="text-3xl font-serif my-6" dir="rtl" style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>{word}</p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={() => { setStudyIdx(i => i + 1) }}
+              className="px-6 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer transition-colors">✓ Know it</button>
+            <button onClick={() => {
+              // Open the vocabulary study for this word
+              if (onOpenLesson) {
+                const nid = `vocab_${word.replace(/[^\u0590-\u05fe]/g, '')}`
+                onOpenLesson(nid)
+              }
+            }}
+              className="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">📖 Study</button>
+            <button onClick={() => setShowStudyMode(false)}
+              className="px-6 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 text-sm font-medium cursor-pointer transition-colors">← Back</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const hebWords = (verse.text_hebrew || '').split(/\s+/).filter(w => w.length > 0)
+
+  // Helper: split Hebrew text into words with known/unknown markers
+  const renderHebrewWithHighlights = (text) => {
+    const words = text.split(/\s+/).filter(Boolean)
+    return words.map((w, i) => {
+      const clean = w.replace(/[\/\u0591-\u05bd\u05bf\u05c1-\u05c7]/g, '').replace(/[^\u0590-\u05fe]/g, '')
+      const isStudied = studiedWords.has(clean)
+      return (
+        <span key={i}
+          className={`inline-block px-0.5 rounded transition-colors ${
+            isStudied
+              ? 'text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20'
+              : 'text-neutral-700 dark:text-neutral-300'
+          }`}
+          title={isStudied ? 'Studied ✓' : 'New word'}>
+          {w}
+        </span>
+      )
+    })
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -114,12 +203,12 @@ export default function DailyVerse({ onNavigate }) {
 
       {/* Verse card */}
       <div className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm">
-        {/* Hebrew */}
+        {/* Hebrew with known-word highlighting */}
         <div className="text-center mb-4">
-          <p className="text-xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200"
+          <p className="text-xl font-serif leading-relaxed flex flex-wrap justify-center gap-1"
             style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
             dir="rtl">
-            {verse.text_hebrew}
+            {renderHebrewWithHighlights(verse.text_hebrew || '')}
           </p>
         </div>
 
@@ -134,6 +223,23 @@ export default function DailyVerse({ onNavigate }) {
             {speaking ? '⏹ Stop' : '🔊 Listen'}
           </button>
         </div>
+
+        {/* Study These Words button */}
+        {unmasteredInVerse.length > 0 && (
+          <div className="text-center mb-4">
+            <button onClick={() => setShowStudyMode(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 border border-amber-200 dark:border-amber-700 cursor-pointer transition-colors">
+              📚 Study These Words ({unmasteredInVerse.length})
+            </button>
+          </div>
+        )}
+        {unmasteredInVerse.length === 0 && studiedWords.size > 0 && (
+          <div className="text-center mb-4">
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+              All words known! 🎉
+            </span>
+          </div>
+        )}
 
         {/* English */}
         <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed text-center italic">

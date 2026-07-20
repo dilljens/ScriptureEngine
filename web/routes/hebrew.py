@@ -758,6 +758,27 @@ def update_hebrew_progress(body: dict):
             "INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?,?,?,?,?, datetime('now'))",
             (user_id, node_id, round(mastery, 3), attempts, correct_count))
     conn.commit()
+
+    # Phase 4.1: If this is a verb lesson that just reached mastery, auto-queue verb drill items
+    if mastery >= 0.3 and correct:
+        cat = conn.execute("SELECT category FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+        if cat and cat[0] == 'verb':
+            try:
+                # Fetch drill questions for this verb category
+                import requests as _req
+                drill_resp = _req.get(f"http://localhost:8000/api/v1/hebrew/verb-drill?count=3&category={node_id.split('_')[0] if '_' in node_id else node_id}&user_id={user_id}", timeout=5)
+                drill_data = drill_resp.json()
+                if drill_data.get("ok") and drill_data.get("data",{}).get("drills"):
+                    from urllib.parse import urlencode as _urlenc
+                    for drill in drill_data["data"]["drills"]:
+                        # Log a progress entry for each drill (as a 'seen' marker)
+                        drill_nid = drill.get("node_id", f"{node_id}_drill")
+                        conn.execute(
+                            "INSERT OR IGNORE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?,?,0.1,1,1,datetime('now'))",
+                            (user_id, f"{drill_nid}_drill"))
+            except Exception:
+                pass  # silent — verb drill auto-queue is optional
+
     conn.close()
     return {"ok": True, "data": {"node_id": node_id, "mastery": round(mastery, 3),
                                   "attempts": attempts, "correct": correct_count}}
@@ -1229,14 +1250,31 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
 
 
 @router.get("/api/v1/hebrew/verb-drill")
-def get_hebrew_verb_drill(count: int = 5, user_id: str = "default"):
+def get_hebrew_verb_drill(count: int = 5, category: str = "", user_id: str = "default"):
     if not MEM_DB.exists():
         return {"ok": True, "data": {"drills": []}}
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
-    verb_lessons = conn.execute(
-        "SELECT n.id, n.title, l.content_json FROM hebrew_nodes n "
-        "JOIN hebrew_lessons l ON l.node_id=n.id WHERE n.category='verb'").fetchall()
+    verb_sql = "SELECT n.id, n.title, l.content_json FROM hebrew_nodes n " \
+               "JOIN hebrew_lessons l ON l.node_id=n.id WHERE n.category='verb'"
+    verb_params = []
+    if category and category != 'all':
+        if category == 'qal':
+            verb_sql += " AND (n.id LIKE 'qal%' OR n.id LIKE 'weak_%')"
+        elif category == 'niphal':
+            verb_sql += " AND n.id LIKE 'niphal%'"
+        elif category == 'piel':
+            verb_sql += " AND (n.id = 'piel' OR n.id = 'pual')"
+        elif category == 'hiphil':
+            verb_sql += " AND (n.id = 'hiphil' OR n.id = 'hophal')"
+        elif category == 'weak_verbs':
+            verb_sql += " AND n.id LIKE 'weak_%'"
+        elif category == 'all_binyanim':
+            pass  # same as all
+        else:
+            verb_sql += " AND n.id LIKE ?"
+            verb_params.append(f'{category}%')
+    verb_lessons = conn.execute(verb_sql, verb_params).fetchall()
     drills = []
     for lesson in verb_lessons:
         try:
