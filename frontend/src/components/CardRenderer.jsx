@@ -588,11 +588,11 @@ function TranslationCardRenderer({ card, showAnswer }) {
   )
 }
 
-// ── Hebrew Letter Card ──
-// Front: show letter, ask for name/sound
-// Back: show name, transliteration, classification
+// ── Hebrew Letter Card (Anki-style) ──
+// Front: show letter, recall name
+// Back: name + transliteration only — clean, minimal, like Anki Hebrew decks
 function HebrewLetterCardRenderer({ card, showAnswer }) {
-  const { letter, name, transliteration, classification, example } = card.data || {}
+  const { letter, name, transliteration } = card.data || {}
   return (
     <div className="text-center">
       <p className="text-5xl font-serif mb-4 text-neutral-800 dark:text-neutral-200"
@@ -603,8 +603,6 @@ function HebrewLetterCardRenderer({ card, showAnswer }) {
         <div className="space-y-2">
           {name && <p className="text-lg font-medium text-indigo-600 dark:text-indigo-400">{name}</p>}
           {transliteration && <p className="text-sm text-neutral-500 italic">{transliteration}</p>}
-          {classification && <p className="text-xs text-neutral-400">{classification}</p>}
-          {example && <p className="text-xs text-neutral-400 mt-2">Example: {example}</p>}
         </div>
       )}
     </div>

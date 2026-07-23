@@ -3,10 +3,11 @@ import asyncio
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -1024,6 +1025,33 @@ def _compute_cost(usage: dict) -> dict:
     }
 
 
+# ─── Access Control ───
+
+# Only allow chat requests from these origins (prevents external API abuse)
+ALLOWED_ORIGINS = {
+    "https://scriptureengine.org",
+    "http://localhost:5173",   # dev Vite frontend
+    "http://localhost:8002",   # local API dev
+}
+
+# Simple in-memory rate limiter (per IP, 20 req / 60s window)
+_rate_limits: dict[str, list[float]] = {}
+RATE_LIMIT = 20
+RATE_WINDOW = 60  # seconds
+
+def _check_rate_limit(ip: str) -> bool:
+    """Return True if request is allowed, False if rate-limited."""
+    now = time.time()
+    timestamps = _rate_limits.get(ip, [])
+    # Prune expired entries
+    timestamps = [t for t in timestamps if now - t < RATE_WINDOW]
+    if len(timestamps) >= RATE_LIMIT:
+        return False
+    timestamps.append(now)
+    _rate_limits[ip] = timestamps
+    return True
+
+
 class ChatRequest(BaseModel):
     messages: list[dict]
     model: str = DEEPSEEK_MODEL
@@ -1049,7 +1077,7 @@ def chat_instructions():
 
 
 @router.post("/api/v1/chat")
-async def llm_chat(body: ChatRequest):
+async def llm_chat(body: ChatRequest, request: Request):
     """Proxy chat requests to DeepSeek API with function calling support.
 
     If the LLM requests a tool call, the server executes it against the
@@ -1057,6 +1085,22 @@ async def llm_chat(body: ChatRequest):
     """
     if not DEEPSEEK_API_KEY:
         return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
+
+    # Origin check — only allow requests from the SPA or local dev
+    origin = (request.headers.get("origin") or "").lower().rstrip("/")
+    referer = (request.headers.get("referer") or "").lower().rstrip("/")
+    if not any(origin.startswith(o) or referer.startswith(o) for o in ALLOWED_ORIGINS):
+        return {"ok": False, "error": "Chat is only available from scriptureengine.org"}
+
+    # Rate limiting — per-IP, max 20 requests per 60s
+    # Prefer Cloudflare's connecting IP, then X-Forwarded-For, then direct client
+    client_ip = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    if not _check_rate_limit(client_ip):
+        return {"ok": False, "error": "Rate limit exceeded. Try again in a minute."}
 
     # from lib.api import call_tool, list_tools
     # from lib.api.staging import stage_connection, stage_study

@@ -2,9 +2,13 @@
 # ScriptureEngine Deployment Script
 # Builds frontend, rsyncs API + data to Hetzner CX23, restarts API server.
 #
+# The reverse proxy is Caddy (Docker), managed via /opt/sololedger/deploy/.
+# After deploying the frontend, reload Caddy to pick up the new static files:
+#   ssh ubuntu@40.160.241.74 "docker compose -f /opt/sololedger/deploy/docker-compose.yml restart caddy"
+#
 # Prerequisites:
-#   - SSH key loaded for root@40.160.241.74
-#   - Hetzner server has /var/www/scripture/ and the systemd service
+#   - SSH key loaded for ubuntu@40.160.241.74
+#   - VPS has /var/www/scripture/ and the systemd service
 #
 # Usage:
 #   ./scripts/deploy.sh
@@ -103,9 +107,7 @@ if [ -d data/audio/alignments ]; then
 	rsync -avz --delete data/audio/alignments/ "$HOST:$REMOTE_DIR/data/audio/alignments/"
 fi
 
-echo "Syncing nginx + service configs..."
-rsync -avz scripts/nginx-scripture.conf "$HOST:$REMOTE_DIR/nginx-scripture.conf"
-ssh "$HOST" "sudo cp $REMOTE_DIR/nginx-scripture.conf /etc/nginx/sites-available/scriptureengine"
+echo "Syncing service config..."
 rsync -avz scripts/scripture-api.service "$HOST:$REMOTE_DIR/scripture-api.service"
 ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scripture-api.service"
 
@@ -113,20 +115,16 @@ ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scrip
 echo "Installing Python dependencies..."
 ssh "$HOST" "cd $REMOTE_DIR && pip install -r web/requirements.txt 2>&1 | tail -5"
 
-# 4. Ensure nginx site is enabled + reloaded
-echo "Configuring nginx..."
-ssh "$HOST" "sudo ln -sf /etc/nginx/sites-available/scriptureengine /etc/nginx/sites-enabled/ && sudo systemctl reload nginx || sudo systemctl restart nginx"
-
-# 5. Ensure systemd is aware of service changes
+# 4. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
 ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api"
 
-# 6. Ensure .env exists (service requires it for DATABASE_PATH)
+# 5. Ensure .env exists (service requires it for DATABASE_PATH)
 # DEEPSEEK_API_KEY is already set on the server separately
 echo "Ensuring .env..."
 ssh "$HOST" "test -f $REMOTE_DIR/.env || echo 'DATABASE_PATH=data/processed/scripture.db' | sudo tee $REMOTE_DIR/.env"
 
-# 7. Restart API server
+# 6. Restart API server
 echo "Restarting API server..."
 ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl restart scripture-api"
 
