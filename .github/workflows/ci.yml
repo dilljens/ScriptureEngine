@@ -76,7 +76,7 @@ jobs:
           python3 scripts/create_test_db.py
       - name: Run tests
         run: |
-          python3 -m pytest tests/test_api.py tests/test_generators.py tests/test_health.py tests/test_db_schema.py tests/test_irt.py -q --tb=short
+          python3 -m pytest tests/ -q --tb=short -k "not Memorize and not Graph and not LearnRoute and not test_grammar_reference and not test_openapi_snapshot"
         timeout-minutes: 5
 
   api-import:
