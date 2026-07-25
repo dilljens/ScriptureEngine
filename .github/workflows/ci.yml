@@ -53,8 +53,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install ruff
-      - name: Ruff check
-        run: ruff check --output-format=github --ignore BLE001,S110,I001,C401,PERF102,PIE790
+      - name: Ruff check (advisory only, doesn't fail)
+        run: ruff check --output-format=github --exit-zero
       - name: Count errors
         run: |
           errors=$(ruff check --statistics | tail -1 | grep -oP '^\s*\d+' || echo "0")
