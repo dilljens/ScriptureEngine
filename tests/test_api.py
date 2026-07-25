@@ -616,6 +616,7 @@ class TestChatRoutes:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.xfail(reason="needs test DB or full scripture.db for graph traversals", strict=False)
 class TestGraphRoutes:
     """Connection graph, topical guide, hub notes."""
 
