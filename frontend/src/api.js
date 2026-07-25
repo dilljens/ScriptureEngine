@@ -239,3 +239,81 @@ export function chat(messages, opts = {}) {
   }).finally(() => { if (timer) clearTimeout(timer) })
 }
 
+/**
+ * Streaming chat — reads SSE events from /api/v1/chat/stream
+ *
+ * Calls onEvent callbacks as events arrive:
+ *   onThinking(content)   — reasoning/thinking chunks
+ *   onText(content)       — visible response chunks
+ *   onToolProgress(tools) — tool names being executed
+ *   onDone({usage, cost, model, tool_results}) — final event
+ *   onError(message)      — error event
+ */
+export function chatStream(messages, opts = {}) {
+  const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, disabled_tools = [], signal } = opts
+  const { onThinking, onText, onToolProgress, onDone, onError } = opts
+
+  return new Promise((resolve, reject) => {
+    fetch('/api/v1/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools }),
+      signal,
+    }).then(async (response) => {
+      if (!response.ok) {
+        onError?.('Server error: ' + response.status)
+        reject(new Error(response.statusText))
+        return
+      }
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // keep incomplete line
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const raw = line.slice(6).trim()
+          if (!raw) continue
+
+          try {
+            const event = JSON.parse(raw)
+            switch (event.type) {
+              case 'thinking':
+                onThinking?.(event.content)
+                break
+              case 'text':
+                onText?.(event.content)
+                break
+              case 'tool_progress':
+                onToolProgress?.(event.tools || [])
+                break
+              case 'done':
+                onDone?.(event)
+                resolve(event)
+                return
+              case 'error':
+                onError?.(event.message || 'Unknown error')
+                reject(new Error(event.message))
+                return
+            }
+          } catch {}
+        }
+      }
+    }).catch((err) => {
+      if (err.name === 'AbortError') {
+        reject(err)
+      } else {
+        onError?.(err.message)
+        reject(err)
+      }
+    })
+  })
+}
+

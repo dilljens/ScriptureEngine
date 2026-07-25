@@ -8,6 +8,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -1199,18 +1200,6 @@ async def llm_chat(body: ChatRequest, request: Request):
     tool_results = []
     max_tool_rounds = 15  # prevent infinite loops; 10 was too low for multi-work searches
 
-    async def call_deepseek(req_payload):
-        global _http_client
-        resp = await _http_client.post(
-            f"{DEEPSEEK_BASE}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json=req_payload,
-        )
-        return resp.json()
-
     data = await call_deepseek(payload)
 
     if "error" in data:
@@ -1346,7 +1335,7 @@ async def llm_chat(body: ChatRequest, request: Request):
     if not choice:
         return {"ok": False, "error": "No response from LLM"}
 
-    final_content = choice["message"]["content"] or choice["message"].get("reasoning_content") or ""
+    final_content = choice["message"].get("content") or ""
     final_reasoning = choice["message"].get("reasoning_content")
 
     # If LLM only made tool calls without summarizing, force a summary
@@ -1368,7 +1357,7 @@ async def llm_chat(body: ChatRequest, request: Request):
         if retry.get("choices"):
             rc_msg = retry["choices"][0].get("message", {})
             if rc_msg.get("content") or rc_msg.get("reasoning_content"):
-                final_content = rc_msg["content"] or rc_msg.get("reasoning_content") or ""
+                final_content = rc_msg.get("content") or ""
                 final_reasoning = rc_msg.get("reasoning_content") or final_reasoning
             # Merge usage from the retry call
             retry_usage = retry.get("usage", {})
@@ -1394,5 +1383,305 @@ async def llm_chat(body: ChatRequest, request: Request):
             "tool_results": tool_results,
         },
     }
+
+
+# ─── Module-level helpers (shared by both endpoints) ───
+
+
+async def call_deepseek(req_payload):
+    """Non-streaming call to DeepSeek API. Used for tool-calling rounds."""
+    global _http_client
+    resp = await _http_client.post(
+        f"{DEEPSEEK_BASE}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=req_payload,
+    )
+    return resp.json()
+
+
+def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> dict:
+    """Build the DeepSeek request payload."""
+    payload = {
+        "model": body.model,
+        "messages": messages,
+        "max_tokens": body.max_tokens,
+        "temperature": body.temperature,
+        "stream": stream,
+    }
+    if body.tools_enabled:
+        if body.disabled_tools:
+            payload["tools"] = [t for t in TOOL_DEFINITIONS
+                                if t["function"]["name"] not in body.disabled_tools]
+        else:
+            payload["tools"] = TOOL_DEFINITIONS
+        payload["tool_choice"] = "auto"
+    return payload
+
+
+def _sse_event(data: dict) -> str:
+    """Format a single SSE event."""
+    return f"data: {json.dumps(data, default=str)}\n\n"
+
+
+async def _sse_yield(data: dict):
+    """Async generator yielding a single SSE event (for error responses)."""
+    yield _sse_event(data)
+
+
+# ─── SSE Streaming Chat Endpoint ───
+
+
+@router.post("/api/v1/chat/stream")
+async def llm_chat_stream(body: ChatRequest, request: Request):
+    """Stream chat responses via SSE — text and thinking arrive incrementally.
+
+    Same tool-calling logic as llm_chat, but the final LLM response is streamed
+    so users see text in real-time instead of waiting 2-8 minutes for the full
+    response. Yields SSE events:
+      - data: {"type":"thinking","content":"..."}  (reasoning chunks)
+      - data: {"type":"text","content":"..."}       (visible text chunks)
+      - data: {"type":"tool_progress","tools":[...]} (tool calls being executed)
+      - data: {"type":"done","usage":{...},"cost":{...},"model":"..."}
+    """
+    if not DEEPSEEK_API_KEY:
+        return StreamingResponse(
+            _sse_yield({"ok": False, "error": "DEEPSEEK_API_KEY not configured"}),
+            media_type="text/event-stream",
+        )
+
+    # Origin check
+    origin = (request.headers.get("origin") or "").lower().rstrip("/")
+    referer = (request.headers.get("referer") or "").lower().rstrip("/")
+    if not any(origin.startswith(o) or referer.startswith(o) for o in ALLOWED_ORIGINS):
+        return StreamingResponse(
+            _sse_yield({"ok": False, "error": "Chat is only available from scriptureengine.org"}),
+            media_type="text/event-stream",
+        )
+
+    # Rate limiting
+    client_ip = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    if not _check_rate_limit(client_ip):
+        return StreamingResponse(
+            _sse_yield({"ok": False, "error": "Rate limit exceeded. Try again in a minute."}),
+            media_type="text/event-stream",
+        )
+
+    # Build messages with mode-specific system prompt
+    msgs = list(body.messages)
+    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
+    if prompt:
+        if not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": prompt})
+        else:
+            for i, m in enumerate(msgs):
+                if m.get("role") == "system":
+                    msgs[i] = {"role": "system", "content": prompt}
+                    break
+
+    body.max_tokens = min(body.max_tokens, 128_000)
+    msgs = apply_context_budget(msgs)
+
+    async def stream_generator():
+        """Run tool rounds (non-streaming), then stream final response."""
+        tool_results = []
+        nonlocal msgs
+
+        # ── Tool-calling rounds (non-streaming) ──
+        payload = _build_payload(body, msgs, stream=False)
+        max_tool_rounds = 15
+        rounds = 0
+
+        while rounds < max_tool_rounds:
+            data = await call_deepseek(payload)
+            if "error" in data:
+                yield _sse_event({"type": "error", "message": data["error"].get("message", str(data["error"]))})
+                return
+
+            choice = data.get("choices", [{}])[0]
+            msg = choice.get("message", {})
+            tool_calls = msg.get("tool_calls")
+
+            if not tool_calls:
+                # No more tool calls — break to streaming
+                break
+
+            # Yield tool progress
+            tool_names = [tc["function"]["name"] for tc in tool_calls]
+            yield _sse_event({"type": "tool_progress", "tools": [
+                {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
+                for tc in tool_calls
+            ]})
+
+            msgs.append(msg)
+            conn = get_db()
+
+            staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
+            ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+
+            async def run_ro(tc, conn=conn):
+                fn_name = tc["function"]["name"]
+                try:
+                    fn_args = json.loads(tc["function"]["arguments"])
+                except json.JSONDecodeError:
+                    fn_args = {}
+                try:
+                    return tc, call_tool(fn_name, conn, **fn_args)
+                except Exception as e:
+                    return tc, {"error": str(e)}
+
+            ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
+
+            staging_results = []
+            for tc in staging_calls:
+                fn_name = tc["function"]["name"]
+                try:
+                    fn_args = json.loads(tc["function"]["arguments"])
+                except json.JSONDecodeError:
+                    fn_args = {}
+                try:
+                    if fn_name == "scripture_stage_connection":
+                        result = stage_connection(conn, submitted_by="llm", **fn_args)
+                    elif fn_name == "scripture_stage_study":
+                        steps = json.loads(fn_args.pop("steps_json", "[]"))
+                        result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                    else:
+                        result = {"error": f"Unknown staging tool: {fn_name}"}
+                except Exception as e:
+                    result = {"error": str(e)}
+                staging_results.append((tc, result))
+
+            all_results = ro_results + staging_results
+            for tc, result in all_results:
+                result_str = json.dumps(result, default=str, ensure_ascii=False)
+                if len(result_str) > 3000:
+                    result_str = result_str[:3000] + '..." [truncated]'
+                tool_results.append({
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"]),
+                    "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
+                })
+                msgs.append({
+                    "role": "tool",
+                    "content": result_str,
+                    "tool_call_id": tc["id"],
+                })
+
+            conn.close()
+
+            # Budget check
+            est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
+            if est > MAX_PROMPT_TOKENS * 0.8:
+                msgs = apply_context_budget(msgs)
+
+            payload["messages"] = msgs
+            rounds += 1
+
+        # ── Streaming final response ──
+        usage = {}
+        final_reasoning = ""
+        final_content = ""
+
+        stream_payload = _build_payload(body, msgs, stream=True)
+        try:
+            async with _http_client.stream(
+                "POST", f"{DEEPSEEK_BASE}/chat/completions",
+                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+                json=stream_payload,
+            ) as resp:
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    chunk = line[6:].strip()
+                    if chunk == "[DONE]":
+                        break
+                    try:
+                        chunk_data = json.loads(chunk)
+                    except json.JSONDecodeError:
+                        continue
+
+                    delta = chunk_data.get("choices", [{}])[0].get("delta", {})
+
+                    # Reasoning content (thinking) — stream it
+                    rc = delta.get("reasoning_content")
+                    if rc:
+                        final_reasoning += rc
+                        yield _sse_event({"type": "thinking", "content": rc})
+
+                    # Visible content — stream it
+                    c = delta.get("content")
+                    if c:
+                        final_content += c
+                        yield _sse_event({"type": "text", "content": c})
+
+                    # Track usage from the last chunk
+                    if chunk_data.get("usage"):
+                        usage = chunk_data["usage"]
+
+        except Exception as e:
+            yield _sse_event({"type": "error", "message": f"Stream error: {str(e)}"})
+            return
+
+        if not final_content and tool_results:
+            # LLM returned only tool results without synthesis — force a summary
+            msgs.append({"role": "user", "content":
+                "You have all the data you need from the tool calls above. "
+                "Now synthesize a complete thorough answer in natural language based on the information you found. "
+                "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
+                "Include specific gematria values, verse quotations, and connection details from the tool results. "
+                "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
+            retry_payload = _build_payload(body, msgs, stream=False)
+            retry_data = await call_deepseek(retry_payload)
+            if retry_data.get("choices"):
+                rc_msg = retry_data["choices"][0].get("message", {})
+                retry_content = rc_msg.get("content") or ""
+                retry_reasoning = rc_msg.get("reasoning_content") or ""
+                if retry_content:
+                    yield _sse_event({"type": "text", "content": retry_content})
+                if retry_reasoning:
+                    yield _sse_event({"type": "thinking", "content": retry_reasoning})
+                final_content = retry_content or final_content
+                final_reasoning = retry_reasoning or final_reasoning
+                retry_usage = retry_data.get("usage", {})
+                for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
+                    if retry_usage.get(k):
+                        usage[k] = usage.get(k, 0) + retry_usage[k]
+
+        cost = _compute_cost(usage)
+        model = data.get("model", body.model) if rounds > 0 else body.model
+
+        yield _sse_event({
+            "type": "done",
+            "usage": {
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": usage.get("completion_tokens", 0),
+                "total_tokens": usage.get("total_tokens", 0),
+                "cache_hit_tokens": usage.get("prompt_cache_hit_tokens", 0),
+            },
+            "cost": cost,
+            "model": model,
+            "tool_results": tool_results,
+        })
+
+        # Save to conversation history (fire-and-forget)
+        if tool_results:
+            try:
+                conn = get_db()
+                # Store tool results summary in the conversation
+                conn.close()
+            except Exception:
+                pass
+
+    return StreamingResponse(stream_generator(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 

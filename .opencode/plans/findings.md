@@ -1,55 +1,80 @@
-# Findings: Fix scriptureengine.org SSL Handshake Failure
+# Findings: Chat + Hebrew Learn Polish
 
-## Root Cause
+## Codebase Exploration Summary
 
-The VPS at `40.160.241.74` originally used **nginx** as its reverse proxy (documented in VPS.md), but nginx has since been **removed** and replaced by **Caddy v2** running as a Docker container (`ferrum-caddy`) deployed via the `sololedger` project's docker-compose at `/opt/sololedger/deploy/docker-compose.yml`.
+### Chat Panel (`frontend/src/components/ChatPanel.jsx`, 1531 lines)
+**Structure:**
+- Main component `ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant })`
+- Two variants: `overlay` (fixed popup, Ctrl+P) and `tab` (inline in main content)
+- Session persistence via localStorage + server-side conversation CRUD
+- Prebuilt responses for common questions (bypasses LLM)
+- Verse ref detection with 4 regex passes + book name mapping (100+ aliases)
+- Response mode system: auto/short/medium/deep → maps to max_tokens 4K/32K/128K
+- Tool category toggles for 7 groups (lookup, search, connections, graph, gematria, study, staging, learning)
+- Edit/resend with inline textarea
+- Cost tracking with model/usage display
 
-The existing Caddyfile only has site blocks for:
-- `sololedger.ferrumeng.com` → `sololedger-api:8100`
-- `poolsplat.ferrumeng.com` → `poolsplat:3138`
+**Key files:**
+- `frontend/src/components/ChatPanel.jsx` — all chat UI + client logic
+- `frontend/src/api.js` — `chat()` function (lines 229-240) sends POST to `/api/v1/chat`
+- `web/routes/chat.py` (1398 lines) — LLM proxy with function calling (DeepSeek)
+- `CHAT_AGENTS.md`, `CHAT_AGENTS_HEBREW.md`, `CHAT_AGENTS_KNOWLEDGE.md` — system prompts
 
-**No site block exists for `scriptureengine.org`.** Cloudflare (proxied/orange cloud) connects to the origin on port 443, Caddy accepts the connection but can't complete the TLS handshake because it has no certificate for `scriptureengine.org`, resulting in the "SSL handshake failed" error.
+**Known bugs:**
+1. **Thinking display bug** (backend line 1349): `final_content = choice["message"]["content"] or choice["message"].get("reasoning_content") or ""` — when DeepSeek returns empty `content` with `reasoning_content`, the backend copies reasoning into content. Frontend then displays it twice: once in main body, once in `<details>` thinking block.
+2. **Copy-all toggle** (frontend line 1453-1457): "Copy all" and "✓ Copied" can appear simultaneously because the button text switches in-place but the parent visibility check is wrong.
+3. **Token info on EVERY message** — clutters the conversation. Should only show on last assistant message.
 
-## Current Working State
+### Hebrew Learn (`frontend/src/components/HebrewLearnView.jsx`, 668 lines)
+**Structure:**
+- Main component `HebrewLearnView({ onOpenLesson, onOpenPassage })`
+- Fetches curriculum + gamification in parallel via `Promise.all`
+- 102+ lessons across 9 categories with mastery tracking
+- Multiple modes (switchable via state variables):
+  - Curriculum list view → mastery map
+  - PassageReader, VerbDrills, HebrewReview (Anki), DailyVerse, AudioReview, Quiz, QuickSession, FreqVocab
+- Gamification: XP, streak, badges (server-side, `hebrew_gamification` table)
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| `scripture-api` systemd service | ✅ Running | uvicorn on `127.0.0.1:8000` — health check returns 200 |
-| Frontend dist | ✅ Present | `/var/www/scripture/frontend/dist/` — includes `index.html`, JS, assets |
-| API code & lib | ✅ Present | `/var/www/scripture/web/`, `/var/www/scripture/lib/` |
-| Database | ✅ Present | `/var/www/scripture/scripture.db` (1.4GB) |
-| Let's Encrypt cert | ✅ Valid | `scriptureengine.org` + `www.scriptureengine.org` — expires Sep 22, 2026 |
-| nginx | ❌ Not installed | `/etc/nginx/` does not exist |
-| Caddy as reverse proxy | ⚠️ Missing config | Runs on ports 80/443 but has no `scriptureengine.org` site block |
+**Key files:**
+- `frontend/src/components/HebrewLearnView.jsx` — dashboard/curriculum
+- `frontend/src/components/HebrewLessonView.jsx` — single-lesson view
+- `frontend/src/components/HebrewQuiz.jsx` — quiz component
+- `frontend/src/components/HebrewQuizCard.jsx` — quiz card rendering
+- `frontend/src/components/HebrewVerbDrill.jsx` — verb conjugation drill
+- `frontend/src/components/HebrewPassageReader.jsx` — passage reading mode
+- `web/routes/hebrew.py` (1300+ lines) — curriculum, FSRS, gamification API
+- `frontend/src/lib/card-factory.js` — card generation for reviews
 
-## Infrastructure Changes Since VPS.md
+**Pain points:**
+1. **Action button overload** (lines 398-476): 10+ `<button>` elements in a single `flex-wrap` container. On desktop they wrap into 3-4 rows. On mobile they overflow.
+2. **No next-lesson flow**: After completing a lesson (`setHebrewLessonId(null)` drops back to curriculum), there's no "you should study X next" guidance.
+3. **Mobile layout**: Category filter tabs wrap awkwardly on small screens. The action bar is unusable on mobile.
 
-The server has evolved beyond what VPS.md documents. New projects deployed:
-- **SoloLedger** (`sololedger.ferrumeng.com`) — FastAPI + SPA served via Caddy
-- **PoolSplat** (`poolsplat.ferrumeng.com`) — 3D viewer served via Caddy
-- **Netdata** — system monitoring container
+### Quality Baseline
+- Structural quality: 0.4211 (scanned 1298 files, 565 import edges)
+- No architectural violations detected
 
 ## Pre-resolved Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| API binding | Change to `0.0.0.0:8000` | Simplest change — API is behind Cloudflare proxy, exposure risk minimal |
-| Reverse proxy config | Add to Caddyfile | Caddy is already running and handling all other domains |
-| Docker-to-host connectivity | `extra_hosts: ["host.docker.internal:host-gateway"]` | Standard pattern for Docker-to-host access |
-| Frontend serving | Volume mount into Caddy container | Caddy handles static files directly (faster than proxying to uvicorn) |
-| VPS.md | Update to reflect current Caddy-based architecture | Docs must match reality |
+### Decision: SSE streaming over WebSocket
+- **Rationale:** SSE is simpler (one-directional, HTTP-native), works through proxies, no special server setup. FastAPI supports SSE via `StreamingResponse`. WebSocket would add complexity (connection management, reconnection logic) without benefit for this use case.
+- **Tradeoff:** SSE is server→client only, but we only need to stream from server to client.
 
-## Architecture After Fix
+### Decision: No new client dependencies
+- **Rationale:** Keep the frontend lean. `fetch` + `ReadableStream` are natively supported in all modern browsers for SSE-like streaming. No need for `eventsource-parser` or similar.
 
-```
-User → Cloudflare (proxied) → VPS :443 → Caddy
-  ├── sololedger.ferrumeng.com → sololedger-api:8100
-  ├── poolsplat.ferrumeng.com  → poolsplat:3138
-  └── scriptureengine.org
-      ├── /api/*    → host.docker.internal:8000 (uvicorn, 2 workers)
-      └── /*        → /var/www/scripture/frontend/dist/ (static SPA)
-```
+### Decision: Fix thinking display at source (backend)
+- **Rationale:** The bug is in backend line 1349 where `reasoning_content` leaks into `content`. Fixing it at source prevents the bug everywhere (including any future consumers of the API). Frontend gets a safety check too.
 
-## Outdated nginx deployment in deploy.sh
+### Decision: Dropdown menus for Hebrew action bar
+- **Rationale:** 10+ buttons is too many for any screen. Grouping into 3 thematic dropdowns (Practice, Reading, Tools) maintains access while drastically reducing visual clutter. Native `<details>` elements avoid JS complexity.
 
-The deploy script still tries to sync and reload nginx. These steps silently fail because nginx isn't installed. The script needs updating to no longer reference nginx, and potentially to reload Caddy config instead.
+## Files to Modify
+
+| File | Track | Est. Changes |
+|------|-------|-------------|
+| `web/routes/chat.py` | A1 | +100 lines (SSE endpoint + thinking fix) |
+| `frontend/src/api.js` | A2 | +30 lines (chatStream function) |
+| `frontend/src/components/ChatPanel.jsx` | A2, B1, B2 | +120 lines changed |
+| `frontend/src/components/HebrewLearnView.jsx` | C1, C2, C3 | +120 lines changed |
+| `frontend/src/components/HebrewLessonView.jsx` | C2 | +20 lines |

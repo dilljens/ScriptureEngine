@@ -14,7 +14,7 @@ import HebrewQuizCard from './HebrewQuizCard'
 import VersePopup from './VersePopup'
 import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
-import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat } from '../api'
+import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat, chatStream } from '../api'
 import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
 import { parseStandardRef, resolveBook } from '../refParser'
 
@@ -260,6 +260,9 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [responseMode, setResponseMode] = useState('auto') // 'auto', 'short', 'medium', 'deep'
   const [showModeMenu, setShowModeMenu] = useState(false)
   const [toolProgress, setToolProgress] = useState([]) // tool names called in current request
+  const [streamingContent, setStreamingContent] = useState('')  // live text being streamed
+  const [streamingThinking, setStreamingThinking] = useState('')  // live thinking being streamed
+  const streamingIdxRef = useRef(null)  // index of the assistant message being streamed
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
@@ -793,65 +796,124 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   }, [])
 
   const performChat = async (allMessages) => {
-    // Cancel any previous in-flight request (from a new message being sent)
+    // Cancel any previous in-flight request
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
 
     setWaiting(true)
     setToolProgress([])
+    setStreamingContent('')
+    setStreamingThinking('')
+
+    // Build disabled tools list
+    let disabledTools = []
+    if (enabledTools) {
+      for (const [cat, enabled] of Object.entries(enabledTools)) {
+        if (!enabled && TOOL_CATEGORY_MAP[cat]) {
+          disabledTools = disabledTools.concat(TOOL_CATEGORY_MAP[cat])
+        }
+      }
+    }
+
+    const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
+
+    // Add a placeholder assistant message immediately so the user sees something
+    const placeholderIdx = messages.length
+    const placeholderMsg = { role: 'assistant', content: '', reasoning_content: '', streaming: true, timestamp: new Date().toISOString() }
+    streamingIdxRef.current = placeholderIdx
+    setMessages(prev => [...prev, placeholderMsg])
+
     try {
-      // Build disabled tools list from enabledTools state
-      let disabledTools = []
-      if (enabledTools) {
-        for (const [cat, enabled] of Object.entries(enabledTools)) {
-          if (!enabled && TOOL_CATEGORY_MAP[cat]) {
-            disabledTools = disabledTools.concat(TOOL_CATEGORY_MAP[cat])
+      await chatStream(allMessages, {
+        max_tokens: maxTokens,
+        disabled_tools: disabledTools,
+        signal: controller.signal,
+        onThinking: (chunk) => {
+          if (!mountedRef.current) return
+          setStreamingThinking(prev => prev + chunk)
+          // Update the placeholder message's reasoning_content in-place
+          streamingIdxRef.current = placeholderIdx
+        },
+        onText: (chunk) => {
+          if (!mountedRef.current) return
+          setStreamingContent(prev => prev + chunk)
+        },
+        onToolProgress: (tools) => {
+          if (mountedRef.current) {
+            setToolProgress(tools.map(t => t.name))
           }
-        }
-      }
-      const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
-      const res = await chat(allMessages, { max_tokens: maxTokens, disabled_tools: disabledTools, signal: controller.signal })
-      // Still mounted? Update state to show the result.
-      // If not (user switched tabs), still save to server so it's there when they come back.
-      if (res.ok && res.data) {
-        const { content, reasoning_content: reasoningContent, usage, cost, model, tool_results: toolResults } = res.data
-        // Show tool progress from the response
-        if (toolResults?.length > 0) {
-          setToolProgress(toolResults.map(t => t.name))
-        }
-        // If the LLM returned only tool calls with no content, show a cleaner placeholder
-        const effectiveContent = content || (toolResults?.length > 0
-          ? '_Let me look that up for you..._'
-          : '')
-        const assistantMsg = { role: 'assistant', content: effectiveContent, reasoning_content: reasoningContent, usage, cost, model, toolResults, timestamp: new Date().toISOString() }
-        if (mountedRef.current) {
-          setMessages(prev => [...prev, assistantMsg])
-        }
-        saveMessage('assistant', effectiveContent, { reasoning_content: reasoningContent, usage, cost, model, toolResults })
-      } else {
-        const errorMsg = res?.error || 'Unknown error'
-        if (mountedRef.current) {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `**LLM unavailable**: ${errorMsg}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
-            timestamp: new Date().toISOString(),
-          }])
-        }
-      }
+        },
+        onDone: (event) => {
+          if (!mountedRef.current) return
+          // Finalize the placeholder message with the complete response
+          const finalContent = streamingContent || (event.tool_results?.length > 0 ? '_Let me look that up for you..._' : '')
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = streamingIdxRef.current
+            if (idx !== null && idx < updated.length) {
+              updated[idx] = {
+                role: 'assistant',
+                content: finalContent,
+                reasoning_content: streamingThinking || event.usage?.reasoning_content,
+                usage: event.usage,
+                cost: event.cost,
+                model: event.model,
+                toolResults: event.tool_results,
+                timestamp: new Date().toISOString(),
+              }
+            }
+            return updated
+          })
+          setStreamingContent('')
+          setStreamingThinking('')
+          streamingIdxRef.current = null
+          saveMessage('assistant', finalContent, {
+            reasoning_content: streamingThinking,
+            usage: event.usage,
+            cost: event.cost,
+            model: event.model,
+            tool_results: event.tool_results,
+          })
+        },
+        onError: (message) => {
+          if (!mountedRef.current) return
+          setMessages(prev => {
+            const updated = [...prev]
+            const idx = streamingIdxRef.current
+            if (idx !== null && idx < updated.length) {
+              updated[idx] = {
+                role: 'assistant',
+                content: `**LLM unavailable**: ${message}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
+                timestamp: new Date().toISOString(),
+              }
+            }
+            return updated
+          })
+          setStreamingContent('')
+          setStreamingThinking('')
+          streamingIdxRef.current = null
+        },
+      })
     } catch (err) {
       if (err.name === 'AbortError') {
-        // User manually cancelled — silently abort, don't show error
         abortRef.current = null
         setWaiting(false)
         return
       }
       if (mountedRef.current) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
-          timestamp: new Date().toISOString(),
-        }])
+        setMessages(prev => {
+          const updated = [...prev]
+          const idx = streamingIdxRef.current
+          if (idx !== null && idx < updated.length) {
+            updated[idx] = {
+              role: 'assistant',
+              content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
+              timestamp: new Date().toISOString(),
+            }
+          }
+          return updated
+        })
       }
     }
     if (mountedRef.current) {
@@ -1198,7 +1260,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
                 }`}>
                 {/* Copy button (top-right, on hover) — for assistant messages */}
-                {msg.role === 'assistant' && (
+                {msg.role === 'assistant' && !msg.streaming && (
                   <button onClick={() => copyToClipboard(msg.content, i)}
                     className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Copy message">
@@ -1209,20 +1271,31 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                     )}
                   </button>
                 )}
-                {renderContent(msg.content)}
 
-                {/* Reasoning — visible by default, shows thought process */}
-                {msg.reasoning_content && (
+                {/* Streaming message: show live content from state */}
+                {msg.streaming ? (
+                  <>
+                    {streamingContent && renderContent(streamingContent)}
+                    {!streamingContent && !streamingThinking && (
+                      <span className="italic text-neutral-400 dark:text-neutral-500 animate-pulse">Thinking...</span>
+                    )}
+                  </>
+                ) : (
+                  renderContent(msg.content)
+                )}
+
+                {/* Reasoning — show live during streaming, else from msg */}
+                {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
                   <details open className="group mt-1">
                     <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
                       <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
                       <span className="italic font-medium">thinking</span>
                     </summary>
                     <div className="mt-0.5 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
-                      {msg.reasoning_content}
+                      {msg.streaming ? streamingThinking : msg.reasoning_content}
                     </div>
                   </details>
-                )}
+                ) : null}
 
                 {/* Token display */}
                 {msg.usage && (() => {
@@ -1262,40 +1335,25 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           </div>
         ))}
 
-        {/* Thinking indicator */}
-        {waiting && (
+        {/* Thinking indicator — only shown when no streaming content yet */}
+        {waiting && !streamingContent && !streamingThinking && (
           <div className="flex justify-start">
-            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 italic flex items-center gap-2 shadow-sm">
+            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2 shadow-sm">
               <span className="flex gap-1">
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
-              <span>Thinking</span>
-              {toolProgress.length > 0 && (
-                <span className="ml-1 text-[9px] text-neutral-400 dark:text-neutral-500 truncate max-w-[120px]">
-                  {toolProgress.length} tool{toolProgress.length > 1 ? 's' : ''}
+              {toolProgress.length > 0 ? (
+                <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
+                  Running: {toolProgress.map(t => t.replace('scripture_', '')).join(', ')}
                 </span>
+              ) : (
+                <span className="italic">Thinking</span>
               )}
-              <button onClick={() => {
-                  if (abortRef.current) abortRef.current.abort()
-                  setWaiting(false)
-                  // Find the last user message and open it for editing
-                  const lastUserIdx = messages.length - 1
-                  for (let i = messages.length - 1; i >= 0; i--) {
-                    if (messages[i].role === 'user') {
-                      startEditing(i, messages[i].content)
-                      break
-                    }
-                  }
-                }}
-                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer transition-colors border border-amber-200 dark:border-amber-700"
-                title="Stop thinking and refine your message">
-                Refine
-              </button>
               <button onClick={() => { if (abortRef.current) abortRef.current.abort(); setWaiting(false) }}
-                className="px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
-                title="Cancel this request entirely">
+                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
+                title="Cancel this request">
                 Cancel
               </button>
             </div>

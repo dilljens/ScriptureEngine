@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import HebrewQuiz from './HebrewQuiz'
 import CardQueue from './CardQueue'
@@ -7,6 +7,54 @@ import PassageReader from './PassageReader'
 import DailyVerse from './DailyVerse'
 import AudioReviewSession from './AudioReviewSession'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
+
+/* ── Dropdown components for compact action menus ── */
+
+function DropdownMenu({ label, color, children }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const colorMap = {
+    amber: 'bg-amber-500 hover:bg-amber-600 text-white',
+    teal: 'bg-teal-600 hover:bg-teal-700 text-white',
+    neutral: 'bg-neutral-500 hover:bg-neutral-600 text-white',
+  }
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button onClick={() => setOpen(!open)}
+        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors ${colorMap[color] || colorMap.neutral}`}>
+        {label} {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 overflow-hidden"
+          onClick={() => setOpen(false)}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DropdownItem({ onClick, icon, label, desc }) {
+  return (
+    <button onClick={onClick}
+      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+      <span className="text-sm shrink-0 w-5 text-center">{icon}</span>
+      <div className="min-w-0">
+        <div className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{label}</div>
+        {desc && <div className="text-[9px] text-neutral-400 dark:text-neutral-500 truncate">{desc}</div>}
+      </div>
+    </button>
+  )
+}
 
 /**
  * HebrewLearnView — curriculum dashboard with gamification.
@@ -377,102 +425,59 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </div>
       </div>
 
-      {/* Stats + Quick mode button */}
-      <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
+      {/* Stats + quick action dropdowns */}
+      <div className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <div className="flex-1 min-w-0">
           <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
             <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${(mastered / Math.max(total, 1)) * 100}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400 flex-wrap">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {mastered} mastered</span>
+
+        {/* Mastery stats inline */}
+        <div className="hidden sm:flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {mastered}</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {in_progress}</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-600" /> {locked} locked</span>
-          {curriculum.overall_ability !== undefined && (
-            <span className="flex items-center gap-1 ml-2 pl-2 border-l border-neutral-200 dark:border-neutral-700">
-              <span className="text-xs">{curriculum.avg_learning_speed > 1.2 ? '⚡' : curriculum.avg_learning_speed >= 0.8 ? '→' : '～'}</span>
-              <span className="text-[9px]">speed {Math.round(curriculum.avg_learning_speed * 100)}%</span>
-            </span>
-          )}
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-600" /> {locked}</span>
         </div>
+
+        {/* Map/List toggle */}
         <button onClick={() => setShowMasteryMap(!showMasteryMap)}
-          className="px-3 py-2 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300 text-[10px] font-medium cursor-pointer transition-colors shrink-0">
+          className="px-2.5 py-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-300 text-[10px] font-medium cursor-pointer transition-colors shrink-0">
           {showMasteryMap ? '📋 List' : '🗺️ Map'}
         </button>
-        <button onClick={startQuickSession}
-          className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          ⏱ 5-min quick
-        </button>
-        <button onClick={() => setShowDailyVerse(true)}
-          className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          📆 Verse of Day
-        </button>
-        <button onClick={() => setShowPassageReader(true)}
-          className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          📖 Read Passage
-        </button>
-        <button onClick={() => setShowVerbDrill(true)}
-          className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          ע Verb Drills
-        </button>
-        <button onClick={async () => {
-          try {
-            const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10')
-            const d = await r.json()
-            const cards = (d.words || []).map(w => ({
-              id: `vocab-${w.rank}-${w.hebrew?.replace(/[^a-zA-Z\u0590-\u05ff]/g, '')}`,
-              type: 'vocab',
-              data: {
-                word: w.hebrew,
-                definition: w.gloss,
-                transliteration: w.transliteration,
-                lemma: w.root || '',
-                language: 'hebrew',
-              },
-            }))
-            setFreqVocabCards(cards)
-          } catch {}
-          setShowFreqVocab(true)
-        }}
-          className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          📊 Top Vocab
-        </button>
-        <button onClick={async () => {
-          try {
-            const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10')
-            const d = await r.json()
-            const words = (d.words || []).filter(w => w.hebrew && w.gloss).map(w => ({
-              hebrew: w.hebrew,
-              english: w.gloss,
-              transliteration: w.transliteration,
-            }))
-            setAudioWords(words)
-          } catch {}
-          setShowAudioReview(true)
-        }}
-          className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          🎧 Audio Review
-        </button>
-        <button onClick={async () => {
-          // Load both node cards and drill cards, interleave them
-          const unlocked = curriculum?.nodes?.filter(n => n.unlocked) || []
-          const nodeCards = hebrewToCards(unlocked)
-          let drillCards = []
-          try {
-            const r = await fetch('/api/v1/hebrew/verb-drill?limit=8')
-            const d = await r.json()
-            if (d.ok) drillCards = drillsToCards(d.data.drills || [])
-          } catch {}
-          setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
-          setShowHebrewReview(true)
-        }}
-          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          🔄 Review 🔀
-        </button>
-        <button onClick={() => setShowQuiz(true)}
-          className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
-          📝 Quiz
-        </button>
+
+        {/* Practice dropdown */}
+        <DropdownMenu label="⏱ Practice" color="amber">
+          <DropdownItem onClick={startQuickSession} icon="⏱" label="5-min Quick" desc="Timed review session" />
+          <DropdownItem onClick={() => setShowQuiz(true)} icon="📝" label="Quiz" desc="Test your knowledge" />
+          <DropdownItem onClick={async () => {
+            const unlocked = curriculum?.nodes?.filter(n => n.unlocked) || []
+            const nodeCards = hebrewToCards(unlocked)
+            let drillCards = []
+            try { const r = await fetch('/api/v1/hebrew/verb-drill?limit=8'); const d = await r.json(); if (d.ok) drillCards = drillsToCards(d.data.drills || []) } catch {}
+            setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
+            setShowHebrewReview(true)
+          }} icon="🔄" label="Review 🔀" desc="Spaced repetition cards" />
+        </DropdownMenu>
+
+        {/* Reading dropdown */}
+        <DropdownMenu label="📖 Reading" color="teal">
+          <DropdownItem onClick={() => setShowDailyVerse(true)} icon="📆" label="Verse of Day" desc="Daily featured verse" />
+          <DropdownItem onClick={() => setShowPassageReader(true)} icon="📖" label="Read Passage" desc="Full chapter reader" />
+        </DropdownMenu>
+
+        {/* Tools dropdown */}
+        <DropdownMenu label="🔧 Tools" color="neutral">
+          <DropdownItem onClick={() => setShowVerbDrill(true)} icon="ע" label="Verb Drills" desc="Conjugation practice" />
+          <DropdownItem onClick={async () => {
+            try { const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10'); const d = await r.json(); setFreqVocabCards((d.words || []).map((w,i) => ({ id: `vocab-${i}`, type: 'vocab', data: { word: w.hebrew, definition: w.gloss, transliteration: w.transliteration, lemma: w.root || '', language: 'hebrew' } }))) } catch {}
+            setShowFreqVocab(true)
+          }} icon="📊" label="Top Vocab" desc="100 most frequent words" />
+          <DropdownItem onClick={async () => {
+            try { const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10'); const d = await r.json(); setAudioWords((d.words || []).filter(w => w.hebrew && w.gloss).map(w => ({ hebrew: w.hebrew, english: w.gloss, transliteration: w.transliteration }))) } catch {}
+            setShowAudioReview(true)
+          }} icon="🎧" label="Audio Review" desc="Listen & repeat" />
+        </DropdownMenu>
       </div>
 
       {/* Badges row */}
@@ -493,8 +498,36 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </div>
       )}
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-1.5 mb-6">
+      {/* Suggested next lesson — "Continue Learning" */}
+      {(() => {
+        // Find best next lesson: unlocked, not mastered, lowest level first, then lowest mastery
+        const candidates = (nodes || []).filter(n => n.unlocked && n.mastery < 0.8)
+          .sort((a, b) => a.level - b.level || a.mastery - b.mastery)
+        const next = candidates[0]
+        if (!next) return null
+        const cs = CATEGORY_STYLES[next.category] || {}
+        return (
+          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 border border-indigo-200 dark:border-indigo-800 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-sm shrink-0">
+              {cs.icon || '📖'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 mb-0.5">Continue Learning</div>
+              <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">{next.title}</div>
+              <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Level {next.level} · {cs.label || next.category} · {Math.round((1 - next.mastery) * 100)}% to go
+              </div>
+            </div>
+            <button onClick={() => onOpenLesson?.(next.id)}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+              Continue →
+            </button>
+          </div>
+        )
+      })()}
+
+      {/* Category filter — horizontal scroll on mobile */}
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1 scrollbar-thin -mx-2 px-2 snap-x snap-mandatory md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
         {[{id:'all',count:total,label:'All'}].concat(
           Object.entries(CATEGORY_STYLES).map(([cat, cs]) => ({
             id: cat, count: nodes.filter(n => n.category === cat).length, ...cs
