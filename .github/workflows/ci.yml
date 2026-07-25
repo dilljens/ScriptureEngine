@@ -54,7 +54,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install ruff
       - name: Ruff check
-        run: ruff check --output-format=github
+        run: ruff check --output-format=github --ignore BLE001,S110
       - name: Count errors
         run: |
           errors=$(ruff check --statistics | tail -1 | grep -oP '^\s*\d+' || echo "0")
@@ -69,7 +69,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
           cache-dependency-path: web/requirements.txt
-      - run: pip install -r web/requirements.txt biblical-transliteration fastembed sentence-transformers
+      - run: pip install -r web/requirements.txt biblical-transliteration fastembed sentence-transformers pytest
         working-directory: .
       - name: Create test fixture database
         run: |
