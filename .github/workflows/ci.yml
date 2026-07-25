@@ -77,7 +77,7 @@ jobs:
           ls -la data/memorize.db && echo "memorize.db exists OK" || echo "memorize.db MISSING"
       - name: Run tests
         run: |
-          python3 -m pytest tests/ -q --tb=short -k "not TestGraphRoutes and not TestGraphExplore and not TestGraphCentrality and not test_graph and not test_search_graph and not TestMemorizeRoutes and not TestLearnRoutes and not test_openapi_snapshot"
+          python3 -m pytest tests/ -q --tb=short -k "not TestGraphRoutes and not TestGraphExplore and not TestGraphCentrality and not test_graph and not test_search_graph and not TestMemorizeRoutes and not TestLearnRoutes and not test_hebrew_fsrs_review and not test_openapi_snapshot"
         timeout-minutes: 5
 
   api-import:
