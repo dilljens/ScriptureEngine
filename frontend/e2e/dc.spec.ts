@@ -67,3 +67,4 @@ test.describe('D&C navigation', () => {
     const dcResults = page.locator('text=/dc/i')
     expect(await dcResults.count()).toBeGreaterThan(0)
   })
+})
