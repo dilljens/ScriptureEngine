@@ -469,6 +469,64 @@ def main():
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.commit()
 
+    # ── Create minimal memorize.db for grammar + memorize tests ──
+    MEM_DB_PATH = ROOT / "data" / "memorize.db"
+    try:
+        mconn = sqlite3.connect(str(MEM_DB_PATH))
+        mconn.execute("""
+            CREATE TABLE IF NOT EXISTS grammar_reference (
+                paragraph_id INTEGER PRIMARY KEY,
+                section TEXT,
+                subsection TEXT,
+                summary TEXT,
+                hebrew_examples TEXT
+            )
+        """)
+        mconn.execute("""
+            CREATE TABLE IF NOT EXISTS cards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                verse_id TEXT NOT NULL,
+                card_type TEXT NOT NULL DEFAULT 'text',
+                state INTEGER NOT NULL DEFAULT 0,
+                stability REAL NOT NULL DEFAULT 0.0,
+                difficulty REAL NOT NULL DEFAULT 0.0,
+                reps INTEGER NOT NULL DEFAULT 0,
+                lapses INTEGER NOT NULL DEFAULT 0,
+                due TEXT NOT NULL DEFAULT (datetime('now')),
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        mconn.execute("""
+            CREATE TABLE IF NOT EXISTS review_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                card_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL,
+                reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        mconn.execute("""
+            CREATE TABLE IF NOT EXISTS hebrew_progress (
+                user_id TEXT NOT NULL DEFAULT 'default',
+                node_id TEXT NOT NULL,
+                mastery REAL NOT NULL DEFAULT 0.0,
+                PRIMARY KEY (user_id, node_id)
+            )
+        """)
+        mconn.execute("""
+            CREATE TABLE IF NOT EXISTS hebrew_nodes (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                category TEXT,
+                level INTEGER DEFAULT 1,
+                description TEXT
+            )
+        """)
+        mconn.commit()
+        mconn.close()
+        print(f"  Created memorize.db with core tables")
+    except Exception as e:
+        print(f"  ⚠ Could not create memorize.db: {e}")
+
     elapsed = time.time() - start
     size = TEST_DB_PATH.stat().st_size
     verse_count = conn.execute("SELECT COUNT(*) FROM verses").fetchone()[0]
