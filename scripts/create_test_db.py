@@ -469,61 +469,28 @@ def main():
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.commit()
 
-    # ── Create minimal memorize.db for grammar + memorize tests ──
+    # ── Create memorize.db for grammar reference + memorize + hebrew tests ──
+    MEM_SCHEMA = ROOT / "data" / "test" / "memorize_schema.sql"
     MEM_DB_PATH = ROOT / "data" / "memorize.db"
     try:
         mconn = sqlite3.connect(str(MEM_DB_PATH))
-        mconn.execute("""
-            CREATE TABLE IF NOT EXISTS grammar_reference (
-                paragraph_id INTEGER PRIMARY KEY,
-                section TEXT,
-                subsection TEXT,
-                summary TEXT,
-                hebrew_examples TEXT
-            )
-        """)
-        mconn.execute("""
-            CREATE TABLE IF NOT EXISTS cards (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                verse_id TEXT NOT NULL,
-                card_type TEXT NOT NULL DEFAULT 'text',
-                state INTEGER NOT NULL DEFAULT 0,
-                stability REAL NOT NULL DEFAULT 0.0,
-                difficulty REAL NOT NULL DEFAULT 0.0,
-                reps INTEGER NOT NULL DEFAULT 0,
-                lapses INTEGER NOT NULL DEFAULT 0,
-                due TEXT NOT NULL DEFAULT (datetime('now')),
-                created_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-        """)
-        mconn.execute("""
-            CREATE TABLE IF NOT EXISTS review_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id INTEGER NOT NULL,
-                rating INTEGER NOT NULL,
-                reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-        """)
-        mconn.execute("""
-            CREATE TABLE IF NOT EXISTS hebrew_progress (
-                user_id TEXT NOT NULL DEFAULT 'default',
-                node_id TEXT NOT NULL,
-                mastery REAL NOT NULL DEFAULT 0.0,
-                PRIMARY KEY (user_id, node_id)
-            )
-        """)
-        mconn.execute("""
-            CREATE TABLE IF NOT EXISTS hebrew_nodes (
-                id TEXT PRIMARY KEY,
-                title TEXT,
-                category TEXT,
-                level INTEGER DEFAULT 1,
-                description TEXT
-            )
-        """)
-        mconn.commit()
+        if MEM_SCHEMA.exists():
+            schema_sql = MEM_SCHEMA.read_text()
+            for stmt in schema_sql.split(';'):
+                stmt = stmt.strip()
+                if stmt and not stmt.startswith('--'):
+                    try:
+                        mconn.execute(stmt)
+                    except Exception:
+                        pass
+            mconn.commit()
+            # Insert minimal grammar reference data
+            mconn.execute("INSERT OR IGNORE INTO grammar_reference (paragraph_id, section, subsection, summary) VALUES (1, 'Introduction', 'Overview', 'Test grammar reference entry')")
+            mconn.commit()
+            print(f"  Created memorize.db from schema ({MEM_SCHEMA.name})")
+        else:
+            print(f"  ⚠ memorize_schema.sql not found, skipping memorize.db")
         mconn.close()
-        print(f"  Created memorize.db with core tables")
     except Exception as e:
         print(f"  ⚠ Could not create memorize.db: {e}")
 
