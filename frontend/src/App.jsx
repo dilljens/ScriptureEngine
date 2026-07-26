@@ -372,7 +372,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
-    moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab,
+    moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
@@ -1144,6 +1144,19 @@ const [showAssessment, setShowAssessment] = useState(false)
       )
     }
 
+    // Studies list view
+    if (viewLevel === 'studies') {
+      const StudiesListView = React.lazy(() => import('./components/StudiesListView'))
+      return (
+        <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading studies...</div>}>
+          <StudiesListView onOpenStudy={(slug, title) => {
+            const label = title || `Study: ${slug}`
+            openTab(slug, 1, { view: 'study', viewRef: slug, label })
+          }} />
+        </Suspense>
+      )
+    }
+
     // Study view — render StudyViewer
     if (viewLevel === 'study' && viewRef) {
       // Load study from API using the slug
@@ -1655,6 +1668,7 @@ const [showAssessment, setShowAssessment] = useState(false)
         onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
         onKnowledge={() => { setShowMobileMenu(false); openLearnTab() }}
         onHubNotes={() => { setShowMobileMenu(false); openHubNoteTab() }}
+        onStudies={() => { setShowMobileMenu(false); openStudiesTab() }}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         fontSize={fontSize}
