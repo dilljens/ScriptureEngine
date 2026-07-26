@@ -1,309 +1,331 @@
+#!/usr/bin/env python3
 """
-Pipeline scheduler — controls when generators and maintenance tasks run.
-
-Reads schedule.yaml, tracks last-run times in last_run.json, and runs
-any steps whose interval has elapsed.
+Pipeline scheduler — runs generators on a schedule.
 
 Usage:
-    python3 scripts/schedule.py                  # Run all due steps
-    python3 scripts/schedule.py --status         # Show pipeline status
-    python3 scripts/schedule.py --force          # Run all steps regardless
-    python3 scripts/schedule.py --step <name>    # Run a specific step
-    python3 scripts/schedule.py --revalidate-stale  # Find and flag stale connections
+  python3 scripts/schedule.py                # Run all due pipeline steps
+  python3 scripts/schedule.py --status       # Show pipeline status
+  python3 scripts/schedule.py --list         # Show pipeline config
+  python3 scripts/schedule.py --tier idle    # Run only idle-tier generators
+  python3 scripts/schedule.py --name "Linguistic — Same Lemma"  # Run one generator
+  python3 scripts/schedule.py --init         # Seed generator_meta (mark all as never run)
+
+Config: schedule.yaml (top-level project dir)
+Meta:   generator_meta table in the scripture DB
 """
 
 import argparse
-import json
-import logging
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger(__name__)
+# Ensure project root is on path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-SCHEDULE_FILE = Path(__file__).parent.parent / "schedule.yaml"
-STATE_FILE = Path(__file__).parent.parent / "last_run.json"
-PROJECT_ROOT = Path(__file__).parent.parent
+try:
+    import yaml
+except ImportError:
+    print("ERROR: PyYAML required. Install with: pip install pyyaml")
+    sys.exit(1)
+
+# ── Config ──────────────────────────────────────────────────────────────────
+
+SCHEDULE_PATH = os.path.join(os.path.dirname(__file__), "..", "schedule.yaml")
+DB_PATH = os.environ.get(
+    "SCRIPTURE_DB",
+    os.path.join(os.path.dirname(__file__), "..", "data", "processed", "scripture.db"),
+)
 
 
-def load_schedule():
-    """Load pipeline schedule from YAML."""
-    if not SCHEDULE_FILE.exists():
-        logger.error("schedule.yaml not found at %s", SCHEDULE_FILE)
-        return {"pipeline": [], "last_run": {}}
+def load_schedule(path=SCHEDULE_PATH):
+    """Load the schedule config from YAML."""
+    if not os.path.exists(path):
+        print(f"Schedule file not found: {path}")
+        print("Create schedule.yaml in the project root, or run with --init")
+        sys.exit(1)
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return data.get("pipeline", [])
+
+
+def get_db(path=DB_PATH):
+    """Get a database connection."""
+    import sqlite3
+
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+
+# ── Status helpers ──────────────────────────────────────────────────────────
+
+
+def get_generator_meta(conn):
+    """Load all generator_meta records into a dict keyed by name."""
     try:
-        import yaml
-        with open(SCHEDULE_FILE) as f:
-            return yaml.safe_load(f) or {"pipeline": [], "last_run": {}}
-    except Exception as e:
-        logger.error("Failed to load schedule: %s", e)
-        return {"pipeline": [], "last_run": {}}
+        rows = conn.execute(
+            "SELECT generator_name, last_run_at, source_hash, connection_count, duration_ms "
+            "FROM generator_meta"
+        ).fetchall()
+        return {r["generator_name"]: dict(r) for r in rows}
+    except Exception:
+        return {}
 
 
-def load_state():
-    """Load last-run timestamps from state file."""
-    if STATE_FILE.exists():
-        try:
-            with open(STATE_FILE) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
+def is_due(meta, interval_hours):
+    """Check if a generator is due based on its last run time and interval.
 
+    Args:
+        meta: generator_meta dict or None (never run).
+        interval_hours: Interval in hours. 0 = manual trigger only (never auto).
 
-def save_state(state):
-    """Save last-run timestamps to state file."""
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2, default=str)
-
-
-def is_step_due(step, last_runs, force=False):
-    """Check if a pipeline step is due to run."""
-    if force:
-        return True
-    name = step["name"]
-    interval_days = step.get("interval_days", 0)
-
-    if interval_days == 0:
-        return False  # Manual-only step
-
-    last_run = last_runs.get(name)
+    Returns:
+        True if due, False if not.
+    """
+    if interval_hours == 0:
+        return False  # Manual trigger only
+    if meta is None:
+        return True  # Never run — always due
+    last_run = meta.get("last_run_at")
     if not last_run:
-        return True  # Never run → due
-
-    try:
-        if isinstance(last_run, (int, float)):
-            last_ts = last_run
-        else:
-            last_ts = datetime.fromisoformat(last_run).timestamp()
-        elapsed_days = (time.time() - last_ts) / 86400
-        return elapsed_days >= interval_days * 0.9  # 10% tolerance
-    except (ValueError, TypeError):
         return True
-
-
-def run_step(step, force=False):
-    """Execute a single pipeline step."""
-    name = step["name"]
-    command = step.get("command", "")
-    timeout = step.get("timeout_seconds", 300)
-    depends_on = step.get("depends_on", [])
-    tier = step.get("tier", "periodic")
-
-    if not command:
-        logger.warning("  [%s] no command defined, skipping", name)
-        return False
-
-    # Check dependencies
-    for dep in depends_on:
-        last_runs = load_state()
-        if not last_runs.get(dep):
-            logger.warning("  [%s] dependency '%s' has never run, skipping", name, dep)
-            return False
-
-    logger.info("  [%s] running (tier=%s, timeout=%ss)...", name, tier, timeout)
-
-    t0 = time.time()
     try:
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        elapsed = time.time() - t0
+        # Parse datetime string (format from datetime('now') is 'YYYY-MM-DD HH:MM:SS')
+        last = datetime.strptime(last_run, "%Y-%m-%d %H:%M:%S")
+        elapsed_h = (datetime.now() - last).total_seconds() / 3600
+        return elapsed_h >= interval_hours
+    except ValueError:
+        return True  # Can't parse — run to be safe
 
-        if result.returncode == 0:
-            logger.info("  [%s] completed in %.1fs", name, elapsed)
-            if result.stdout:
-                for line in result.stdout.strip().split("\n")[-5:]:
-                    logger.info("    %s", line)
-            return True
+
+def steps_due(conn, steps, tier_filter=None, name_filter=None):
+    """For each pipeline step, determine which generators are due.
+
+    Args:
+        conn: DB connection.
+        steps: List of pipeline step dicts from schedule.yaml.
+        tier_filter: Optional tier name to filter steps.
+        name_filter: Optional generator name to run exactly one.
+
+    Returns:
+        List of (step, [generator_name, ...]) tuples for due generators.
+    """
+    from generators import list_generators
+
+    meta = get_generator_meta(conn)
+    results = []
+
+    for step in steps:
+        step_name = step.get("name", "?")
+        tier = step.get("tier")
+        interval = step.get("interval_hours", 24)
+        gen_filter = step.get("generators", ["auto"])
+
+        if tier_filter and tier != tier_filter:
+            continue
+
+        # Resolve which generators this step covers
+        if name_filter:
+            # Running exactly one named generator
+            candidates = [name_filter]
+        elif gen_filter == ["all"]:
+            candidates = [g["name"] for g in list_generators(automatic_only=True)]
+        elif gen_filter == ["auto"]:
+            candidates = [
+                g["name"] for g in list_generators(tier=tier, automatic_only=True)
+            ]
         else:
-            logger.error("  [%s] failed (exit %d) after %.1fs", name, result.returncode, elapsed)
-            if result.stderr:
-                for line in result.stderr.strip().split("\n")[-10:]:
-                    logger.error("    %s", line)
-            return False
+            candidates = gen_filter
 
-    except subprocess.TimeoutExpired:
-        logger.error("  [%s] timed out after %ss", name, timeout)
-        return False
-    except Exception as e:
-        logger.error("  [%s] error: %s", name, e)
-        return False
+        # Filter to due generators
+        due = []
+        for name in candidates:
+            if name_filter:
+                # Always run when explicitly named
+                due.append(name)
+            elif is_due(meta.get(name), interval):
+                due.append(name)
 
+        if due:
+            results.append((step, due))
 
-def update_last_run(steps, results):
-    """Update last-run timestamps for completed steps."""
-    state = load_state()
-    now = datetime.now(timezone.utc).isoformat()
-    for step, success in zip(steps, results):
-        if success:
-            state[step["name"]] = now
-    save_state(state)
+    return results
 
 
-def get_status():
-    """Get pipeline status with staleness info."""
-    schedule = load_schedule()
-    last_runs = load_state()
-    now = time.time()
+# ── CLI commands ────────────────────────────────────────────────────────────
 
-    status = []
-    for step in schedule.get("pipeline", []):
-        name = step["name"]
-        interval = step.get("interval_days", 0)
-        last_run = last_runs.get(name)
 
-        if last_run:
-            if isinstance(last_run, (int, float)):
-                last_ts = last_run
+def cmd_status(conn, steps):
+    """Show pipeline status — which generators ran when."""
+    from generators import list_generators
+
+    meta = get_generator_meta(conn)
+    all_gens = {g["name"]: g for g in list_generators()}
+
+    print(f"{'Generator':45s} {'Tier':14s} {'Last Run':22s} {'Status':12s}")
+    print("-" * 93)
+
+    for gen_name, gen_info in sorted(all_gens.items()):
+        gmeta = meta.get(gen_name)
+        tier = gen_info.get("tier", "?")
+        auto = gen_info.get("automatic", False)
+        last = gmeta["last_run_at"] if gmeta else "— never run —"
+
+        if gmeta:
+            status = "ok" if gmeta.get("connection_count", 0) > 0 else "zero"
+        else:
+            status = "never"
+
+        print(f"{gen_name:45s} {tier:14s} {last:22s} {status:12s}")
+
+    # Summary by tier
+    print()
+    print("Tier distribution (actual runs):")
+    for tier in ("lightweight", "idle", "periodic"):
+        tier_gens = [n for n, g in all_gens.items() if g.get("tier") == tier]
+        never = sum(1 for n in tier_gens if n not in meta or meta[n].get("last_run_at", "").startswith("1970"))
+        ran = len(tier_gens) - never
+        print(f"  {tier:14s}: {ran} ran, {never} never — {len(tier_gens)} total")
+
+
+def cmd_list(steps):
+    """Show the pipeline config."""
+    print(f"{'Step':20s} {'Tier':14s} {'Interval':10s} {'Generators':20s} {'Description':40s}")
+    print("-" * 110)
+    for step in steps:
+        name = step.get("name", "?")
+        tier = step.get("tier") or "all"
+        interval = f"{step.get('interval_hours', 0)}h"
+        gens = ", ".join(step.get("generators", []))
+        desc = step.get("description", "")
+        if interval == "0h":
+            interval = "manual"
+        print(f"{name:20s} {tier:14s} {interval:10s} {gens:20s} {desc:40s}")
+
+
+def cmd_run(conn, steps, tier_filter=None, name_filter=None, incremental=True):
+    """Run due generators."""
+    from generators import run_generator
+
+    due = steps_due(conn, steps, tier_filter, name_filter)
+    total_due = sum(len(gens) for _, gens in due)
+
+    if total_due == 0:
+        if name_filter:
+            print(f"No generator '{name_filter}' found")
+        else:
+            msg = f"tier '{tier_filter}'" if tier_filter else "any tier"
+            print(f"No generators due for {msg}. Use --status to check, --tier to force.")
+        return
+
+    # Preview
+    print(f"Scheduled: {total_due} generator(s) due across {len(due)} step(s):")
+    for step, gen_names in due:
+        step_name = step.get("name", "?")
+        print(f"  [{step_name}] {', '.join(gen_names[:5])}{'...' if len(gen_names) > 5 else ''}")
+    print()
+
+    total_connections = 0
+    total_time = 0.0
+    errors = []
+
+    for step, gen_names in due:
+        step_name = step.get("name", "?")
+        print(f"── Step: {step_name} ──")
+        for name in gen_names:
+            t0 = time.time()
+            result = run_generator(conn, name)
+            elapsed = time.time() - t0
+
+            if "error" in result:
+                errors.append((name, result["error"]))
+                print(f"  ✗ {name:50s} ERROR: {result['error']}")
             else:
-                last_ts = datetime.fromisoformat(last_run).timestamp()
-            elapsed_days = (now - last_ts) / 86400
-            due = elapsed_days >= interval * 0.9 if interval > 0 else False
-        else:
-            elapsed_days = None
-            due = True
+                count = result.get("connections", 0)
+                total_connections += count
+                total_time += elapsed
+                print(f"  ✓ {name:50s} {count:6d} connections  ({elapsed:.1f}s)")
+        print()
 
-        status.append({
-            "name": name,
-            "interval_days": interval,
-            "last_run": last_run,
-            "days_since_last_run": round(elapsed_days, 1) if elapsed_days is not None else None,
-            "due": due,
-            "tier": step.get("tier", "periodic"),
-        })
-
-    return status
+    print(f"── Summary ──")
+    print(f"  Total connections created: {total_connections}")
+    print(f"  Total time:                {total_time:.1f}s")
+    print(f"  Errors:                    {len(errors)}")
+    for name, err in errors:
+        print(f"    ✗ {name}: {err}")
 
 
-def revalidate_stale():
-    """Find connections past their half-life and flag them for revalidation."""
-    from lib.db import get_db
-    from lib.controls.temporal import needs_revalidation as is_stale
+def cmd_init(conn):
+    """Seed generator_meta entries (mark all as 'never run')."""
+    from generators import list_generators
 
-    conn = get_db()
-
-    # Count stale connections
-    total = conn.execute("SELECT COUNT(*) FROM connections").fetchone()[0]
-
-    # Check a sample for staleness
-    rows = conn.execute("""
-        SELECT id, discovered_by, created_at, confidence
-        FROM connections
-        WHERE quality_version < 1
-        ORDER BY RANDOM() LIMIT 1000
-    """).fetchall()
-
-    stale_count = 0
-    for row in rows:
+    gens = list_generators()
+    count = 0
+    for g in gens:
         try:
-            if is_stale(row["confidence"], row["discovered_by"], row["created_at"]):
-                stale_count += 1
-                conn.execute(
-                    "UPDATE connections SET quality_version = -1 WHERE id = ?",
-                    (row["id"],),
-                )
+            conn.execute(
+                "INSERT OR IGNORE INTO generator_meta (generator_name, last_run_at, source_hash, connection_count, duration_ms) "
+                "VALUES (?, '1970-01-01 00:00:00', '', 0, 0)",
+                (g["name"],),
+            )
+            count += 1
         except Exception:
             pass
-
     conn.commit()
+    print(f"Seeded {count} generator_meta entries (all marked as never run)")
 
-    # Layer distribution
-    layer_stats = conn.execute("""
-        SELECT layer, COUNT(*) as cnt,
-               SUM(CASE WHEN quality_version < 0 THEN 1 ELSE 0 END) as stale
-        FROM connections
-        GROUP BY layer ORDER BY cnt DESC LIMIT 10
-    """).fetchall()
 
-    conn.close()
-
-    return {
-        "total_connections": total,
-        "sampled": len(rows),
-        "stale_in_sample": stale_count,
-        "stale_pct": round(stale_count / max(len(rows), 1) * 100, 1),
-        "estimated_stale_total": round(total * stale_count / max(len(rows), 1)),
-        "layer_stats": [dict(r) for r in layer_stats],
-    }
+# ── Entry point ─────────────────────────────────────────────────────────────
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ScriptureEngine Pipeline Scheduler")
-    parser.add_argument("--status", action="store_true", help="Show pipeline status")
-    parser.add_argument("--force", action="store_true", help="Run all steps regardless of schedule")
-    parser.add_argument("--step", type=str, help="Run a specific pipeline step by name")
-    parser.add_argument("--revalidate-stale", action="store_true", help="Find and flag stale connections")
+    parser = argparse.ArgumentParser(description="Pipeline scheduler for scripture generators")
+    parser.add_argument(
+        "--status", action="store_true", help="Show pipeline status (last run times)"
+    )
+    parser.add_argument("--list", action="store_true", help="Show pipeline config")
+    parser.add_argument("--tier", choices=["lightweight", "idle", "periodic"], help="Run only this tier")
+    parser.add_argument("--name", type=str, help="Run exactly one generator by name")
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        help="Seed generator_meta table (mark all as never run)",
+    )
+    parser.add_argument(
+        "--no-incremental",
+        action="store_false",
+        dest="incremental",
+        help="Disable incremental mode (ignore source hash, force re-run)",
+    )
     args = parser.parse_args()
 
-    if args.status:
-        status = get_status()
-        print(f"\n{'Step':<35} {'Interval':>10} {'Last Run':<22} {'Days Ago':>10} {'Due':>6} {'Tier':<12}")
-        print("-" * 95)
-        for s in status:
-            last = s["last_run"][:16] if s["last_run"] else "-"
-            days = str(s["days_since_last_run"]) if s["days_since_last_run"] is not None else "-"
-            due = "✅" if s["due"] else " "
-            print(f"{s['name']:<35} {str(s['interval_days'])+'d':>10} {last:<22} {days:>10} {due:>6} {s['tier']:<12}")
-        print()
-        return
+    steps = load_schedule()
+    conn = get_db()
 
-    if args.revalidate_stale:
-        logger.info("Revalidating stale connections...")
-        result = revalidate_stale()
-        logger.info("Sampled %d connections, %d stale (%.1f%%). Estimated %d total stale.",
-                     result["sampled"], result["stale_in_sample"],
-                     result["stale_pct"], result["estimated_stale_total"])
-        for ls in result["layer_stats"]:
-            if ls["stale"] > 0:
-                logger.info("  %s: %d/%d stale", ls["layer"], ls["stale"], ls["cnt"])
-        return
-
-    # Load schedule
-    schedule = load_schedule()
-    pipeline = schedule.get("pipeline", [])
-
-    if not pipeline:
-        logger.warning("No pipeline steps defined in schedule.yaml")
-        return
-
-    # Filter to runnable steps
-    if args.step:
-        steps = [s for s in pipeline if s["name"] == args.step]
-        if not steps:
-            logger.error("Step '%s' not found in schedule.yaml", args.step)
-            sys.exit(1)
+    if args.init:
+        cmd_init(conn)
+    elif args.status:
+        cmd_status(conn, steps)
+    elif args.list:
+        cmd_list(steps)
+    elif args.name:
+        # Running one named generator — run it directly, don't iterate steps
+        from generators import run_generator
+        t0 = time.time()
+        result = run_generator(conn, args.name)
+        elapsed = time.time() - t0
+        if "error" in result:
+            print(f"✗ {args.name}: {result['error']}")
+        else:
+            print(f"✓ {args.name}: {result.get('connections', 0)} connections in {elapsed:.1f}s")
+    elif args.tier:
+        cmd_run(conn, steps, tier_filter=args.tier, incremental=args.incremental)
     else:
-        steps = [s for s in pipeline if is_step_due(s, load_state(), force=args.force)]
-        if not steps:
-            logger.info("No steps due. Use --force to run all.")
-            return
+        cmd_run(conn, steps, incremental=args.incremental)
 
-    logger.info("Pipeline starting: %d steps to run", len(steps))
-
-    # Execute steps in order (respecting schedule.yaml order)
-    results = []
-    for step in steps:
-        success = run_step(step, force=args.force)
-        results.append(success)
-
-    # Update last-run timestamps
-    update_last_run(steps, results)
-
-    # Summary
-    succeeded = sum(1 for r in results if r)
-    failed = sum(1 for r in results if not r)
-    logger.info("Pipeline complete: %d succeeded, %d failed", succeeded, failed)
+    conn.close()
 
 
 if __name__ == "__main__":

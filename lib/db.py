@@ -973,10 +973,20 @@ def get_connections_by_layer(conn, verse_id):
 def add_connection(conn, source_verse, target_verse, layer, type_name,
                    subtype="", strength=0.5, confidence=0.5,
                    discovered_by="algorithm", metadata=None):
-    """Add a typed connection between two verses."""
+    """Add a typed connection between two verses.
+
+    After a successful INSERT, fires lightweight generator hooks
+    (tier='lightweight', automatic=True) to discover additional
+    connections from the same verse pair. Hook results go to
+    staging_connections for review.
+
+    Returns:
+        dict with 'ok': bool, plus optional 'hooks' info.
+    """
+    result = {"ok": False}
     meta_json = json.dumps(metadata or {})
     try:
-        conn.execute("""
+        cur = conn.execute("""
             INSERT INTO connections (source_verse, target_verse, layer, type,
                                      subtype, strength, confidence, discovered_by, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -987,10 +997,26 @@ def add_connection(conn, source_verse, target_verse, layer, type_name,
                           metadata = excluded.metadata
         """, (source_verse, target_verse, layer, type_name, subtype,
               strength, confidence, discovered_by, meta_json))
+
+        # Check if this was a real INSERT (not an update)
+        was_new = cur.rowcount > 0 and cur.lastrowid is not None
         conn.commit()
+        result["ok"] = True
+
+        # Fire lightweight generator hooks for new connections
+        if was_new:
+            try:
+                from generators import fire_lightweight_hooks
+                hooks = fire_lightweight_hooks(conn, source_verse, target_verse)
+                result["hooks"] = hooks
+            except Exception:
+                # Hooks are best-effort — never fail the connection for them
+                pass
     except sqlite3.IntegrityError:
-        # Missing verse reference -- skip gracefully
+        # Missing verse reference — skip gracefully
         pass
+
+    return result
 
 
 def get_gematria_for_verse(conn, verse_id):
