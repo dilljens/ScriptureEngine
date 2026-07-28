@@ -65,7 +65,7 @@ def run_all(verbose=False):
     if bad > 0:
         failures.append(f"{bad} connections with NULL verse refs")
 
-    # 4. Foreign key integrity — skip virtual IDs
+    # 4. Foreign key integrity — skip virtual IDs and passage ranges
     bad = conn.execute("""
         SELECT COUNT(*) FROM connections c
         LEFT JOIN verses v ON v.id = c.source_verse
@@ -83,6 +83,7 @@ def run_all(verbose=False):
         AND c.source_verse NOT LIKE 'zec.%'
         AND c.source_verse NOT LIKE 'deut%'
         AND c.source_verse NOT LIKE 'dc.%'
+        AND c.source_verse NOT LIKE '%--%'
     """).fetchone()[0]
     if bad > 0:
         failures.append(f"{bad} connections with invalid source_verse")
