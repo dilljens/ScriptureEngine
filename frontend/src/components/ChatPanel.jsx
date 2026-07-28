@@ -262,6 +262,8 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [toolProgress, setToolProgress] = useState([]) // tool names called in current request
   const [streamingContent, setStreamingContent] = useState('')  // live text being streamed
   const [streamingThinking, setStreamingThinking] = useState('')  // live thinking being streamed
+  const streamingContentRef = useRef('')  // ref accumulator for onDone closure freshness
+  const streamingThinkingRef = useRef('')  // ref accumulator for onDone closure freshness
   const streamingIdxRef = useRef(null)  // index of the assistant message being streamed
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -831,13 +833,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         signal: controller.signal,
         onThinking: (chunk) => {
           if (!mountedRef.current) return
-          setStreamingThinking(prev => prev + chunk)
-          // Update the placeholder message's reasoning_content in-place
-          streamingIdxRef.current = placeholderIdx
+          streamingThinkingRef.current += chunk
+          setStreamingThinking(streamingThinkingRef.current)
         },
         onText: (chunk) => {
           if (!mountedRef.current) return
-          setStreamingContent(prev => prev + chunk)
+          streamingContentRef.current += chunk
+          setStreamingContent(streamingContentRef.current)
         },
         onToolProgress: (tools) => {
           if (mountedRef.current) {
@@ -846,8 +848,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         },
         onDone: (event) => {
           if (!mountedRef.current) return
-          // Finalize the placeholder message with the complete response
-          const finalContent = streamingContent || (event.tool_results?.length > 0 ? '_Let me look that up for you..._' : '')
+          // Read accumulated content from refs (avoid stale closure on state)
+          const finalContent = streamingContentRef.current || (event.tool_results?.length > 0 ? '_Let me look that up for you..._' : '')
+          const finalThinking = streamingThinkingRef.current || event.usage?.reasoning_content || ''
           setMessages(prev => {
             const updated = [...prev]
             const idx = streamingIdxRef.current
@@ -855,7 +858,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               updated[idx] = {
                 role: 'assistant',
                 content: finalContent,
-                reasoning_content: streamingThinking || event.usage?.reasoning_content,
+                reasoning_content: finalThinking,
                 usage: event.usage,
                 cost: event.cost,
                 model: event.model,
@@ -865,11 +868,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             }
             return updated
           })
+          streamingContentRef.current = ''
+          streamingThinkingRef.current = ''
           setStreamingContent('')
           setStreamingThinking('')
           streamingIdxRef.current = null
           saveMessage('assistant', finalContent, {
-            reasoning_content: streamingThinking,
+            reasoning_content: finalThinking,
             usage: event.usage,
             cost: event.cost,
             model: event.model,
@@ -890,6 +895,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             }
             return updated
           })
+          streamingContentRef.current = ''
+          streamingThinkingRef.current = ''
           setStreamingContent('')
           setStreamingThinking('')
           streamingIdxRef.current = null

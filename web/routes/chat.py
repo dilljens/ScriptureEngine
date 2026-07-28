@@ -1053,6 +1053,65 @@ def _check_rate_limit(ip: str) -> bool:
     return True
 
 
+# ─── Context Budget Management ───
+
+MAX_PROMPT_TOKENS = 200_000
+KEEP_EXCHANGES = 15  # user+assistant pairs to keep before compaction
+
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token."""
+    return len(text) // 4
+
+
+def apply_context_budget(message_list: list[dict]) -> list[dict]:
+    """Trim message list to stay within budget. Strips tool traces first,
+    then keeps only the last KEEP_EXCHANGES user+assistant exchanges."""
+    total_est = sum(_estimate_tokens(m.get("content", "") or "") for m in message_list)
+    if total_est <= MAX_PROMPT_TOKENS:
+        return message_list
+
+    # 1. Strip tool traces from messages older than the last KEEP_EXCHANGES exchanges
+    system = [m for m in message_list if m["role"] == "system"]
+    exchanges = [m for m in message_list if m["role"] != "system"]
+
+    # Count exchanges (user+assistant pairs)
+    exchange_count = 0
+    keep_from = len(exchanges)
+    for i in range(len(exchanges) - 1, -1, -1):
+        if exchanges[i]["role"] == "user":
+            exchange_count += 1
+            if exchange_count > KEEP_EXCHANGES:
+                keep_from = i
+                break
+
+    before = exchanges[:keep_from]
+    after = exchanges[keep_from:]
+
+    # Strip tool-related messages from the 'before' portion
+    cleaned_before = [m for m in before if m["role"] in ("user", "assistant") and m.get("content")]
+    cleaned_all = cleaned_before + after
+    total_est = sum(_estimate_tokens(m.get("content", "") or "") for m in cleaned_all)
+
+    if total_est <= MAX_PROMPT_TOKENS:
+        return system + cleaned_all
+
+    # 2. Still over budget: keep only the most recent KEEP_EXCHANGES exchanges
+    if exchange_count > KEEP_EXCHANGES:
+        # Take the last KEEP_EXCHANGES exchanges from the 'after' portion
+        if len(exchanges) > KEEP_EXCHANGES * 2:
+            final_after = exchanges[-(KEEP_EXCHANGES * 2):]
+        else:
+            final_after = exchanges[-(KEEP_EXCHANGES * 2):]
+        system.append({
+            "role": "system",
+            "content": "[Earlier conversation context omitted to stay within token budget.]"
+        })
+        return system + final_after
+
+    return system + after
+
+
 class ChatRequest(BaseModel):
     messages: list[dict]
     model: str = DEEPSEEK_MODEL
@@ -1120,62 +1179,7 @@ async def llm_chat(body: ChatRequest, request: Request):
                     msgs[i] = {"role": "system", "content": prompt}
                     break
 
-    # Context budget management
-    # Total budget: 300K tokens. max_tokens capped at 128K. Compaction trigger at 200K prompt tokens.
-    MAX_PROMPT_TOKENS = 200_000
-    KEEP_EXCHANGES = 15  # user+assistant pairs to keep before compaction
     body.max_tokens = min(body.max_tokens, 128_000)
-
-    def estimate_tokens(text):
-        return len(text) // 4  # rough estimate: ~4 chars per token
-
-    def apply_context_budget(message_list):
-        """Trim message list to stay within budget. Strips tool traces first,
-        then keeps only the last KEEP_EXCHANGES user+assistant exchanges."""
-        total_est = sum(estimate_tokens(m.get("content", "") or "") for m in message_list)
-        if total_est <= MAX_PROMPT_TOKENS:
-            return message_list
-
-        # 1. Strip tool traces from messages older than the last KEEP_EXCHANGES exchanges
-        system = [m for m in message_list if m["role"] == "system"]
-        exchanges = [m for m in message_list if m["role"] != "system"]
-
-        # Count exchanges (user+assistant pairs)
-        exchange_count = 0
-        keep_from = len(exchanges)
-        for i in range(len(exchanges) - 1, -1, -1):
-            if exchanges[i]["role"] == "user":
-                exchange_count += 1
-                if exchange_count > KEEP_EXCHANGES:
-                    keep_from = i
-                    break
-
-        before = exchanges[:keep_from]
-        after = exchanges[keep_from:]
-
-        # Strip tool-related messages from the 'before' portion
-        cleaned_before = [m for m in before if m["role"] in ("user", "assistant") and m.get("content")]
-        cleaned_all = cleaned_before + after
-        total_est = sum(estimate_tokens(m.get("content", "") or "") for m in cleaned_all)
-
-        if total_est <= MAX_PROMPT_TOKENS:
-            return system + cleaned_all
-
-        # 2. Still over budget: keep only the most recent KEEP_EXCHANGES exchanges
-        if exchange_count > KEEP_EXCHANGES:
-            # Take the last KEEP_EXCHANGES exchanges from the 'after' portion
-            final_after = after
-            if len(exchanges) > KEEP_EXCHANGES * 2:
-                final_after = exchanges[-(KEEP_EXCHANGES * 2):]
-            else:
-                final_after = exchanges[-(KEEP_EXCHANGES * 2):]
-            system.append({
-                "role": "system",
-                "content": "[Earlier conversation context omitted to stay within token budget.]"
-            })
-            return system + final_after
-
-        return system + after
 
     msgs = apply_context_budget(msgs)
 
