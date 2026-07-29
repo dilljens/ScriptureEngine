@@ -821,10 +821,12 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
 
     // Add a placeholder assistant message immediately so the user sees something
-    const placeholderIdx = messages.length
     const placeholderMsg = { role: 'assistant', content: '', reasoning_content: '', streaming: true, timestamp: new Date().toISOString() }
-    streamingIdxRef.current = placeholderIdx
-    setMessages(prev => [...prev, placeholderMsg])
+    setMessages(prev => {
+      const idx = prev.length
+      streamingIdxRef.current = idx
+      return [...prev, placeholderMsg]
+    })
 
     try {
       await chatStream(allMessages, {
@@ -1261,7 +1263,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 </div>
               </div>
             ) : (
-              <div className={`group relative max-w-full w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words
+              <div className={`group relative max-w-full sm:max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words
                 ${msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
@@ -1279,6 +1281,19 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   </button>
                 )}
 
+                {/* Reasoning — show live during streaming, else from msg */}
+                {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
+                  <details open className="group mb-2">
+                    <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
+                      <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
+                      <span className="italic font-medium">thinking</span>
+                    </summary>
+                    <div className="mt-0.5 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
+                      {msg.streaming ? streamingThinking : msg.reasoning_content}
+                    </div>
+                  </details>
+                ) : null}
+
                 {/* Streaming message: show live content from state */}
                 {msg.streaming ? (
                   <>
@@ -1291,26 +1306,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   renderContent(msg.content)
                 )}
 
-                {/* Reasoning — show live during streaming, else from msg */}
-                {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
-                  <details open className="group mt-1">
-                    <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
-                      <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
-                      <span className="italic font-medium">thinking</span>
-                    </summary>
-                    <div className="mt-0.5 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
-                      {msg.streaming ? streamingThinking : msg.reasoning_content}
-                    </div>
-                  </details>
-                ) : null}
-
                 {/* Token display */}
                 {msg.usage && (() => {
                   const total = msg.usage.total_tokens || 1
                   const promptPct = Math.round(msg.usage.prompt_tokens / total * 100)
                   const compPct = Math.round(msg.usage.completion_tokens / total * 100)
                   return (
-                    <div className="flex items-center gap-2 mt-1.5 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">
+                    <div className="hidden sm:flex items-center gap-2 mt-1.5 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">
                       <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden max-w-[60px]">
                         <div className="h-full flex">
                           <div className="bg-blue-400 dark:bg-blue-500 h-full" style={{ width: `${promptPct}%` }} />
@@ -1345,19 +1347,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         {/* Thinking indicator — only shown when no streaming content yet */}
         {waiting && !streamingContent && !streamingThinking && (
           <div className="flex justify-start">
-            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2 shadow-sm">
+            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2 shadow-sm flex-wrap">
               <span className="flex gap-1">
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
-              {toolProgress.length > 0 ? (
-                <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
-                  Running: {toolProgress.map(t => t.replace('scripture_', '')).join(', ')}
-                </span>
-              ) : (
-                <span className="italic">Thinking</span>
-              )}
+              <span className="italic">Thinking</span>
               <button onClick={() => { if (abortRef.current) abortRef.current.abort(); setWaiting(false) }}
                 className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
                 title="Cancel this request">
@@ -1410,7 +1406,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           />
 
           {/* Response mode selector */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 hidden sm:block">
             <button onClick={() => setShowModeMenu(p => !p)}
               className={`h-full px-2 py-2 rounded-lg text-[10px] font-mono font-medium border transition-colors cursor-pointer ${
                 responseMode === 'auto'

@@ -286,7 +286,7 @@ async def _global_exception_handler(request: Request, exc: Exception):
               error=str(exc), traceback=traceback.format_exc())
     return JSONResponse(
         status_code=500,
-        content={"ok": False, "error": str(exc), "type": type(exc).__name__},
+        content={"ok": False, "error": "Internal server error. Please try again."},
     )
 
 # Include route modules

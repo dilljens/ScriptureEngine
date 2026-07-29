@@ -566,97 +566,6 @@ TOOL_DEFINITIONS = [
             },
         },
     },
-    # ── Knowledge Assessment ──
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_assess_start",
-            "description": "Start an adaptive assessment session for scripture knowledge. Tests understanding of verse connections across all 8 works. Optional: target_layer (pshat/remez/drash/sod) to focus on one layer.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "user_id": {"type": "string", "default": "default"},
-                    "target_layer": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "default": None},
-                    "max_items": {"type": "integer", "default": 20},
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_assess_answer",
-            "description": "Submit an answer to the current assessment question and get the next one. Call after the user answers a question.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "user_id": {"type": "string", "default": "default"},
-                    "correct": {"type": "boolean", "description": "Whether the user's answer was correct"},
-                },
-                "required": ["correct"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_assess_progress",
-            "description": "Get current assessment progress — questions answered, score, remaining items. Shows the assessment status at any point.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "user_id": {"type": "string", "default": "default"},
-                },
-                "required": [],
-            },
-        },
-    },
-    # ── Hebrew Learning ──
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_hebrew_lessons",
-            "description": "List available Hebrew lesson nodes. Optional category filter: letter, vowel, word, grammar, phrase, reading, root_concept. Returns all lessons by default.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {"type": "string", "description": "Optional filter: letter, vowel, word, grammar, phrase, reading, root_concept"},
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_hebrew_lesson",
-            "description": "Get full lesson content for a Hebrew concept node. Returns explanation, vocabulary, practice items, and prerequisites. Use with a node ID from scripture_hebrew_lessons.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "node_id": {"type": "string", "description": "Node ID (e.g., 'aleph', 'bet', 'qal_verb', 'construct_chain')"},
-                },
-                "required": ["node_id"],
-            },
-        },
-    },
-    # ── Hebrew Quiz ──
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_hebrew_quiz",
-            "description": "Generate Hebrew knowledge quiz questions. Perfect for practicing letter names (aleph-bet), vowel recognition, and vocabulary.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "category": {"type": "string", "description": "Category: consonant, vowel, word, grammar, phrase, reading (default: consonant for aleph-bet practice)"},
-                    "count": {"type": "integer", "default": 5, "description": "Number of questions to generate"},
-                },
-                "required": [],
-            },
-        },
-    },
     # ── Compare & Research ──
     {
         "type": "function",
@@ -922,54 +831,6 @@ TOOL_DEFINITIONS = [
                     "guide_id": {"type": "integer"},
                 },
                 "required": ["guide_id"],
-            },
-        },
-    },
-    # ── Conversation Management ──
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_conversation_create",
-            "description": "Create a new conversation session for LLM chat",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "default": ""},
-                    "theme": {"type": "string", "default": ""},
-                    "created_by": {"type": "string", "default": "anonymous"},
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_conversation_get",
-            "description": "Get a conversation session with all messages, refs, and connections",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "session_id": {"type": "string"},
-                },
-                "required": ["session_id"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scripture_conversation_list",
-            "description": "List conversation sessions, paginated",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "page": {"type": "integer", "default": 1},
-                    "per_page": {"type": "integer", "default": 20},
-                    "starred": {"type": "boolean"},
-                    "search": {"type": "string", "default": ""},
-                },
-                "required": [],
             },
         },
     },
@@ -1633,7 +1494,10 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
             yield _sse_event({"type": "error", "message": f"Stream error: {str(e)}"})
             return
 
-        if not final_content and tool_results:
+        # Force summary if content is stub (tool listing), planning text, or empty
+        is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
+        is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+        if (not final_content or is_planning or is_stub) and tool_results:
             # LLM returned only tool results without synthesis — force a summary
             msgs.append({"role": "user", "content":
                 "You have all the data you need from the tool calls above. "

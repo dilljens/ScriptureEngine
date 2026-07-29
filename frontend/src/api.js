@@ -261,7 +261,10 @@ export function chatStream(messages, opts = {}) {
       signal,
     }).then(async (response) => {
       if (!response.ok) {
-        onError?.('Server error: ' + response.status)
+        const msg = response.status === 500
+          ? 'The server encountered an error. Please try again.'
+          : `Server error: ${response.status}`
+        onError?.(msg)
         reject(new Error(response.statusText))
         return
       }
