@@ -22,10 +22,13 @@ Endpoints:
 import contextlib
 import hashlib
 import json
+import logging
 import secrets
 import time
 
 from fastapi import APIRouter, HTTPException
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 

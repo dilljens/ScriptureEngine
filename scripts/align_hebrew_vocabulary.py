@@ -198,7 +198,25 @@ def align(mem_db=MEM_DB, scripture_db=SCRIPTURE_DB, count=500):
         override = LEMMA_OVERRIDES.get(lemma_base, {})
         old_hebrew = lesson.get("hebrew", "")
         old_gloss = lesson.get("gloss", "")
-        hebrew = override.get("hebrew") or old_hebrew or word["hebrew"]
+        # Prefer the Strong's citation form (H{base}.hebrew) over the lexicon's
+        # bare-row surface for VERB lessons, where the bare surface is often an
+        # inflected form (e.g. the 2fs yiqtol 'תשמר' for H8104 שָׁמַר). Nouns and
+        # particles keep their own surface so construct/derived-form lessons
+        # (לִפְנֵי, בָּרוּךְ) never get divorced from their gloss.
+        citation = ""
+        is_verb = (word.get("morphology") or "").startswith("HV")
+        if is_verb and lemma_base.isdigit():
+            hrow = scripture.execute(
+                "SELECT hebrew FROM lexicon WHERE lemma=?", (f"H{lemma_base}",)
+            ).fetchone()
+            if hrow and hrow[0]:
+                citation = hrow[0].replace("/", "").strip()
+        hebrew = (
+            override.get("hebrew")
+            or (citation if unpointed(citation) and unpointed(citation) != unpointed(old_hebrew) else "")
+            or old_hebrew
+            or word["hebrew"]
+        )
         gloss = override.get("gloss") or reconciled_gloss(lemma_base, old_gloss)
         transliteration = override.get("transliteration") or lesson.get("transliteration", "")
         description = override.get("description") or lesson.get("description", "")

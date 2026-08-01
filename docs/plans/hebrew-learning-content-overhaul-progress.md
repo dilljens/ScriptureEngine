@@ -1,5 +1,26 @@
 # Progress: Biblical Hebrew learning content overhaul
 
+## Session 2026-08-01 (auth, isolation, citation surfaces)
+
+- Authenticated ownership: review, diagnostic-apply, and progress endpoints accept
+  an optional session_token; a valid token binds the operation to the token's
+  real user (forged user_id ignored), invalid tokens return 401. The learner
+  frontend sends no token yet and keeps the 'default' user.
+- Fixed latent undefined-`log` NameErrors in web/routes/auth.py and
+  web/routes/memorize.py (pre-existing, triggered only on exception paths).
+- memorize.py now honors MEMORIZE_DB_PATH; conftest isolates any test touching
+  hebrew OR memorize, so TestMemorizeRoutes can no longer read the live DB.
+- Citation surfaces: align prefers the Strong's H{base}.hebrew form for VERB
+  lessons, fixing 27 inflected surfaces (e.g. תשמר → שָׁמַר, נפלו → נָפַל) and a
+  couple of pre-existing mislabels (מושי נוּעַ → יָשַׁע). Scoped to verbs so
+  noun/construct lessons (לִפְנֵי, בָּרוּךְ) keep gloss-consistent surfaces.
+- Maqqef: evaluated STEPBible TAHOT (contains U+05BE maqqef, CC BY 4.0) but safe
+  restoration requires a full reingestion that keeps OSHB token positions
+  (word_index) intact for the alignment/cloze/passage layers; documented rather
+  than risk the token layer.
+- Verification: 146 backend tests + 94 frontend tests pass; validator green;
+  live DB hebrew tables unchanged by tests.
+
 ## Session 2026-08-01 (vocabulary backfill)
 
 - Seeded 17 previously-missing high-frequency vocabulary lessons surfaced by the
@@ -87,10 +108,8 @@
 
 ## Remaining phases
 
-- Seed the ~22 newly-surfaced high-frequency vocabulary words that the corrected
-  ranking now includes (שבת, קהל, רעב, עור, קצה, עמוד, …); keep identity keyed by
-  surface, not rank index.
-- Reingest pinned OSHB XML to restore maqqef and exact separators.
-- Isolate the memorize interleaved route (memorize.py) and add authenticated
-  user ownership to review endpoints; the current `default` user remains shared.
-- Add a review-queue `language` assertion to tests.
+- Maqqef reingestion: needs a pinned OSHB-XML (or careful TAHOT) reingest that
+  preserves gematria token positions for the alignment/cloze/passage layers.
+- Wire the learner frontend to real sessions so review/progress are per-user
+  (the API now supports session_token; the frontend still sends none).
+- Seed the last ~5 top-frequency surfaces that remain without lessons.

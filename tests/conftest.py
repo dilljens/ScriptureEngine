@@ -63,16 +63,20 @@ def prod_db():
 @pytest.fixture
 def client(request, monkeypatch, tmp_path, memorize_db_template):
     """FastAPI TestClient for in-process endpoint testing."""
-    touches_hebrew = (
+    touches_learning_db = (
         "hebrew" in request.node.nodeid.casefold()
+        or "memorize" in request.node.nodeid.casefold()
         or (request.cls and "hebrew" in request.cls.__name__.casefold())
+        or (request.cls and "memorize" in request.cls.__name__.casefold())
     )
-    if touches_hebrew:
+    if touches_learning_db:
         isolated = tmp_path / "memorize.db"
         shutil.copy2(memorize_db_template, isolated)
         import web.routes.hebrew as hebrew_routes
+        import web.routes.memorize as memorize_routes
         monkeypatch.setattr(hebrew_routes, "MEM_DB", isolated)
         monkeypatch.setattr(hebrew_routes, "_HEBREW_GRAPH_CACHE", None)
+        monkeypatch.setattr(memorize_routes, "_memorize_db_path", lambda: isolated)
     with TestClient(app) as c:
         yield c
 

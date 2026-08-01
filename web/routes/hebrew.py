@@ -311,17 +311,42 @@ def _ensure_hebrew_review_state(conn):
     """)
 
 
+def _resolve_hebrew_user(user_id: str, session_token: str = "") -> str:
+    """Return the authenticated user when a session token is provided.
+
+    The learner frontend has no session yet and sends no token, so it keeps the
+    caller-supplied user_id (default 'default'). Any caller presenting a valid
+    session token is bound to the token's real user, closing the forgery hole.
+    """
+    if session_token:
+        try:
+            from web.routes.auth import _resolve_user_from_token
+            resolved = _resolve_user_from_token(session_token)
+            if resolved:
+                return resolved
+            raise HTTPException(401, "Invalid or expired session token")
+        except HTTPException:
+            raise
+        except Exception:
+            log.warning("silent_exception", exc_info=True)
+            raise HTTPException(401, "Invalid or expired session token")
+    return user_id or "default"
+
+
 @router.post("/api/v1/hebrew/fsrs/review")
 def post_hebrew_review(body: dict):
     return process_hebrew_review(
         node_id=body.get("node_id", ""), rating=int(body.get("rating", 3)),
-        user_id=body.get("user_id", "default"), hint_level=int(body.get("hint_level", 0)),
+        user_id=body.get("user_id", "default"),
+        session_token=body.get("session_token", ""),
+        hint_level=int(body.get("hint_level", 0)),
         failure_location=body.get("failure_location", ""),
     )
 
 
 def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default",
-                          hint_level: int = 0, failure_location: str = ""):
+                          session_token: str = "", hint_level: int = 0,
+                          failure_location: str = ""):
     """Process a persisted adaptive review with FIRe and failure tracking.
 
     Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
@@ -334,6 +359,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         raise HTTPException(404, "Hebrew DB not found")
     if not node_id:
         raise HTTPException(400, "node_id is required")
+    user_id = _resolve_hebrew_user(user_id, session_token)
     rating = max(1, min(4, rating))
 
     # Pre-compute read-only inputs before taking the write lock, because the
@@ -681,7 +707,7 @@ def apply_diagnostic_results(body: dict):
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
 
-    user_id = body.get("user_id", "default")
+    user_id = _resolve_hebrew_user(body.get("user_id", "default"), body.get("session_token", ""))
     answers = body.get("answers", [])
     batch_id = body.get("batch_id")
     if not isinstance(answers, list):
@@ -876,7 +902,7 @@ def get_hebrew_curriculum(user_id: str = "default"):
 def update_hebrew_progress(body: dict):
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    user_id = body.get("user_id", "default")
+    user_id = _resolve_hebrew_user(body.get("user_id", "default"), body.get("session_token", ""))
     node_id = body.get("node_id", "")
     correct = body.get("correct", False)
     if not node_id:

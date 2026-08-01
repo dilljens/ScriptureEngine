@@ -11,7 +11,6 @@ Run: pytest tests/test_api.py -q
 import asyncio
 import json
 from pathlib import Path
-import pytest
 
 from web.routes import chat as chat_routes
 
@@ -478,6 +477,11 @@ class TestHebrewRoutes:
     def test_hebrew_review_queue(self, client):
         resp = client.get("/api/v1/hebrew/review-queue")
         assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert "reviews" in data
+        # Every due item carries a language label (hebrew or aramaic).
+        for item in data["reviews"]:
+            assert item.get("language") in ("hebrew", "aramaic")
 
     def test_hebrew_add_word(self, client):
         resp = client.post("/api/v1/hebrew/add-word", params={"word": "שָׁלוֹם"})
@@ -516,6 +520,56 @@ class TestHebrewRoutes:
             "node_id": "does-not-exist", "rating": 3, "user_id": "invalid-node-audit",
         })
         assert resp.status_code == 400
+
+    def test_hebrew_review_resolves_session_user(self, client):
+        import sqlite3
+        from web.routes import hebrew
+        import web.routes.auth as auth
+
+        # Ensure the sessions table exists in the test database (its schema is
+        # normally created by SCHEMA_SQL in lib/db.py).
+        conn = auth.get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                token_hash TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                last_seen TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+
+        token = auth._generate_session_token("auth-owner-user")
+        try:
+            resp = client.post("/api/v1/hebrew/fsrs/review", json={
+                "node_id": "aleph", "rating": 3,
+                "user_id": "forged-user", "session_token": token,
+            })
+            assert resp.status_code == 200
+            conn = sqlite3.connect(hebrew.MEM_DB)
+            owner = conn.execute(
+                "SELECT 1 FROM hebrew_review_state WHERE user_id='auth-owner-user' AND node_id='aleph'"
+            ).fetchone()
+            forged = conn.execute(
+                "SELECT 1 FROM hebrew_review_state WHERE user_id='forged-user'"
+            ).fetchone()
+            conn.close()
+            assert owner is not None
+            assert forged is None
+        finally:
+            conn = auth.get_conn()
+            conn.execute("DELETE FROM sessions WHERE user_id='auth-owner-user'")
+            conn.commit()
+            conn.close()
+
+    def test_hebrew_review_rejects_bad_session(self, client):
+        resp = client.post("/api/v1/hebrew/fsrs/review", json={
+            "node_id": "aleph", "rating": 3, "user_id": "x",
+            "session_token": "invalid-token-value",
+        })
+        assert resp.status_code == 401
 
     def test_hebrew_learning_speeds(self, client):
         resp = client.get("/api/v1/hebrew/learning-speeds")

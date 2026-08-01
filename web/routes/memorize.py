@@ -12,15 +12,24 @@ Endpoints:
 """
 import contextlib
 import datetime
+import logging
 import math
+import os
 import sqlite3
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "processed" / "scripture.db"
+
+
+def _memorize_db_path() -> Path:
+    """Resolve the learning database, honoring MEMORIZE_DB_PATH for isolation."""
+    override = os.environ.get("MEMORIZE_DB_PATH")
+    return Path(override) if override else BASE_DIR / "data" / "memorize.db"
 
 
 def get_conn():
@@ -540,7 +549,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
     # Palace-guided ordering: if enabled, order by memory palace loci
     if palace_order:
         try:
-            MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+            MEM_PATH = _memorize_db_path()
             mconn = sqlite3.connect(str(MEM_PATH))
             mconn.row_factory = sqlite3.Row
             loci_rows = mconn.execute("""
@@ -728,7 +737,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
 
     # 2. Hebrew review cards (from memorize.db)
     try:
-        MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+        MEM_PATH = _memorize_db_path()
         mconn = sqlite3.connect(str(MEM_PATH))
         mconn.row_factory = sqlite3.Row
         heb_rows = mconn.execute("""
@@ -830,7 +839,7 @@ def get_non_interference_distance(conn, verse_a, verse_b):
 
     # Check hebrew_confusability (from memorize.db)
     try:
-        MEM_PATH = Path(__file__).parent.parent.parent / "data" / "memorize.db"
+        MEM_PATH = _memorize_db_path()
         mconn = sqlite3.connect(str(MEM_PATH))
         row = mconn.execute(
             "SELECT strength FROM hebrew_confusability WHERE (node_a=? AND node_b=?) OR (node_a=? AND node_b=?)",
