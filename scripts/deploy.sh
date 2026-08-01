@@ -15,6 +15,19 @@
 
 set -euo pipefail
 
+# CI/agent shells may not source the interactive fnm setup, while Playwright
+# and Vite need Node. Initialize fnm non-interactively when node is absent.
+if ! command -v node >/dev/null 2>&1; then
+    FNM_BIN="${FNM_BIN:-$HOME/.local/share/fnm/fnm}"
+    if [ -x "$FNM_BIN" ]; then
+        eval "$($FNM_BIN env --shell bash)"
+    fi
+fi
+if ! command -v node >/dev/null 2>&1; then
+    echo "✗ Node.js is required for the frontend deploy gate"
+    exit 1
+fi
+
 HOST="ubuntu@40.160.241.74"
 REMOTE_DIR="/var/www/scripture"
 
@@ -29,7 +42,9 @@ echo "[1/5] Python test suite..."
 #   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
 #   - test_graph_tg_topic, test_graph_explore: 60-80s graph traversals (redundant with step 2/5 regression check)
 PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
-$PYTHON -m pytest tests/ -q --tb=short -n auto \
+# Database-backed tests share SQLite files; run serially to avoid xdist workers
+# racing PRAGMA journal_mode/WAL initialization during the deploy gate.
+$PYTHON -m pytest tests/ -q --tb=short \
   --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review \
   --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
   --deselect tests/test_db_schema.py::TestIntegrity::test_no_duplicate_connections \
@@ -68,8 +83,8 @@ echo "[5/5] Frontend E2E tests..."
 
 cd frontend
 # Playwright's webServer handles both API and Vite startup
-# Only run desktop chromium tests (mobile tests would need mobile viewport setup)
-npx playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts wiki.spec.ts --workers=2 --timeout=60000 || {
+# Run the core desktop suite, including the deterministic SSE regression.
+./node_modules/.bin/playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts chat-streaming.spec.ts wiki.spec.ts --workers=2 --timeout=60000 || {
     echo "✗ Frontend E2E tests failed — aborting deploy"
     exit 1
 }

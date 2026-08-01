@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Request
@@ -889,12 +890,38 @@ def _compute_cost(usage: dict) -> dict:
 
 # ─── Access Control ───
 
-# Only allow chat requests from these origins (prevents external API abuse)
+# Only allow chat requests from these origins (prevents external API abuse).
+# Exact match on scheme+host+port — the old `startswith` check let
+# `https://scriptureengine.org.evil.com` through.
 ALLOWED_ORIGINS = {
     "https://scriptureengine.org",
+    "https://www.scriptureengine.org",
     "http://localhost:5173",   # dev Vite frontend
+    "http://localhost:5176",   # dev Vite frontend (Playwright)
     "http://localhost:8002",   # local API dev
+    "http://127.0.0.1:5173",   # dev Vite frontend (loopback)
+    "http://127.0.0.1:5176",   # dev Vite frontend (Playwright)
+    "http://127.0.0.1:8002",   # local API dev
 }
+
+
+def _origin_allowed(value: str) -> bool:
+    """True if an Origin/Referer header value matches an allowed origin.
+
+    Exact tuple match against ALLOWED_ORIGINS, plus any subdomain of the main
+    domain (https://app.scriptureengine.org etc.). Malformed values are rejected.
+    """
+    if not value:
+        return False
+    v = value.lower().rstrip("/")
+    if v in ALLOWED_ORIGINS:
+        return True
+    try:
+        parts = urlsplit(v)
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower()
+    return host.endswith(".scriptureengine.org") and parts.scheme in ("https", "http")
 
 # Simple in-memory rate limiter (per IP, 20 req / 60s window)
 _rate_limits: dict[str, list[float]] = {}
@@ -1010,7 +1037,7 @@ async def llm_chat(body: ChatRequest, request: Request):
     # Origin check — only allow requests from the SPA or local dev
     origin = (request.headers.get("origin") or "").lower().rstrip("/")
     referer = (request.headers.get("referer") or "").lower().rstrip("/")
-    if not any(origin.startswith(o) or referer.startswith(o) for o in ALLOWED_ORIGINS):
+    if not (_origin_allowed(origin) or _origin_allowed(referer)):
         return {"ok": False, "error": "Chat is only available from scriptureengine.org"}
 
     # Rate limiting — per-IP, max 20 requests per 60s
@@ -1069,14 +1096,14 @@ async def llm_chat(body: ChatRequest, request: Request):
 
     if "error" in data:
         err = data["error"]
-        code = err.get("code", 0)
+        code = err.get("code", 0) if isinstance(err, dict) else 0
         friendly_map = {
             400: "Invalid request format.",
             401: "API key issue — contact the repo maintainer.",
             429: "Rate limited — please wait a moment.",
             500: "DeepSeek server error. Try again.",
         }
-        msg = err.get("message", str(err))
+        msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
         friendly = friendly_map.get(code, "")
         return {"ok": False, "error": f"{friendly} [{msg}]" if friendly else msg}
 
@@ -1189,7 +1216,7 @@ async def llm_chat(body: ChatRequest, request: Request):
 
         if "error" in data:
             err = data["error"]
-            msg = err.get("message", str(err))
+            msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
             return {"ok": False, "error": f"DeepSeek API error: {msg}"}
 
         rounds += 1
@@ -1313,16 +1340,16 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     """
     if not DEEPSEEK_API_KEY:
         return StreamingResponse(
-            _sse_yield({"ok": False, "error": "DEEPSEEK_API_KEY not configured"}),
+            _sse_yield({"type": "error", "ok": False, "error": "DEEPSEEK_API_KEY not configured", "message": "DEEPSEEK_API_KEY not configured"}),
             media_type="text/event-stream",
         )
 
     # Origin check
     origin = (request.headers.get("origin") or "").lower().rstrip("/")
     referer = (request.headers.get("referer") or "").lower().rstrip("/")
-    if not any(origin.startswith(o) or referer.startswith(o) for o in ALLOWED_ORIGINS):
+    if not (_origin_allowed(origin) or _origin_allowed(referer)):
         return StreamingResponse(
-            _sse_yield({"ok": False, "error": "Chat is only available from scriptureengine.org"}),
+            _sse_yield({"type": "error", "ok": False, "error": "Chat is only available from scriptureengine.org", "message": "Chat is only available from scriptureengine.org"}),
             media_type="text/event-stream",
         )
 
@@ -1334,7 +1361,7 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     )
     if not _check_rate_limit(client_ip):
         return StreamingResponse(
-            _sse_yield({"ok": False, "error": "Rate limit exceeded. Try again in a minute."}),
+            _sse_yield({"type": "error", "ok": False, "error": "Rate limit exceeded. Try again in a minute.", "message": "Rate limit exceeded. Try again in a minute."}),
             media_type="text/event-stream",
         )
 
@@ -1364,9 +1391,19 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
         rounds = 0
 
         while rounds < max_tool_rounds:
-            data = await call_deepseek(payload)
+            # DeepSeek thinking rounds can take minutes with zero bytes on the
+            # wire — emit heartbeats so browsers/proxies don't idle-timeout.
+            round_task = asyncio.create_task(call_deepseek(payload))
+            while not round_task.done():
+                _done, _pending = await asyncio.wait({round_task}, timeout=15)
+                if not round_task.done():
+                    yield _sse_event({"type": "heartbeat"})
+            data = round_task.result()
+
             if "error" in data:
-                yield _sse_event({"type": "error", "message": data["error"].get("message", str(data["error"]))})
+                err = data["error"]
+                message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                yield _sse_event({"type": "error", "message": message})
                 return
 
             choice = data.get("choices", [{}])[0]
@@ -1455,12 +1492,30 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
         final_content = ""
 
         stream_payload = _build_payload(body, msgs, stream=True)
+        # Pre-stream heartbeat — the final request can take a moment to open.
+        yield _sse_event({"type": "heartbeat"})
         try:
             async with _http_client.stream(
                 "POST", f"{DEEPSEEK_BASE}/chat/completions",
                 headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
                 json=stream_payload,
             ) as resp:
+                if not 200 <= resp.status_code < 300:
+                    raw_error = await resp.aread()
+                    try:
+                        error_data = json.loads(raw_error)
+                    except (TypeError, json.JSONDecodeError):
+                        error_data = {}
+                    error_value = error_data.get("error", error_data)
+                    if isinstance(error_value, dict):
+                        error_message = error_value.get("message") or str(error_value)
+                    else:
+                        error_message = str(error_value)
+                    yield _sse_event({
+                        "type": "error",
+                        "message": f"Upstream chat error ({resp.status_code}): {error_message}",
+                    })
+                    return
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -1536,6 +1591,10 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
             "cost": cost,
             "model": model,
             "tool_results": tool_results,
+            # Final content fallback: if the client missed chunks (proxy close,
+            # remount, aborted fetch), it can recover the full response from here.
+            "final_content": final_content,
+            "final_reasoning": final_reasoning,
         })
 
         # Save to conversation history (fire-and-forget)
@@ -1551,5 +1610,3 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
         "Cache-Control": "no-cache",
         "X-Accel-Buffering": "no",
     })
-
-

@@ -13,7 +13,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   conversationList, conversationGet, conversationUpdate,
-  conversationDelete, conversationConnections
+  conversationDelete, conversationConnections, conversationPromoteConnection
 } from '../api'
 
 const PER_PAGE = 20
@@ -73,7 +73,7 @@ export default function ConversationHistory({ onNavigate, onClose }) {
   const fetchList = useCallback(async (p = 1, q = '') => {
     setLoading(true)
     try {
-      const res = await conversationList(p, PER_PAGE)
+      const res = await conversationList(p, PER_PAGE, q)
       if (res.ok && res.data) {
         setSessions(res.data.sessions || [])
         setTotal(res.data.total || 0)
@@ -151,18 +151,13 @@ export default function ConversationHistory({ onNavigate, onClose }) {
   const submitPromote = async () => {
     if (!promoteForm) return
     try {
-      const res = await fetch(`/api/v1/conversations/${detail?.id}/connections/${promoteForm.id}/promote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          layer: promoteForm.layer,
-          type_name: promoteForm.type_name,
-          subtype: promoteForm.subtype,
-          strength: promoteForm.strength,
-          confidence: promoteForm.confidence,
-        }),
+      const data = await conversationPromoteConnection(detail?.id, promoteForm.id, {
+        layer: promoteForm.layer,
+        type_name: promoteForm.type_name,
+        subtype: promoteForm.subtype,
+        strength: promoteForm.strength,
+        confidence: promoteForm.confidence,
       })
-      const data = await res.json()
       if (data.ok) {
         setConnections(prev => prev.map(c =>
           c.id === promoteForm.id ? { ...c, promoted: 1 } : c

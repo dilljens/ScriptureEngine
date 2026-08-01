@@ -16,7 +16,7 @@ test.describe('Chat streaming — real-time responses', () => {
     await page.keyboard.press('?')
     await expect(page.getByPlaceholder(/Ask about/i)).toBeVisible({ timeout: 8000 })
     // Response mode button should be visible (Auto/S/M/D)
-    const modeBtn = page.locator('button:has-text("Auto"), button:has-text("S"), button:has-text("M"), button:has-text("D")').first()
+    const modeBtn = page.locator('button[aria-label^="Response mode:"]').first()
     await expect(modeBtn).toBeVisible({ timeout: 5000 })
   })
 
@@ -54,7 +54,7 @@ test.describe('Chat streaming — real-time responses', () => {
     await page.keyboard.press('?')
     await expect(page.getByPlaceholder(/Ask about/i)).toBeVisible({ timeout: 8000 })
     // Click the mode button
-    const modeBtn = page.locator('button:has-text("Auto")').first()
+    const modeBtn = page.locator('button[aria-label^="Response mode:"]').first()
     await expect(modeBtn).toBeVisible({ timeout: 5000 })
     await modeBtn.click()
     // Dropdown should show mode options
@@ -66,5 +66,38 @@ test.describe('Chat streaming — real-time responses', () => {
     await expect(page.getByPlaceholder(/Ask about/i)).toBeVisible({ timeout: 8000 })
     const recentBtn = page.locator('button:has-text("Recent")').first()
     await expect(recentBtn).toBeVisible({ timeout: 5000 })
+  })
+
+  test('completed streamed response remains visible after done event', async ({ page }) => {
+    await page.route('**/api/v1/chat/stream', async route => {
+      const body = [
+        `data: ${JSON.stringify({ type: 'thinking', content: 'checking' })}\n\n`,
+        `data: ${JSON.stringify({ type: 'text', content: 'The response stays visible after done.' })}\n\n`,
+        `data: ${JSON.stringify({
+          type: 'done',
+          final_content: 'The response stays visible after done.',
+          final_reasoning: 'checking',
+          usage: {}, cost: {}, model: 'test-model', tool_results: [],
+        })}\n\n`,
+      ].join('')
+      await route.fulfill({
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+        body,
+      })
+    })
+
+    await page.keyboard.press('?')
+    const input = page.getByPlaceholder(/Ask about/i)
+    await expect(input).toBeVisible({ timeout: 8000 })
+    await input.fill('test streamed answer')
+    await input.press('Enter')
+
+    const answer = page.getByText('The response stays visible after done.', { exact: false }).last()
+    await expect(answer).toBeVisible({ timeout: 10000 })
+    // A second assertion after React's terminal cleanup catches the original
+    // bug: content appeared during streaming, then vanished on done.
+    await page.waitForTimeout(250)
+    await expect(answer).toBeVisible()
   })
 })

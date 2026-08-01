@@ -9,7 +9,7 @@ test.describe('Chat panel — verse links', () => {
 
   test('question mark opens chat tab', async ({ page }) => {
     await page.keyboard.press('?')
-    const chatTab = page.getByText('Chat').first()
+    const chatTab = page.locator('h2:has-text("Chat")').first()
     await expect(chatTab).toBeVisible({ timeout: 5000 })
   })
 

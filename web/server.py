@@ -256,23 +256,26 @@ async def _validate_request(request: Request, call_next):
 
 @app.middleware("http")
 async def _security_headers(request: Request, call_next):
-    """Add security headers to every response."""
+    """Add security headers to every browser-facing response."""
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # Permissive CSP for scripture engine (needs inline styles for Tailwind + fonts)
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com data:; "
-        "img-src 'self' data: https:; "
-        "connect-src 'self' https://*.googleapis.com https://oauth2.googleapis.com; "
-        "frame-ancestors 'none'"
-    )
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # Swagger/ReDoc load external assets, so preserve their functionality while
+    # applying a strict policy to the SPA and API responses.
+    if request.url.path not in {"/docs", "/redoc", "/openapi.json"}:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' ws: wss: https://*.googleapis.com https://oauth2.googleapis.com; "
+            "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        )
     return response
 
 

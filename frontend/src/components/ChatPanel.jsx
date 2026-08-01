@@ -14,9 +14,56 @@ import HebrewQuizCard from './HebrewQuizCard'
 import VersePopup from './VersePopup'
 import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
-import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat, chatStream } from '../api'
+import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat, chatStream, currentUserId, currentSessionToken } from '../api'
 import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
+import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 import { parseStandardRef, resolveBook } from '../refParser'
+
+// ── Cross-instance message delivery ──
+// The inline chat tab unmounts when the user navigates away mid-stream. The
+// in-flight fetch keeps running, so the old instance still finalizes and saves
+// — but the freshly mounted instance would restore before that save lands.
+// This tiny pub/sub lets a finished instance push its final message list to
+// any other live instance of the same session.
+const restoreListeners = new Set()
+function publishRestore(sessionId, messages) {
+  for (const fn of restoreListeners) fn(sessionId, messages)
+}
+function subscribeRestore(fn) {
+  restoreListeners.add(fn)
+  return () => restoreListeners.delete(fn)
+}
+
+// Stable id for a message (server-restored messages have none and fall back
+// to their array index for React keys).
+function mkMsg(role, content, extra = {}) {
+  return {
+    id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    role,
+    content,
+    timestamp: new Date().toISOString(),
+    ...extra,
+  }
+}
+
+const isWelcome = (m) => m.role === 'assistant' && typeof m.content === 'string' && m.content.startsWith("I'm connected to the scripture engine")
+
+// Dedup/merge two message lists by (role, content, timestamp). Welcome
+// messages are dropped (each instance re-adds its own on restore).
+export function mergeMessages(primary, secondary) {
+  const seen = new Set()
+  const primaryContent = new Set(primary.filter(m => !m?.pending).map(m => `${m.role}|${m.content}`))
+  const out = []
+  for (const m of [...primary, ...secondary]) {
+    if (isWelcome(m)) continue
+    if (m.pending && primaryContent.has(`${m.role}|${m.content}`)) continue
+    const key = `${m.role}|${m.timestamp}|${m.content}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(m)
+  }
+  return out
+}
 
 // ── Verse ref detection ──
 
@@ -242,11 +289,13 @@ Be concise, accurate, and cite verse references.`
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
   const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools } = useToggles?.() || {}
+  const userId = useRef(currentUserId())
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
   const [sessionId, setSessionId] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [showRecent, setShowRecent] = useState(false)
   const [recentSessions, setRecentSessions] = useState([])
   const [loadingRecent, setLoadingRecent] = useState(false)
@@ -264,12 +313,17 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [streamingThinking, setStreamingThinking] = useState('')  // live thinking being streamed
   const streamingContentRef = useRef('')  // ref accumulator for onDone closure freshness
   const streamingThinkingRef = useRef('')  // ref accumulator for onDone closure freshness
-  const streamingIdxRef = useRef(null)  // index of the assistant message being streamed
+  const requestSeqRef = useRef(0)       // monotonically increasing per request — stale callbacks bail
+  const messagesRef = useRef([])        // latest messages for save/restore callbacks
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const sessionRef = useRef(null)
   const abortRef = useRef(null)
   const titleSet = useRef(false)
+  const nearBottomRef = useRef(true)    // autoscroll only when the user is near the bottom
+
+  useEffect(() => { messagesRef.current = messages }, [messages])
+  useEffect(() => { sessionRef.current = sessionId }, [sessionId])
 
   // Estimate response length based on question content for auto mode
   const estimateTokens = useCallback((text) => {
@@ -328,6 +382,17 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   useEffect(() => {
     if (!open) return
 
+    // A finished instance of the same session may push its final message list
+    // after we've already restored (e.g. tab switch mid-stream). Merge it in.
+    const unsub = subscribeRestore((sid, incoming) => {
+      if (sid !== sessionRef.current) return
+      setMessages(prev => {
+        const merged = mergeMessages(prev, incoming)
+        messagesRef.current = merged
+        return merged
+      })
+    })
+
     const init = async () => {
       setRestoring(true)
       const storedId = loadSessionId()
@@ -337,14 +402,33 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
           if (res.ok && res.data) {
             const s = res.data
             setSessionId(storedId)
-            const restored = [
-              { role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() },
-              ...s.messages.map(m => ({
-                role: m.role, content: m.content, timestamp: m.timestamp,
-              })),
-            ]
-            setMessages(restored)
+            // Merge server messages with any local snapshot (covers the race
+            // where an in-flight response finished after the server restore).
+            const local = loadSnapshot(storedId) || []
+            const merged = mergeMessages(
+              [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
+              mergeMessages(s.messages, local),
+            )
+            setMessages(merged)
+            messagesRef.current = merged
             titleSet.current = s.messages.length > 0
+            const pending = local.filter(m => m?.pending && m.clientId)
+            if (pending.length) {
+              // Replay unacknowledged messages in order. The backend uses the
+              // client id as an idempotency key, so a lost acknowledgement
+              // cannot create a duplicate.
+              void (async () => {
+                for (const message of pending) {
+                  try {
+                    const result = await conversationAddMessage(storedId, message.role, message.content, {
+                      client_message_id: message.clientId,
+                    })
+                    if (!result?.ok) throw new Error(result?.error || 'Message replay failed')
+                    removeSnapshotMessage(storedId, message)
+                  } catch { /* retry on the next restore */ }
+                }
+              })()
+            }
             setRestoring(false)
             if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
             return
@@ -354,20 +438,22 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
       }
 
       try {
-        const userId = (() => { try { return localStorage.getItem('scripture_user_id') || localStorage.getItem('scripture_auth_user_id') || 'anonymous' } catch { return 'anonymous' } })()
-        const res = await conversationCreate({ title: 'Chat Session', created_by: userId })
+        const res = await conversationCreate({ title: 'Chat Session', created_by: userId.current })
         if (res.ok && res.data) {
           setSessionId(res.data.id)
           saveSessionId(res.data.id)
         }
       } catch {}
 
-      setMessages([{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }])
+      const welcome = mkMsg('assistant', welcomeMessage())
+      setMessages([welcome])
+      messagesRef.current = [welcome]
       titleSet.current = false
       setRestoring(false)
       if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
     }
     init()
+    return unsub
   }, [open])
 
   const TIPS = [
@@ -695,10 +781,13 @@ The **sod** layer tags these connections as \`cosmic_mountain\`, \`eden_temple\`
     const prebuilt = PREBUILT_RESPONSES[text]
     if (prebuilt) {
       // Add user message + prebuilt response (bypasses LLM call — pre-generated)
-      const timestamp = new Date().toISOString()
-      const userMsg = { role: 'user', content: text, timestamp }
-      const assistantMsg = { role: 'assistant', content: prebuilt, timestamp }
-      setMessages(prev => [...prev, userMsg, assistantMsg])
+      const userMsg = mkMsg('user', text)
+      const assistantMsg = mkMsg('assistant', prebuilt)
+      setMessages(prev => {
+        const next = [...prev, userMsg, assistantMsg]
+        messagesRef.current = next
+        return next
+      })
       setInput('')
       autoTitle(text)
       saveMessage('user', text)
@@ -723,10 +812,15 @@ ${tip}
 Verse references like gen.1.1 are clickable — tap one to view the verse.`
   }
 
-  // ── Scroll on new messages ──
+  // ── Scroll on new messages (only when the user is near the bottom) ──
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (nearBottomRef.current) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, streamingContent, streamingThinking])
+
+  const handleMessagesScroll = (e) => {
+    const el = e.target
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+  }
 
   // ── Auto-title ──
   const autoTitle = useCallback(async (text) => {
@@ -734,21 +828,54 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     titleSet.current = true
     const title = text.length > 60 ? text.slice(0, 57) + '...' : text
     try {
-      await fetch(`/api/v1/conversations/${sessionRef.current}`, {
+      const params = `user_id=${encodeURIComponent(userId.current)}`
+      await fetch(`/api/v1/conversations/${sessionRef.current}?${params}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(currentSessionToken() ? { Authorization: `Bearer ${currentSessionToken()}` } : {}),
+        },
         body: JSON.stringify({ title }),
       })
     } catch {}
   }, [])
 
-  // ── Save message ──
-  const saveMessage = useCallback(async (role, content, metadata) => {
-    const sid = sessionRef.current
+  // ── Save message (durable: server + localStorage snapshot) ──
+  const saveMessage = useCallback(async (role, content, metadata, targetSessionId = sessionRef.current) => {
+    const sid = targetSessionId
     if (!sid) return
     setSaving(true)
-    try { await conversationAddMessage(sid, role, content, metadata) } catch {}
-    setSaving(false)
+    // Keep only unacknowledged messages locally. This covers a reload during a
+    // save without duplicating every server-confirmed message on restore.
+    const snapshotMessage = {
+      role,
+      content,
+      timestamp: new Date().toISOString(),
+      pending: true,
+      clientId: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    }
+    const persistedMetadata = {
+      ...(metadata || {}),
+      client_message_id: snapshotMessage.clientId,
+    }
+    writeSnapshot(sid, mergeMessages(loadSnapshot(sid) || [], [snapshotMessage]))
+    try {
+      const result = await conversationAddMessage(sid, role, content, persistedMetadata)
+      if (!result?.ok) throw new Error(result.error || 'Message save failed')
+      setSaveError(false)
+      removeSnapshotMessage(sid, snapshotMessage)
+    } catch {
+      setSaveError(true)
+      // One retry — transient network blips are common with long streams.
+      try {
+        const retryResult = await conversationAddMessage(sid, role, content, persistedMetadata)
+        if (!retryResult?.ok) throw new Error(retryResult.error || 'Message retry failed')
+        setSaveError(false)
+        removeSnapshotMessage(sid, snapshotMessage)
+      } catch { /* surfaced via saveError banner */ }
+    } finally {
+      setSaving(false)
+    }
   }, [])
 
   // ── Clipboard helpers ──
@@ -790,18 +917,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     learning: ['scripture_hebrew_lessons', 'scripture_hebrew_lesson', 'scripture_hebrew_quiz', 'scripture_assess_start', 'scripture_assess_answer', 'scripture_assess_progress'],
   }
 
-  // Track mounted state so background responses don't update unmounted component
-  const mountedRef = useRef(true)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
-  }, [])
-
   const performChat = async (allMessages) => {
     // Cancel any previous in-flight request
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const requestId = ++requestSeqRef.current
+    let finalized = false
 
     setWaiting(true)
     setToolProgress([])
@@ -820,13 +942,30 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
     const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
 
-    // Add a placeholder assistant message immediately so the user sees something
-    const placeholderMsg = { role: 'assistant', content: '', reasoning_content: '', streaming: true, timestamp: new Date().toISOString() }
+    // Add a placeholder assistant message immediately so the user sees something.
+    // Finalization targets this stable id, never a mutable array index.
+    const placeholderMsg = mkMsg('assistant', '', { reasoning_content: '', streaming: true })
+    const requestSessionId = sessionRef.current
     setMessages(prev => {
-      const idx = prev.length
-      streamingIdxRef.current = idx
-      return [...prev, placeholderMsg]
+      const next = [...prev, placeholderMsg]
+      messagesRef.current = next
+      return next
     })
+
+    // Replace the placeholder with a finalized message (by id, idempotent).
+    const finalizePlaceholder = (fields) => {
+      if (finalized) return
+      finalized = true
+      setMessages(prev => {
+        const next = prev.map(m => m.id === placeholderMsg.id ? { ...m, streaming: false, ...fields } : m)
+        messagesRef.current = next
+        return next
+      })
+      streamingContentRef.current = ''
+      streamingThinkingRef.current = ''
+      setStreamingContent('')
+      setStreamingThinking('')
+    }
 
     try {
       await chatStream(allMessages, {
@@ -834,109 +973,86 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         disabled_tools: disabledTools,
         signal: controller.signal,
         onThinking: (chunk) => {
-          if (!mountedRef.current) return
+          if (requestId !== requestSeqRef.current) return
           streamingThinkingRef.current += chunk
           setStreamingThinking(streamingThinkingRef.current)
         },
         onText: (chunk) => {
-          if (!mountedRef.current) return
+          if (requestId !== requestSeqRef.current) return
           streamingContentRef.current += chunk
           setStreamingContent(streamingContentRef.current)
         },
         onToolProgress: (tools) => {
-          if (mountedRef.current) {
-            setToolProgress(tools.map(t => t.name))
-          }
+          if (requestId === requestSeqRef.current) setToolProgress(tools.map(t => t.name))
         },
         onDone: (event) => {
-          if (!mountedRef.current) return
-          // Read accumulated content from refs (avoid stale closure on state)
-          const finalContent = streamingContentRef.current || (event.tool_results?.length > 0 ? '_Let me look that up for you..._' : '')
-          const finalThinking = streamingThinkingRef.current || event.usage?.reasoning_content || ''
-          setMessages(prev => {
-            const updated = [...prev]
-            const idx = streamingIdxRef.current
-            if (idx !== null && idx < updated.length) {
-              updated[idx] = {
-                role: 'assistant',
-                content: finalContent,
-                reasoning_content: finalThinking,
-                usage: event.usage,
-                cost: event.cost,
-                model: event.model,
-                toolResults: event.tool_results,
-                timestamp: new Date().toISOString(),
-              }
-            }
-            return updated
+          if (requestId !== requestSeqRef.current) return
+          // Read accumulated content from refs (avoid stale closure on state);
+          // fall back to the backend's final_content for lost/truncated chunks.
+          const finalContent = event.final_content
+            || streamingContentRef.current
+            || (event.tool_results?.length > 0 ? '_Let me look that up for you..._' : '')
+          const finalThinking = streamingThinkingRef.current || event.final_reasoning || ''
+          const finalMessage = { role: 'assistant', content: finalContent, timestamp: new Date().toISOString() }
+          finalizePlaceholder({
+            content: finalContent,
+            reasoning_content: finalThinking,
+            usage: event.usage,
+            cost: event.cost,
+            model: event.model,
+            toolResults: event.tool_results,
+            timestamp: finalMessage.timestamp,
           })
-          streamingContentRef.current = ''
-          streamingThinkingRef.current = ''
-          setStreamingContent('')
-          setStreamingThinking('')
-          streamingIdxRef.current = null
+          // Persist unconditionally — even if this instance unmounted mid-stream
+          // (tab switch), the finished response must survive.
           saveMessage('assistant', finalContent, {
             reasoning_content: finalThinking,
             usage: event.usage,
             cost: event.cost,
             model: event.model,
             tool_results: event.tool_results,
-          })
+          }, requestSessionId).then(() => publishRestore(requestSessionId, mergeMessages(messagesRef.current, [finalMessage])))
         },
         onError: (message) => {
-          if (!mountedRef.current) return
-          setMessages(prev => {
-            const updated = [...prev]
-            const idx = streamingIdxRef.current
-            if (idx !== null && idx < updated.length) {
-              updated[idx] = {
-                role: 'assistant',
-                content: `**LLM unavailable**: ${message}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
-                timestamp: new Date().toISOString(),
-              }
-            }
-            return updated
+          if (requestId !== requestSeqRef.current) return
+          finalizePlaceholder({
+            content: `**LLM unavailable**: ${message}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
+            timestamp: new Date().toISOString(),
           })
-          streamingContentRef.current = ''
-          streamingThinkingRef.current = ''
-          setStreamingContent('')
-          setStreamingThinking('')
-          streamingIdxRef.current = null
         },
       })
     } catch (err) {
+      if (requestId !== requestSeqRef.current) return
       if (err.name === 'AbortError') {
-        abortRef.current = null
-        setWaiting(false)
-        return
-      }
-      if (mountedRef.current) {
+        // User canceled — drop the placeholder entirely, keep the user message.
         setMessages(prev => {
-          const updated = [...prev]
-          const idx = streamingIdxRef.current
-          if (idx !== null && idx < updated.length) {
-            updated[idx] = {
-              role: 'assistant',
-              content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
-              timestamp: new Date().toISOString(),
-            }
-          }
-          return updated
+          const next = prev.filter(m => m.id !== placeholderMsg.id)
+          messagesRef.current = next
+          return next
+        })
+      } else {
+        finalizePlaceholder({
+          content: `**Connection error**: ${err.message}\n\nMake sure the API server is running and try again.`,
+          timestamp: new Date().toISOString(),
         })
       }
+    } finally {
+      if (requestId === requestSeqRef.current) {
+        setWaiting(false)
+        abortRef.current = null
+      }
     }
-    if (mountedRef.current) {
-      setWaiting(false)
-    }
-    abortRef.current = null
   }
 
   // ── Send message (append to end) ──
   const sendMessage = async (text) => {
     if (!text.trim()) return
-    const timestamp = new Date().toISOString()
-    const userMsg = { role: 'user', content: text, timestamp }
-    setMessages(prev => [...prev, userMsg])
+    const userMsg = mkMsg('user', text)
+    setMessages(prev => {
+      const next = [...prev, userMsg]
+      messagesRef.current = next
+      return next
+    })
     setInput('')
     autoTitle(text)
     saveMessage('user', text)
@@ -965,7 +1081,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     const allMessages = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...(scopeInstr ? [{ role: 'system', content: `[Scope: ${scopeInstr}]` }] : []),
-      ...messages.filter(m => m.role !== 'system').map(m => {
+      ...messages.filter(m => m.role !== 'system' && !isWelcome(m)).map(m => {
         const base = { role: m.role, content: m.content }
         if (m.reasoning_content) base.reasoning_content = m.reasoning_content
         return base
@@ -978,11 +1094,10 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Edit + resend (replace from a given index) ──
   const handleResendEdit = async (idx, newText) => {
     if (!newText.trim()) return
-    const timestamp = new Date().toISOString()
-    const userMsg = { role: 'user', content: newText, timestamp }
+    const userMsg = mkMsg('user', newText)
 
     // Build message list from before the edited message
-    const priorMessages = messages.slice(0, idx).filter(m => m.role !== 'system').map(m => {
+    const priorMessages = messages.slice(0, idx).filter(m => m.role !== 'system' && !isWelcome(m)).map(m => {
       const base = { role: m.role, content: m.content }
       if (m.reasoning_content) base.reasoning_content = m.reasoning_content
       return base
@@ -990,9 +1105,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     const allMessages = [...priorMessages, { role: 'user', content: newText }]
 
     // Update state: truncate to before the edited message, then add new user message
-    setMessages(prev => [...prev.slice(0, idx), userMsg])
+    setMessages(prev => {
+      const next = [...prev.slice(0, idx), userMsg]
+      messagesRef.current = next
+      return next
+    })
     setEditingIdx(null)
     setInput('')
+    saveMessage('user', newText)
 
     await performChat(allMessages)
   }
@@ -1010,6 +1130,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // ── Restore session ──
   const restoreSession = async (sid) => {
+    requestSeqRef.current += 1
+    if (abortRef.current) abortRef.current.abort()
+    abortRef.current = null
     try {
       const res = await conversationGet(sid)
       if (res.ok && res.data) {
@@ -1017,16 +1140,46 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         setSessionId(sid)
         saveSessionId(sid)
         titleSet.current = s.messages.length > 0
-        setMessages([
-          { role: 'assistant', content: `_Restored: **${s.title || 'Untitled'}**_`, timestamp: new Date().toISOString() },
-          ...s.messages.map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp })),
-        ])
+        const local = loadSnapshot(sid) || []
+        const merged = mergeMessages(
+          [mkMsg('assistant', `_Restored: **${s.title || 'Untitled'}**_`)],
+          mergeMessages(s.messages, local),
+        )
+        setMessages(merged)
+        messagesRef.current = merged
       }
     } catch {}
     setShowRecent(false)
   }
 
-  const handleClose = () => { clearSessionId(); onClose() }
+  // ── Start a fresh chat: new session + cleared state (so saves work immediately) ──
+  const startNewChat = async () => {
+    requestSeqRef.current += 1
+    if (abortRef.current) abortRef.current.abort()
+    abortRef.current = null
+    streamingContentRef.current = ''
+    streamingThinkingRef.current = ''
+    setStreamingContent('')
+    setStreamingThinking('')
+    setToolProgress([])
+    setWaiting(false)
+    clearSessionId()
+    setSessionId(null)
+    titleSet.current = false
+    const welcome = mkMsg('assistant', welcomeMessage())
+    setMessages([welcome])
+    messagesRef.current = [welcome]
+    try {
+      const res = await conversationCreate({ title: 'Chat Session', created_by: userId.current })
+      if (res.ok && res.data) {
+        setSessionId(res.data.id)
+        saveSessionId(res.data.id)
+      }
+    } catch {}
+  }
+
+  // Closing the overlay must NOT destroy the session — reopening restores it.
+  const handleClose = () => { onClose() }
 
   if (variant === 'overlay' && !open) return null
 
@@ -1192,16 +1345,20 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       return text ? `%%%CLICK:${text}%%%` : m
     })
 
-    // Step 2: Convert :verse[], :entity[], etc. to <span data-type=""> tags
-    processed = preprocessScripture(processed)
-
-    // Check if there are any action markers that need special rendering
-    // (CLICK, QUIZ, HEBREW, HEBREW_QUIZ — verse refs handled by scripture-markdown)
+    // Check for action markers first (their JSON payloads must NOT be HTML-escaped)
     const hasActionMarkers = /%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%/g.test(processed)
+
+    // Escape ONLY the markdown segments: neutralize any raw HTML the LLM wrote
+    // (script, onerror, iframe...), then let preprocessScripture re-inject its
+    // trusted spans (values already escaped) for rehype-raw to parse. Scripture
+    // markers and %%%CLICK/QUIZ%%% contain no HTML special chars, so escaping
+    // never touches them; marker payloads are handled by renderWithMarkers.
+    const safeMarkdown = (text) => preprocessScripture(escapeHtml(text))
+
     if (!hasActionMarkers) {
       return (
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
-          {processed}
+        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={markdownComponents}>
+          {safeMarkdown(processed)}
         </Markdown>
       )
     }
@@ -1209,17 +1366,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     // For content with action markers, split at marker boundaries
     const parts = processed.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):[^%]+%%%)/g)
     const segments = parts.map((part, i) => {
-      if (part.startsWith('%%%CLICK:')) {
-        return renderWithMarkers(part)
-      }
-      if (part.startsWith('%%%QUIZ:') || part.startsWith('%%%HEBREW_QUIZ:') || part.startsWith('%%%HEBREW:')) {
+      if (part.startsWith('%%%')) {
         return renderWithMarkers(part)
       }
       // Regular markdown text (with <span> tags from scripture) — render with Markdown component
       if (part.trim()) {
         return (
-          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
-            {part}
+          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={markdownComponents}>
+            {safeMarkdown(part)}
           </Markdown>
         )
       }
@@ -1233,9 +1387,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   const chatBody = (
     <>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[300px]">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[300px]" onScroll={handleMessagesScroll}>
         {messages.map((msg, i) => (
-          <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+          <div key={msg.id || i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             {/* Edit mode: textarea for user messages */}
             {msg.role === 'user' && editingIdx === i ? (
               <div className="w-full max-w-[85%] flex flex-col gap-1.5">
@@ -1271,7 +1425,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {/* Copy button (top-right, on hover) — for assistant messages */}
                 {msg.role === 'assistant' && !msg.streaming && (
                   <button onClick={() => copyToClipboard(msg.content, i)}
-                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    aria-label="Copy message"
+                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Copy message">
                     {copiedIdx === i ? (
                       <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
@@ -1281,27 +1436,49 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   </button>
                 )}
 
-                {/* Reasoning — show live during streaming, else from msg */}
+                {/* Reasoning — stream as one line; never expands into a box */}
                 {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
-                  <details open className="group mb-2">
-                    <summary className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 list-none flex items-center gap-1 select-none">
-                      <span className="transition-transform group-open:rotate-90 text-[8px]">▶</span>
-                      <span className="italic font-medium">thinking</span>
-                    </summary>
-                    <div className="mt-0.5 px-2 py-1.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed whitespace-pre-wrap">
+                  <div className="mb-2 flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic font-medium font-mono shrink-0">thinking</span>
+                    <span
+                      className="truncate text-[10px] text-neutral-400 dark:text-neutral-500 font-mono"
+                      title={(msg.streaming ? streamingThinking : msg.reasoning_content) || undefined}
+                    >
                       {msg.streaming ? streamingThinking : msg.reasoning_content}
-                    </div>
-                  </details>
+                    </span>
+                  </div>
                 ) : null}
 
                 {/* Streaming message: show live content from state */}
                 {msg.streaming ? (
-                  <>
+                  <div role="status" aria-live="polite">
                     {streamingContent && renderContent(streamingContent)}
                     {!streamingContent && !streamingThinking && (
-                      <span className="italic text-neutral-400 dark:text-neutral-500 animate-pulse">Thinking...</span>
+                      <span className="flex items-center gap-2">
+                        <span className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </span>
+                        <span className="italic text-neutral-400 dark:text-neutral-500">Thinking</span>
+                        <button onClick={() => { if (abortRef.current) abortRef.current.abort() }}
+                          aria-label="Cancel request"
+                          className="ml-1 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
+                          title="Cancel this request">
+                          Cancel
+                        </button>
+                      </span>
                     )}
-                  </>
+                    {toolProgress.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {toolProgress.map(name => (
+                          <span key={name} className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-mono border border-indigo-200 dark:border-indigo-800">
+                            {name.replace('scripture_', '')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   renderContent(msg.content)
                 )}
@@ -1334,7 +1511,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {/* Edit button (bottom-right, on hover) — for user messages (not while waiting) */}
                 {msg.role === 'user' && !waiting && (
                   <button onClick={() => startEditing(i, msg.content)}
-                    className="absolute -bottom-1.5 -right-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    aria-label="Edit message"
+                    className="absolute -bottom-1.5 -right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Edit message">
                     Edit
                   </button>
@@ -1343,25 +1521,6 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             )}
           </div>
         ))}
-
-        {/* Thinking indicator — only shown when no streaming content yet */}
-        {waiting && !streamingContent && !streamingThinking && (
-          <div className="flex justify-start">
-            <div className="bg-neutral-100 dark:bg-neutral-800 rounded-2xl rounded-bl-md px-4 py-3 text-sm text-neutral-500 dark:text-neutral-400 flex items-center gap-2 shadow-sm flex-wrap">
-              <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </span>
-              <span className="italic">Thinking</span>
-              <button onClick={() => { if (abortRef.current) abortRef.current.abort(); setWaiting(false) }}
-                className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
-                title="Cancel this request">
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -1401,13 +1560,16 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
             }}
             placeholder="Ask about scriptures... (type a verse ref to preview)"
+            aria-label="Message"
             className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
             disabled={waiting || restoring}
           />
 
           {/* Response mode selector */}
-          <div className="relative shrink-0 hidden sm:block">
+          <div className="relative shrink-0">
             <button onClick={() => setShowModeMenu(p => !p)}
+              aria-label={`Response mode: ${responseMode}`}
+              aria-expanded={showModeMenu}
               className={`h-full px-2 py-2 rounded-lg text-[10px] font-mono font-medium border transition-colors cursor-pointer ${
                 responseMode === 'auto'
                   ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-700'
@@ -1449,6 +1611,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           </div>
 
           <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
+            aria-label="Send message"
             className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium
               hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors shrink-0">
             Send
@@ -1502,12 +1665,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Tab variant: inline in main content ──
   if (variant === 'tab') {
     return (
-      <div className="flex flex-col h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 max-w-5xl mx-auto w-full">
+      <div className="flex flex-col h-[calc(100dvh-7.5rem)] min-h-[420px] bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Chat</h2>
             {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
             {restoring && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">restoring...</span>}
+            {saveError && (
+              <span className="text-[10px] text-red-500 dark:text-red-400 italic" role="status">save failed — will retry</span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
@@ -1518,7 +1684,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               </button>
             )}
             {messages.length > 0 && (
-              <button onClick={() => { clearSessionId(); setMessages([]); setSessionId(null) }}
+              <button onClick={startNewChat}
                 className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
                 title="Start a new chat">
                 + New
@@ -1549,6 +1715,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Scripture Chat</h2>
               {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
               {restoring && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">restoring...</span>}
+              {saveError && (
+                <span className="text-[10px] text-red-500 dark:text-red-400 italic" role="status">save failed — will retry</span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {messages.length > 0 && (
@@ -1559,7 +1728,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 </button>
               )}
               {messages.length > 0 && (
-                <button onClick={() => { clearSessionId(); setMessages([]); setSessionId(null) }}
+                <button onClick={startNewChat}
                   className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
                   title="Start a new chat">
                   + New
@@ -1587,6 +1756,32 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 // ── Persistence helpers ──
 
 const STORAGE_KEY = 'current_chat_session'
+const SNAPSHOT_PREFIX = 'chat_snapshot_'
 function loadSessionId() { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 function saveSessionId(id) { try { localStorage.setItem(STORAGE_KEY, id) } catch {} }
 function clearSessionId() { try { localStorage.removeItem(STORAGE_KEY) } catch {} }
+
+// Local message snapshot per session — covers the reload race where an
+// in-flight response finished after the server restore started.
+function loadSnapshot(sessionId) {
+  if (!sessionId) return null
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_PREFIX + sessionId)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+function writeSnapshot(sessionId, messages) {
+  if (!sessionId) return
+  try {
+    const pending = messages.filter(m => m?.pending)
+    if (pending.length) {
+      localStorage.setItem(SNAPSHOT_PREFIX + sessionId, JSON.stringify(pending))
+    } else {
+      localStorage.removeItem(SNAPSHOT_PREFIX + sessionId)
+    }
+  } catch {}
+}
+function removeSnapshotMessage(sessionId, message) {
+  const pending = loadSnapshot(sessionId) || []
+  writeSnapshot(sessionId, pending.filter(m => m.clientId !== message.clientId))
+}

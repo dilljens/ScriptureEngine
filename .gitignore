@@ -64,3 +64,6 @@ Thumbs.db
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+
+# Vite cache
+node_modules/.vite/

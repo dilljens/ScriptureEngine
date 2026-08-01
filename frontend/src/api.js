@@ -98,44 +98,79 @@ export function getBooks() {
 
 // ─── Conversation / Chat API ───
 
+// Stable per-device identity used to scope conversation ownership.
+// Matches the anonymous id generated in App.jsx; authenticated users get
+// their account id from scripture_auth_user_id.
+export function currentUserId() {
+  try {
+    return (
+      localStorage.getItem('scripture_auth_user_id')
+      || localStorage.getItem('scripture_user_id')
+      || 'anonymous'
+    )
+  } catch { return 'anonymous' }
+}
+
+export function currentSessionToken() {
+  try { return localStorage.getItem('scripture_session_token') || '' } catch { return '' }
+}
+
+const userQuery = () => {
+  return `user_id=${encodeURIComponent(currentUserId())}`
+}
+
+const ownerHeaders = () => {
+  const token = currentSessionToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export function conversationCreate(data = {}) {
-  return fetchJSON('/conversations', {
+  return fetchJSON(`/conversations?${userQuery()}`, {
     method: 'POST',
-    body: JSON.stringify({ title: data.title || '', theme: data.theme || '', created_by: data.created_by || '' }),
-    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: data.title || '', theme: data.theme || '', created_by: data.created_by || currentUserId() }),
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
   })
 }
 
 export function conversationAddMessage(sessionId, role, content, metadata) {
-  return fetchJSON(`/conversations/${sessionId}/messages`, {
+  return fetchJSON(`/conversations/${sessionId}/messages?${userQuery()}`, {
     method: 'POST',
     body: JSON.stringify({ role, content, metadata: metadata || {} }),
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
   })
 }
 
-export function conversationList(page = 1, perPage = 20) {
-  return fetchJSON(`/conversations?page=${page}&per_page=${perPage}`)
+export function conversationList(page = 1, perPage = 20, search = '') {
+  const q = search ? `&search=${encodeURIComponent(search)}` : ''
+  return fetchJSON(`/conversations?page=${page}&per_page=${perPage}&${userQuery()}${q}`, { headers: ownerHeaders() })
 }
 
 export function conversationGet(sessionId) {
-  return fetchJSON(`/conversations/${sessionId}`)
+  return fetchJSON(`/conversations/${sessionId}?${userQuery()}`, { headers: ownerHeaders() })
 }
 
 export function conversationUpdate(sessionId, data) {
-  return fetchJSON(`/conversations/${sessionId}`, {
+  return fetchJSON(`/conversations/${sessionId}?${userQuery()}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
   })
 }
 
 export function conversationDelete(sessionId) {
-  return fetchJSON(`/conversations/${sessionId}`, { method: 'DELETE' })
+  return fetchJSON(`/conversations/${sessionId}?${userQuery()}`, { method: 'DELETE', headers: ownerHeaders() })
 }
 
 export function conversationConnections(sessionId) {
-  return fetchJSON(`/conversations/${sessionId}/connections`)
+  return fetchJSON(`/conversations/${sessionId}/connections?${userQuery()}`, { headers: ownerHeaders() })
+}
+
+export function conversationPromoteConnection(sessionId, connectionId, data) {
+  return fetchJSON(`/conversations/${sessionId}/connections/${connectionId}/promote?${userQuery()}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
+  })
 }
 
 // ─── Study API ───
@@ -246,14 +281,21 @@ export function chat(messages, opts = {}) {
  *   onThinking(content)   — reasoning/thinking chunks
  *   onText(content)       — visible response chunks
  *   onToolProgress(tools) — tool names being executed
- *   onDone({usage, cost, model, tool_results}) — final event
+ *   onDone({usage, cost, model, tool_results, final_content, final_reasoning}) — final event
  *   onError(message)      — error event
+ *
+ * Guarantees: the promise ALWAYS settles. EOF without a terminal event
+ * (proxy close, mid-stream crash) is treated as an error so callers never
+ * hang waiting for a response that will never arrive.
  */
 export function chatStream(messages, opts = {}) {
   const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, disabled_tools = [], signal } = opts
   const { onThinking, onText, onToolProgress, onDone, onError } = opts
 
   return new Promise((resolve, reject) => {
+    let settled = false
+    const once = (fn, ...args) => { if (!settled && fn) { settled = true; fn(...args) } }
+
     fetch('/api/v1/chat/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -264,15 +306,46 @@ export function chatStream(messages, opts = {}) {
         const msg = response.status === 500
           ? 'The server encountered an error. Please try again.'
           : `Server error: ${response.status}`
-        onError?.(msg)
-        reject(new Error(response.statusText))
+        once(onError, msg)
+        reject(new Error(msg))
         return
       }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let terminal = false
 
-      while (true) {
+      const processEvent = (event) => {
+        if (!event || terminal) return
+        if (event.type === 'error' || (event.ok === false && event.error)) {
+          const message = event.message || event.error || 'Unknown error'
+          terminal = true
+          once(onError, message)
+          reject(new Error(message))
+          return
+        }
+        switch (event.type) {
+          case 'thinking':
+            onThinking?.(event.content)
+            break
+          case 'text':
+            onText?.(event.content)
+            break
+          case 'tool_progress':
+            onToolProgress?.(event.tools || [])
+            break
+          case 'done':
+            terminal = true
+            once(onDone, event)
+            resolve(event)
+            break
+          default:
+            // heartbeat and any future event types — ignore
+            break
+        }
+      }
+
+      while (!terminal) {
         const { done, value } = await reader.read()
         if (done) break
 
@@ -285,38 +358,35 @@ export function chatStream(messages, opts = {}) {
           const raw = line.slice(6).trim()
           if (!raw) continue
 
-          try {
-            const event = JSON.parse(raw)
-            switch (event.type) {
-              case 'thinking':
-                onThinking?.(event.content)
-                break
-              case 'text':
-                onText?.(event.content)
-                break
-              case 'tool_progress':
-                onToolProgress?.(event.tools || [])
-                break
-              case 'done':
-                onDone?.(event)
-                resolve(event)
-                return
-              case 'error':
-                onError?.(event.message || 'Unknown error')
-                reject(new Error(event.message))
-                return
-            }
-          } catch {}
+          let event
+          try { event = JSON.parse(raw) } catch { continue }
+          processEvent(event)
+          if (terminal) return
         }
       }
+
+      // Flush a final partial line when the server closes without a trailing
+      // newline (common with abrupt proxy disconnects).
+      buffer += decoder.decode()
+      for (const line of buffer.split('\n')) {
+        if (!line.startsWith('data: ')) continue
+        const raw = line.slice(6).trim()
+        if (!raw) continue
+        try { processEvent(JSON.parse(raw)) } catch { /* malformed tail */ }
+        if (terminal) return
+      }
+
+      // EOF without a terminal event — treat as failure, never hang
+      const msg = 'The connection closed before the response finished. Please try again.'
+      once(onError, msg)
+      reject(new Error(msg))
     }).catch((err) => {
       if (err.name === 'AbortError') {
         reject(err)
       } else {
-        onError?.(err.message)
+        once(onError, err.message)
         reject(err)
       }
     })
   })
 }
-

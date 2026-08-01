@@ -257,11 +257,20 @@ export function createComponents(options = {}) {
     h3: ({ children }) => (
       <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 mt-3 mb-1 first:mt-0 text-sm">{children}</h3>
     ),
+    h1: ({ children }) => (
+      <h1 className="font-bold text-neutral-900 dark:text-neutral-100 mt-3 mb-1 first:mt-0 text-base">{children}</h1>
+    ),
+    h2: ({ children }) => (
+      <h2 className="font-semibold text-neutral-900 dark:text-neutral-100 mt-3 mb-1 first:mt-0 text-sm">{children}</h2>
+    ),
     ul: ({ children }) => (
       <ul className="list-disc list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ul>
     ),
     ol: ({ children }) => (
       <ol className="list-decimal list-inside space-y-0.5 my-1.5 text-sm text-neutral-700 dark:text-neutral-300">{children}</ol>
+    ),
+    li: ({ children }) => (
+      <li className="leading-relaxed">{children}</li>
     ),
     a: ({ href, children }) => (
       <a href={href} target="_blank" rel="noopener noreferrer"

@@ -1,7 +1,7 @@
 """Conversation session routes."""
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from lib.api.conversations import (
@@ -25,6 +25,52 @@ def get_db():
     from lib.db import get_db as _get_db
     return _get_db()
 
+
+def _owner_id(user_id: str = "", session_token: str = "", authorization: str = ""):
+    """Resolve the caller's conversation owner id.
+
+    Authenticated clients may provide the existing auth session token. Anonymous
+    clients use the stable per-device id sent by the frontend. The legacy
+    ``anonymous`` owner remains available for old sessions and API smoke tests.
+    """
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(status_code=401, detail="Invalid authorization header")
+        session_token = value.strip()
+    if session_token:
+        try:
+            from web.routes.auth import _resolve_user_from_token
+            resolved = _resolve_user_from_token(session_token)
+            if resolved:
+                return resolved
+        except Exception:
+            pass
+        # Never fall back to a caller-supplied user_id after a credential was
+        # presented but failed validation; that would turn the token into a
+        # cosmetic parameter and preserve the IDOR risk.
+        raise HTTPException(status_code=401, detail="Invalid session token")
+    return user_id or "anonymous"
+
+
+def _require_session_owner(
+    conn,
+    session_id: str,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = "",
+):
+    """Return a session row or raise a consistent authorization error."""
+    row = conn.execute(
+        "SELECT id, created_by FROM conversation_sessions WHERE id = ?",
+        (session_id,),
+    ).fetchone()
+    if not row:
+        return None
+    if row["created_by"] != _owner_id(user_id, session_token, authorization):
+        raise HTTPException(status_code=403, detail="Conversation access denied")
+    return row
+
 # ─── Conversation / Chat Sessions ───
 
 class ConversationCreate(BaseModel):
@@ -35,7 +81,7 @@ class ConversationCreate(BaseModel):
 class MessageCreate(BaseModel):
     role: str  # 'user', 'assistant', 'system'
     content: str
-    metadata: dict | None = {}
+    metadata: dict | None = None
 
 class SessionUpdate(BaseModel):
     title: str | None = None
@@ -58,25 +104,54 @@ class ManualConnection(BaseModel):
     description: str = ""
 
 @router.get("/api/v1/conversations")
-def list_conversations(page: int = 1, per_page: int = 20, starred: bool | None = None, search: str = ""):
+def list_conversations(
+    page: int = 1,
+    per_page: int = 20,
+    starred: bool | None = None,
+    search: str = "",
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """List conversation sessions, paginated."""
     conn = get_db()
-    result = list_sessions(conn, page=page, per_page=per_page, starred=starred, search=search)
+    result = list_sessions(
+        conn,
+        page=page,
+        per_page=per_page,
+        starred=starred,
+        search=search,
+        created_by=_owner_id(user_id, session_token, authorization),
+    )
     conn.close()
     return {"ok": True, "data": result}
 
 @router.post("/api/v1/conversations")
-def create_conversation(body: ConversationCreate):
+def create_conversation(
+    body: ConversationCreate,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Create a new conversation session."""
     conn = get_db()
-    session = create_session(conn, title=body.title, theme=body.theme, created_by=body.created_by)
+    # Prefer the server-resolved owner when the caller supplied an identity;
+    # retain body.created_by only for legacy anonymous API clients.
+    created_by = _owner_id(user_id, session_token, authorization) if (user_id or session_token or authorization) else (body.created_by or "anonymous")
+    session = create_session(conn, title=body.title, theme=body.theme, created_by=created_by)
     conn.close()
     return {"ok": True, "data": session}
 
 @router.get("/api/v1/conversations/{session_id}")
-def get_conversation(session_id: str):
+def get_conversation(
+    session_id: str,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Get a conversation session with all messages, refs, and connections."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     session = get_session(conn, session_id)
     conn.close()
     if not session:
@@ -84,31 +159,47 @@ def get_conversation(session_id: str):
     return {"ok": True, "data": session}
 
 @router.patch("/api/v1/conversations/{session_id}")
-def update_conversation(session_id: str, body: SessionUpdate):
+def update_conversation(
+    session_id: str,
+    body: SessionUpdate,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Update session title or starred status."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     session = update_session(conn, session_id, title=body.title, is_starred=body.is_starred)
     conn.close()
     return {"ok": True, "data": session}
 
 @router.delete("/api/v1/conversations/{session_id}")
-def delete_conversation(session_id: str):
+def delete_conversation(
+    session_id: str,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Delete a conversation session."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     result = delete_session(conn, session_id)
     conn.close()
     return {"ok": True, "data": result}
 
 @router.post("/api/v1/conversations/{session_id}/messages")
-def add_conversation_message(session_id: str, body: MessageCreate):
+def add_conversation_message(
+    session_id: str,
+    body: MessageCreate,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Add a message to a conversation. Auto-extracts verse refs and detects connections."""
     if not body.content.strip():
         return {"ok": False, "error": "Content is required"}
     conn = get_db()
-    # Verify session exists
-    session = conn.execute(
-        "SELECT id FROM conversation_sessions WHERE id = ?", (session_id,)
-    ).fetchone()
+    session = _require_session_owner(conn, session_id, user_id, session_token, authorization)
     if not session:
         conn.close()
         return {"ok": False, "error": "Session not found"}
@@ -117,12 +208,16 @@ def add_conversation_message(session_id: str, body: MessageCreate):
     return {"ok": True, "data": result}
 
 @router.post("/api/v1/conversations/{session_id}/messages/batch")
-def add_conversation_messages_batch(session_id: str, body: list[MessageCreate]):
+def add_conversation_messages_batch(
+    session_id: str,
+    body: list[MessageCreate],
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Add multiple messages at once (for page reload recovery)."""
     conn = get_db()
-    session = conn.execute(
-        "SELECT id FROM conversation_sessions WHERE id = ?", (session_id,)
-    ).fetchone()
+    session = _require_session_owner(conn, session_id, user_id, session_token, authorization)
     if not session:
         conn.close()
         return {"ok": False, "error": "Session not found"}
@@ -134,17 +229,31 @@ def add_conversation_messages_batch(session_id: str, body: list[MessageCreate]):
     return {"ok": True, "data": {"messages": results, "count": len(results)}}
 
 @router.get("/api/v1/conversations/{session_id}/connections")
-def get_conversation_connections(session_id: str, connection_type: str | None = None):
+def get_conversation_connections(
+    session_id: str,
+    connection_type: str | None = None,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """List connections discovered/retrieved in a conversation."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     result = list_connections(conn, session_id, connection_type=connection_type)
     conn.close()
     return {"ok": True, "data": {"connections": result, "total": len(result)}}
 
 @router.post("/api/v1/conversations/{session_id}/connections")
-def add_conversation_connection(session_id: str, body: ManualConnection):
+def add_conversation_connection(
+    session_id: str,
+    body: ManualConnection,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Manually add a connection to a session."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     add_connection(
         conn, session_id,
         source_verse=body.source_verse,
@@ -158,11 +267,20 @@ def add_conversation_connection(session_id: str, body: ManualConnection):
     return {"ok": True, "data": {"message": "Connection added"}}
 
 @router.post("/api/v1/conversations/{session_id}/connections/{connection_id}/promote")
-def promote_conversation_connection(session_id: str, connection_id: int, body: ConnectionPromote):
+def promote_conversation_connection(
+    session_id: str,
+    connection_id: int,
+    body: ConnectionPromote,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
     """Promote a conversation connection to the main connection graph."""
     conn = get_db()
+    _require_session_owner(conn, session_id, user_id, session_token, authorization)
     result = promote_connection(
         conn, connection_id,
+        session_id=session_id,
         layer=body.layer,
         type_name=body.type_name,
         subtype=body.subtype,
@@ -174,5 +292,3 @@ def promote_conversation_connection(session_id: str, connection_id: int, body: C
     if result.get("ok"):
         return {"ok": True, "data": result}
     return {"ok": False, "error": result.get("error", "Promotion failed")}
-
-

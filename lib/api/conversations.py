@@ -287,10 +287,15 @@ def get_session(conn, session_id):
     return result
 
 
-def list_sessions(conn, page=1, per_page=20, starred=None, search=""):
+def list_sessions(conn, page=1, per_page=20, starred=None, search="", created_by=None):
     """List conversation sessions, paginated. Returns {sessions, total, page, pages}."""
+    page = max(1, int(page or 1))
+    per_page = min(100, max(1, int(per_page or 20)))
     where = []
     params = []
+    if created_by:
+        where.append("created_by = ?")
+        params.append(created_by)
     if starred is not None:
         where.append("is_starred = ?")
         params.append(1 if starred else 0)
@@ -365,6 +370,32 @@ def add_message(conn, session_id, role, content, metadata=None):
     """
     metadata = metadata or {}
     now = _now()
+
+    # Retries/replay after a browser or proxy failure must be idempotent. The
+    # client supplies a random id in metadata; return the original row instead
+    # of inserting a duplicate when that id has already been accepted.
+    client_message_id = metadata.get("client_message_id")
+    if client_message_id:
+        try:
+            existing = conn.execute(
+                """
+                SELECT * FROM conversation_messages
+                WHERE session_id = ?
+                  AND json_extract(metadata_json, '$.client_message_id') = ?
+                LIMIT 1
+                """,
+                (session_id, client_message_id),
+            ).fetchone()
+        except Exception:
+            existing = None
+        if existing:
+            result = dict(existing)
+            saved_refs = conn.execute(
+                "SELECT * FROM conversation_refs WHERE message_id = ?",
+                (existing["id"],),
+            ).fetchall()
+            result["refs"] = [dict(r) for r in saved_refs]
+            return result
 
     # Insert message
     cur = conn.execute("""
@@ -547,11 +578,20 @@ def add_connection(conn, session_id, source_verse, target_verse,
 
 def promote_connection(conn, connection_id, layer="intertextual",
                        type_name="parallel", subtype="", strength=0.5,
-                       confidence=0.5, discovered_by="conversation"):
+                       confidence=0.5, discovered_by="conversation", session_id=None):
     """Promote a conversation connection to the main connections table."""
-    row = conn.execute(
-        "SELECT * FROM conversation_connections WHERE id = ?", (connection_id,)
-    ).fetchone()
+    if session_id is None:
+        row = conn.execute(
+            "SELECT * FROM conversation_connections WHERE id = ?", (connection_id,)
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT * FROM conversation_connections
+            WHERE id = ? AND session_id = ?
+            """,
+            (connection_id, session_id),
+        ).fetchone()
     if not row:
         return {"ok": False, "error": "Connection not found"}
 
