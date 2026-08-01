@@ -180,8 +180,9 @@ LEVEL7 = [
 ALL_NODES = LEVEL1 + LEVEL2 + LEVEL3 + LEVEL4 + LEVEL5 + LEVEL6 + LEVEL7
 
 # ── Edge Definitions ──
-# Each edge: (source, target, edge_type, weight)
-# source = advanced concept, target = simpler concept it depends on
+# Definitions below are written as (dependent concept, prerequisite, type, weight)
+# for readability. build_edges() returns the runtime/API direction:
+# source = prerequisite, target = dependent concept.
 
 def build_edges():
     """Build prerequisite and encompassing edges between nodes."""
@@ -283,7 +284,8 @@ def build_edges():
         edges.append((nid, "word_order", "prerequisite", 0.3))
         edges.append((nid, "syllable_basics", "encompassing", 0.2))
 
-    return edges
+    return [(prerequisite, dependent, edge_type, weight)
+            for dependent, prerequisite, edge_type, weight in edges]
 
 
 def build_graph(db_path="data/memorize.db"):

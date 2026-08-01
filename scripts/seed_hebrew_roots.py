@@ -21,8 +21,8 @@ ROOT_LESSONS = [
         "root": "כתב",
         "meaning": "write",
         "level": 5,
-        "derived_words": [("כָּתַב", "he wrote"), ("כְּתָב", "writing"), ("כְּתֹבֶת", "inscription"), ("סֵפֶר", "book/scroll")],
-        "explanation": "The root כ־ת־ב (K-T-V) means 'to write' or 'engrave'. It's one of the most productive roots in Hebrew. The Qal verb כָּתַב means 'he wrote'. The noun כְּתָב means 'writing' or 'script'. The common word סֵפֶר (book/scroll) also derives from this root."
+        "derived_words": [("כָּתַב", "he wrote"), ("כְּתָב", "writing"), ("כְּתֹבֶת", "inscription"), ("מִכְתָּב", "writing/document")],
+        "explanation": "The root כ־ת־ב (K-T-V) means 'to write' or 'engrave'. It's one of the most productive roots in Hebrew. The Qal verb כָּתַב means 'he wrote'. The nouns כְּתָב and מִכְתָּב refer to writing or a written document. סֵפֶר (book/scroll) belongs to the separate root ס־פ־ר."
     },
     {
         "root": "מלך",
@@ -63,8 +63,8 @@ ROOT_LESSONS = [
         "root": "ברך",
         "meaning": "bless",
         "level": 4,
-        "derived_words": [("בָּרַךְ", "he blessed"), ("בְּרָכָה", "blessing"), ("בָּרוּךְ", "blessed"), ("בְּרֵכָה", "pool (blessing place)")],
-        "explanation": "The root ב־ר־ך (B-R-K) means 'to bless'. The first occurrence is Genesis 1:22 where God blessed the creatures. The Piel form (בֵּרַךְ) is the most common verb. בָּרוּךְ ('blessed') begins many prayers (בָּרוּךְ אַתָּה יְהוָה = Blessed are you, YHWH)."
+        "derived_words": [("בֵּרַךְ", "he blessed (Piel)"), ("בְּרָכָה", "blessing"), ("בָּרוּךְ", "blessed"), ("בֶּרֶךְ", "knee")],
+        "explanation": "The root ב־ר־ך (B-R-K) has senses connected with blessing and kneeling. The first blessing use occurs in Genesis 1:22. The Piel form בֵּרַךְ is the common verb 'he blessed'; Qal forms are associated with kneeling. בָּרוּךְ means 'blessed'."
     },
     {
         "root": "שפט",
@@ -99,7 +99,7 @@ ROOT_LESSONS = [
         "meaning": "fear, revere",
         "level": 4,
         "derived_words": [("יָרֵא", "he feared"), ("יִרְאָה", "fear"), ("יָרֵא", "fearing/God-fearing"), ("מוֹרָא", "terror/fearful thing")],
-        "explanation": "The root י־ר־א (Y-R-A) means 'to fear' or 'revere'. יִרְאַת יְהוָה (fear of YHWH) is the 'beginning of wisdom' (Proverbs 1:7). יָרֵא as an adjective means 'God-fearing' — a key description of righteous people. This is not fright but reverential awe."
+        "explanation": "The root י־ר־א (Y-R-A) can mean 'to fear' or 'revere'. Proverbs 1:7 calls יִרְאַת יְהוָה the beginning of knowledge; Proverbs 9:10 relates it to the beginning of wisdom. Context determines whether fear, awe, or reverence is prominent."
     },
     {
         "root": "עשׂה",
@@ -133,15 +133,17 @@ ROOT_LESSONS = [
         "root": "חטא",
         "meaning": "sin, miss",
         "level": 5,
-        "derived_words": [("חָטָא", "he sinned"), ("חַטָּאת", "sin/sin-offering"), ("חֵטְא", "sin"), ("חָטָא", "sinner")],
-        "explanation": "The root ח־ט־א (Ch-T-A) literally means 'to miss the mark'. חָטָא is the Qal verb. חַטָּאת means both 'sin' and 'sin-offering' — the same word! This double meaning is theologically rich: the same word describes the problem and God's solution. The Day of Atonement (יוֹם כִּפּוּר) centers on purging חַטָּאת."
+        "derived_words": [("חָטָא", "he sinned"), ("חַטָּאת", "sin/purification offering"), ("חֵטְא", "sin"), ("חֹטֵא", "one who sins")],
+        "explanation": "The root ח־ט־א (Ch-T-A) covers failing, doing wrong, and sinning; in some contexts the verb can describe missing a target, but that image does not define every occurrence. חָטָא is 'he sinned' and חֹטֵא is a participle, 'one who sins.' Depending on context, חַטָּאת can denote sin or a purification offering. Theological conclusions should be labeled separately from these lexical observations."
     },
 ]
 
 
-def main():
-    conn = sqlite3.connect(str(MEM_DB))
+def main(db_path=MEM_DB):
+    conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys=OFF")
+    conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_hebrew_practice_unique
+                    ON hebrew_practice_items(node_id,question_type,question_text,correct_answer)""")
 
     new_nodes = 0
     new_items = 0
@@ -150,17 +152,16 @@ def main():
     for lesson in ROOT_LESSONS:
         lid = f"root_{lesson['root']}"
 
-        existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
-        if existing:
-            print(f"  SKIP {lid}: practice items already exist")
-            continue
-
         title = f"Root {lesson['root']} — {lesson['meaning']}"
         desc = f"The root {lesson['root']} means '{lesson['meaning']}'. Derived words: " + ", ".join(f"{w} ({g})" for w, g in lesson['derived_words'])
 
         conn.execute(
             "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'root', ?)",
             (lid, title, lesson['level'], desc[:200])
+        )
+        conn.execute(
+            "UPDATE hebrew_nodes SET title=?, level=?, category='root', description=? WHERE id=?",
+            (title, lesson['level'], desc[:200], lid)
         )
         new_nodes += 1
 
@@ -176,23 +177,31 @@ def main():
             "key_points": [
                 f"Root {lesson['root']} = {lesson['meaning']}",
                 f"Derives {len(lesson['derived_words'])}+ common words",
-                "Key theological term in Biblical Hebrew",
+                "Confirm each derived word and contextual sense in a lexicon",
             ],
         }
         conn.execute(
-            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
+            """INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)
+               ON CONFLICT(node_id) DO UPDATE SET content_json=excluded.content_json,
+               version=hebrew_lessons.version+1, updated_at=datetime('now')
+               WHERE hebrew_lessons.content_json<>excluded.content_json""",
             (lid, json.dumps(content, ensure_ascii=False))
         )
 
         # Practice items
         def add(q, opts, ans, qtype="multiple_choice", lid=lid):
             opts_j = json.dumps(opts, ensure_ascii=False) if opts else ""
+            conn.execute(
+                "DELETE FROM hebrew_practice_items WHERE node_id=? AND question_type=? AND question_text=? AND correct_answer<>?",
+                (lid, qtype, q, ans),
+            )
             conn.execute("INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
                         (lid, qtype, q, opts_j, ans, 0.5))
             nonlocal new_items
             new_items += 1
 
-        add(f"What is the root {lesson['root']} mean?", [lesson['meaning'], "king", "write", "speak"], lesson['meaning'])
+        distractors = [value for value in ("king", "write", "speak", "serve", "judge") if value != lesson['meaning']]
+        add(f"What does the root {lesson['root']} mean?", [lesson['meaning'], *distractors[:3]], lesson['meaning'])
         add(f"Which word derives from root {lesson['root']}?", [w for w, g in lesson['derived_words'][:4]] or ["word"], lesson['derived_words'][0][0])
 
         # Find a verse example
@@ -211,7 +220,7 @@ def main():
         conn.execute("INSERT OR IGNORE INTO hebrew_edges (source_id, target_id, edge_type) VALUES ('root_concept', ?, 'prerequisite')", (lid,))
         new_edges += 1
 
-        print(f"  CREATED {lid}: {title}")
+        print(f"  UPSERTED {lid}: {title}")
 
     conn.commit()
     conn.close()
@@ -220,4 +229,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", type=Path, default=MEM_DB)
+    args = parser.parse_args()
+    main(args.db)

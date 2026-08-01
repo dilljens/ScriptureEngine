@@ -42,13 +42,18 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   const current = cards?.[idx]
 
   const handleReveal = useCallback(() => {
+    if (current?.type === 'drill' && !answerState?.[current.id]?.submitted) return
     if (!showAnswer) setShowAnswer(true)
-  }, [showAnswer])
+  }, [current, answerState, showAnswer])
 
   const handleRate = useCallback(async (val) => {
     if (rating !== null) return
     setRating(val)
-    setResults(prev => [...prev, { card: current, rating: val }])
+    setResults(prev => [...prev, {
+      card: current,
+      rating: val,
+      correct: answerState?.[current?.id]?.correct,
+    }])
 
     // Submit rating if callback provided
     if (onRate && current) {
@@ -68,15 +73,15 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         if (onComplete) onComplete()
       }
     }, 800)
-  }, [rating, current, idx, cards.length, onRate, onComplete])
+  }, [rating, current, idx, cards.length, onRate, onComplete, answerState])
 
   // Flip on Enter/Space
   const handleKey = useCallback((e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      if (!showAnswer) { handleReveal(); return }
+      if (!showAnswer && current?.type !== 'drill') { handleReveal(); return }
     }
-  }, [showAnswer, handleReveal])
+  }, [showAnswer, handleReveal, current])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKey)
@@ -85,7 +90,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
 
   // ── Completion screen ──
   if (done) {
-    const correct = results.filter(r => r.rating >= 3).length
+    const correct = results.filter(r => r.correct ?? r.rating >= 3).length
     const total = results.length
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0
     return (
@@ -153,13 +158,16 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
       {/* Card content */}
       <div
         onClick={handleReveal}
-        className="p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors min-h-[200px] flex items-center justify-center"
+        className={`p-6 rounded-xl bg-white dark:bg-neutral-800 border-2 border-indigo-200 dark:border-indigo-800 shadow-sm transition-colors min-h-[200px] flex items-center justify-center ${current.type === 'drill' ? '' : 'cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600'}`}
       >
-        <CardRenderer card={current} showAnswer={showAnswer} onAnswer={(ans) => { if (onAnswer) onAnswer(current, ans) }} answerState={answerState} hebrewOnly={hebrewOnly} />
+        <CardRenderer card={current} showAnswer={showAnswer} onAnswer={(ans) => {
+          if (onAnswer) onAnswer(current, ans)
+          if (current.type === 'drill') setShowAnswer(true)
+        }} answerState={answerState} hebrewOnly={hebrewOnly} />
       </div>
 
       {/* Hint to flip */}
-      {!showAnswer && (
+      {!showAnswer && current.type !== 'drill' && (
         <p className="text-center text-[10px] text-neutral-400 mt-2">Click card or press Space/Enter to reveal answer</p>
       )}
 

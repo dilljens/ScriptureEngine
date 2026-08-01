@@ -19,7 +19,6 @@ Usage:
 import argparse
 import json
 import sqlite3
-import re
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent
@@ -34,7 +33,7 @@ ROOTS = [
     ("דבר", "speak, word", [("דָּבָר", "word/thing"), ("דִּבֵּר", "he spoke"), ("דְּבָרִים", "words/things"), ("דַּבָּר", "spokesman")]),
     ("שמר", "keep, guard", [("שָׁמַר", "he kept"), ("שְׁמָר", "guard"), ("שְׁמִירָה", "guarding"), ("מִשְׁמֶרֶת", "watch/guard duty")]),
     ("עבד", "serve, work", [("עָבַד", "he served/worked"), ("עֶבֶד", "servant/slave"), ("עֲבוֹדָה", "work/service"), ("עֲבֹדָה", "slavery")]),
-    ("ברך", "bless", [("בָּרַךְ", "he blessed"), ("בְּרָכָה", "blessing"), ("בָּרוּךְ", "blessed"), ("בְּרֵכָה", "pool (blessing place)")]),
+    ("ברך", "bless", [("בֵּרַךְ", "he blessed (Piel)"), ("בְּרָכָה", "blessing"), ("בָּרוּךְ", "blessed"), ("בֶּרֶךְ", "knee")]),
     ("אהב", "love", [("אָהַב", "he loved"), ("אַהֲבָה", "love"), ("אֶהֶב", "beloved")]),
     ("ירא", "fear, revere", [("יָרֵא", "he feared"), ("יִרְאָה", "fear"), ("יָרֵא", "God-fearing")]),
     ("עשׂה", "make, do", [("עָשָׂה", "he made/did"), ("מַעֲשֶׂה", "work/deed"), ("עוֹשֶׂה", "maker/doer")]),
@@ -72,6 +71,9 @@ CONSTRUCT_PAIRS = [
 def add_item(cur, node_id, qtype, text, answer, difficulty, explanation="", options=""):
     """Add a production practice item with INSERT OR IGNORE."""
     opts = options if options else "[]"
+    cur.execute("""DELETE FROM hebrew_practice_items
+                   WHERE node_id=? AND question_type=? AND question_text=? AND correct_answer<>?""",
+                (node_id, qtype, text, answer))
     cur.execute("""INSERT OR IGNORE INTO hebrew_practice_items
         (node_id, question_type, question_text, options_json, correct_answer, difficulty, explanation)
         VALUES (?, ?, ?, ?, ?, ?, ?)""",

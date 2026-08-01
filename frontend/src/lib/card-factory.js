@@ -64,28 +64,35 @@ export function hebrewToCards(nodes) {
   if (!nodes?.length) return []
   const cards = []
   for (const n of nodes) {
-    if (n.category === 'consonant' && n.hebrew) {
+    const hebrew = n.hebrew || n.lesson?.hebrew || n.lesson?.glyph || ''
+    const transliteration = n.transliteration || n.lesson?.transliteration || ''
+    if (n.category === 'consonant' && hebrew) {
       cards.push({
         id: `heb-letter-${n.id}`,
         type: 'hebrew_letter',
         data: {
-          letter: n.hebrew,
+          node_id: n.id,
+          hebrew,
+          letter: hebrew,
           name: n.title,
-          transliteration: n.transliteration || '',
+          transliteration,
           classification: n.category || 'consonant',
           example: n.example || '',
         },
       })
-    } else if (n.category === 'word' && n.hebrew) {
+    } else if (n.category === 'word' && hebrew) {
       cards.push({
         id: `heb-vocab-${n.id}`,
         type: 'vocab',
         data: {
-          word: n.hebrew,
-          transliteration: n.transliteration || '',
-          definition: n.title || n.description || '',
-          lemma: n.lemma || '',
-          language: 'hebrew',
+          node_id: n.id,
+          hebrew,
+          word: hebrew,
+          transliteration,
+          gloss: n.gloss || n.lesson?.gloss || '',
+          definition: n.gloss || n.lesson?.gloss || n.title || n.description || '',
+          lemma: n.lemma || n.lesson?.root || '',
+          language: n.language || n.lesson?.language || 'hebrew',
         },
       })
     }

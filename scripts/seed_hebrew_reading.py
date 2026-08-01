@@ -167,7 +167,7 @@ After reading:
             new_items += 1
 
         # 1. Reference recall
-        add(f"What is the reference of this reading? (book chapter.verse)", f"{book}.{chapter}.1")
+        add("What is the reference of this reading? (book chapter.verse)", f"{book}.{chapter}.1")
 
         # 2-4. Key vocabulary recognition from the chapter
         eng_words = [w for w in full_english.split()[:30] if len(w) > 3]
@@ -201,4 +201,8 @@ After reading:
 
 
 if __name__ == "__main__":
-    seed_reading(MEM_DB, SCRIPTURE_DB)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", type=Path, default=MEM_DB)
+    args = parser.parse_args()
+    seed_reading(args.db, SCRIPTURE_DB)

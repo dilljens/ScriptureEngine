@@ -18,7 +18,7 @@ DEFAULT_DB_PATH = Path(os.environ.get(
     "SCRIPTURE_DB_PATH",
     str(PROCESSED_DIR / "scripture.db"),
 ))
-MEMORIZE_DB_PATH = DATA_DIR / "memorize.db"
+MEMORIZE_DB_PATH = Path(os.environ["MEMORIZE_DB_PATH"]) if os.environ.get("MEMORIZE_DB_PATH") else DATA_DIR / "memorize.db"
 TEST_DB_PATH = DATA_DIR / "test" / "test.db"
 
 # ── Server ────────────────────────────────────────────────────────────

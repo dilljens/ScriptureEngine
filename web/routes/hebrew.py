@@ -1,20 +1,23 @@
 """Hebrew learning + grammar reference routes."""
 import datetime
 import json
+import logging
 import os
 import math
 import random
 import re
+import secrets
 import sqlite3
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
-# ── FSRS-5 Implementation (Hebrew learning) ──
-# Ported from go-srs/internal/fsrs which is verified against Rust fsrs-rs test vectors.
-# 21 W-parameters, default retention 0.9, max interval 36500 days.
+# ── Persisted adaptive review scheduler ──
+# Legacy helper/route names remain for compatibility. This is project-specific,
+# persisted scheduling and is not represented as an FSRS implementation.
 
 FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
           1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
@@ -77,7 +80,7 @@ def fsrs_retrievability(stability, days_since):
 
 def fsrs_schedule(stability, difficulty, rating):
     """Full FSRS schedule: given current state + rating, return new state + interval."""
-    if rating <= 2:  # Failed (Again or Hard)
+    if rating == 1:  # Again fails; Hard is a difficult successful recall.
         new_s = fsrs_stability_after_failure(stability, difficulty, rating)
         new_d = fsrs_next_difficulty(difficulty, rating)
     else:  # Passed (Good or Easy)
@@ -167,7 +170,7 @@ def fire_process(graph, node_id, correct, weight=0.3):
     return results
 
 BASE_DIR = Path(__file__).parent.parent.parent
-MEM_DB = BASE_DIR / "data" / "memorize.db"
+MEM_DB = Path(os.environ["MEMORIZE_DB_PATH"]) if os.environ.get("MEMORIZE_DB_PATH") else BASE_DIR / "data" / "memorize.db"
 SCRIPTURE_DB = Path(os.environ.get("SCRIPTURE_DB_PATH", "")) if os.environ.get("SCRIPTURE_DB_PATH") else BASE_DIR / "data" / "processed" / "scripture.db"
 
 
@@ -291,10 +294,35 @@ def get_hebrew_remediation(node_id: str, pattern: str = "confusion", user_id: st
     return {"ok": True, "data": remediation}
 
 
-@router.get("/api/v1/hebrew/fsrs/review")
-def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "default",
-                            hint_level: int = 0, failure_location: str = ""):
-    """Process an FSRS-5 review with FIRe, learning speed, and failure tracking.
+def _ensure_hebrew_review_state(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_review_state (
+            user_id TEXT NOT NULL,
+            node_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
+            stability REAL NOT NULL DEFAULT 0.0,
+            difficulty REAL NOT NULL DEFAULT 5.0,
+            due TEXT NOT NULL DEFAULT (datetime('now')),
+            last_review TEXT,
+            last_rating INTEGER,
+            reps INTEGER NOT NULL DEFAULT 0,
+            lapses INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(user_id,node_id)
+        )
+    """)
+
+
+@router.post("/api/v1/hebrew/fsrs/review")
+def post_hebrew_review(body: dict):
+    return process_hebrew_review(
+        node_id=body.get("node_id", ""), rating=int(body.get("rating", 3)),
+        user_id=body.get("user_id", "default"), hint_level=int(body.get("hint_level", 0)),
+        failure_location=body.get("failure_location", ""),
+    )
+
+
+def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default",
+                          hint_level: int = 0, failure_location: str = ""):
+    """Process a persisted adaptive review with FIRe and failure tracking.
 
     Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
     hint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)
@@ -304,38 +332,68 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
+    if not node_id:
+        raise HTTPException(400, "node_id is required")
     rating = max(1, min(4, rating))
+
+    # Pre-compute read-only inputs before taking the write lock, because the
+    # learning-speed helpers and graph cache open their own connections.
+    speeds, ability, diffs = compute_learning_speed(user_id)
+    learning_speed = max(0.2, min(5.0, speeds.get(node_id, 1.0)))
+    graph = get_hebrew_graph()
+
     conn = sqlite3.connect(str(MEM_DB))
+    _ensure_hebrew_review_state(conn)
+    conn.execute("BEGIN IMMEDIATE")
+    if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+        conn.rollback()
+        conn.close()
+        raise HTTPException(400, "Unknown Hebrew node")
     row = conn.execute(
         "SELECT mastery, attempts, correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
         (user_id, node_id)).fetchone()
-    if row and row[1] > 0 and row[2] > 0:
-        a, c, m = row[1], row[2], row[0]
-        stability = max(1.0, a * m * 7.0)
-        difficulty = max(1.0, min(10.0, 5.0 - m * 3.0))
+    a, c, m = (row[1], row[2], row[0]) if row else (0, 0, 0.0)
+    state = conn.execute("""
+        SELECT stability,difficulty,last_review,reps,lapses
+        FROM hebrew_review_state WHERE user_id=? AND node_id=?
+    """, (user_id, node_id)).fetchone()
+    stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
+
+    if state:
+        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating)
     else:
-        a, c, m = 0, 0, 0.0
-        stability = fsrs_initial_stability(rating)
-        difficulty = 5.0
-
-    # Compute student-topic learning speed
-    speeds, ability, diffs = compute_learning_speed(user_id)
-    learning_speed = speeds.get(node_id, 1.0)
-    learning_speed = max(0.2, min(5.0, learning_speed))
-
-    new_s, new_d, interval = fsrs_schedule(stability, difficulty, rating)
+        new_s = fsrs_initial_stability(rating)
+        new_d = fsrs_next_difficulty(5.0, rating)
+        interval = fsrs_next_interval(new_s)
     adjusted_interval = max(1, round(interval * learning_speed))
+    reviewed_at = datetime.datetime.now()
+    due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
+    reps = (state[3] if state else 0) + 1
+    lapses = (state[4] if state else 0) + (1 if rating == 1 else 0)
 
     a += 1
-    c += 1 if rating >= 3 else 0
+    c += 1 if rating >= 2 else 0
     m = min(1.0, c / max(a, 1))
     conn.execute(
         "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced) VALUES (?,?,?,?,?,datetime('now'))",
         (user_id, node_id, m, a, c))
+    conn.execute("""
+        INSERT INTO hebrew_review_state
+            (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
+        VALUES (?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(user_id,node_id) DO UPDATE SET
+            stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
+            last_review=excluded.last_review,last_rating=excluded.last_rating,
+            reps=excluded.reps,lapses=excluded.lapses
+    """, (
+        user_id, node_id, new_s, new_d,
+        due_at.strftime("%Y-%m-%d %H:%M:%S"), reviewed_at.strftime("%Y-%m-%d %H:%M:%S"),
+        rating, reps, lapses,
+    ))
 
     # Track failure pattern for targeted remediation
     failure_pattern = None
-    if rating <= 2 and hint_level > 0:
+    if rating == 1 and hint_level > 0:
         # Infer failure pattern from hint level and location
         if failure_location:
             failure_pattern = failure_location
@@ -354,7 +412,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     # FIRe: only if learning speed >= 0.5
     fire_results = {}
     if learning_speed >= 0.5:
-        fire_results = fire_process(get_hebrew_graph(), node_id, rating >= 3, weight=0.3)
+        fire_results = fire_process(graph, node_id, rating >= 2, weight=0.3)
         for prereq_id, credit in fire_results.items():
             if credit > 0:
                 pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
@@ -371,6 +429,9 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
             log.warning("silent_exception", exc_info=True)
             pass
 
+    # Release the review write lock before helpers open their own connections.
+    conn.commit()
+
     # ── Gamification: XP + Streak + Badge check ──
     streak_count = _update_streak(user_id)
     # Base XP: 10 per review, bonus if streak > 0
@@ -382,7 +443,7 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     # Insight XP: discover connections through the graph
     insight_amount = 0
     insight_new_connections = 0
-    if rating >= 3:
+    if rating >= 2:
         ins_result = _award_insight_xp(user_id, node_id, amount=3)
         ins_amount, ins_badges, ins_new = ins_result if len(ins_result) == 3 else (ins_result[0], ins_result[1], 0)
         insight_amount = ins_amount
@@ -395,6 +456,8 @@ def get_hebrew_fsrs_review(node_id: str, rating: int = 3, user_id: str = "defaul
     return {"ok": True, "data": {
         "node_id": node_id, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
+        "due": due_at.strftime("%Y-%m-%d %H:%M:%S"), "scheduler": "adaptive-v1",
+        "retrievability": 1.0, "reps": reps, "lapses": lapses,
         "learning_speed": round(learning_speed, 3),
         "user_ability": ability,
         "failure_pattern": failure_pattern,
@@ -547,11 +610,11 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
 
             opts = json.loads(item['options_json']) if item['options_json'] else []
             cat_questions.append({
+                "question_id": item['id'],
                 "node_id": n['id'],
                 "node_title": n['title'],
                 "question": item['question_text'],
                 "options": opts,
-                "correct_answer": item['correct_answer'],
                 "question_type": item['question_type'],
             })
 
@@ -564,62 +627,131 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
                 "node_ids": [n['id'] for n in nodes],
             })
 
+    batch_id = secrets.token_urlsafe(24)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_diagnostic_batches (
+            batch_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            question_ids_json TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT
+        )
+    """)
+    conn.execute(
+        "INSERT INTO hebrew_diagnostic_batches VALUES (?,?,?,datetime('now','+30 minutes'),NULL)",
+        (batch_id, user_id, json.dumps([question["question_id"] for question in questions])),
+    )
+    conn.commit()
+
     conn.close()
 
     return {"ok": True, "data": {
         "questions": questions,
+        "batch_id": batch_id,
         "total": len(questions),
         "categories": cat_info,
         "has_progress": has_progress,
-        "message": "Answer these questions to determine your starting level. "
-                   "Categories where you score 100% will be skipped."
+        "message": "Answer these questions to estimate your starting skills. "
+                   "Only skills directly demonstrated here receive placement credit."
     }}
+
+
+def _diagnostic_answer_matches(answer, expected):
+    def normalize(value):
+        text = re.sub(r"\s+", " ", str(value or "").strip().casefold())
+        if re.search(r"[\u0590-\u05ff]", text):
+            text = re.sub(r"[\u0591-\u05af]", "", text)
+            text = text.replace("/", "")
+        return text
+
+    return bool(normalize(answer)) and normalize(answer) == normalize(expected)
 
 
 @router.post("/api/v1/hebrew/diagnostic/apply")
 def apply_diagnostic_results(body: dict):
-    """Apply diagnostic results — mark mastered categories as complete.
+    """Grade diagnostic answers server-side and credit only tested skills.
 
     Body: {
         "user_id": "default",
-        "results": { "category_name": { "correct": N, "total": N }, ... }
+        "answers": [{"question_id": 1, "node_id": "aleph", "answer": "א"}]
     }
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
 
     user_id = body.get("user_id", "default")
-    results = body.get("results", {})
+    answers = body.get("answers", [])
+    batch_id = body.get("batch_id")
+    if not isinstance(answers, list):
+        raise HTTPException(400, "answers must be a list")
+    if not batch_id:
+        raise HTTPException(400, "batch_id is required")
 
     conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    conn.execute("BEGIN IMMEDIATE")
+    batch = conn.execute("""
+        SELECT question_ids_json FROM hebrew_diagnostic_batches
+        WHERE batch_id=? AND user_id=? AND used_at IS NULL AND expires_at>datetime('now')
+    """, (batch_id, user_id)).fetchone()
+    submitted_ids = [answer.get("question_id") for answer in answers]
+    if not batch or submitted_ids != json.loads(batch["question_ids_json"]):
+        conn.rollback()
+        conn.close()
+        raise HTTPException(400, "Invalid, expired, incomplete, or already used diagnostic batch")
+    claimed = conn.execute("""
+        UPDATE hebrew_diagnostic_batches SET used_at=datetime('now')
+        WHERE batch_id=? AND used_at IS NULL AND expires_at>datetime('now')
+    """, (batch_id,)).rowcount
+    if claimed != 1:
+        conn.rollback()
+        conn.close()
+        raise HTTPException(400, "Diagnostic batch already used")
+    results = {}
+    total_correct = 0
 
-    for cat, stats in results.items():
-        correct = stats.get("correct", 0)
-        total = stats.get("total", 0)
-        if total == 0:
-            continue
-        pct = correct / total
+    resolved = []
+    for submitted in answers:
+        item = conn.execute("""
+            SELECT p.correct_answer,p.question_type,n.category
+            FROM hebrew_practice_items p
+            JOIN hebrew_nodes n ON n.id=p.node_id
+            WHERE p.id=? AND p.node_id=? AND p.question_type IN ('multiple_choice','true_false')
+        """, (submitted.get("question_id"), submitted.get("node_id"))).fetchone()
+        if not item:
+            conn.rollback()
+            conn.close()
+            raise HTTPException(400, "Diagnostic question does not match its issued skill")
+        resolved.append((submitted, item))
 
-        if pct >= 1.0:
-            # 100% → skip all nodes in this category
-            nodes = conn.execute("SELECT id FROM hebrew_nodes WHERE category=?", (cat,)).fetchall()
-            for n in nodes:
-                conn.execute(
-                    "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
-                    (user_id, n[0], 1.0, 1, 1))
-        elif pct >= 0.6:
-            # 60-80% → partial credit
-            nodes = conn.execute("SELECT id FROM hebrew_nodes WHERE category=?", (cat,)).fetchall()
-            for n in nodes:
-                conn.execute(
-                    "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?, ?, ?, ?, ?, datetime('now'))",
-                    (user_id, n[0], 0.7, 1, 1))
-        # Below 60% → no credit, full curriculum
+    for submitted, item in resolved:
+        node_id = submitted.get("node_id")
+        correct = _diagnostic_answer_matches(submitted.get("answer"), item["correct_answer"])
+        category = item["category"]
+        stats = results.setdefault(category, {"correct": 0, "total": 0})
+        stats["total"] += 1
+        stats["correct"] += int(correct)
+        total_correct += int(correct)
+        conn.execute("""
+            INSERT INTO hebrew_progress
+                (user_id,node_id,mastery,attempts,correct,last_practiced)
+            VALUES (?,?,?,?,?,datetime('now'))
+            ON CONFLICT(user_id,node_id) DO UPDATE SET
+                mastery=MAX(hebrew_progress.mastery,excluded.mastery),
+                attempts=hebrew_progress.attempts+1,
+                correct=hebrew_progress.correct+excluded.correct,
+                last_practiced=datetime('now')
+        """, (user_id, node_id, 0.8 if correct else 0.0, 1, int(correct)))
 
     conn.commit()
     conn.close()
 
-    return {"ok": True, "data": {"message": "Diagnostic applied. Categories with 100% accuracy were skipped."}}
+    return {"ok": True, "data": {
+        "results": results,
+        "correct": total_correct,
+        "total": sum(stats["total"] for stats in results.values()),
+        "message": "Diagnostic applied to the specific skills tested.",
+    }}
 
 
 @router.get("/api/v1/hebrew/curriculum")
@@ -642,6 +774,10 @@ def get_hebrew_curriculum(user_id: str = "default"):
     """, (user_id,)).fetchall()
     result_nodes = []
     for n in nodes:
+        try:
+            lesson = json.loads(n['has_content']) if n['has_content'] else {}
+        except (TypeError, json.JSONDecodeError):
+            lesson = {}
         prereqs = conn.execute("""
             SELECT e.source_id, n.title, n.level, COALESCE(p.mastery,0) as mastery
             FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id
@@ -656,6 +792,10 @@ def get_hebrew_curriculum(user_id: str = "default"):
             "mastery": n['mastery'], "attempts": n['attempts'], "correct": n['correct'],
             "prerequisite_count": n['prereq_count'], "dependent_count": n['dependent_count'],
             "prerequisites": prereq_list, "unlocked": all_mastered, "has_content": bool(n['has_content']),
+            "hebrew": lesson.get("hebrew") or lesson.get("glyph") or "",
+            "transliteration": lesson.get("transliteration") or "",
+            "gloss": lesson.get("gloss") or "",
+            "language": lesson.get("language") or "hebrew",
         })
     conn.close()
 
@@ -769,7 +909,6 @@ def update_hebrew_progress(body: dict):
                 drill_resp = _req.get(f"http://localhost:8000/api/v1/hebrew/verb-drill?count=3&category={node_id.split('_')[0] if '_' in node_id else node_id}&user_id={user_id}", timeout=5)
                 drill_data = drill_resp.json()
                 if drill_data.get("ok") and drill_data.get("data",{}).get("drills"):
-                    from urllib.parse import urlencode as _urlenc
                     for drill in drill_data["data"]["drills"]:
                         # Log a progress entry for each drill (as a 'seen' marker)
                         drill_nid = drill.get("node_id", f"{node_id}_drill")
@@ -1037,16 +1176,26 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         return {"ok": True, "data": {"reviews": [], "due_count": 0}}
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
+    _ensure_hebrew_review_state(conn)
     now = datetime.datetime.now()
     rows = conn.execute("""
         SELECT p.node_id, n.title, n.level, n.category, n.description,
-               p.mastery, p.attempts, p.correct, p.last_practiced
+               p.mastery, p.attempts, p.correct, p.last_practiced,
+               s.stability AS review_stability,s.difficulty AS review_difficulty,
+               s.due AS review_due,s.last_review AS state_last_review,
+               l.content_json
         FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id
+        LEFT JOIN hebrew_review_state s ON s.user_id=p.user_id AND s.node_id=p.node_id
+        LEFT JOIN hebrew_lessons l ON l.node_id=p.node_id
         WHERE p.user_id=? ORDER BY p.last_practiced DESC
     """, (user_id,)).fetchall()
+    try:
+        speeds, _, _ = compute_learning_speed(user_id)
+    except Exception:
+        speeds = {}
     due = []
     for r in rows:
-        last_str = r['last_practiced']
+        last_str = r['state_last_review'] or r['last_practiced']
         if not last_str: continue
         try:
             last_time = datetime.datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
@@ -1057,30 +1206,39 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         a = r['attempts']
         c = r['correct']
 
-        # FSRS-5 based stability estimation from progress data
-        if a > 0 and c > 0:
-            # Estimate: stability grows with attempts and correctness
-            stability = max(1.0, a * m * 7.0)
-            max(1.0, min(10.0, 5.0 - m * 3.0))
+        has_state = r['review_due'] is not None
+        if has_state:
+            stability = max(0.25, r['review_stability'])
             ret = fsrs_retrievability(stability, days)
+            try:
+                due_now = datetime.datetime.strptime(r['review_due'], "%Y-%m-%d %H:%M:%S") <= now
+            except (ValueError, TypeError):
+                due_now = True
+        elif a > 0 and c > 0:
+            # Legacy progress rows receive an estimated first due date until reviewed.
+            stability = max(1.0, a * m * 7.0)
+            ret = fsrs_retrievability(stability, days)
+            due_now = ret < 0.9
         else:
             stability = 1.0
             ret = math.exp(-days / stability) if stability > 0 else 0
+            due_now = ret < 0.9
 
-        if ret < 0.9:
-            # Get learning speed for this user+node
+        if due_now:
+            lr = speeds.get(r['node_id'], 1.0)
             try:
-                speeds, _, _ = compute_learning_speed(user_id)
-                lr = speeds.get(r['node_id'], 1.0)
-            except Exception:
-                lr = 1.0
+                language = json.loads(r['content_json'] or "{}").get("language", "hebrew")
+            except (TypeError, json.JSONDecodeError):
+                language = "hebrew"
             due.append({
                 "node_id": r['node_id'], "title": r['title'], "level": r['level'],
                 "category": r['category'], "description": r['description'],
+                "language": language,
                 "mastery": m, "attempts": a, "correct": c,
                 "days_since": round(days, 1), "stability": round(stability, 1),
                 "retrievability": round(ret, 3), "learning_speed": round(lr, 3),
-                "last_practiced": last_str,
+                "last_practiced": last_str, "due": r['review_due'],
+                "scheduler": "adaptive-v1" if has_state else "legacy-estimate",
             })
     # ── Systematic Interleaving + Non-Interference ──
     # 1. Group by category
@@ -1108,7 +1266,6 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
 
     # 4. Round-robin with strict non-interference
     interleaved = []
-    {c: iter(sorted(by_cat[c], key=lambda x: x['retrievability'])) for c in cat_priority}
     remaining = {c: len(by_cat[c]) for c in cat_priority}
     cat_cycle = list(cat_priority)  # mutable copy for cycling
 
@@ -1632,8 +1789,6 @@ def _check_badges(user_id="default"):
     total_items = conn.execute(
         "SELECT COUNT(*) FROM hebrew_practice_items WHERE node_id IN (SELECT node_id FROM hebrew_progress WHERE user_id=? AND attempts>0)",
         (user_id,)).fetchone()[0]
-    conn.close()
-
     # Define badge criteria
     badge_defs = {
         "first_review": {"name": "First Steps", "icon": "👣", "check": lambda: gam['xp'] >= 10},
@@ -1650,7 +1805,7 @@ def _check_badges(user_id="default"):
 
     # Check each badge
     earned_ids = set(r['badge_id'] for r in conn.execute(
-        "SELECT badge_id FROM hebrew_badges WHERE user_id=?", (user_id,)).fetchall()) if conn else set()
+        "SELECT badge_id FROM hebrew_badges WHERE user_id=?", (user_id,)).fetchall())
 
     new_badges = []
     for bid, bdef in badge_defs.items():
@@ -1660,9 +1815,8 @@ def _check_badges(user_id="default"):
                 (user_id, bid))
             new_badges.append({"badge_id": bid, "name": bdef["name"], "icon": bdef["icon"]})
 
-    if conn:
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
 
     return new_badges
 

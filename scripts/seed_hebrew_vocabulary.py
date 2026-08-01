@@ -26,9 +26,9 @@ DB_PATH = BASE / "data" / "processed" / "scripture.db"
 MEM_DB = BASE / "data" / "memorize.db"
 
 
-def get_top_words(count=500, cutoff=10):
+def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
     """Get top N Hebrew words by frequency from the lexicon."""
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
 
     rows = conn.execute("""
@@ -287,8 +287,8 @@ def main():
         if existing_items:
             continue
 
-        # Find a verse example
-        verse_data = find_verse_example(w['hebrew'])
+        # Exact OT examples are attached by align_hebrew_vocabulary.py.
+        verse_data = None
 
         # Create node
         title = f"{w['hebrew']} — {w['gloss']}"

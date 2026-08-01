@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -31,7 +31,7 @@ export default function CardRenderer({ card, showAnswer, onAnswer, answerState, 
     case 'vocab':
       return <VocabCardRenderer card={card} showAnswer={showAnswer} hebrewOnly={hebrewOnly} />
     case 'drill':
-      return <DrillCardRenderer card={card} showAnswer={showAnswer} />
+      return <DrillCardRenderer card={card} showAnswer={showAnswer} onAnswer={onAnswer} answerState={answerState} />
     case 'study_step':
       return <StudyStepCardRenderer card={card} showAnswer={showAnswer} />
     case 'hebrew_letter':
@@ -189,10 +189,14 @@ function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
 // ── Drill Card ──
 // Front: show multiple-choice question
 // Back: show correct answer + explanation
-function DrillCardRenderer({ card, showAnswer }) {
-  const { question, options, correct, explanation, hebrew_word, show_options } = card.data || {}
+function DrillCardRenderer({ card, showAnswer, onAnswer, answerState }) {
+  const { question, options, correct, explanation, hebrew_word } = card.data || {}
   const opts = Array.isArray(options) ? options : (typeof options === 'string' ? JSON.parse(options || '[]') : [])
   const hasAudio = Boolean(hebrew_word)
+  const [answer, setAnswer] = useState('')
+  const result = answerState?.[card.id]
+
+  useEffect(() => setAnswer(''), [card.id])
 
   const handlePlay = (word) => {
     if (!word) return
@@ -219,11 +223,14 @@ function DrillCardRenderer({ card, showAnswer }) {
         <div className="space-y-2">
           {opts.length > 0 && opts.map((opt, i) => {
             const isCorrect = String(opt) === String(correct)
+            const wasSelected = String(opt) === String(result?.answer)
             return (
               <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
                 isCorrect
                   ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                  : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-400'
+                  : wasSelected
+                    ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-400'
               }`}>
                 <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>
                 {opt}
@@ -244,16 +251,29 @@ function DrillCardRenderer({ card, showAnswer }) {
       ) : (
         <div className="space-y-1.5">
           {opts.length > 0 && opts.map((opt, i) => (
-            <div key={i} className="px-3 py-2 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+            <button type="button" key={i}
+              onClick={(event) => { event.stopPropagation(); setAnswer(String(opt)) }}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors ${
+                answer === String(opt)
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+                  : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:border-indigo-300'
+              }`}>
               <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>
               {opt}
-            </div>
+            </button>
           ))}
           {!opts.length && (
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 italic text-center">
-              Type your answer, then click to reveal
-            </p>
+            <input value={answer} onChange={(event) => setAnswer(event.target.value)}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              dir="auto" placeholder="Type your answer"
+              className="w-full px-3 py-2 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400" />
           )}
+          <button type="button" disabled={!answer.trim()}
+            onClick={(event) => { event.stopPropagation(); onAnswer?.(answer) }}
+            className="w-full mt-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+            Check answer
+          </button>
         </div>
       )}
     </div>

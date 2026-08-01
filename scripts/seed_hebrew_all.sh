@@ -39,36 +39,53 @@ echo "=== Seeding Hebrew Lesson Content ==="
 echo "DB: $DB"
 
 echo ""
-echo "[1/8] Vocabulary lessons (500+ frequency-ranked words)..."
+echo "[1/11] Vocabulary lessons (500+ frequency-ranked words)..."
 python3 scripts/seed_hebrew_vocabulary.py --db "$DB"
 
-echo ""
-echo "[2/8] Grammar lessons (begadkefat, clauses, etc.)..."
-python3 scripts/seed_hebrew_grammar.py
+python3 scripts/align_hebrew_vocabulary.py --db "$DB"
+python3 scripts/repair_vocabulary_metadata.py --db "$DB"
+
+# Existing databases may predate the practice-item uniqueness invariant.
+python3 scripts/repair_hebrew_learning_content.py --db "$DB"
 
 echo ""
-echo "[3/8] Phrase lessons (formulaic expressions)..."
-python3 scripts/seed_hebrew_phrases.py
+echo "[2/11] Grammar lessons (begadkefat, clauses, etc.)..."
+python3 scripts/seed_hebrew_grammar.py --db "$DB"
 
 echo ""
-echo "[4/8] Root lessons (triconsonantal root families)..."
-python3 scripts/seed_hebrew_roots.py
+echo "[3/11] Phrase lessons (formulaic expressions)..."
+python3 scripts/seed_hebrew_phrases.py --db "$DB"
 
 echo ""
-echo "[5/8] Graded reading progression (Bullard ETCBC-ordered chapters)..."
-python3 scripts/seed_hebrew_reading.py
+echo "[4/11] Root lessons (triconsonantal root families)..."
+python3 scripts/seed_hebrew_roots.py --db "$DB"
 
 echo ""
-echo "[6/8] Lesson content builder (curated letters/vowels + fills gaps)..."
+echo "[5/11] Graded reading progression (Bullard ETCBC-ordered chapters)..."
+python3 scripts/seed_hebrew_reading.py --db "$DB"
+
+echo ""
+echo "[6/11] Lesson content builder (curated letters/vowels + fills gaps)..."
 python3 scripts/seed_hebrew_content.py --db "$DB"
 
 echo ""
-echo "[7/8] Enhance vocabulary lessons with real verse context..."
-python3 scripts/enhance_vocabulary_lessons.py
+echo "[7/11] Vocabulary examples are retained only when already source-validated..."
 
 echo ""
-echo "[8/8] Production practice items (cloze, free recall)..."
-python3 scripts/seed_hebrew_production.py
+echo "[8/11] Production practice items (cloze, free recall)..."
+python3 scripts/seed_hebrew_production.py --db "$DB"
+
+echo ""
+echo "[9/11] Masoretic reading skills..."
+python3 scripts/seed_hebrew_masoretic_reading.py --db "$DB"
+
+echo ""
+echo "[10/11] Quarantine non-OT examples and remove invalid generated practice..."
+python3 scripts/repair_hebrew_learning_content.py --db "$DB"
+
+echo ""
+echo "[11/11] Validate learning content..."
+python3 scripts/validate_hebrew_learning_content.py --db "$DB"
 
 echo ""
 echo "=== Done ==="

@@ -58,7 +58,7 @@ function DropdownItem({ onClick, icon, label, desc }) {
 
 /**
  * HebrewLearnView — curriculum dashboard with gamification.
- * - 602 lessons across 9 categories with mastery tracking
+ * - Server-provided curriculum across Biblical Hebrew learning categories
  * - Server-side streak + XP + badges
  * - 5-minute quick session mode
  * - Category filter tabs
@@ -306,8 +306,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       <div className="max-w-4xl mx-auto px-6 py-8">
         <HebrewQuiz
           count={8}
-          onComplete={() => { setShowQuiz(false); loadAll() }}
-          onBack={() => setShowQuiz(false)}
+          onBack={() => { setShowQuiz(false); loadAll() }}
           onOpenLesson={(nid) => { setShowQuiz(false); onOpenLesson?.(nid) }}
         />
       </div>
@@ -451,8 +450,26 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           <DropdownItem onClick={startQuickSession} icon="⏱" label="5-min Quick" desc="Timed review session" />
           <DropdownItem onClick={() => setShowQuiz(true)} icon="📝" label="Quiz" desc="Test your knowledge" />
           <DropdownItem onClick={async () => {
+            // Prefer the persisted scheduler's due items; fall back to unlocked nodes.
+            let dueCards = []
+            try {
+              const r = await fetch('/api/v1/hebrew/review-queue?limit=30')
+              const d = await r.json()
+              if (d.ok && d.data?.reviews?.length) {
+                dueCards = d.data.reviews
+                  .filter(item => item.category === 'word' && (item.title || '').includes('—'))
+                  .map((item, i) => {
+                    const [hebrew, gloss] = item.title.split('—').map(s => (s || '').trim())
+                    return { id: `due-${i}`, type: 'vocab', data: {
+                      node_id: item.node_id, hebrew, gloss,
+                      definition: gloss || item.description || '',
+                      language: item.language || 'hebrew',
+                    } }
+                  })
+              }
+            } catch {}
             const unlocked = curriculum?.nodes?.filter(n => n.unlocked) || []
-            const nodeCards = hebrewToCards(unlocked)
+            const nodeCards = dueCards.length ? dueCards : hebrewToCards(unlocked)
             let drillCards = []
             try { const r = await fetch('/api/v1/hebrew/verb-drill?limit=8'); const d = await r.json(); if (d.ok) drillCards = drillsToCards(d.data.drills || []) } catch {}
             setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
@@ -470,11 +487,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         <DropdownMenu label="🔧 Tools" color="neutral">
           <DropdownItem onClick={() => setShowVerbDrill(true)} icon="ע" label="Verb Drills" desc="Conjugation practice" />
           <DropdownItem onClick={async () => {
-            try { const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10'); const d = await r.json(); setFreqVocabCards((d.words || []).map((w,i) => ({ id: `vocab-${i}`, type: 'vocab', data: { word: w.hebrew, definition: w.gloss, transliteration: w.transliteration, lemma: w.root || '', language: 'hebrew' } }))) } catch {}
+            try { const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10'); const d = await r.json(); setFreqVocabCards((d.data?.words || []).map((w,i) => ({ id: `vocab-${i}`, type: 'vocab', data: { word: w.hebrew, definition: w.gloss, transliteration: w.transliteration, lemma: w.root || '', language: 'hebrew' } }))) } catch {}
             setShowFreqVocab(true)
           }} icon="📊" label="Top Vocab" desc="100 most frequent words" />
           <DropdownItem onClick={async () => {
-            try { const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10'); const d = await r.json(); setAudioWords((d.words || []).filter(w => w.hebrew && w.gloss).map(w => ({ hebrew: w.hebrew, english: w.gloss, transliteration: w.transliteration }))) } catch {}
+            try { const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10'); const d = await r.json(); setAudioWords((d.data?.words || []).filter(w => w.hebrew && w.gloss).map(w => ({ hebrew: w.hebrew, english: w.gloss, transliteration: w.transliteration }))) } catch {}
             setShowAudioReview(true)
           }} icon="🎧" label="Audio Review" desc="Listen & repeat" />
         </DropdownMenu>
@@ -609,7 +626,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                       if (node.category === 'reading' && node.description) {
                         const refMatch = node.description.match(/Read\s+([\w]+)\.(\d+)/)
                         if (refMatch) {
-                          onOpenPassage?.(`${refMatch[1]}.${refMatch[2]}`, node.id)
+                          onOpenPassage?.(`${refMatch[1]}.${refMatch[2]}.1`, node.id)
                           return
                         }
                       }

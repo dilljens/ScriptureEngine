@@ -8,8 +8,12 @@ the correctness of the response data.
 Run: pytest tests/test_api.py -q
 """
 
+import asyncio
 import json
+from pathlib import Path
 import pytest
+
+from web.routes import chat as chat_routes
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -38,6 +42,8 @@ class TestServerRootRoutes:
     def test_health(self, client):
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
+        assert resp.headers["x-content-type-options"] == "nosniff"
+        assert resp.headers["x-frame-options"] == "DENY"
 
     def test_tools(self, client):
         resp = client.get("/api/v1/tools")
@@ -431,6 +437,10 @@ class TestStudyRoutes:
 class TestHebrewRoutes:
     """Hebrew learning endpoints."""
 
+    def test_hebrew_uses_isolated_database(self, client):
+        from web.routes import hebrew
+        assert hebrew.MEM_DB != Path(__file__).parent.parent / "data" / "memorize.db"
+
     def test_hebrew_lessons(self, client):
         resp = client.get("/api/v1/hebrew/lessons")
         assert resp.status_code == 200
@@ -470,17 +480,42 @@ class TestHebrewRoutes:
         assert resp.status_code == 200
 
     def test_hebrew_add_word(self, client):
-        resp = client.post("/api/v1/hebrew/add-word", json={"word": "שָׁלוֹם"})
-        assert _ok(resp.status_code)
+        resp = client.post("/api/v1/hebrew/add-word", params={"word": "שָׁלוֹם"})
+        assert resp.status_code == 200
 
     def test_hebrew_verb_drill(self, client):
         resp = client.get("/api/v1/hebrew/verb-drill")
         assert resp.status_code == 200
 
     def test_hebrew_fsrs_review(self, client):
-        resp = client.get("/api/v1/hebrew/fsrs/review", params={"node_id": "aleph"})
-        # MEM_DB may be locked or missing in test env — accept error states
-        assert _ok(resp.status_code) or resp.status_code in (404, 409, 422, 423, 500)
+        resp = client.post("/api/v1/hebrew/fsrs/review", json={"node_id": "aleph", "rating": 3})
+        assert resp.status_code == 200
+        assert resp.json()["data"]["scheduler"] == "adaptive-v1"
+
+    def test_hebrew_hard_review_is_persisted_success(self, client):
+        import sqlite3
+        from web.routes import hebrew
+
+        resp = client.post("/api/v1/hebrew/fsrs/review", json={
+            "node_id": "aleph", "rating": 2, "user_id": "hard-review-test",
+        })
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["correct"] == 1
+        conn = sqlite3.connect(hebrew.MEM_DB)
+        state = conn.execute("""
+            SELECT last_rating,reps,lapses,due FROM hebrew_review_state
+            WHERE user_id='hard-review-test' AND node_id='aleph'
+        """).fetchone()
+        conn.close()
+        assert state[:3] == (2, 1, 0)
+        assert state[3]
+
+    def test_hebrew_review_rejects_unknown_node(self, client):
+        resp = client.post("/api/v1/hebrew/fsrs/review", json={
+            "node_id": "does-not-exist", "rating": 3, "user_id": "invalid-node-audit",
+        })
+        assert resp.status_code == 400
 
     def test_hebrew_learning_speeds(self, client):
         resp = client.get("/api/v1/hebrew/learning-speeds")
@@ -509,9 +544,9 @@ class TestHebrewRoutes:
     def test_hebrew_diagnostic_apply(self, client):
         resp = client.post("/api/v1/hebrew/diagnostic/apply", json={
             "user_id": "test",
-            "results": {"aleph": {"correct": 1, "total": 1}}
+            "answers": []
         })
-        assert _ok(resp.status_code)
+        assert resp.status_code == 400
 
     def test_hebrew_remediate(self, client):
         resp = client.get("/api/v1/hebrew/remediate/aleph")
@@ -595,6 +630,87 @@ class TestConversationRoutes:
         resp = client.get("/api/v1/conversations/nonexistent")
         assert _ok(resp.status_code)
 
+    def test_conversations_are_scoped_to_owner(self, client):
+        resp = client.post("/api/v1/conversations", json={
+            "title": "Owner scope test",
+            "created_by": "owner_a",
+        })
+        assert resp.status_code in (200, 201)
+        session_id = resp.json()["data"]["id"]
+        try:
+            owned = client.get(
+                f"/api/v1/conversations/{session_id}",
+                params={"user_id": "owner_a"},
+            )
+            assert owned.status_code == 200
+
+            denied = client.get(
+                f"/api/v1/conversations/{session_id}",
+                params={"user_id": "owner_b"},
+            )
+            assert denied.status_code == 403
+
+            denied_write = client.post(
+                f"/api/v1/conversations/{session_id}/messages",
+                params={"user_id": "owner_b"},
+                json={"role": "user", "content": "must be denied"},
+            )
+            assert denied_write.status_code == 403
+
+            invalid_token = client.get(
+                f"/api/v1/conversations/{session_id}",
+                params={"user_id": "owner_a", "session_token": "not-valid"},
+            )
+            assert invalid_token.status_code == 401
+        finally:
+            client.delete(
+                f"/api/v1/conversations/{session_id}",
+                params={"user_id": "owner_a"},
+            )
+
+    def test_connection_promotion_cannot_cross_sessions(self, client):
+        owner_a = client.post(
+            "/api/v1/conversations",
+            json={"title": "Connection A", "created_by": "owner_a"},
+        ).json()["data"]["id"]
+        owner_b = client.post(
+            "/api/v1/conversations",
+            json={"title": "Connection B", "created_by": "owner_b"},
+        ).json()["data"]["id"]
+        try:
+            added = client.post(
+                f"/api/v1/conversations/{owner_a}/connections",
+                params={"user_id": "owner_a"},
+                json={
+                    "source_verse": "gen.1.1",
+                    "target_verse": "john.1.1",
+                    "relationship": "scope test",
+                },
+            )
+            assert added.status_code == 200
+            listed = client.get(
+                f"/api/v1/conversations/{owner_a}/connections",
+                params={"user_id": "owner_a"},
+            ).json()
+            connection_id = listed["data"]["connections"][0]["id"]
+
+            promoted = client.post(
+                f"/api/v1/conversations/{owner_b}/connections/{connection_id}/promote",
+                params={"user_id": "owner_b"},
+                json={},
+            )
+            assert promoted.status_code == 200
+            assert promoted.json()["ok"] is False
+
+            still_unpromoted = client.get(
+                f"/api/v1/conversations/{owner_a}/connections",
+                params={"user_id": "owner_a"},
+            ).json()["data"]["connections"]
+            assert next(c for c in still_unpromoted if c["id"] == connection_id)["promoted"] == 0
+        finally:
+            client.delete(f"/api/v1/conversations/{owner_a}", params={"user_id": "owner_a"})
+            client.delete(f"/api/v1/conversations/{owner_b}", params={"user_id": "owner_b"})
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # routes/chat.py
@@ -607,6 +723,87 @@ class TestChatRoutes:
     def test_chat_instructions(self, client):
         resp = client.get("/api/v1/chat/instructions")
         assert resp.status_code == 200
+
+    def test_origin_matching_rejects_prefix_attacks(self):
+        assert chat_routes._origin_allowed("https://scriptureengine.org")
+        assert chat_routes._origin_allowed("https://app.scriptureengine.org")
+        assert not chat_routes._origin_allowed("https://scriptureengine.org.evil.com")
+        assert not chat_routes._origin_allowed("https://evil.com/@scriptureengine.org")
+        assert not chat_routes._origin_allowed("not a url")
+
+    def test_stream_rejects_untrusted_origin(self, client, monkeypatch):
+        monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
+        resp = client.post(
+            "/api/v1/chat/stream",
+            headers={"Origin": "https://scriptureengine.org.evil.com"},
+            json={"messages": [{"role": "user", "content": "hello"}]},
+        )
+        assert resp.status_code == 200
+        assert "Chat is only available from scriptureengine.org" in resp.text
+
+    def test_done_event_supports_final_content_fallback(self):
+        event = chat_routes._sse_event({
+            "type": "done",
+            "final_content": "full answer",
+            "final_reasoning": "private reasoning",
+        })
+        assert '"final_content": "full answer"' in event
+        assert '"final_reasoning": "private reasoning"' in event
+
+    def test_stream_surfaces_upstream_non_2xx(self, monkeypatch):
+        class FakePostResponse:
+            def json(self):
+                return {"choices": [{"message": {"content": "no tools"}}], "model": "test"}
+
+        class FakeStreamResponse:
+            status_code = 429
+
+            async def aread(self):
+                return b'{"error":{"message":"upstream rate limit"}}'
+
+            async def aiter_lines(self):
+                if False:
+                    yield ""
+
+        class FakeStreamContext:
+            async def __aenter__(self):
+                return FakeStreamResponse()
+
+            async def __aexit__(self, *_args):
+                return False
+
+        class FakeClient:
+            async def post(self, *_args, **_kwargs):
+                return FakePostResponse()
+
+            def stream(self, *_args, **_kwargs):
+                return FakeStreamContext()
+
+        monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
+        monkeypatch.setattr(chat_routes, "_http_client", FakeClient())
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/chat/stream",
+            "headers": [(b"origin", b"https://scriptureengine.org")],
+            "query_string": b"",
+            "client": ("203.0.113.10", 443),
+            "scheme": "https",
+        }
+        request = chat_routes.Request(scope)
+        response = asyncio.run(chat_routes.llm_chat_stream(
+            chat_routes.ChatRequest(messages=[{"role": "user", "content": "hello"}]),
+            request,
+        ))
+        chunks = asyncio.run(_collect_stream(response.body_iterator))
+        payload = "".join(chunks)
+        assert '"type": "error"' in payload
+        assert "429" in payload
+        assert "upstream rate limit" in payload
+
+
+async def _collect_stream(iterator):
+    return [chunk.decode() if isinstance(chunk, bytes) else chunk async for chunk in iterator]
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -60,18 +60,18 @@ Exception: When a begadkefat letter is the first letter of a word and the previo
             "Dagesh = hard/plosive, No dagesh = soft/fricative",
             "After a vowel → soft pronunciation",
             "After a consonant → hard pronunciation",
-            "Most common: ב→ב (b→v), כ→כ (k→kh), פ→פ (p→f), ת→ת (t→th)",
+            "Most familiar classroom contrasts: בּ→ב (b→v), כּ→כ (k→kh), פּ→פ (p→f)",
         ],
         "worked_examples": [
-            {"question": "Why does ב in בְּרֵאשִׁית have a soft (v) sound?", "steps": [
-                "The letter is ב without dagesh",
-                "It follows an implied vowel (sheva)",
-                "Therefore it's spirantized → V sound",
-                "בְּרֵאשִׁית = b'reishit → v'reishit"
+            {"question": "Why does בּ in בְּרֵאשִׁית have a hard (b) sound?", "steps": [
+                "The Bet visibly contains a dagesh: בּ",
+                "A dotted Bet has the stop value /b/ in the classroom pronunciation used here",
+                "Therefore בְּרֵאשִׁית begins bə-, not və-",
+                "Always inspect the actual pointing rather than guessing from position"
             ]},
-            {"question": "Compare בָּרָא vs בְּרֵאשִׁית — why different Bet sounds?", "steps": [
+            {"question": "Compare בָּרָא and אֶבֶן — why different Bet sounds?", "steps": [
                 "בָּרָא: Bet has a dagesh → B sound (bara)",
-                "בְּרֵאשִׁית: Bet has no dagesh → V sound (v'reishit)",
+                "אֶבֶן: Bet has no dagesh → fricative V sound in this pronunciation",
                 "The difference is the dagesh presence/absence"
             ]},
         ],
@@ -80,7 +80,7 @@ Exception: When a begadkefat letter is the first letter of a word and the previo
             {"type": "multiple_choice", "q": "Which letter pair shows the most common begadkefat alternation?", "opts": ["ב/ב (b/v)", "ג/ג (g/gh)", "ד/ד (d/dh)", "ת/ת (t/th)"], "ans": "ב/ב (b/v)"},
             {"type": "true_false", "q": "Begadkefat affects all 22 Hebrew letters.", "opts": ["True", "False"], "ans": "False"},
             {"type": "true_false", "q": "After a vowel, a begadkefat letter loses its dagesh and becomes soft.", "opts": ["True", "False"], "ans": "True"},
-            {"type": "classification", "q": "Does the Bet in 'בְּרֵאשִׁית' have hard or soft pronunciation?", "opts": ["Hard (B)", "Soft (V)"], "ans": "Soft (V)"},
+            {"type": "classification", "q": "Does the Bet in 'בְּרֵאשִׁית' have hard or soft pronunciation?", "opts": ["Hard (B)", "Soft (V)"], "ans": "Hard (B)"},
             {"type": "classification", "q": "Does the Kaf in 'כָּתַב' have hard or soft pronunciation?", "opts": ["Hard (K)", "Soft (KH)"], "ans": "Hard (K)"},
             {"type": "contrast", "q": "Compare 'בָּיִת' (house) vs 'בְתוּלָה' (virgin) — contrast the Bet sounds", "opts": ["Both hard", "Both soft", "First hard, second soft", "First soft, second hard"], "ans": "First hard, second soft"},
             {"type": "recall", "q": "What are the six begadkefat letters in order?", "ans": "בגדכפת"},
@@ -204,7 +204,7 @@ The verb היה (to be) exists but is used mainly for PAST and FUTURE tense. Pre
 
 Patterns:
 • Masculine singular: טוֹב (good) — no special ending
-• Feminine singular: טוֹבָה (good) — הָה ending
+• Feminine singular: טוֹבָה (good) — ־ָה ending
 • Masculine plural: טוֹבִים (good) — ים ending
 • Feminine plural: טוֹבוֹת (good) — ות ending
 
@@ -285,7 +285,7 @@ For PLURAL nouns, the suffix attaches after the plural ending:
             {"question": "Parse 'סוּסֵינוּ'", "steps": [
                 "סוּס = horse",
                 "ֵינוּ = our",
-                "סוּסֵינוּ = our horse (with connective vowel)"
+                "סוּסֵינוּ = our horses (plural stem + 1cp suffix)"
             ]},
         ],
         "practice": [
@@ -430,13 +430,13 @@ The infinitive construct can also take:
 • An OBJECT (with את): "in keeping the law" = בִּשְׁמֹר אֶת־הַתּוֹרָה
 • SUFFIXES (possessive): "in his coming" = בְּבוֹאוֹ
 
-This form is EXTREMELY common — about 50% of all verb uses in narrative are infinitive construct.""",
+This form is common and important for reading narrative, legal, and instructional texts.""",
         "key_points": [
             "A verbal noun — like English 'to write' or 'writing'",
             "Often used with prepositions: ל (to), ב (in/when), כ (as/when)",
             "Qal pattern: קְטֹל",
             "Can take subjects, objects, and possessive suffixes",
-            "~50% of all verb uses in narrative",
+            "Common in temporal clauses and expressions of purpose",
             "Critical for reading fluency",
         ],
         "worked_examples": [
@@ -479,7 +479,7 @@ Qal infinitive absolute pattern: קָטוֹל or קָטֹל
 • שָׁמוֹר תִּשְׁמְרוּן = "You shall surely keep"
 
 It can also function as:
-• An IMPERATIVE: זָכוֹר = "Remember!" (Deut 5:12 — the Exodus command)
+• An IMPERATIVE-like use: זָכוֹר = "Remember!" (Exod 20:8; Deut 5:12 instead has שָׁמוֹר, "Observe")
 • A GERUND: "keeping the law" (rare)
 • A CONTINUOUS action: הָלוֹךְ וְנָסוֹעַ = "traveling and journeying"
 
@@ -534,7 +534,7 @@ The infinitive absolute is a hallmark of Biblical Hebrew style and appears frequ
 3. COHORTATIVE — self-encouragement / "let me / let us" (1st person)
    • אֶקְטְלָה = "Let me kill" / "I will kill"
    • נִקְטְלָה = "Let us kill"
-   • Marked by the הָה suffix on the imperfect
+   • Often marked by a final ־ָה on the imperfect
 
 The negative of commands uses:
 • לֹא + imperfect = "You shall not" (strong prohibition, Decalogue)
@@ -542,7 +542,7 @@ The negative of commands uses:
         "key_points": [
             "Imperative = direct command (2nd person only)",
             "Jussive = let/may (3rd person, often subtle distinction from imperfect)",
-            "Cohortative = let me/us (1st person, marked by הָה ending)",
+            "Cohortative = let me/us (1st person, often marked by final ־ָה)",
             "Negative commands: לֹא (strong) vs אַל (soft)",
             "Vowel shortening can distinguish jussive from imperfect",
         ],
@@ -561,7 +561,7 @@ The negative of commands uses:
         ],
         "practice": [
             {"type": "multiple_choice", "q": "What person does the imperative appear in?", "opts": ["1st person", "2nd person only", "3rd person", "All persons"], "ans": "2nd person only"},
-            {"type": "classification", "q": "The cohortative ending הָה indicates:", "opts": ["Past tense", "Self-exhortation (let me/us)", "Question", "Negation"], "ans": "Self-exhortation (let me/us)"},
+            {"type": "classification", "q": "A final ־ָה on a first-person yiqtol form can indicate:", "opts": ["Past tense", "Self-exhortation (let me/us)", "Question", "Negation"], "ans": "Self-exhortation (let me/us)"},
             {"type": "multiple_choice", "q": "What is the negative particle for a softer prohibition ('do not')?", "opts": ["לֹא", "אַל", "הֲ", "כִּי"], "ans": "אַל"},
             {"type": "recall", "q": "What suffix marks the cohortative in 1st person?", "ans": "ָה (cohortative he)"},
         ],
@@ -626,22 +626,22 @@ The verb tenses in conditionals:
     },
     {
         "id": "numeral_agreement",
-        "title": "Numeral Agreement (Gender Reversal)",
+        "title": "Numerals 3–10 (Gender Polarity)",
         "category": "grammar",
         "level": 6,
-        "description": "Numbers 3-10 show GENDER REVERSAL with the noun they modify",
+        "description": "Recognizing the masculine and feminine forms of cardinal numbers 3–10",
         "prerequisites": ["noun_gender", "noun_number"],
-        "explanation": """Biblical Hebrew has a unique feature: numbers 3 through 10 show GENDER REVERSAL with the noun they modify.
+        "explanation": """Biblical Hebrew cardinal numbers 3 through 10 have distinct forms traditionally labeled by the gender of the nouns they govern.
 
 The rule:
-• A MASCULINE number modifies a FEMININE noun
-• A FEMININE number modifies a MASCULINE noun
+• The masculine form שְׁלֹשָׁה is used with masculine nouns: שְׁלֹשָׁה בָנִים
+• The feminine form שָׁלֹשׁ is used with feminine nouns: שָׁלֹשׁ בָּנוֹת
 
-This is the OPPOSITE of what you might expect!
+This is often called gender polarity because the forms' endings can look opposite to familiar adjective endings. Do not relabel the numeral itself as the opposite gender.
 
 Examples:
-• 3 MASCULINE: שְׁלֹשָׁה בָנִים = THREE SONS (masculine noun → feminine number form)
-• 3 FEMININE: שָׁלֹשׁ בָּנוֹת = THREE DAUGHTERS (feminine noun → masculine number form)
+• Masculine: שְׁלֹשָׁה בָנִים = THREE SONS
+• Feminine: שָׁלֹשׁ בָּנוֹת = THREE DAUGHTERS
 
 Number forms:
 | Number | Masculine Form | Feminine Form |
@@ -657,28 +657,28 @@ Number forms:
 
 Exception: Numbers 1-2 behave normally (agree in gender). Numbers 11+ also follow a different pattern.""",
         "key_points": [
-            "Numbers 3-10 show gender REVERSAL with the noun",
-            "Masculine noun → feminine number (e.g., שְׁלֹשָׁה בָנִים)",
-            "Feminine noun → masculine number (e.g., שָׁלֹשׁ בָּנוֹת)",
+            "Numbers 3-10 have distinct masculine and feminine forms",
+            "Masculine noun → masculine numeral form (e.g., שְׁלֹשָׁה בָנִים)",
+            "Feminine noun → feminine numeral form (e.g., שָׁלֹשׁ בָּנוֹת)",
             "Numbers 1-2 agree normally (no reversal)",
             "This is one of the most distinctive features of Hebrew grammar",
         ],
         "worked_examples": [
             {"question": "Why is 3 sons = שְׁלֹשָׁה בָנִים (not שָׁלֹשׁ)?", "steps": [
                 "בָנִים = sons (MASCULINE plural)",
-                "Number must show 'reversed' gender",
-                "Masculine noun → use feminine number form",
-                "שְׁלֹשָׁה is the feminine form of 3"
+                "The numeral must use the form governing a masculine noun",
+                "Masculine noun → use the masculine numeral form",
+                "שְׁלֹשָׁה is the masculine form of 3"
             ]},
             {"question": "Why is 3 daughters = שָׁלֹשׁ בָּנוֹת (not שְׁלֹשָׁה)?", "steps": [
                 "בָּנוֹת = daughters (FEMININE plural)",
-                "Feminine noun → use masculine number form",
-                "שָׁלֹשׁ is the masculine form of 3"
+                "Feminine noun → use the feminine numeral form",
+                "שָׁלֹשׁ is the feminine form of 3"
             ]},
         ],
         "practice": [
-            {"type": "multiple_choice", "q": "What happens to numbers 3-10 in Hebrew?", "opts": ["They stay the same", "They reverse gender with the noun", "They become plural", "They drop the final letter"], "ans": "They reverse gender with the noun"},
-            {"type": "classification", "q": "For 'שְׁלֹשָׁה בָנִים', is the number masculine or feminine?", "opts": ["Masculine (matching 'sons')", "Feminine (opposite of 'sons')"], "ans": "Feminine (opposite of 'sons')"},
+            {"type": "multiple_choice", "q": "What must you learn about cardinal numbers 3-10?", "opts": ["One form works for every noun", "They have distinct masculine and feminine forms", "They become plural", "They drop the final letter"], "ans": "They have distinct masculine and feminine forms"},
+            {"type": "classification", "q": "For 'שְׁלֹשָׁה בָנִים', is the numeral form masculine or feminine?", "opts": ["Masculine (used with 'sons')", "Feminine (opposite of 'sons')"], "ans": "Masculine (used with 'sons')"},
             {"type": "recall", "q": "What is the feminine form of 3 (שלושה)?", "ans": "שָׁלֹשׁ"},
         ],
     },
@@ -845,8 +845,8 @@ Key: English drops the resumptive pronoun ('the man THAT I spoke to ___'), but H
 ]
 
 
-def main():
-    conn = sqlite3.connect(str(MEM_DB))
+def main(db_path=MEM_DB):
+    conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys=OFF")
 
     # Ensure tables
@@ -868,6 +868,8 @@ def main():
             target_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
             edge_type TEXT DEFAULT 'prerequisite');
     """)
+    conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_hebrew_practice_unique
+                    ON hebrew_practice_items(node_id,question_type,question_text,correct_answer)""")
 
     new_nodes = 0
     new_items = 0
@@ -876,16 +878,14 @@ def main():
     for lesson in GRAMMAR_LESSONS:
         lid = lesson["id"]
 
-        # Skip if practice items already exist for this node
-        existing = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
-        if existing:
-            print(f"  SKIP {lid}: practice items already exist")
-            continue
-
-        # Create node
+        # Upsert curated lessons so factual corrections reach existing databases.
         conn.execute(
             "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, ?, ?)",
             (lid, lesson["title"], lesson["level"], lesson["category"], lesson["description"])
+        )
+        conn.execute(
+            "UPDATE hebrew_nodes SET title=?, level=?, category=?, description=? WHERE id=?",
+            (lesson["title"], lesson["level"], lesson["category"], lesson["description"], lid)
         )
         new_nodes += 1
 
@@ -901,11 +901,14 @@ def main():
             "worked_examples": lesson["worked_examples"],
         }
         conn.execute(
-            "INSERT OR IGNORE INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)",
+            """INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)
+               ON CONFLICT(node_id) DO UPDATE SET content_json=excluded.content_json,
+               version=hebrew_lessons.version+1, updated_at=datetime('now')
+               WHERE hebrew_lessons.content_json<>excluded.content_json""",
             (lid, json.dumps(content, ensure_ascii=False))
         )
 
-        # Create practice items
+        # Preserve stable practice IDs; the unique index makes this idempotent.
         for item in lesson["practice"]:
             opts = json.dumps(item.get("opts", []), ensure_ascii=False) if item.get("opts") else ""
             conn.execute(
@@ -930,7 +933,7 @@ def main():
                     )
                     new_edges += 1
 
-        print(f"  CREATED {lid}: {lesson['title']} (L{lesson['level']}, {len(lesson['practice'])} items)")
+        print(f"  UPSERTED {lid}: {lesson['title']} (L{lesson['level']}, {len(lesson['practice'])} items)")
 
     conn.commit()
     conn.close()
@@ -938,7 +941,7 @@ def main():
     print(f"\n✓ Done! Created {new_nodes} new grammar lessons, {new_items} practice items, {new_edges} prerequisite edges")
 
     # Summary
-    conn2 = sqlite3.connect(str(MEM_DB))
+    conn2 = sqlite3.connect(str(db_path))
     total = conn2.execute("SELECT COUNT(*) FROM hebrew_nodes WHERE category='grammar'").fetchone()[0]
     items_total = conn2.execute("SELECT COUNT(*) FROM hebrew_practice_items").fetchone()[0]
     print(f"  Total grammar nodes: {total}")
@@ -947,4 +950,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", type=Path, default=MEM_DB)
+    args = parser.parse_args()
+    main(args.db)

@@ -104,6 +104,22 @@ function renderTextWithRefs(text, onNavigate) {
   })
 }
 
+function normalizePracticeAnswer(value) {
+  const text = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+  return /[\u0590-\u05ff]/.test(text)
+    ? text.replace(/[\u0591-\u05af]/g, '').replace(/\//g, '')
+    : text
+}
+
+export function gradePracticeAnswer(answer, expected) {
+  const actual = normalizePracticeAnswer(answer)
+  if (!actual) return false
+  return String(expected ?? '')
+    .split(/\s+(?:or|\/)\s+/i)
+    .map(normalizePracticeAnswer)
+    .some(candidate => candidate === actual)
+}
+
 /**
  * HebrewLessonView — Math Academy-style: compact intro → verse attestations → flashcard practice.
  *
@@ -119,11 +135,13 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [audioPlaying, setAudioPlaying] = useState(null)
+  const [practiceAnswers, setPracticeAnswers] = useState({})
   const audioRef = useRef(null)
 
   // Load lesson data
   useEffect(() => {
     setLoading(true)
+    setPracticeAnswers({})
     Promise.all([
       fetch(`/api/v1/hebrew/lesson/${nodeId}`).then(r => r.json()),
       fetch(`/api/v1/hebrew/practice/${nodeId}`).then(r => r.json()),
@@ -160,9 +178,20 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
     })
   }, [nodeId, node])
 
-  // Flashcard rating → progress API
+  const handlePracticeAnswer = useCallback((card, answer) => {
+    setPracticeAnswers(previous => ({
+      ...previous,
+      [card.id]: {
+        submitted: true,
+        answer,
+        correct: gradePracticeAnswer(answer, card.data?.correct),
+      },
+    }))
+  }, [])
+
+  // Confidence follows objective grading; it does not determine correctness.
   const handleFlashcardRate = useCallback(async (card, rating) => {
-    const correct = rating >= 3
+    const correct = practiceAnswers[card.id]?.correct === true
     try {
       await fetch('/api/v1/hebrew/progress', {
         method: 'POST',
@@ -170,7 +199,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         body: JSON.stringify({ node_id: card.data?.node_id || nodeId, correct, user_id: 'default' }),
       })
     } catch {}
-  }, [nodeId])
+  }, [nodeId, practiceAnswers])
 
   const playAudio = useCallback(async (word) => {
     if (!word) return
@@ -346,6 +375,8 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         <div className="mb-6">
           <CardQueue
             cards={cards}
+            onAnswer={handlePracticeAnswer}
+            answerState={practiceAnswers}
             onRate={handleFlashcardRate}
             onComplete={() => {}}
             title={node?.title || 'Practice'}

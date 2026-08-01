@@ -43,6 +43,11 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   const [missedItems, setMissedItems] = useState([])
   const timerRef = useRef(null)
   const startRef = useRef(null)
+  const answersRef = useRef(answers)
+  const submittedRef = useRef(submitted)
+
+  useEffect(() => { answersRef.current = answers }, [answers])
+  useEffect(() => { submittedRef.current = submitted }, [submitted])
 
   useEffect(() => {
     fetch(`/api/v1/hebrew/quiz?count=${count}`)
@@ -61,30 +66,10 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
 
   const current = questions[idx]
 
-  // Per-question timer
-  useEffect(() => {
-    if (!current || done) return
-    const limit = getTimeLimit(current)
-    setTimeLeft(limit)
-    if (timerRef.current) clearInterval(timerRef.current)
-    const start = Date.now()
-    timerRef.current = setInterval(() => {
-      const elapsed = (Date.now() - start) / 1000
-      const remaining = Math.max(0, limit - elapsed)
-      setTimeLeft(remaining)
-      if (remaining <= 0) {
-        clearInterval(timerRef.current)
-        setSubmitted(prev => ({ ...prev, [idx]: false }))
-      }
-    }, 200)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, done, current])
-
-  const submitAnswer = useCallback(() => {
-    if (submitted[idx] !== undefined) return
-    const ans = answers[idx]
-    const correct = ans !== undefined && ans !== null && ans !== ''
+  const submitAnswer = useCallback((timedOut = false) => {
+    if (submittedRef.current[idx] !== undefined) return
+    const ans = answersRef.current[idx]
+    const correct = !timedOut && ans !== undefined && ans !== null && ans !== ''
       && (ans === current.correct || ans.toLowerCase().trim() === current.correct.toLowerCase().trim())
     setSubmitted(prev => ({ ...prev, [idx]: correct }))
     setResults(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
@@ -99,7 +84,26 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         body: JSON.stringify({ node_id: current.node_id, correct, user_id: 'default' }),
       })
     } catch {}
-  }, [idx, answers, submitted, current])
+  }, [idx, current])
+
+  // Per-question timer. A timeout is an assessed retrieval attempt, not just a UI state.
+  useEffect(() => {
+    if (!current || done || submitted[idx] !== undefined) return
+    const limit = getTimeLimit(current)
+    setTimeLeft(limit)
+    if (timerRef.current) clearInterval(timerRef.current)
+    const start = Date.now()
+    timerRef.current = setInterval(() => {
+      const elapsed = (Date.now() - start) / 1000
+      const remaining = Math.max(0, limit - elapsed)
+      setTimeLeft(remaining)
+      if (remaining <= 0) {
+        clearInterval(timerRef.current)
+        submitAnswer(true)
+      }
+    }, 200)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [idx, done, current, submitted, submitAnswer])
 
   const nextQuestion = () => {
     if (idx < questions.length - 1) {
@@ -107,7 +111,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       setTimeLeft(null)
     } else {
       setDone(true)
-      onComplete?.({ correct: results.correct + (submitted[idx] ? 0 : 1), total: results.total + 1 })
+      onComplete?.(results)
     }
   }
 
@@ -316,7 +320,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       {/* Hebrew keyboard */}
       {showKeyboard && ['transliteration', 'cloze'].includes(current.type) && (
         <div className="mt-4">
-          <HebrewKeyboard onChar={(c) => setAnswer((answers[idx] || '') + c)} />
+          <HebrewKeyboard onCharClick={(c) => setAnswer((answers[idx] || '') + c)} />
           <button onClick={() => setShowKeyboard(false)}
             className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
             Hide keyboard

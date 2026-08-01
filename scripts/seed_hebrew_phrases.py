@@ -199,8 +199,8 @@ Also: יוֹם יְהוָה = "The Day of YHWH" — a key prophetic concept of d
 ]
 
 
-def main():
-    conn = sqlite3.connect(str(MEM_DB))
+def main(db_path=MEM_DB):
+    conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys=OFF")
 
     new_nodes = 0
@@ -264,4 +264,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--db", type=Path, default=MEM_DB)
+    args = parser.parse_args()
+    main(args.db)

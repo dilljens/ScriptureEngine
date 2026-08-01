@@ -36,9 +36,10 @@ def find_verse_for_word(word, conn):
 def main():
     parser = argparse.ArgumentParser(description="Enhance vocabulary lessons with verse examples")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without saving")
+    parser.add_argument("--db", type=Path, default=MEM_DB)
     args = parser.parse_args()
 
-    mem = sqlite3.connect(str(MEM_DB))
+    mem = sqlite3.connect(str(args.db))
     scrip = sqlite3.connect(str(SCRIPTURE_DB))
 
     # Get all vocabulary lesson nodes

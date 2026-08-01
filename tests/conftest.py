@@ -4,6 +4,7 @@ Uses a minimal test database when available, falls back to production DB.
 Set SCRIPTURE_DB_PATH env var to override, or create data/test/test.db.
 """
 import os
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -34,6 +35,21 @@ from web.server import app
 
 
 @pytest.fixture(scope="session")
+def memorize_db_template(tmp_path_factory):
+    """Stable SQLite snapshot used as the source for isolated Hebrew tests."""
+    source = ROOT / "data" / "memorize.db"
+    if not source.exists():
+        pytest.skip(f"Hebrew database not found: {source}")
+    template = tmp_path_factory.mktemp("hebrew-template") / "memorize.db"
+    source_conn = sqlite3.connect(source)
+    template_conn = sqlite3.connect(template)
+    source_conn.backup(template_conn)
+    template_conn.close()
+    source_conn.close()
+    return template
+
+
+@pytest.fixture(scope="session")
 def prod_db():
     """Read-only connection to test/production database."""
     if not DB_PATH.exists():
@@ -45,8 +61,18 @@ def prod_db():
 
 
 @pytest.fixture
-def client():
+def client(request, monkeypatch, tmp_path, memorize_db_template):
     """FastAPI TestClient for in-process endpoint testing."""
+    touches_hebrew = (
+        "hebrew" in request.node.nodeid.casefold()
+        or (request.cls and "hebrew" in request.cls.__name__.casefold())
+    )
+    if touches_hebrew:
+        isolated = tmp_path / "memorize.db"
+        shutil.copy2(memorize_db_template, isolated)
+        import web.routes.hebrew as hebrew_routes
+        monkeypatch.setattr(hebrew_routes, "MEM_DB", isolated)
+        monkeypatch.setattr(hebrew_routes, "_HEBREW_GRAPH_CACHE", None)
     with TestClient(app) as c:
         yield c
 

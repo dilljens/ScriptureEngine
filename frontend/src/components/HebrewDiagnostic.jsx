@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 
 /**
  * HebrewDiagnostic — pre-assessment before entering the Hebrew curriculum.
- * Shows questions from all categories. Scores ≥100% per category → skip.
- * Scores 60-80% → partial credit. <60% → full curriculum.
+ * Shows questions from all categories and applies placement credit only to
+ * the specific skills the learner demonstrates.
  */
 
 export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
@@ -13,6 +13,8 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [phase, setPhase] = useState('intro') // intro | quiz | results
+  const [diagnosticResults, setDiagnosticResults] = useState(null)
+  const [batchId, setBatchId] = useState(null)
 
   useEffect(() => {
     fetch(`/api/v1/hebrew/diagnostic?user_id=${user_id}`)
@@ -21,6 +23,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
         if (d.ok) {
           setQuestions(d.data?.questions || [])
           setCategories(d.data?.categories || [])
+          setBatchId(d.data?.batch_id || null)
         } else setError(d.detail || 'Failed to load')
       })
       .catch(e => setError(e.message))
@@ -35,40 +38,28 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
     })
   })
 
-  const handleSubmitAll = () => {
-    setPhase('results')
-  }
-
-  const handleApply = async () => {
-    // Compute per-category results by matching node_id → category
-    const catResults = {}
-
-    questions.forEach((q, i) => {
-      const ans = answers[i]
-      const cat = nodeToCategory[q.node_id] || 'word'
-      if (!catResults[cat]) catResults[cat] = { correct: 0, total: 0, node_ids: [] }
-      catResults[cat].total += 1
-      // Determine if answer was correct
-      if (ans === q.correct_answer || ans === q.options?.indexOf?.(q.correct_answer)) {
-        catResults[cat].correct += 1
-      }
-      if (q.node_id && !catResults[cat].node_ids.includes(q.node_id)) {
-        catResults[cat].node_ids.push(q.node_id)
-      }
-    })
-
-    // Submit to API
+  const handleSubmitAll = async () => {
     try {
-      await fetch('/api/v1/hebrew/diagnostic/apply', {
+      const response = await fetch('/api/v1/hebrew/diagnostic/apply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id, results: catResults }),
+        body: JSON.stringify({
+          user_id,
+          batch_id: batchId,
+          answers: questions.map((question, index) => ({
+            question_id: question.question_id,
+            node_id: question.node_id,
+            answer: answers[index],
+          })),
+        }),
       })
+      const data = await response.json()
+      if (!data.ok) throw new Error(data.detail || 'Failed to grade diagnostic')
+      setDiagnosticResults(data.data)
+      setPhase('results')
     } catch (e) {
-      if (import.meta.env.DEV) { console.error('Failed to apply diagnostic:', e) }
+      setError(e.message)
     }
-
-    onComplete()
   }
 
   if (loading) return (
@@ -91,7 +82,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
       <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Hebrew Knowledge Check</h2>
       <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
         Let's see what you already know. Answer {questions.length} quick questions across all topics.
-        Categories where you score 100% will be skipped — you'll start right where you need to learn.
+        Placement credit is limited to the exact skills you demonstrate, so untested material stays available.
       </p>
       <button onClick={() => setPhase('quiz')}
         className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium cursor-pointer transition-colors">
@@ -105,20 +96,9 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
   )
 
   if (phase === 'results') {
-    // Compute per-category results for display
-    const catResults = {}
-    questions.forEach((q, i) => {
-      const ans = answers[i]
-      const cat = nodeToCategory[q.node_id] || 'word'
-      if (!catResults[cat]) catResults[cat] = { correct: 0, total: 0 }
-      catResults[cat].total += 1
-      if (ans === q.correct_answer || ans === q.options?.indexOf?.(q.correct_answer)) {
-        catResults[cat].correct += 1
-      }
-    })
-
-    const totalCorrect = Object.values(catResults).reduce((s, c) => s + c.correct, 0)
-    const total = questions.length
+    const catResults = diagnosticResults?.results || {}
+    const totalCorrect = diagnosticResults?.correct || 0
+    const total = diagnosticResults?.total || questions.length
 
     return (
       <div className="max-w-2xl mx-auto px-6 py-8">
@@ -146,13 +126,13 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
                 'text-neutral-500 dark:text-neutral-400'
               }`}>
                 {stats.correct}/{stats.total}
-                {stats.correct === stats.total ? ' ✅ Skipped' : stats.correct >= stats.total * 0.6 ? ' ⚡ Partial' : ' 📚 Full'}
+                {stats.correct === stats.total ? ' ✅ Demonstrated' : stats.correct > 0 ? ' ⚡ Developing' : ' 📚 Review'}
               </span>
             </div>
           ))}
         </div>
 
-        <button onClick={handleApply}
+        <button onClick={onComplete}
           className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium cursor-pointer transition-colors">
           Start Learning
         </button>

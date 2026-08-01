@@ -154,8 +154,8 @@ def _explanation(nid, title, category):
             "at the end of words."
         ),
         "samekh": (
-            "Samekh (ס) makes an 's' sound. It looks like a circle with "
-            "a dot in the center."
+            "Samekh (ס) makes an 's' sound. Its rounded, enclosed shape can "
+            "help distinguish it from Mem (מ); Samekh has no dot."
         ),
         "ayin": (
             "Ayin (ע) is a guttural — a voiced pharyngeal fricative. "
@@ -213,9 +213,10 @@ def _explanation(nid, title, category):
         ),
         "vowel_qamats_qatan": (
             "Qamats Qatan (ָ) looks identical to Qamats but makes an "
-            "'o' sound instead of 'a'. It occurs in closed, unaccented "
-            "syllables. Rule: if the syllable is closed and not stressed, "
-            "it's probably Qamats Qatan. Example: חָכְמָה (ḥoḵmāh = wisdom)."
+            "'o' sound instead of 'a'. It often occurs in closed, unaccented "
+            "syllables, but identification depends on the word, stress, and "
+            "textual tradition rather than appearance alone. Example: "
+            "חָכְמָה (ḥoḵmāh = wisdom)."
         ),
         "vowel_hiriq": (
             "Hiriq (ִ) is a short 'i' sound, like 'i' in 'machine'. "
@@ -268,16 +269,15 @@ def _explanation(nid, title, category):
             "'sheva nah')."
         ),
         "vowel_sheva_na": (
-            "Sheva Na (vocal sheva) is pronounced as a brief 'e' "
-            "sound, like the 'a' in 'about'. It occurs: "
-            "1) At the beginning of a syllable, "
-            "2) Under a letter with dagesh forte, "
-            "3) After a long vowel."
+            "Sheva Na (vocal sheva) represents a reduced vowel in the "
+            "Tiberian reading tradition. It begins a syllable and is often "
+            "represented as a brief 'e' in classroom pronunciation. Learn it "
+            "from syllable structure and attested forms rather than one shortcut rule."
         ),
         "vowel_sheva_nah": (
             "Sheva Nah (silent sheva) closes a syllable without "
-            "being pronounced. It occurs in the middle or at the "
-            "end of a word. It marks the end of a closed syllable."
+            "being pronounced. It can occur within a word and marks the end "
+            "of a closed syllable; position alone does not always distinguish it."
         ),
         "vowel_hataf_patah": (
             "Hataf Patah (ֲ) is a reduced 'a' vowel — a Patah with "
@@ -303,12 +303,12 @@ def _explanation(nid, title, category):
         ),
         "syllable_open": (
             "An open syllable (CV) ends with a vowel. "
-            "It is always long (or has a vocal sheva). "
+            "Its vowel quality and historical length depend on stress and form. "
             "Example: בָּ (bā) — Bet with Qamats."
         ),
         "syllable_closed": (
             "A closed syllable (CVC) ends with a consonant. "
-            "It is usually short. The final consonant closes it. "
+            "The final consonant closes it; do not infer vowel length from this alone. "
             "Example: בַּת (bat) — Bet-Patah-Tav."
         ),
         "syllable_stress": (
@@ -324,7 +324,7 @@ def _explanation(nid, title, category):
             "2) Silent sheva = end of syllable "
             "3) Vocal sheva = start of a new syllable "
             "4) Dagesh forte doubles the consonant, splitting syllables. "
-            "Example: בְּרֵאשִׁית = בְּ·רֵ·א·שִׁית (4 syllables)."
+            "Example: בְּרֵאשִׁית = בְּ·רֵא·שִׁית (3 syllables); the Aleph is quiescent."
         ),
 
         # Level 4: Roots & Words
@@ -336,33 +336,33 @@ def _explanation(nid, title, category):
             "כָּתַב (he wrote), כְּתָב (writing), מִכְתָּב (letter)."
         ),
         "root_extraction": (
-            "To extract the root from a word: "
-            "1) Remove prefixes (ב, כ, ל, מ, ה, ו, ש) "
-            "2) Remove suffixes (י, ךָ, ו, נוּ, ת, ם, ה) "
-            "3) Remove vowel pattern letters "
-            "4) The remaining 3 consonants are the root. "
-            "Example: מִכְתָּב = מ + כ-ת-ב = root כתב."
+            "To propose a root, first segment known prefixes and suffixes, then "
+            "compare the remaining consonants with related forms and a lexicon. "
+            "Do not strip letters mechanically: letters such as מ, ה, ו, י, נ, "
+            "and ת can be either affixes or root consonants, and weak roots may "
+            "change on the surface. Example: מִכְתָּב contains the noun-pattern "
+            "prefix מִ־ and is confirmed under root כתב."
         ),
         "noun_pattern_qatl": (
-            "Qatl (קַטְל) is a noun pattern: C1-a-C2-e-C3. "
-            "Example: מֶלֶךְ (melekh = king), root מ-ל-כ. "
-            "This is one of the most common noun patterns."
+            "Qatl is a historical consonant-vowel pattern, not a literal recipe "
+            "for the vowels seen in every surface form. מֶלֶךְ (king), root מלך, "
+            "is a segolate noun often explained from an earlier qatl-type form."
         ),
         "noun_pattern_qitl": (
-            "Qitl (קִטְל) is: C1-i-C2-e-C3. "
-            "Example: סֵפֶר (sefer = book), root ס-פ-ר. "
-            "Often indicates concrete objects."
+            "Qitl is a historical noun pattern. סֵפֶר (book), root ספר, is a "
+            "segolate surface form often related to a qitl-type pattern. A pattern "
+            "can help recognition, but it does not by itself determine meaning."
         ),
         "noun_pattern_qutl": (
-            "Qutl (קֻטְל) is: C1-u-C2-e-C3. "
-            "Example: קֹדֶשׁ (qodesh = holiness), root ק-ד-שׁ. "
-            "Often indicates abstract concepts."
+            "Qutl is a historical noun pattern. קֹדֶשׁ (holiness/sacredness), "
+            "root קדש, is a segolate surface form often related to a qutl-type "
+            "pattern. Confirm a word's sense from its context and lexicon entry."
         ),
         "prefix_bet": (
             "The prefix Bet (בְּ) means 'in', 'with', or 'by'. "
             "It takes Sheva: בְּ (bǝ). Before a word with vocal "
-            "sheva, it becomes בִּ (bi). Before a lamed, it "
-            "assimilates: בַּ (ba) before the definite article."
+            "sheva, it commonly becomes בִּ (bi). When it combines with the "
+            "definite article, the article's ה drops and the form is usually בַּ־ (ba-)."
         ),
         "prefix_kaf": (
             "The prefix Kaf (כְּ) means 'as' or 'like'. "
@@ -415,8 +415,9 @@ def _explanation(nid, title, category):
             "Example: דָּבָר → דְּבָרְךָ (your word)."
         ),
         "suffix_pron_3ms": (
-            "Third person masculine singular suffix is וֹ (-o) or ־ָיו (-av) = 'his'. "
-            "Example: דָּבָר → דְּבָרוֹ (his word)."
+            "On a singular noun, the third person masculine singular suffix is "
+            "וֹ (-o): דָּבָר → דְּבָרוֹ (his word). On a masculine plural noun, "
+            "the corresponding form is typically ־ָיו (-av): דְּבָרָיו (his words)."
         ),
         "suffix_pron_1p": (
             "First person plural suffix is ־נוּ (-nu) = 'our'. "
@@ -426,21 +427,22 @@ def _explanation(nid, title, category):
         # Level 5: Verbs (Binyanim)
         "binyan_intro": (
             "Hebrew verbs are organized into seven BINYANIM (patterns). "
-            "Each binyan adds a nuance to the basic root meaning: "
-            "Qal (simple active) → Niphal (passive) → Piel (intensive) "
-            "→ Pual (intensive passive) → Hiphil (causative) → "
-            "Hophal (causative passive) → Hithpael (reflexive). "
-            "All seven follow predictable conjugation patterns."
+            "The common labels—Qal, Niphal, Piel, Pual, Hiphil, Hophal, and "
+            "Hithpael—describe morphological patterns. Passive, reflexive, "
+            "resultative, factitive, and causative are useful prototypes, not "
+            "fixed meanings; each verb's attested lexical usage controls."
         ),
         "qal_perfect": (
-            "Qal Perfect is the simplest verb form. It describes COMPLETED "
-            "action (past tense in English). The pattern uses suffixes: "
+            "Qal qatal (often called the perfect) uses suffixes and commonly "
+            "presents an event as complete; context, genre, and clause type "
+            "determine its time reference. In narrative it is often translated as past: "
             "3ms: כָּתַב (he wrote), 3fs: כָּתְבָה (she wrote), "
             "2ms: כָּתַבְתָּ (you wrote), 1cs: כָּתַבְתִּי (I wrote). "
             "The perfect is the basic form listed in lexicons."
         ),
         "qal_imperfect": (
-            "Qal Imperfect describes INCOMPLETE or FUTURE action. "
+            "Qal yiqtol (often called the imperfect) uses prefixes and can express "
+            "incomplete, habitual, modal, or future action depending on context. "
             "It uses PREFIXES (א, ת, י, נ) rather than suffixes: "
             "3ms: יִכְתֹּב (he will write), 3fs: תִּכְתֹּב (she will write), "
             "1cs: אֶכְתֹּב (I will write), 1cp: נִכְתֹּב (we will write)."
@@ -453,8 +455,8 @@ def _explanation(nid, title, category):
         ),
         "qal_infinitive": (
             "The Qal Infinitive Construct is the 'to' form: "
-            "לִכְתֹּב (to write). Always preceded by Lamed prefix. "
-            "Used with prepositions for temporal clauses: "
+            "לִכְתֹּב (to write) when preceded by ל. It can occur without ל or "
+            "with other prepositions in temporal and related clauses: "
             "בִּכְתֹב (when writing), כִּכְתֹב (as/when writing)."
         ),
         "qal_participle": (
@@ -527,8 +529,8 @@ def _explanation(nid, title, category):
         ),
         "construct_chain": (
             "A construct chain (סְמִיכוּת) is two or more nouns "
-            "linked together where the first is in CONSTRUCT state "
-            "and the rest are in ABSOLUTE state. "
+            "linked together. Every member except the final noun is in construct "
+            "relationship to what follows; the final noun is absolute. "
             "The chain translates as 'X of Y'. "
             "Example: בֵּית הַמִּקְדָּשׁ = bet hamikdash = 'house of the sanctuary'. "
             "Only the LAST noun in the chain can take the definite article. "
@@ -573,22 +575,20 @@ def _explanation(nid, title, category):
             "The verb in a relative clause follows normal agreement."
         ),
         "word_order": (
-            "The standard word order in Biblical Hebrew prose is "
-            "VERB-SUBJECT-OBJECT (VSO), the opposite of English (SVO). "
-            "The verb typically comes first, often with the "
+            "Verb-subject order is common in Biblical Hebrew narrative, especially "
+            "in mainline wayyiqtol clauses, but word order varies with discourse, "
+            "focus, genre, and clause type. The verb often comes first with the "
             "consecutive vav (וַיְהִי, וַיֹּאמֶר). "
             "Example: וַיֹּאמֶר אֱלֹהִים יְהִי אוֹר = "
             "'And God said, Let there be light.' "
             "Poetry and emphasis can invert this order."
         ),
         "vav_consecutive": (
-            "The vav-consecutive (or vav-conversive) is a unique "
-            "Hebrew feature where the prefix וַ (vav) attached to "
-            "a verb changes its tense: with the prefix, a perfect "
-            "verb becomes future, and an imperfect verb becomes past. "
-            "וַיֹּאמֶר = 'and he said' (past) from יֹּאמֶר (he will say). "
-            "וְאָהַבְתָּ = 'and you shall love' (future) from אָהַבְתָּ (you loved). "
-            "This is the backbone of Biblical narrative prose."
+            "Biblical Hebrew uses distinctive waw-prefixed verbal forms. Wayyiqtol "
+            "(for example וַיֹּאמֶר, 'and he said') commonly advances the mainline "
+            "of past narrative. Weqatal (for example וְאָהַבְתָּ, 'and you shall "
+            "love') often continues instructions or projected sequences. These are "
+            "discourse forms, not a mechanical waw that reverses a verb's tense."
         ),
 
         # ── Weak verbs ──
@@ -893,18 +893,23 @@ def build_practice_items(nid, title, category):
         })
 
     elif category == "verb":
+        prototypes = [
+            "Basic stem", "Often middle/passive", "Often factitive or intensive",
+            "Often passive of Piel", "Often causative", "Often passive of Hiphil",
+            "Often reflexive or reciprocal",
+        ]
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"What is the function of the {title} binyan?",
-            "options": json.dumps(["Simple active", "Simple passive", "Intensive", "Causative", "Reflexive"]),
-            "correct_answer": {"niphal": "Simple passive", "piel": "Intensive",
-                             "pual": "Intensive passive", "hiphil": "Causative",
-                             "hophal": "Causative passive", "hithpael": "Reflexive",
-                             "qal_perfect": "Simple active", "qal_imperfect": "Simple active",
-                             "qal_imperative": "Simple active", "qal_infinitive": "Simple active",
-                             "qal_participle": "Simple active"}.get(nid, "Simple active"),
+            "question_text": f"Which description is a useful prototype for the {title} stem?",
+            "options": json.dumps(prototypes),
+            "correct_answer": {"niphal": "Often middle/passive", "piel": "Often factitive or intensive",
+                             "pual": "Often passive of Piel", "hiphil": "Often causative",
+                             "hophal": "Often passive of Hiphil", "hithpael": "Often reflexive or reciprocal",
+                             "qal_perfect": "Basic stem", "qal_imperfect": "Basic stem",
+                             "qal_imperative": "Basic stem", "qal_infinitive": "Basic stem",
+                             "qal_participle": "Basic stem"}.get(nid, "Basic stem"),
             "difficulty": 0.6,
-            "explanation": f"The {title} binyan indicates {_explanation(nid, title, category)[:60]}..."
+            "explanation": "Stem descriptions are prototypes, not fixed meanings; verify each verb in context."
         })
 
     # Parsing questions for all categories
@@ -957,7 +962,10 @@ def seed_content(db_path="data/memorize.db"):
         # Build and save lesson
         lesson = build_lesson(nid, glyph, clean_title, category, desc)
         cur.execute(
-            "INSERT OR REPLACE INTO hebrew_lessons (node_id, content_json, version) VALUES (?, ?, 1)",
+            """INSERT INTO hebrew_lessons (node_id, content_json, version) VALUES (?, ?, 1)
+               ON CONFLICT(node_id) DO UPDATE SET content_json=excluded.content_json,
+               version=hebrew_lessons.version+1,updated_at=datetime('now')
+               WHERE hebrew_lessons.content_json<>excluded.content_json""",
             (nid, json.dumps(lesson)),
         )
         lesson_count += 1

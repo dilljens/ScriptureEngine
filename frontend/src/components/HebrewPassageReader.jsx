@@ -128,7 +128,7 @@ export default function HebrewPassageReader({ verseRef, onClose, readingLessonId
         setWords(grammar.data.words)
       }
       if (verse.ok && verse.data) {
-        setVerseText(verse.data.text_hebrew || verse.data.text_english || '')
+        setVerseText(verse.data.text_english || '')
       }
     }).catch(() => {}).finally(() => setLoading(false))
 
