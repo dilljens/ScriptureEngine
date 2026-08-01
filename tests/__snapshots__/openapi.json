@@ -82,61 +82,21 @@
       }
     },
     "/api/v1/hebrew/fsrs/review": {
-      "get": {
-        "summary": "Get Hebrew Fsrs Review",
-        "description": "Process an FSRS-5 review with FIRe, learning speed, and failure tracking.\n\nRating: 1=Again, 2=Hard, 3=Good, 4=Easy.\nhint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)\nfailure_location: 'start', 'middle', 'end', 'confusion', or '' for no failure.\nLearning speed adjusts the interval: faster learners \u2192 longer intervals.\nIf learning_speed < 0.5, FIRe credit is skipped (force explicit reviews).",
-        "operationId": "get_hebrew_fsrs_review_api_v1_hebrew_fsrs_review_get",
-        "parameters": [
-          {
-            "name": "node_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Node Id"
+      "post": {
+        "summary": "Post Hebrew Review",
+        "operationId": "post_hebrew_review_api_v1_hebrew_fsrs_review_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
             }
           },
-          {
-            "name": "rating",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 3,
-              "title": "Rating"
-            }
-          },
-          {
-            "name": "user_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "default",
-              "title": "User Id"
-            }
-          },
-          {
-            "name": "hint_level",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "title": "Hint Level"
-            }
-          },
-          {
-            "name": "failure_location",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "",
-              "title": "Failure Location"
-            }
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -346,7 +306,7 @@
     "/api/v1/hebrew/diagnostic/apply": {
       "post": {
         "summary": "Apply Diagnostic Results",
-        "description": "Apply diagnostic results \u2014 mark mastered categories as complete.\n\nBody: {\n    \"user_id\": \"default\",\n    \"results\": { \"category_name\": { \"correct\": N, \"total\": N }, ... }\n}",
+        "description": "Grade diagnostic answers server-side and credit only tested skills.\n\nBody: {\n    \"user_id\": \"default\",\n    \"answers\": [{\"question_id\": 1, \"node_id\": \"aleph\", \"answer\": \"\u05d0\"}]\n}",
         "operationId": "apply_diagnostic_results_api_v1_hebrew_diagnostic_apply_post",
         "requestBody": {
           "content": {
@@ -2660,6 +2620,36 @@
               "default": "",
               "title": "Search"
             }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -2687,6 +2677,38 @@
         "summary": "Create Conversation",
         "description": "Create a new conversation session.",
         "operationId": "create_conversation_api_v1_conversations_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2733,6 +2755,36 @@
               "type": "string",
               "title": "Session Id"
             }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -2768,6 +2820,36 @@
             "schema": {
               "type": "string",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -2815,6 +2897,36 @@
               "type": "string",
               "title": "Session Id"
             }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -2852,6 +2964,36 @@
             "schema": {
               "type": "string",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -2900,6 +3042,36 @@
             "schema": {
               "type": "string",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -2969,6 +3141,36 @@
               ],
               "title": "Connection Type"
             }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -3004,6 +3206,36 @@
             "schema": {
               "type": "string",
               "title": "Session Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -3061,6 +3293,36 @@
             "schema": {
               "type": "integer",
               "title": "Connection Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -7920,8 +8182,7 @@
                 "type": "null"
               }
             ],
-            "title": "Metadata",
-            "default": {}
+            "title": "Metadata"
           }
         },
         "type": "object",
