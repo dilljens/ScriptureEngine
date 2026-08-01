@@ -20,6 +20,8 @@ data/processed/*.bak*
 
 # Any root-level db files (placeholder)
 data/*.db
+data/*.db-wal
+data/*.db-shm
 
 # Large data files (never git-track)
 data/giliadi_books/
