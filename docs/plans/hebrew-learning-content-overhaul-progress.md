@@ -1,5 +1,21 @@
 # Progress: Biblical Hebrew learning content overhaul
 
+## Session 2026-08-01 (lexicon frequencies)
+
+- Rebuilt lexicon frequency fields from exact OT lemma aggregates
+  (scripts/rebuild_lexicon_frequencies.py): 8,632 canonical Strong's bases,
+  25,732 lexicon rows updated so prefixed raw forms and H rows share the true
+  base count (e.g. H3605 כל = 5,413 tokens; H3068 יהוה = 6,521).
+- Made vocabulary selection and alignment identity-stable: get_top_words now
+  selects one citation form per Hebrew surface (non-prefixed rows only) ordered
+  by true frequency; align matches existing lessons by unpointed surface first,
+  then (language, Strong's base), so ranking changes never renumber node IDs.
+- /api/v1/vocabulary now returns lemma + language and excludes prefixed raw rows.
+- Result: 478/500 existing lessons re-aligned, 500 alignment rows, validator
+  passes, align idempotent; 22 top-frequency words (שבת, קהל, רעב, …) surfaced
+  by the corrected ranking have no lesson yet (seeding gap, out of scope here).
+- Verification: 36 Hebrew backend tests pass; ruff + diff clean.
+
 ## Session 2026-08-01 (final follow-ups)
 
 - Repaired five legacy vocabulary lessons corrupted by the old numeric-key lexicon
@@ -59,8 +75,9 @@
 
 ## Remaining phases
 
-- Rebuild lexicon frequencies from exact lemma aggregates (currently conflates
-  raw normalization forms); keep the alignment ID-stable when ranking changes.
+- Seed the ~22 newly-surfaced high-frequency vocabulary words that the corrected
+  ranking now includes (שבת, קהל, רעב, עור, קצה, עמוד, …); keep identity keyed by
+  surface, not rank index.
 - Reingest pinned OSHB XML to restore maqqef and exact separators.
 - Isolate the memorize interleaved route (memorize.py) and add authenticated
   user ownership to review endpoints; the current `default` user remains shared.

@@ -68,3 +68,27 @@ def test_repair_vocabulary_metadata_fixes_corrupted_descriptions(tmp_path):
     assert node["description"].startswith("To perish")
     assert lesson["root"] == "אבד"
     assert "Aramaic" not in lesson["description"]
+
+
+def test_get_top_words_selects_one_citation_form_per_surface():
+    from scripts.seed_hebrew_vocabulary import get_top_words
+    words = get_top_words(count=60)
+    surfaces = [w["hebrew"] for w in words]
+    assert len(surfaces) == len(set(surfaces)), "surface dedup failed"
+    assert all("/" not in w["lemma"] for w in words), "prefixed rows leaked into selection"
+
+
+def test_lexicon_frequency_is_exact_ot_aggregate():
+    import sqlite3
+    from pathlib import Path
+    from scripts.rebuild_lexicon_frequencies import compute_counts, canonical_base
+    scripture = Path("data/processed/scripture.db")
+    if not scripture.exists():
+        return  # corpus not present in this checkout
+    conn = sqlite3.connect(f"file:{scripture}?mode=ro", uri=True)
+    counts = compute_counts(conn)
+    conn.close()
+    assert counts["3605"]["tokens"] == 5413  # כל
+    assert counts["3068"]["tokens"] == 6521  # יהוה
+    assert canonical_base("c/b/3605") == "3605"
+    assert canonical_base("H3605") == "3605"

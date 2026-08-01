@@ -18,6 +18,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sqlite3
 from pathlib import Path
 
@@ -26,8 +27,26 @@ DB_PATH = BASE / "data" / "processed" / "scripture.db"
 MEM_DB = BASE / "data" / "memorize.db"
 
 
+def canonical_base(lemma: str) -> str:
+    """Reduce a raw lexicon lemma to its numeric Strong's base."""
+    lexical = (lemma or "").strip().split("/")[-1].strip()
+    lexical = re.sub(r"^[HG](?=\d)", "", lexical)
+    match = re.match(r"(\d+)", lexical)
+    return match.group(1) if match else ""
+
+
+def _row_preference(row, base_key):
+    """Prefer the bare numeric or H/G-prefixed citation row over prefixed raw forms."""
+    lemma = (row["lemma"] or "").strip()
+    if lemma == base_key:
+        return 0
+    if re.match(r"^[HG]" + base_key + r"$", lemma):
+        return 1
+    return 2 if "/" in lemma else 3
+
+
 def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
-    """Get top N Hebrew words by frequency from the lexicon."""
+    """Get top N Hebrew words by exact OT frequency, one citation form per Strong's base."""
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
 
@@ -49,34 +68,40 @@ def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
         WHERE l.lemma NOT IN ('b', 'c', 'd', 'H', 'G', 'l', 'm', 'k', 'H')
           AND l.frequency > ?
           AND l.hebrew_plain IS NOT NULL AND l.hebrew_plain != ''
+          AND instr(l.lemma, '/') = 0
         ORDER BY l.frequency DESC
         LIMIT ?
-    """, (cutoff, count * 2)).fetchall()
+    """, (cutoff, count * 4)).fetchall()
     conn.close()
 
-    # Deduplicate by hebrew_word
-    seen = set()
-    words = []
+    # Group candidates by surface (Hebrew display form) and keep one citation
+    # row per surface: prefer the bare/H-prefixed row, and among ties the
+    # highest-frequency base. Ordering surfaces by their true OT frequency.
+    from collections import defaultdict
+    by_surface = defaultdict(list)
     for r in rows:
-        hw = (r['hebrew_word'] or '').strip()
-        if not hw or hw in seen:
+        surface = (r["hebrew_word"] or "").strip()
+        if not surface:
             continue
-        seen.add(hw)
-        gloss = (r['gloss'] or '').strip()
-        if len(hw) <= 1 or not gloss:
+        by_surface[surface].append(r)
+
+    words = []
+    for surface, candidates in sorted(
+        by_surface.items(), key=lambda kv: -max(c["lex_freq"] or 0 for c in kv[1])
+    ):
+        gloss = (candidates[0]["gloss"] or "").strip()
+        if len(surface) <= 1 or not gloss or gloss.replace(" ", "").isdigit():
             continue
-        # Skip if gloss is a Strong's number (bad mapping)
-        if gloss.replace(' ', '').isdigit():
-            continue
+        best = max(candidates, key=lambda c: ((c["lex_freq"] or 0), -_row_preference(c, canonical_base(c["lemma"]))))
         words.append({
-            'lemma': r['lemma'],
-            'hebrew': hw,
-            'transliteration': (r['transliteration'] or '').strip(),
-            'gloss': gloss,
-            'root': (r['root'] or '').strip(),
-            'definition': (r['definition'] or '').strip()[:200],
-            'morphology': (r['morphology'] or '').strip(),
-            'frequency': r['lex_freq'] or 0,
+            'lemma': best["lemma"],
+            'hebrew': surface,
+            'transliteration': (best["transliteration"] or "").strip(),
+            'gloss': (best["gloss"] or "").strip(),
+            'root': (best["root"] or "").strip(),
+            'definition': (best["definition"] or "").strip()[:200],
+            'morphology': (best["morphology"] or "").strip(),
+            'frequency': best["lex_freq"] or 0,
         })
         if len(words) >= count:
             break

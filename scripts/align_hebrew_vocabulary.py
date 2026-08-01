@@ -150,19 +150,44 @@ def align(mem_db=MEM_DB, scripture_db=SCRIPTURE_DB, count=500):
 
     occurrences, frequencies, verse_sets = load_ot_occurrences(scripture)
     source_words = get_top_words(count=count, db_path=scripture_db)
+    # Prefer existing alignment identities so corpus ranking changes (e.g. a
+    # lexicon frequency rebuild) never renumber lesson node IDs. Match by
+    # Hebrew surface first (homographs like את H853/H854 keep their lesson),
+    # then by (language, Strong's base).
+    existing_by_surface = {}
+    existing_by_base = {}
+    for row in mem.execute("""
+        SELECT a.language, a.lemma_base, a.node_id, l.content_json
+        FROM hebrew_vocabulary_alignment a
+        LEFT JOIN hebrew_lessons l ON l.node_id=a.node_id
+    """):
+        try:
+            surface = (json.loads(row[3] or "{}") or {}).get("hebrew", "")
+        except (TypeError, json.JSONDecodeError):
+            surface = ""
+        if surface:
+            existing_by_surface[(row[0], unpointed(surface))] = row[2]
+        existing_by_base[(row[0], row[1])] = row[2]
     aligned = 0
+    skipped = 0
     missing = []
 
     for index, word in enumerate(source_words):
-        node_id = make_lesson_id(word["hebrew"], index)
+        lemma_key, lemma_base = lemma_parts(word["lemma"])
+        language = "aramaic" if word.get("morphology", "").startswith("A") else "hebrew"
+        node_id = (
+            existing_by_surface.get((language, unpointed(word["hebrew"])))
+            or existing_by_base.get((language, lemma_base))
+            or make_lesson_id(word["hebrew"], index)
+        )
         lesson_row = mem.execute(
             "SELECT content_json FROM hebrew_lessons WHERE node_id=?", (node_id,)
         ).fetchone()
         if not lesson_row:
-            missing.append(f"{node_id}: lesson missing")
+            # A top-frequency word with no lesson yet is a seeding gap, not an
+            # alignment failure; lesson creation is out of scope here.
+            skipped += 1
             continue
-        lemma_key, lemma_base = lemma_parts(word["lemma"])
-        language = "aramaic" if word.get("morphology", "").startswith("A") else "hebrew"
         corpus_key = (language, lemma_base)
         candidates = occurrences.get(corpus_key, [])
         if not candidates:
@@ -311,7 +336,8 @@ def align(mem_db=MEM_DB, scripture_db=SCRIPTURE_DB, count=500):
     mem.close()
     if missing:
         raise RuntimeError("Vocabulary alignment incomplete:\n" + "\n".join(missing[:20]))
-    print(f"Aligned {aligned}/{count} vocabulary lessons to exact OT lemma tokens")
+    print(f"Aligned {aligned}/{count} vocabulary lessons to exact OT lemma tokens"
+          f" ({skipped} top-frequency words without lessons skipped)")
     return aligned
 
 

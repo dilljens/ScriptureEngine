@@ -507,6 +507,7 @@ def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
         LEFT JOIN lemma_gloss lg ON l.lemma = lg.lemma
         WHERE l.lemma NOT IN ('b','c','d','H','G','l','m','k')
           AND l.frequency > ? AND l.hebrew_plain IS NOT NULL AND l.hebrew_plain != ''
+          AND instr(l.lemma, '/') = 0
         ORDER BY l.frequency DESC LIMIT ?
     """, (cutoff, top * 3)).fetchall()
     conn.close()
@@ -519,8 +520,9 @@ def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
         if not word or not gloss or len(word) <= 1 or gloss.replace(' ', '').isdigit():
             continue
         rank += 1
+        language = "aramaic" if (r['morphology'] or '').startswith('A') else "hebrew"
         words.append({
-            'rank': rank, 'hebrew': word,
+            'rank': rank, 'hebrew': word, 'lemma': r['lemma'], 'language': language,
             'transliteration': (r['transliteration'] or '').strip(),
             'gloss': gloss, 'root': (r['root'] or '').strip(),
             'pos': (r['part_of_speech'] or '').strip(),
