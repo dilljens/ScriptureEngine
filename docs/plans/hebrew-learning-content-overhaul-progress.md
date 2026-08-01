@@ -1,5 +1,17 @@
 # Progress: Biblical Hebrew learning content overhaul
 
+## Session 2026-08-01 (vocabulary backfill)
+
+- Seeded 17 previously-missing high-frequency vocabulary lessons surfaced by the
+  corrected exact-frequency ranking (קהל, שבת, רעב, עמוד, and high-frequency
+  verbs such as שמר/שכח/שבע), bringing vocabulary to 517 aligned lessons.
+- Made the vocabulary seeder safe to re-run: it now skips any surface or
+  (language, Strong's base) that already has a lesson, so ranking changes never
+  create duplicates (verified: second run creates 0 lessons, alignment
+  idempotent at 517/517, validator green).
+- Remaining known gaps: ~5 top-frequency surfaces and a few inflected display
+  surfaces inherited from the lexicon's unreliable hebrew_plain; documented.
+
 ## Session 2026-08-01 (lexicon frequencies)
 
 - Rebuilt lexicon frequency fields from exact OT lemma aggregates

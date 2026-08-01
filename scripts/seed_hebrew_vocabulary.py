@@ -304,13 +304,38 @@ def main():
     new_nodes = 0
     new_items = 0
 
+    # Node ids embed the rank index, so identity must key on the lemma. Skip any
+    # surface OR (language, Strong's base) that already has a lesson so ranking
+    # changes (e.g. an exact-frequency rebuild) never create duplicate lessons.
+    existing_surfaces = set()
+    for content_json, in conn.execute("SELECT content_json FROM hebrew_lessons"):
+        try:
+            surface = (json.loads(content_json) or {}).get("hebrew", "")
+        except (TypeError, json.JSONDecodeError):
+            surface = ""
+        if surface:
+            existing_surfaces.add(re.sub(r"[\u0591-\u05c7]", "", surface).replace("/", ""))
+    existing_bases = {
+        (language, base)
+        for language, base in conn.execute(
+            "SELECT language, lemma_base FROM hebrew_vocabulary_alignment"
+        )
+    }
+
     for i, w in enumerate(words):
         lid = make_lesson_id(w['hebrew'], i)
 
+        surface_key = re.sub(r"[\u0591-\u05c7]", "", w['hebrew']).replace("/", "")
+        base_key = canonical_base(w['lemma'])
+        language = "aramaic" if (w['morphology'] or '').startswith('A') else "hebrew"
+        if surface_key in existing_surfaces or (language, base_key) in existing_bases:
+            continue
         # Skip if practice items already exist for this node
         existing_items = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()
         if existing_items:
             continue
+        existing_surfaces.add(surface_key)
+        existing_bases.add((language, base_key))
 
         # Exact OT examples are attached by align_hebrew_vocabulary.py.
         verse_data = None
