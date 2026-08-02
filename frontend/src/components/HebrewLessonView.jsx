@@ -298,6 +298,54 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         </div>
       )}
 
+      {/* Key points — the essential takeaways (Math Academy "knowledge points") */}
+      {node?.lesson?.key_points?.length > 0 && (
+        <div className="mb-6">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2 block">Key Points</span>
+          <ul className="space-y-1.5">
+            {node.lesson.key_points.map((kp, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400 dark:bg-indigo-500 shrink-0" />
+                <span>{renderTextWithRefs(String(kp), onNavigate)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Worked examples — step-by-step demonstrations before practice (Math Academy KP structure) */}
+      {node?.lesson?.worked_examples?.length > 0 && (
+        <div className="mb-6">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2 block">Worked Example{node.lesson.worked_examples.length > 1 ? 's' : ''}</span>
+          <div className="space-y-3">
+            {node.lesson.worked_examples.map((we, i) => (
+              <details key={i} open={i === 0} className="group rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 overflow-hidden">
+                <summary className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer select-none hover:bg-neutral-50 dark:hover:bg-neutral-800">
+                  <span className="text-indigo-500 dark:text-indigo-400">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="flex-1">{renderTextWithRefs(String(we.question || 'Example'), onNavigate)}</span>
+                  <span className="text-xs text-neutral-400 group-open:hidden">Show steps ▸</span>
+                  <span className="text-xs text-neutral-400 hidden group-open:inline">Hide steps ▾</span>
+                </summary>
+                <div className="px-4 pb-4 pt-1 space-y-2">
+                  {Array.isArray(we.steps) && we.steps.map((step, si) => (
+                    <div key={si} className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                      <span className="mt-0.5 text-[10px] font-mono text-neutral-400 shrink-0">Step {si + 1}</span>
+                      <span className="flex-1 leading-relaxed">{renderTextWithRefs(String(step), onNavigate)}</span>
+                    </div>
+                  ))}
+                  {we.answer && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-700 dark:text-emerald-300">
+                      <span className="font-semibold">Answer: </span>
+                      <span className="inline">{renderTextWithRefs(String(we.answer), onNavigate)}</span>
+                    </div>
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Verse attestations — real scripture examples */}
       {node?.verse_attestations?.length > 0 && (
         <div className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800">

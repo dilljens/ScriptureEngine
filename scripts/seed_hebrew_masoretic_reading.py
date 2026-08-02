@@ -35,7 +35,7 @@ LESSONS = [
         "practice": [
             ("multiple_choice", "What does dagesh forte represent in the Tiberian system?", ["Consonant doubling", "A silent letter", "Word stress", "A long vowel"], "Consonant doubling"),
             ("multiple_choice", "What is a dot in final הּ called?", ["Mappiq", "Meteg", "Maqqef", "Shewa"], "Mappiq"),
-            ("true_false", "Every dot inside a Hebrew letter has the same function.", ["True", "False"], "False"),
+            ("multiple_choice", "How many distinct functions can the dot inside a Hebrew letter serve?", ["One", "Two", "Three", "Four"], "Three"),
         ],
     },
     {
@@ -53,7 +53,7 @@ LESSONS = [
         "verse_examples": [{"verse_ref": "gen.1.2", "hebrew": "וְרוּחַ אֱלֹהִים", "note": "רוּחַ ends with furtive patah under ח."}],
         "practice": [
             ("multiple_choice", "Which reading reflects furtive patah in רוּחַ?", ["rūaḥ", "rūḥa", "raḥū", "rūḥ"], "rūaḥ"),
-            ("true_false", "Furtive patah changes the stored right-to-left character order.", ["True", "False"], "False"),
+            ("multiple_choice", "Where is furtive patah pronounced relative to the final guttural?", ["Before the guttural", "After the guttural", "As a separate syllable", "It is silent"], "Before the guttural"),
         ],
     },
     {
@@ -70,7 +70,7 @@ LESSONS = [
         "verse_examples": [{"verse_ref": "gen.1.4", "hebrew": "אֶת־הָאוֹר", "note": "The object marker and noun form one maqqef-bound accentual unit."}],
         "practice": [
             ("multiple_choice", "What does maqqef join?", ["Words into one accentual unit", "Two vowels", "Two verses", "A root and lexicon entry"], "Words into one accentual unit"),
-            ("true_false", "Maqqef can be discarded as ordinary punctuation without affecting reading data.", ["True", "False"], "False"),
+            ("multiple_choice", "What does the maqqef (־) do to the words it joins?", ["Joins them into one accentual unit", "Separates two verses", "Marks a question", "Ends a sentence"], "Joins them into one accentual unit"),
         ],
     },
     {
@@ -88,7 +88,7 @@ LESSONS = [
         "verse_examples": [{"verse_ref": "gen.1.1", "hebrew": "בְּרֵאשִׁ֖ית בָּרָ֣א אֱלֹהִ֑ים", "note": "The accents mark stress and a major division after אֱלֹהִים."}],
         "practice": [
             ("multiple_choice", "Which is a linguistic function of the Masoretic accents?", ["Marking stress and clause grouping", "Replacing consonants", "Translating words", "Identifying every root"], "Marking stress and clause grouping"),
-            ("true_false", "Every Jewish reading tradition chants the accents with the same melody.", ["True", "False"], "False"),
+            ("multiple_choice", "Do all Jewish reading traditions chant the accents with the same melody?", ["No — melodies vary by tradition", "Yes — identical melody", "Only Sephardic traditions chant", "Accents are never chanted"], "No — melodies vary by tradition"),
         ],
     },
     {
@@ -107,7 +107,7 @@ LESSONS = [
         "verse_examples": [{"verse_ref": "gen.1.1", "hebrew": "בראשית / בְּרֵאשִׁית", "note": "The same consonantal sequence shown unpointed and pointed."}],
         "practice": [
             ("multiple_choice", "What do niqqud signs primarily record?", ["A Masoretic reading tradition", "New consonants", "English translation", "Verse numbering"], "A Masoretic reading tradition"),
-            ("true_false", "Hiding vowel points should alter the stored consonantal sequence.", ["True", "False"], "False"),
+            ("multiple_choice", "If vowel points are hidden in the display, what happens to the stored consonantal text?", ["It is unchanged — points are a separate layer", "It is rewritten without consonants", "Only the first word changes", "It becomes Aramaic"], "It is unchanged — points are a separate layer"),
         ],
     },
     {
@@ -186,7 +186,7 @@ LESSONS = [
         "explanation": "Biblical Hebrew poetry frequently places lines or clauses in parallel. The second line may restate, sharpen, contrast, specify, or advance the first. Read the relationship from syntax and vocabulary rather than assuming every pair says exactly the same thing. Ellipsis is common: a word expressed in one line may be understood in the next.",
         "key_points": ["Parallel lines can restate or advance", "Look for ellipsis and contrast", "Poetic word order is flexible"],
         "verse_examples": [{"verse_ref": "isa.1.2", "hebrew": "שִׁמְעוּ שָׁמַיִם וְהַאֲזִינִי אֶרֶץ כִּי יְהוָה דִּבֵּר", "note": "Heavens and earth form a related parallel pair; note the ellipsis of the verb in the second line."}],
-        "practice": [("true_false", "Every poetic parallel repeats exactly the same proposition.", ["True", "False"], "False")],
+        "practice": [("multiple_choice", "In biblical poetry, parallel lines typically:", ["Restate, sharpen, or advance the first", "Repeat it word-for-word", "Always contradict it", "Are always longer"], "Restate, sharpen, or advance the first")],
     },
     {
         "id": "legal_formulae", "title": "Reading Legal Hebrew",
@@ -216,7 +216,7 @@ LESSONS = [
         "explanation": "Most of the Old Testament is Hebrew, but substantial sections of Daniel and Ezra are Aramaic, with smaller Aramaic material elsewhere. Daniel 2:4 explicitly marks the switch with אֲרָמִית ('in Aramaic'). The languages are related but have distinct morphology and vocabulary; an Aramaic token should be labeled rather than silently taught as Hebrew.",
         "key_points": ["OT does not mean Hebrew-only", "Daniel and Ezra contain Aramaic sections", "Morphology should label H versus A data"],
         "verse_examples": [{"verse_ref": "dan.2.4", "hebrew": "וַיְדַבְּרוּ הַכַּשְׂדִּים לַמֶּלֶךְ אֲרָמִית", "note": "The text signals speech in Aramaic."}],
-        "practice": [("true_false", "Every Old Testament token is Biblical Hebrew.", ["True", "False"], "False")],
+        "practice": [("multiple_choice", "Which parts of the Old Testament are written in Aramaic?", ["Sections of Daniel and Ezra", "None — it is all Hebrew", "The entire Pentateuch", "Only the Psalms"], "Sections of Daniel and Ezra")],
     },
 ]
 

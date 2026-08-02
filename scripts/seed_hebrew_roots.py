@@ -204,17 +204,21 @@ def main(db_path=MEM_DB):
         add(f"What does the root {lesson['root']} mean?", [lesson['meaning'], *distractors[:3]], lesson['meaning'])
         add(f"Which word derives from root {lesson['root']}?", [w for w, g in lesson['derived_words'][:4]] or ["word"], lesson['derived_words'][0][0])
 
-        # Find a verse example
-        try:
-            conn2 = sqlite3.connect(str(DB_PATH))
-            for w, _g in lesson['derived_words']:
-                row = conn2.execute("SELECT v.id, v.text_hebrew FROM verses v JOIN gematria g ON g.verse_id=v.id WHERE g.word_hebrew LIKE ? LIMIT 1", (f'%{w}%',)).fetchone()
-                if row:
-                    add(f"Find verse containing '{w}' (from root {lesson['root']})", [w, lesson['root'], "word", "verse"], w)
+        # Gloss→word question for a second derived word (real options; answer not
+        # revealed by the question). Prefer a word whose gloss is distinct.
+        if len(lesson['derived_words']) >= 2:
+            opts = [w for w, _g in lesson['derived_words'][:4]]
+            target = None
+            for w, g in lesson['derived_words'][1:]:
+                if w not in opts:
+                    opts = [w for w, _g in lesson['derived_words'][:4]]
+                if g not in (dg for dw, dg in lesson['derived_words'] if dw == w):
+                    target = (w, g)
                     break
-            conn2.close()
-        except Exception:
-            pass
+            if target is None:
+                target = lesson['derived_words'][1]
+            add(f"Which word from root {lesson['root']} means '{target[1]}'?",
+                [w for w, _g in lesson['derived_words'][:4]], target[0])
 
         # Prerequisites
         conn.execute("INSERT OR IGNORE INTO hebrew_edges (source_id, target_id, edge_type) VALUES ('root_concept', ?, 'prerequisite')", (lid,))

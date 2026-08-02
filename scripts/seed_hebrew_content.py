@@ -758,8 +758,12 @@ def _key_points(nid, category):
     return points.get(nid, [f"Key concept in {category}", "Review the explanation above"])
 
 
-def build_practice_items(nid, title, category):
-    """Generate practice items for a topic with Math Academy quality."""
+def build_practice_items(nid, title, category, glyph="", desc=""):
+    """Generate practice items for a topic with Math Academy quality.
+
+    Questions must NEVER name the answer in the question text — the stimulus
+    is the Hebrew glyph (or a sound description), never the answer itself.
+    """
     items = []
 
     # Confusable pairs for smart distractors
@@ -821,44 +825,45 @@ def build_practice_items(nid, title, category):
         random.shuffle(opts)
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"What is the name of this Hebrew letter: {title}?",
+            "question_text": f"What is the name of this Hebrew letter: {glyph}?",
             "options": json.dumps(opts),
             "correct_answer": correct,
             "difficulty": 0.3,
-            "explanation": f"The letter shown is {title}. It belongs to the Hebrew aleph-bet."
+            "explanation": f"The letter shown is {glyph}. It belongs to the Hebrew aleph-bet."
         })
-        # Audio identification drill
+        # Sound identification drill — stimulus is the sound description, not the answer
+        sound_desc = desc if desc and correct.lower() not in desc.lower() else glyph
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"Which letter makes the sound described in the lesson for {title}?",
+            "question_text": f"Which Hebrew letter makes this sound: {sound_desc}?",
             "options": json.dumps(opts),
             "correct_answer": correct,
             "difficulty": 0.4,
             "explanation": f"The letter {title} makes this sound."
         })
-        # Typing drill (production)
+        # Typing drill (production) — show glyph, ask for name (answerable: type "Aleph")
         items.append({
             "question_type": "typing",
-            "question_text": f"Type the Hebrew letter: {correct}",
+            "question_text": f"Type the name of this Hebrew letter: {glyph}",
             "correct_answer": correct,
             "difficulty": 0.4,
-            "explanation": f"The Hebrew letter {correct} looks like this in the script."
+            "explanation": f"The Hebrew letter {glyph} is named {correct}."
         })
-        # Transliteration (Hebrew→English)
+        # Transliteration (Hebrew→English) — stimulus is the glyph
         items.append({
             "question_type": "transliteration",
-            "question_text": f"How is this letter transliterated: {title}?",
+            "question_text": f"How is this letter transliterated: {glyph}?",
             "correct_answer": correct,
             "difficulty": 0.3,
-            "explanation": f"The letter {title} is transliterated as '{correct}'."
+            "explanation": f"The letter {glyph} is transliterated as '{correct}'."
         })
-        # Reverse: English→Hebrew
+        # Reverse: glyph → name (free recall)
         items.append({
             "question_type": "recall",
-            "question_text": f"What is the Hebrew letter named '{correct}'?",
+            "question_text": f"What Hebrew letter is this: {glyph}?",
             "correct_answer": correct,
             "difficulty": 0.5,
-            "explanation": f"The Hebrew letter named '{correct}' is {title}."
+            "explanation": f"The Hebrew letter {glyph} is named {title}."
         })
 
     elif category == "vowel":
@@ -876,20 +881,21 @@ def build_practice_items(nid, title, category):
         random.shuffle(distractors)
         opts = [correct] + distractors[:3]
         random.shuffle(opts)
+        sound_desc = desc if desc and correct.lower() not in desc.lower() else glyph
         items.append({
             "question_type": "multiple_choice",
-            "question_text": f"Which Hebrew vowel makes the sound described by {title}?",
+            "question_text": f"Which Hebrew vowel makes this sound: {sound_desc}?",
             "options": json.dumps(opts),
             "correct_answer": correct,
             "difficulty": 0.4,
-            "explanation": f"This describes the vowel {title}."
+            "explanation": f"This describes the vowel {correct}."
         })
         items.append({
             "question_type": "recall",
-            "question_text": f"Name the Hebrew vowel that sounds like {correct}.",
+            "question_text": f"Name this Hebrew vowel: {glyph}",
             "correct_answer": correct,
             "difficulty": 0.5,
-            "explanation": f"The vowel is {correct}."
+            "explanation": f"The vowel {glyph} is {correct}."
         })
 
     elif category == "verb":
@@ -912,15 +918,8 @@ def build_practice_items(nid, title, category):
             "explanation": "Stem descriptions are prototypes, not fixed meanings; verify each verb in context."
         })
 
-    # Parsing questions for all categories
-    items.append({
-        "question_type": "true_false",
-        "question_text": f"Is '{title}' a {category} in Biblical Hebrew?",
-        "options": json.dumps(["True", "False"]),
-        "correct_answer": "True",
-        "difficulty": 0.2,
-        "explanation": f"Yes, {title} is a {category} concept."
-    })
+    # (No generic true/false parsing question — those were tautological and
+    #  violated the no-true/false rule. Content-specific questions above suffice.)
 
     return items
 
@@ -944,13 +943,19 @@ def seed_content(db_path="data/memorize.db"):
     skipped = 0
 
     for nid, title, _level, category, desc in nodes:
-        # Extract glyph from title (title format: "Name (glyph)")
+        # Extract glyph from title. Titles are either "Name (glyph)" like
+        # "Aleph (א)" or "Kaf (final) (ך)" — take the LAST parenthetical that
+        # contains Hebrew characters so final forms don't grab "final".
+        import re as _re
         glyph = ""
-        if "(" in title:
-            glyph = title[title.index("(")+1:title.index(")")]
+        clean_title = title
+        parens = _re.findall(r"\(([^)]+)\)", title)
+        if parens:
+            for p in reversed(parens):
+                if any("\u0590" <= ch <= "\u05FF" for ch in p):
+                    glyph = p
+                    break
             clean_title = title[:title.index("(")].strip()
-        else:
-            clean_title = title
 
         # Skip if this node already has lesson content (from a specialized seeder)
         # UNLESS this seeder has a curated explanation for it (better content)
@@ -975,7 +980,7 @@ def seed_content(db_path="data/memorize.db"):
             "SELECT 1 FROM hebrew_practice_items WHERE node_id=? LIMIT 1",
             (nid,),
         ).fetchone():
-            items = build_practice_items(nid, clean_title, category)
+            items = build_practice_items(nid, clean_title, category, glyph, desc)
             for item in items:
                 opts = item.get("options_json", item.get("options", "[]"))
                 opts_json = opts if isinstance(opts, str) else json.dumps(opts)

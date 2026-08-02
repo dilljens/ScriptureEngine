@@ -1042,6 +1042,26 @@ register(
 
 # ─── Hebrew Quiz Tools ───
 
+def _glyph_from_title(title):
+    """Extract the Hebrew glyph from a node title like 'יהוה — LORD (YHWH)'.
+
+    Prefers the Hebrew text before an em dash (word titles), then the LAST
+    parenthetical containing Hebrew characters (final forms: 'Kaf (final) (ך)'),
+    and only then falls back to the first parenthetical.
+    """
+    if not title:
+        return ""
+    import re as _re
+    if "—" in title:
+        head = title.split("—")[0].strip()
+        if head and any("\u0590" <= ch <= "\u05FF" for ch in head):
+            return head
+    for m in reversed(_re.findall(r"\(([^)]+)\)", title)):
+        if any("\u0590" <= ch <= "\u05FF" for ch in m):
+            return m.strip()
+    return ""
+
+
 def _hebrew_quiz(conn=None, category="consonant", count=5):
     """Generate Hebrew knowledge quiz questions from the practice items database.
 
@@ -1060,13 +1080,16 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
     conn.row_factory = sqlite3.Row
 
     # Get all consonants with their glyph from descriptions
+    # read_* nodes are reading-scaffolding (find-the-word) exercises whose
+    # questions intentionally embed the answer — never serve them as quiz items.
     nodes = conn.execute("""
         SELECT n.id, n.title, n.category, n.level, n.description,
                p.id as practice_id, p.question_type, p.question_text,
                p.options_json, p.correct_answer, p.explanation
         FROM hebrew_nodes n
         JOIN hebrew_practice_items p ON p.node_id = n.id
-        WHERE n.category = ? AND p.question_type IN ('multiple_choice', 'transliteration', 'recall', 'typing', 'cloze', 'contrast')
+        WHERE n.category = ? AND n.id NOT LIKE 'read\\_%' ESCAPE '\\'
+          AND p.question_type IN ('multiple_choice', 'transliteration', 'recall', 'typing', 'cloze', 'contrast')
         ORDER BY RANDOM()
         LIMIT ?
     """, (category, count * 3)).fetchall()  # extra for diversity
@@ -1093,7 +1116,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
 
         # Determine the correct answer (index for choice types, text for production types)
         correct_answer_val = correct
-        if n['question_type'] in ('multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification'):
+        if n['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification'):
             correct_idx = 0
             for i, opt in enumerate(options):
                 if opt == correct or opt.strip() == correct.strip():
@@ -1106,38 +1129,78 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             "question": n['question_text'],
             "options": options,
             "correctAnswer": correct_answer_val,
-            "hebrewGlyph": "",  # will be filled from node data if available
+            "hebrewGlyph": _glyph_from_title(n['title']),
             "explanation": n['explanation'] or '',
             "category": n['category'],
             "nodeTitle": n['title'],
             "questionType": n['question_type'],
         })
 
-    # If we have less than count, add simple letter-name quiz questions
+    # If we still have fewer than count, pull real practice items from other
+    # nodes in the category. Never emit empty-option placeholders — an
+    # unanswerable question is worse than a shorter quiz.
     if len(questions) < count:
         conn2 = sqlite3.connect(str(db))
-        remaining = conn2.execute("""
-            SELECT id, title, description, category FROM hebrew_nodes
-            WHERE category = ? AND id NOT IN ({})
-            ORDER BY RANDOM()
-            LIMIT ?
-        """.format(','.join('?' for _ in seen_nodes) if seen_nodes else 'NULL'),
-            tuple(seen_nodes) + (count - len(questions),) if seen_nodes else (category, count - len(questions))
-        ).fetchall()
+        conn2.row_factory = sqlite3.Row
+        used = list(seen_nodes)
+        if used:
+            placeholders = ','.join('?' for _ in used)
+            params = (category,) + tuple(used) + (count - len(questions),)
+            sql = f"""
+                SELECT n.id, n.title, n.description, n.category,
+                       p.question_type, p.question_text, p.options_json,
+                       p.correct_answer, p.explanation
+                FROM hebrew_nodes n
+                JOIN hebrew_practice_items p ON p.node_id = n.id
+                WHERE n.category = ? AND n.id NOT LIKE 'read\\_%' ESCAPE '\\'
+                  AND n.id NOT IN ({placeholders})
+                  AND p.question_type IN ('multiple_choice','transliteration','recall','cloze','contrast')
+                ORDER BY RANDOM()
+                LIMIT ?
+            """
+        else:
+            params = (category, count - len(questions))
+            sql = """
+                SELECT n.id, n.title, n.description, n.category,
+                       p.question_type, p.question_text, p.options_json,
+                       p.correct_answer, p.explanation
+                FROM hebrew_nodes n
+                JOIN hebrew_practice_items p ON p.node_id = n.id
+                WHERE n.category = ? AND n.id NOT LIKE 'read\\_%' ESCAPE '\\'
+                  AND p.question_type IN ('multiple_choice','transliteration','recall','cloze','contrast')
+                ORDER BY RANDOM()
+                LIMIT ?
+            """
+        remaining = conn2.execute(sql, params).fetchall()
         conn2.close()
 
         for r in remaining:
             if len(questions) >= count:
                 break
+            nid = r['id']
+            if nid in seen_nodes:
+                continue
+            seen_nodes.add(nid)
+            options = json.loads(r['options_json']) if r['options_json'] else []
+            correct = r['correct_answer']
+            correct_answer_val = correct
+            if r['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification'):
+                correct_idx = 0
+                for i, opt in enumerate(options):
+                    if opt == correct or opt.strip() == correct.strip():
+                        correct_idx = i
+                        break
+                correct_answer_val = correct_idx
             questions.append({
-                "node_id": r['id'],
-                "question": f"What letter is this: {r['description']}",
-                "options": [],  # LLM should generate options
-                "correctAnswer": 0,
-                "explanation": f"This is {r['title']}",
+                "node_id": nid,
+                "question": r['question_text'],
+                "options": options,
+                "correctAnswer": correct_answer_val,
+                "hebrewGlyph": _glyph_from_title(r['title']),
+                "explanation": r['explanation'] or '',
                 "category": r['category'],
                 "nodeTitle": r['title'],
-                "questionType": "letter_name",
+                "questionType": r['question_type'],
             })
 
     random.shuffle(questions)

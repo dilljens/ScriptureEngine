@@ -78,8 +78,8 @@ Exception: When a begadkefat letter is the first letter of a word and the previo
         "practice": [
             {"type": "multiple_choice", "q": "What happens to בגדכפת letters when they lose their dagesh?", "opts": ["They become silent", "They become soft/fricative", "They double", "They become vowels"], "ans": "They become soft/fricative"},
             {"type": "multiple_choice", "q": "Which letter pair shows the most common begadkefat alternation?", "opts": ["ב/ב (b/v)", "ג/ג (g/gh)", "ד/ד (d/dh)", "ת/ת (t/th)"], "ans": "ב/ב (b/v)"},
-            {"type": "true_false", "q": "Begadkefat affects all 22 Hebrew letters.", "opts": ["True", "False"], "ans": "False"},
-            {"type": "true_false", "q": "After a vowel, a begadkefat letter loses its dagesh and becomes soft.", "opts": ["True", "False"], "ans": "True"},
+            {"type": "multiple_choice", "q": "Which letters are affected by begadkefat?", "opts": ["All 22 letters", "Six letters: בגדכפת", "Only the gutturals", "None of them"], "ans": "Six letters: בגדכפת"},
+            {"type": "multiple_choice", "q": "What happens to a begadkefat letter after a vowel?", "opts": ["It becomes soft (loses its dagesh)", "It stays hard", "It doubles", "It becomes silent"], "ans": "It becomes soft (loses its dagesh)"},
             {"type": "classification", "q": "Does the Bet in 'בְּרֵאשִׁית' have hard or soft pronunciation?", "opts": ["Hard (B)", "Soft (V)"], "ans": "Hard (B)"},
             {"type": "classification", "q": "Does the Kaf in 'כָּתַב' have hard or soft pronunciation?", "opts": ["Hard (K)", "Soft (KH)"], "ans": "Hard (K)"},
             {"type": "contrast", "q": "Compare 'בָּיִת' (house) vs 'בְתוּלָה' (virgin) — contrast the Bet sounds", "opts": ["Both hard", "Both soft", "First hard, second soft", "First soft, second hard"], "ans": "First hard, second soft"},

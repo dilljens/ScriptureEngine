@@ -68,6 +68,43 @@ def test_validator_reports_unsafe_content(tmp_path):
     assert any("tautological" in error for error in errors)
 
 
+def test_validator_rejects_true_false_and_answer_in_question(tmp_path):
+    """True/false questions are banned; answers must not be revealed in the Q."""
+    db = tmp_path / "hebrew.db"
+    conn = sqlite3.connect(db)
+    conn.executescript("""
+        CREATE TABLE hebrew_nodes (id TEXT PRIMARY KEY);
+        CREATE TABLE hebrew_lessons (node_id TEXT PRIMARY KEY, content_json TEXT NOT NULL);
+        CREATE TABLE hebrew_practice_items (
+            id INTEGER PRIMARY KEY, node_id TEXT, question_type TEXT,
+            question_text TEXT, options_json TEXT, correct_answer TEXT, explanation TEXT DEFAULT ''
+        );
+        INSERT INTO hebrew_nodes VALUES ('aleph'), ('bet');
+    """)
+    conn.execute(
+        "INSERT INTO hebrew_lessons VALUES (?, ?)",
+        ("aleph", json.dumps({"explanation": "ok"})),
+    )
+    conn.execute(
+        "INSERT INTO hebrew_lessons VALUES (?, ?)",
+        ("bet", json.dumps({"explanation": "ok"})),
+    )
+    conn.execute(
+        "INSERT INTO hebrew_practice_items VALUES "
+        "(1,'aleph','true_false','Aleph is a letter.','[\"True\",\"False\"]','True',NULL),"
+        "(2,'aleph','multiple_choice','What is the name of this Hebrew letter: Aleph?','[\"Aleph\",\"Bet\"]','Aleph',NULL),"
+        "(3,'bet','multiple_choice','Which is Bet?','[\"א\",\"ב\"]','ב',NULL);",
+    )
+    conn.commit()
+    conn.close()
+
+    errors = validate(db)
+    assert any("true/false questions are not allowed" in error for error in errors)
+    assert any("answer is given away in the question" in error for error in errors)
+    # item 3 is clean (answer not in question text)
+    assert not any("practice 3 " in error for error in errors)
+
+
 def test_repair_quarantines_and_removes_unsafe_records(tmp_path):
     from scripts.repair_hebrew_learning_content import repair
 

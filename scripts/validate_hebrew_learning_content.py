@@ -25,6 +25,16 @@ FORBIDDEN_CLAIMS = {
 
 ASSESSED_TYPES = {"multiple_choice", "true_false", "classification", "contrast"}
 
+# True/false questions are banned outright (Math Academy Way review decision).
+NO_TRUE_FALSE = True
+
+
+def _norm_answer_in_question(text: str) -> str:
+    """Lowercase, strip punctuation/quotes, collapse whitespace for a fuzzy
+    'answer appears in the question' check."""
+    s = re.sub(r"[\u05be\u05f3\u2018\u2019\u201c\u201d\"'\.,;:!?()\[\]{}]", " ", text.lower())
+    return re.sub(r"\s+", " ", s).strip()
+
 
 def validate(db_path: Path) -> list[str]:
     errors: list[str] = []
@@ -144,6 +154,8 @@ def validate(db_path: Path) -> list[str]:
         "SELECT id,node_id,question_type,question_text,options_json,correct_answer,explanation "
         "FROM hebrew_practice_items"
     ):
+        if row["question_type"] == "true_false" and NO_TRUE_FALSE:
+            errors.append(f"practice {row['id']} ({row['node_id']}): true/false questions are not allowed")
         try:
             options = json.loads(row["options_json"] or "[]")
         except json.JSONDecodeError:
@@ -155,6 +167,20 @@ def validate(db_path: Path) -> list[str]:
             errors.append(f"practice {row['id']} ({row['node_id']}): duplicate options")
         if row["question_type"] in ASSESSED_TYPES and options and row["correct_answer"] not in options:
             errors.append(f"practice {row['id']} ({row['node_id']}): correct answer absent from options")
+        # Answer must not be revealed by the question text (retrieval integrity).
+        # Exemption: read_* nodes are reading-scaffolding "find this English word
+        # in the passage" exercises (priming), not retrieval quiz questions — they
+        # are never served by the quiz endpoint. Keep them as intentional design.
+        answer = (row["correct_answer"] or "").strip()
+        if answer and len(answer) > 2 and row["question_type"] != "true_false" \
+                and not row["node_id"].startswith("read_"):
+            norm_q = _norm_answer_in_question(row["question_text"])
+            norm_a = _norm_answer_in_question(answer)
+            if norm_a and re.search(r"(^|\s)" + re.escape(norm_a) + r"(\s|$)", norm_q):
+                errors.append(
+                    f"practice {row['id']} ({row['node_id']}): answer is given away in the question "
+                    f"({answer!r})"
+                )
         if re.match(r"^Is '.+' a .+ in Biblical Hebrew\?$", row["question_text"]):
             errors.append(f"practice {row['id']} ({row['node_id']}): tautological generated question")
         if "dss." in f"{row['question_text']} {row['explanation'] or ''}".casefold():

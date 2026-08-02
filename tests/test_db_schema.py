@@ -71,49 +71,56 @@ class TestIntegrity:
         ).fetchone()[0]
         assert count == 0, f"{count} connections with NULL verse refs"
 
+    def _is_range(self, ref: str) -> bool:
+        return "--" in ref
+
+    def _range_endpoints(self, ref: str) -> list:
+        return ref.split("--")
+
+    def _orphan_refs(self, db, column: str) -> list:
+        """Return connection refs in `column` that point at nothing.
+
+        Range refs ('a--b', used by the structural/passage layer) are valid
+        when BOTH endpoints exist as verse ids. Prefixes listed in the legacy
+        exclusions (exod→exo, jos→josh, zec→zech, deuterocanon, DSS, non-canon
+        sources) are known pre-existing data quirks and skipped.
+        """
+        exclusions = (
+            "c.{col} NOT LIKE 'tg:%' AND c.{col} NOT LIKE 'bd:%' "
+            "AND c.{col} NOT LIKE 'sefaria:%' AND c.{col} NOT LIKE 'name_72:%' "
+            "AND c.{col} NOT LIKE 'aoff%' AND c.{col} NOT LIKE 'jsh%' "
+            "AND c.{col} NOT LIKE 'jsm%' AND c.{col} NOT LIKE 'dss.%' "
+            "AND c.{col} NOT LIKE 'exod%' AND c.{col} NOT LIKE 'jos.%' "
+            "AND c.{col} NOT LIKE 'zec.%' AND c.{col} NOT LIKE 'deut%' "
+            "AND c.{col} NOT LIKE 'dc.%'"
+        ).format(col=column)
+        rows = db.execute(
+            f"""SELECT c.id, c.{column} FROM connections c
+                LEFT JOIN verses v ON v.id = c.{column}
+                WHERE c.deprecated=0 AND v.id IS NULL AND {exclusions}"""
+        ).fetchall()
+        # Range refs ('a--b') are valid if both endpoints resolve.
+        bad = []
+        for rid, ref in rows:
+            if self._is_range(ref):
+                endpoints_ok = all(
+                    db.execute("SELECT 1 FROM verses WHERE id=?", (ep,)).fetchone()
+                    for ep in self._range_endpoints(ref)
+                )
+                if endpoints_ok:
+                    continue
+            bad.append((rid, ref))
+        return bad
+
     def test_no_orphaned_source_verses(self, db):
         """Should have very few orphaned refs (known issues: exod→exo, jos→josh, zec→zech)."""
-        bad = db.execute("""
-            SELECT COUNT(*) FROM connections c
-            LEFT JOIN verses v ON v.id = c.source_verse
-            WHERE c.deprecated=0 AND v.id IS NULL
-            AND c.source_verse NOT LIKE 'tg:%'
-            AND c.source_verse NOT LIKE 'bd:%'
-            AND c.source_verse NOT LIKE 'sefaria:%'
-            AND c.source_verse NOT LIKE 'name_72:%'
-            AND c.source_verse NOT LIKE 'aoff%'
-            AND c.source_verse NOT LIKE 'jsh%'
-            AND c.source_verse NOT LIKE 'jsm%'
-            AND c.source_verse NOT LIKE 'dss.%'
-            AND c.source_verse NOT LIKE 'exod%'
-            AND c.source_verse NOT LIKE 'jos.%'
-            AND c.source_verse NOT LIKE 'zec.%'
-            AND c.source_verse NOT LIKE 'deut%'
-            AND c.source_verse NOT LIKE 'dc.%'
-        """).fetchone()[0]
-        assert bad == 0, f"{bad} unexpected orphaned source verses"
+        bad = self._orphan_refs(db, "source_verse")
+        assert len(bad) == 0, f"{len(bad)} unexpected orphaned source verses: {bad[:5]}"
 
     def test_no_orphaned_target_verses(self, db):
         """Should have very few orphaned refs."""
-        bad = db.execute("""
-            SELECT COUNT(*) FROM connections c
-            LEFT JOIN verses v ON v.id = c.target_verse
-            WHERE c.deprecated=0 AND v.id IS NULL
-            AND c.target_verse NOT LIKE 'tg:%'
-            AND c.target_verse NOT LIKE 'bd:%'
-            AND c.target_verse NOT LIKE 'sefaria:%'
-            AND c.target_verse NOT LIKE 'name_72:%'
-            AND c.target_verse NOT LIKE 'aoff%'
-            AND c.target_verse NOT LIKE 'jsh%'
-            AND c.target_verse NOT LIKE 'jsm%'
-            AND c.target_verse NOT LIKE 'dss.%'
-            AND c.target_verse NOT LIKE 'exod%'
-            AND c.target_verse NOT LIKE 'jos.%'
-            AND c.target_verse NOT LIKE 'zec.%'
-            AND c.target_verse NOT LIKE 'deut%'
-            AND c.target_verse NOT LIKE 'dc.%'
-        """).fetchone()[0]
-        assert bad == 0, f"{bad} unexpected orphaned target verses"
+        bad = self._orphan_refs(db, "target_verse")
+        assert len(bad) == 0, f"{len(bad)} unexpected orphaned target verses: {bad[:5]}"
 
     def test_no_duplicate_connections(self, db):
         """Duplicate groups should be a small fraction of total connections.

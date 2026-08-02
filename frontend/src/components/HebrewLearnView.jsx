@@ -457,9 +457,27 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
               const d = await r.json()
               if (d.ok && d.data?.reviews?.length) {
                 dueCards = d.data.reviews
-                  .filter(item => item.category === 'word' && (item.title || '').includes('—'))
+                  // All categories, not just 'word' — consonants/vowels/grammar
+                  // need spaced review too (Math Academy review principle).
                   .map((item, i) => {
-                    const [hebrew, gloss] = item.title.split('—').map(s => (s || '').trim())
+                    // Parse "יהוה — LORD" (word) or "Aleph (א)" / "Patah (ַ)"
+                    // (consonant/vowel/grammar). The Hebrew stimulus is the glyph
+                    // when present; the gloss is the description for non-words.
+                    const title = item.title || ''
+                    let hebrew = '', gloss = ''
+                    const hasEmDash = title.includes('—')
+                    const emDash = title.split('—').map(s => (s || '').trim())
+                    if (hasEmDash && emDash.length > 1 && emDash[1]) {
+                      hebrew = emDash[0]
+                      gloss = emDash[1]
+                    } else {
+                      // Final-form titles: 'Kaf (final) (ך)' — take the LAST
+                      // parenthetical that contains Hebrew characters.
+                      const parens = [...title.matchAll(/\(([^)]+)\)/g)].map(m => m[1])
+                      const hebParen = parens.length ? [...parens].reverse().find(p => /[\u0590-\u05FF]/.test(p)) : ''
+                      hebrew = hebParen || (glyphMatch ? glyphMatch[1] : title)
+                      gloss = item.description || ''
+                    }
                     return { id: `due-${i}`, type: 'vocab', data: {
                       node_id: item.node_id, hebrew, gloss,
                       definition: gloss || item.description || '',

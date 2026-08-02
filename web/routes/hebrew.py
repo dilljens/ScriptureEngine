@@ -631,7 +631,7 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
         for n in nodes:
             # Get a practice item for this node
             item = conn.execute(
-                "SELECT * FROM hebrew_practice_items WHERE node_id=? AND question_type IN ('multiple_choice','true_false') LIMIT 1",
+                "SELECT * FROM hebrew_practice_items WHERE node_id=? AND question_type IN ('multiple_choice') LIMIT 1",
                 (n['id'],)).fetchone()
             if not item:
                 continue
@@ -744,7 +744,7 @@ def apply_diagnostic_results(body: dict):
             SELECT p.correct_answer,p.question_type,n.category
             FROM hebrew_practice_items p
             JOIN hebrew_nodes n ON n.id=p.node_id
-            WHERE p.id=? AND p.node_id=? AND p.question_type IN ('multiple_choice','true_false')
+            WHERE p.id=? AND p.node_id=? AND p.question_type IN ('multiple_choice')
         """, (submitted.get("question_id"), submitted.get("node_id"))).fetchone()
         if not item:
             conn.rollback()
@@ -926,6 +926,44 @@ def update_hebrew_progress(body: dict):
             "INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?,?,?,?,?, datetime('now'))",
             (user_id, node_id, round(mastery, 3), attempts, correct_count))
     conn.commit()
+
+    # ── Feed the FSRS scheduler from the main lesson/quiz loop ──
+    # Math Academy Way: lesson practice and quizzes are themselves retrieval
+    # practice, so every graded answer should schedule a spaced review. The
+    # review queue reads hebrew_review_state; previously only the AnkiReview
+    # dropdown wrote it, leaving the main learning loop decoupled from SRS.
+    try:
+        _ensure_hebrew_review_state(conn)
+        rating = 3 if correct else 1  # correct → Good, incorrect → Again
+        state = conn.execute(
+            "SELECT stability,difficulty,reps,lapses FROM hebrew_review_state WHERE user_id=? AND node_id=?",
+            (user_id, node_id)).fetchone()
+        if state:
+            new_s, new_d, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating)
+            reps = state[2] + 1
+            lapses = state[3] + (1 if rating == 1 else 0)
+        else:
+            new_s = fsrs_initial_stability(rating)
+            new_d = fsrs_next_difficulty(5.0, rating)
+            interval = fsrs_next_interval(new_s)
+            reps, lapses = 1, (1 if rating == 1 else 0)
+        _reviewed = datetime.datetime.now()
+        _due = _reviewed + datetime.timedelta(days=max(1, interval))
+        conn.execute("""
+            INSERT INTO hebrew_review_state
+                (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
+            VALUES (?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(user_id,node_id) DO UPDATE SET
+                stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
+                last_review=excluded.last_review,last_rating=excluded.last_rating,
+                reps=excluded.reps,lapses=excluded.lapses
+        """, (user_id, node_id, new_s, new_d,
+              _due.strftime("%Y-%m-%d %H:%M:%S"), _reviewed.strftime("%Y-%m-%d %H:%M:%S"),
+              rating, reps, lapses))
+        conn.commit()
+    except Exception:
+        log.warning("silent_exception", exc_info=True)
+        pass
 
     # Phase 4.1: If this is a verb lesson that just reached mastery, auto-queue verb drill items
     if mastery >= 0.3 and correct:
@@ -1561,7 +1599,7 @@ def get_hebrew_quiz(count: int = 8, user_id: str = "default"):
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','true_false','transliteration','cloze')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze')
             ORDER BY RANDOM() LIMIT 2
         """, (nid,)).fetchall()
 
