@@ -4,6 +4,7 @@ import json
 import os as audio_os
 import subprocess
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -24,6 +25,16 @@ def get_db():
     sys.path.insert(0, str(BASE_DIR))
     from lib.db import get_db as _get_db
     return _get_db()
+
+
+def _inline_disposition(name: str, fallback: str = "audio") -> str:
+    """Content-Disposition header safe for non-ASCII filenames.
+
+    Headers are latin-1, so Hebrew/Arabic names must be carried via RFC 5987
+    ``filename*`` (UTF-8 percent-encoded) with an ASCII ``filename`` fallback.
+    """
+    ascii_name = name.encode("ascii", "replace").decode("ascii") or fallback
+    return f'inline; filename="{ascii_name}.wav"; filename*=UTF-8\'\'{quote(name)}.wav'
 
 
 @router.get("/api/v1/read-along/{verse_id:path}")
@@ -167,7 +178,22 @@ def play_letter_audio(letter_id: str):
     if not letter_file.exists():
         raise HTTPException(404, f"Letter audio not found: {letter_id}")
     return FileResponse(str(letter_file), media_type="audio/wav",
-                        headers={"Content-Disposition": f'inline; filename="{safe_name}.wav"'})
+                        headers={"Content-Disposition": _inline_disposition(safe_name)})
+
+
+@router.get("/api/v1/audio/word/{node_id}")
+def play_word_audio(node_id: str):
+    """Serve pre-generated Hebrew word/phrase/root audio (kokoro TTS).
+
+    The /hebrew/audio/{word} lookup resolves a Hebrew word to a node and returns
+    this URL; the file lives in data/audio/words/{node_id}.wav.
+    """
+    safe_name = audio_os.path.basename(node_id)
+    word_file = BASE_DIR / "data" / "audio" / "words" / f"{safe_name}.wav"
+    if not word_file.exists():
+        raise HTTPException(404, f"Word audio not found: {node_id}")
+    return FileResponse(str(word_file), media_type="audio/wav",
+                        headers={"Content-Disposition": _inline_disposition(safe_name)})
 
 
 @router.get("/api/v1/audio/play-raw/{filename:path}")

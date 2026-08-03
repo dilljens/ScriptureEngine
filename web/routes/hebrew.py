@@ -8,6 +8,7 @@ import random
 import re
 import secrets
 import sqlite3
+import urllib.parse
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -695,6 +696,344 @@ def _diagnostic_answer_matches(answer, expected):
     return bool(normalize(answer)) and normalize(answer) == normalize(expected)
 
 
+# ── Adaptive placement test (P4) ──
+# Per-skill 1-up-3-down staircase over curriculum level: after 3 consecutive
+# correct answers move up one level (harder), after 1 incorrect move down one
+# (easier) — converges to ~79% correct, the classic psychophysics rule. Needs
+# no calibrated item bank (difficulty = curriculum level). Each skill gets its
+# own estimate → per-skill placement + SRS seeding + test-out credit.
+#
+# Difficulty axis: hebrew_nodes.level (1-7). A question at level L is a random
+# practice item from a random node in that skill's categories at level L.
+# Start levels match the real level distribution per category (see the
+# hebrew_nodes table): vocab (word/noun/verb) starts at 4, alphabet at 2, etc.
+
+PLACEMENT_SKILLS = [
+    ("alphabet", ["consonant", "vowel"], 1, 3, 2),       # start L2
+    ("vocab", ["word", "noun", "verb"], 4, 7, 4),        # start L4
+    ("grammar", ["grammar", "syntax"], 3, 7, 4),         # start L4
+    ("reading", ["reading", "phrase"], 3, 7, 4),         # start L4
+]
+
+PLACEMENT_MIN_ITEMS = 6
+PLACEMENT_MAX_ITEMS = 15
+
+
+def _placement_session_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_placement_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            skill_idx INTEGER NOT NULL DEFAULT 0,
+            state_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL,
+            used_at TEXT
+        )
+    """)
+
+
+def _placement_pick_question(conn, skill_idx, level):
+    """Pick a random practice item from a random node in the skill's categories
+    at the given curriculum level. Returns dict or None if none exist."""
+    cats = PLACEMENT_SKILLS[skill_idx][1]
+    placeholders = ",".join("?" for _ in cats)
+    # Prefer multiple_choice at low levels, mixed production higher up
+    if level <= 2:
+        qtypes = "('multiple_choice','letter_recognition','classification')"
+    elif level <= 4:
+        qtypes = "('multiple_choice','transliteration','cloze','recall')"
+    else:
+        qtypes = "('multiple_choice','recall','typing','cloze','contrast')"
+    rows = conn.execute(f"""
+        SELECT n.id as node_id, n.title, n.level, n.category, p.id as qid,
+               p.question_type, p.question_text, p.options_json, p.correct_answer
+        FROM hebrew_practice_items p JOIN hebrew_nodes n ON n.id=p.node_id
+        WHERE n.category IN ({placeholders}) AND n.level=?
+          AND p.question_type IN {qtypes}
+        ORDER BY RANDOM() LIMIT 1
+    """, (*cats, level)).fetchone()
+    if not rows:
+        # Level has no matching items — fall back to the nearest level in range
+        lo, hi = PLACEMENT_SKILLS[skill_idx][2], PLACEMENT_SKILLS[skill_idx][3]
+        rows = conn.execute(f"""
+            SELECT n.id as node_id, n.title, n.level, n.category, p.id as qid,
+                   p.question_type, p.question_text, p.options_json, p.correct_answer
+            FROM hebrew_practice_items p JOIN hebrew_nodes n ON n.id=p.node_id
+            WHERE n.category IN ({placeholders}) AND n.level BETWEEN ? AND ?
+              AND p.question_type IN {qtypes}
+            ORDER BY ABS(n.level - ?), RANDOM() LIMIT 1
+        """, (*cats, lo, hi, level)).fetchone()
+    if not rows:
+        return None
+    try:
+        opts = json.loads(rows["options_json"]) if rows["options_json"] else []
+    except (TypeError, json.JSONDecodeError):
+        opts = []
+    return {
+        "node_id": rows["node_id"], "node_title": rows["title"],
+        "level": rows["level"], "category": rows["category"],
+        "question_id": rows["qid"], "type": rows["question_type"],
+        "question": rows["question_text"], "options": opts,
+        "correct_answer": rows["correct_answer"],
+    }
+
+
+def _placement_initial_state():
+    """Staircase state per skill: current level, consecutive-correct streak,
+    question log, and converged flag."""
+    states = {}
+    for name, cats, lo, hi, start in PLACEMENT_SKILLS:
+        states[name] = {"level": start, "streak": 0, "count": 0, "correct": 0,
+                        "reversals": 0, "level_history": [], "log": [], "converged": False}
+    return states
+
+
+def _placement_staircase_update(state, correct, level_range):
+    """1-up-3-down: 3 consecutive correct → +1 level; 1 incorrect → -1 level.
+    Tracks reversals (direction changes) to detect convergence."""
+    lo, hi = level_range
+    prev_level = state["level"]
+    if correct:
+        state["streak"] += 1
+        state["correct"] += 1
+        if state["streak"] >= 3 and state["level"] < hi:
+            state["level"] += 1
+            state["streak"] = 0
+    else:
+        state["streak"] = 0
+        if state["level"] > lo:
+            state["level"] -= 1
+    state["count"] += 1
+    state["level_history"].append(prev_level)
+    if len(state["level_history"]) >= 2 and state["level_history"][-1] != state["level_history"][-2]:
+        state["reversals"] += 1
+    # Converged: hit min items AND (saw enough reversals that the estimate is
+    # stable, OR pinned at the top level with a perfect streak — a learner who
+    # knows the material never reverses because they stay at the ceiling).
+    if state["count"] >= PLACEMENT_MIN_ITEMS and (
+            state["reversals"] >= 2 or (state["level"] == hi and state["streak"] >= 3)):
+        state["converged"] = True
+    if state["count"] >= PLACEMENT_MAX_ITEMS:
+        state["converged"] = True
+
+
+def _placement_estimate(state, level_range):
+    """EAP-style ability estimate for a skill: mean of the last ~5 staircase
+    levels (the staircase oscillates around the learner's threshold), blended
+    with the correct-rate prior. Returns (estimated_level, confidence) clamped
+    to the skill's curriculum range."""
+    lo, hi = level_range
+    hist = state["level_history"][-5:]
+    if not hist:
+        return state["level"], 0.0
+    mean_level = sum(hist) / len(hist)
+    accuracy = state["correct"] / max(state["count"], 1)
+    # Blend: staircase level (primary) + accuracy pull toward the middle
+    est = 0.6 * mean_level + 0.4 * (2 + accuracy * 4)
+    est = max(lo, min(hi, round(est)))
+    # Confidence: more items + more reversals → more stable estimate
+    confidence = min(1.0, state["count"] / PLACEMENT_MAX_ITEMS) * (0.6 + 0.4 * min(1.0, state["reversals"] / 3))
+    return est, round(confidence, 2)
+
+
+def _placement_apply_results(conn, user_id, results):
+    """Apply placement results: test-out credit (mastery for known skills),
+    SRS seeding (correct → mature interval, missed → review soon), and
+    per-skill 'start at lesson N' mapping."""
+    applied = {"nodes_tested_out": 0, "srs_seeded": 0, "skills": {}}
+    for skill, cats, lo, hi, _start in PLACEMENT_SKILLS:
+        est, conf = _placement_estimate(results[skill], (lo, hi))
+        applied["skills"][skill] = {"estimated_level": est, "confidence": conf,
+                                    "items_asked": results[skill]["count"],
+                                    "correct": results[skill]["correct"]}
+        placeholders = ",".join("?" for _ in cats)
+        # Test-out: nodes comfortably below the estimate (>=2 levels margin) get
+        # mastery credit so they unlock but don't burden the review queue.
+        mastered_nodes = conn.execute(
+            f"SELECT id FROM hebrew_nodes WHERE category IN ({placeholders}) AND level <= ?",
+            (*cats, max(1, est - 1))).fetchall()
+        for r in mastered_nodes:
+            conn.execute("""
+                INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced)
+                VALUES (?,?,0.8,1,1,datetime('now'))
+                ON CONFLICT(user_id,node_id) DO UPDATE SET
+                    mastery=MAX(hebrew_progress.mastery,excluded.mastery),
+                    attempts=hebrew_progress.attempts+1,
+                    correct=hebrew_progress.correct+1,
+                    last_practiced=datetime('now')
+            """, (user_id, r["id"]))
+            applied["nodes_tested_out"] += 1
+        # SRS seeding from individual answers
+        for item in results[skill]["log"]:
+            node_id = item["node_id"]
+            if item["correct"]:
+                # Correct → mature-ish: high initial stability, long interval
+                new_s = max(8.0, fsrs_initial_stability(4) * 2.0)
+                rating = 4
+                mastery = 0.8
+            else:
+                new_s = max(0.5, fsrs_initial_stability(1))
+                rating = 1
+                mastery = 0.2
+            new_d = fsrs_next_difficulty(5.0, rating)
+            interval = fsrs_next_interval(new_s)
+            due = datetime.datetime.now() + datetime.timedelta(days=max(1, interval))
+            _ensure_hebrew_review_state(conn)
+            conn.execute("""
+                INSERT INTO hebrew_review_state
+                    (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(user_id,node_id) DO UPDATE SET
+                    stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
+                    last_review=excluded.last_review,last_rating=excluded.last_rating,
+                    reps=excluded.reps,lapses=excluded.lapses
+            """, (user_id, node_id, round(new_s, 2), round(new_d, 2),
+                  due.strftime("%Y-%m-%d %H:%M:%S"),
+                  datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                  rating, 1, 0))
+            conn.execute("""
+                INSERT INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced)
+                VALUES (?,?,?,?,?,datetime('now'))
+                ON CONFLICT(user_id,node_id) DO UPDATE SET
+                    mastery=MAX(hebrew_progress.mastery,excluded.mastery),
+                    attempts=hebrew_progress.attempts+1,
+                    correct=hebrew_progress.correct+excluded.correct,
+                    last_practiced=datetime('now')
+            """, (user_id, node_id, mastery, 1, 1 if item["correct"] else 0))
+            applied["srs_seeded"] += 1
+    return applied
+
+
+@router.post("/api/v1/hebrew/diagnostic/adaptive/start")
+def start_adaptive_diagnostic(body: dict = None, user_id: str = "default"):
+    """Start an adaptive placement test: per-skill 1-up-3-down staircase.
+
+    Returns the first question plus a session_id. Each answer is submitted to
+    /answer which returns the next question (or results when done).
+    """
+    body = body or {}
+    user_id = body.get("user_id", user_id)
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    _placement_session_table(conn)
+    session_id = secrets.token_urlsafe(16)
+    state = _placement_initial_state()
+    q = _placement_pick_question(conn, 0, state["alphabet"]["level"])
+    if not q:
+        conn.close()
+        raise HTTPException(404, "No practice items available for placement")
+    conn.execute(
+        "INSERT INTO hebrew_placement_sessions (session_id,user_id,skill_idx,state_json,expires_at) VALUES (?,?,0,?,datetime('now','+1 hour'))",
+        (session_id, user_id, json.dumps(state)))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {
+        "session_id": session_id,
+        "skill": PLACEMENT_SKILLS[0][0],
+        "skill_index": 0,
+        "total_skills": len(PLACEMENT_SKILLS),
+        "question": q,
+        "skill_progress": {"current": 1, "total": len(PLACEMENT_SKILLS)},
+    }}
+
+
+@router.post("/api/v1/hebrew/diagnostic/adaptive/answer")
+def answer_adaptive_diagnostic(body: dict):
+    """Submit an answer to the adaptive placement test.
+
+    Body: {session_id, question_id, node_id, answer}
+    Returns the next question, or {done: true, results} when all skills finish.
+    """
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    session_id = body.get("session_id", "")
+    answer = body.get("answer", "")
+    qid = body.get("question_id")
+    node_id = body.get("node_id", "")
+    if not session_id or not qid or not node_id:
+        raise HTTPException(400, "session_id, question_id, node_id required")
+
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    _placement_session_table(conn)
+    conn.row_factory = sqlite3.Row
+    conn.execute("BEGIN IMMEDIATE")
+    sess = conn.execute(
+        "SELECT * FROM hebrew_placement_sessions WHERE session_id=? AND used_at IS NULL AND expires_at>datetime('now')",
+        (session_id,)).fetchone()
+    if not sess:
+        conn.rollback(); conn.close()
+        raise HTTPException(400, "Invalid or expired placement session")
+    state = json.loads(sess["state_json"])
+    skill_idx = sess["skill_idx"]
+    skill_name = PLACEMENT_SKILLS[skill_idx][0]
+    level_range = (PLACEMENT_SKILLS[skill_idx][2], PLACEMENT_SKILLS[skill_idx][3])
+
+    item = conn.execute("""
+        SELECT p.correct_answer, n.category FROM hebrew_practice_items p
+        JOIN hebrew_nodes n ON n.id=p.node_id
+        WHERE p.id=? AND p.node_id=?
+    """, (qid, node_id)).fetchone()
+    if not item:
+        conn.rollback(); conn.close()
+        raise HTTPException(400, "Question does not match its issued skill")
+    correct = _diagnostic_answer_matches(answer, item["correct_answer"])
+
+    skill_state = state[skill_name]
+    skill_state["log"].append({"node_id": node_id, "correct": correct,
+                               "level": skill_state["level"]})
+    _placement_staircase_update(skill_state, correct, level_range)
+
+    # Next question in this skill, or advance to next skill / finish
+    if not skill_state["converged"]:
+        q = _placement_pick_question(conn, skill_idx, skill_state["level"])
+        if not q:
+            skill_state["converged"] = True
+    else:
+        q = None
+    if not q:
+        if skill_idx + 1 < len(PLACEMENT_SKILLS):
+            skill_idx += 1
+            next_name = PLACEMENT_SKILLS[skill_idx][0]
+            q = _placement_pick_question(conn, skill_idx, state[next_name]["level"])
+        else:
+            q = None
+
+    if q:
+        conn.execute(
+            "UPDATE hebrew_placement_sessions SET skill_idx=?, state_json=? WHERE session_id=?",
+            (skill_idx, json.dumps(state), session_id))
+        conn.commit(); conn.close()
+        return {"ok": True, "data": {
+            "correct": correct,
+            "question": q,
+            "skill": PLACEMENT_SKILLS[skill_idx][0],
+            "skill_index": skill_idx,
+            "total_skills": len(PLACEMENT_SKILLS),
+            "skill_progress": {"current": skill_idx + 1, "total": len(PLACEMENT_SKILLS)},
+            "last_correct": correct,
+        }}
+
+    # All skills complete → apply results
+    results = {name: state[name] for name, _, _, _, _ in PLACEMENT_SKILLS}
+    applied = _placement_apply_results(conn, sess["user_id"], results)
+    conn.execute("UPDATE hebrew_placement_sessions SET used_at=datetime('now') WHERE session_id=?",
+                 (session_id,))
+    conn.commit(); conn.close()
+    return {"ok": True, "data": {
+        "done": True,
+        "results": {
+            "skills": applied["skills"],
+            "nodes_tested_out": applied["nodes_tested_out"],
+            "srs_seeded": applied["srs_seeded"],
+            "message": "Placement applied: tested-out skills unlocked, known words scheduled for light review.",
+        }
+    }}
+
+
 @router.post("/api/v1/hebrew/diagnostic/apply")
 def apply_diagnostic_results(body: dict):
     """Grade diagnostic answers server-side and credit only tested skills.
@@ -997,7 +1336,17 @@ def get_hebrew_practice(node_id: str):
     conn.row_factory = sqlite3.Row
     items = conn.execute(
         "SELECT * FROM hebrew_practice_items WHERE node_id=? ORDER BY RANDOM()", (node_id,)).fetchall()
+    # Hebrew stimulus for the node — used for word-audio playback on practice cards
+    node_hebrew = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+    lesson = conn.execute("SELECT content_json FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
     conn.close()
+    heb_word = ""
+    if lesson:
+        try:
+            c = json.loads(lesson["content_json"])
+            heb_word = c.get("hebrew") or c.get("glyph") or ""
+        except (TypeError, json.JSONDecodeError):
+            heb_word = ""
     result = []
     for item in items:
         result.append({
@@ -1005,6 +1354,10 @@ def get_hebrew_practice(node_id: str):
             "question_text": item['question_text'], "options_json": item['options_json'],
             "correct_answer": item['correct_answer'], "explanation": item['explanation'] or '',
             "difficulty": item['difficulty'],
+            # Pre-built word audio URL (nil if none available) so the frontend
+            # doesn't need to look it up per word.
+            "audio_url": f"/api/v1/hebrew/audio/{urllib.parse.quote(heb_word)}" if heb_word else None,
+            "hebrew_word": heb_word or None,
         })
     random.shuffle(result)
     return {"ok": True, "data": {"items": result, "total": len(result)}}
@@ -1157,6 +1510,38 @@ def get_hebrew_audio(word: str):
             "source": "letters",
             "start": 0, "end": 0,
         }}
+    # Fallback: pre-generated word audio files (kokoro TTS, data/audio/words/)
+    # — node_id filenames, so match against hebrew_nodes + lesson hebrew
+    word_path = BASE_DIR / "data" / "audio" / "words" / f"{word_clean}.wav"
+    if word_path.exists():
+        return {"ok": True, "data": {
+            "audio_url": f"/api/v1/audio/word/{urllib.parse.quote(word_clean)}",
+            "word": word_clean,
+            "source": "words",
+            "start": 0, "end": 0,
+        }}
+    # Node-id based: e.g. audio requested for 'אל' but the file is vocab_אל_2.wav
+    try:
+        conn2 = sqlite3.connect(str(MEM_DB))
+        conn2.row_factory = sqlite3.Row
+        rows2 = conn2.execute("""
+            SELECT n.id FROM hebrew_nodes n
+            JOIN hebrew_lessons l ON l.node_id=n.id
+            WHERE l.content_json LIKE ?
+        """, (f'%"{word_clean}"%',)).fetchall()
+        conn2.close()
+        for r2 in rows2:
+            wav = BASE_DIR / "data" / "audio" / "words" / f"{r2['id']}.wav"
+            if wav.exists():
+                return {"ok": True, "data": {
+                    "audio_url": f"/api/v1/audio/word/{r2['id']}",
+                    "word": word_clean,
+                    "source": "words",
+                    "start": 0, "end": 0,
+                }}
+    except Exception:
+        log.warning("silent_exception", exc_info=True)
+        pass
     raise HTTPException(404, f"No audio found for: {word_clean}")
 
 
@@ -1346,7 +1731,8 @@ def add_hebrew_word_to_learning(word: str, user_id: str = "default"):
 
 
 @router.get("/api/v1/hebrew/review-queue")
-def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
+def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
+                            new_cards_per_day: int = 10, include_new: bool = True):
     if not MEM_DB.exists():
         return {"ok": True, "data": {"reviews": [], "due_count": 0}}
     conn = sqlite3.connect(str(MEM_DB))
@@ -1415,12 +1801,63 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
                 "last_practiced": last_str, "due": r['review_due'],
                 "scheduler": "adaptive-v1" if has_state else "legacy-estimate",
             })
+
+    # ── New-card introduction (Anki-style daily cap + backlog guardrail) ──
+    # New cards = unlocked nodes the learner has NOT practiced yet (the
+    # "frontier"). Capped at new_cards_per_day; suppressed entirely when the
+    # review backlog is large so the learner catches up first (Anki manual:
+    # "Continuing to introduce new cards when you're already behind can make
+    # the backlog worse").
+    new_cards = []
+    new_cards_available = 0
+    if include_new and limit > 0:
+        backlog = len(due)
+        new_budget = 0 if backlog > new_cards_per_day * 3 else max(0, new_cards_per_day - backlog // 3)
+        if new_budget > 0:
+            # How many new cards were already introduced today (reps=1, reviewed today)
+            introduced_today = conn.execute("""
+                SELECT COUNT(*) FROM hebrew_review_state
+                WHERE user_id=? AND reps=1 AND last_review >= date('now')
+            """, (user_id,)).fetchone()[0]
+            remaining = max(0, new_budget - introduced_today)
+            if remaining > 0:
+                frontier = conn.execute("""
+                    SELECT n.id, n.title, n.level, n.category, n.description
+                    FROM hebrew_nodes n
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM hebrew_progress p WHERE p.node_id=n.id AND p.user_id=?
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM hebrew_edges e
+                        LEFT JOIN hebrew_progress p2 ON p2.node_id=e.source_id AND p2.user_id=?
+                        WHERE e.target_id=n.id AND (p2.node_id IS NULL OR p2.mastery < 0.8)
+                    )
+                    ORDER BY n.level, n.id LIMIT ?
+                """, (user_id, user_id, remaining * 3)).fetchall()
+                for f in frontier[:remaining]:
+                    new_cards.append({
+                        "node_id": f["id"], "title": f["title"], "level": f["level"],
+                        "category": f["category"], "description": f["description"],
+                        "language": "hebrew",
+                        "mastery": 0.0, "attempts": 0, "correct": 0,
+                        "days_since": 0, "stability": 0, "retrievability": 1.0,
+                        "learning_speed": 1.0, "last_practiced": None, "due": None,
+                        "scheduler": "new",
+                        "is_new": True,
+                    })
+                new_cards_available = len(new_cards)
     # ── Systematic Interleaving + Non-Interference ──
-    # 1. Group by category
+    # 1. Group by category. New cards join the same pool (mixed with reviews —
+    #    one broad deck, per Anki guidance) but are never adjacent to each other.
     from collections import defaultdict
     by_cat = defaultdict(list)
     for item in due:
         by_cat[item['category']].append(item)
+    new_by_cat = defaultdict(list)
+    for item in new_cards:
+        new_by_cat[item['category']].append(item)
+    for c, items in new_by_cat.items():
+        by_cat[c].extend(items)
 
     # 2. Load confusability pairs for non-interference enforcement
     confusable_pairs = set()
@@ -1578,6 +2015,9 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10):
         "due_count": len(due),
         "total_practiced": len(rows),
         "compression_savings": len(interleaved[:limit]) - len(compressed),
+        "new_cards": new_cards_available,
+        "new_cards_per_day": new_cards_per_day,
+        "new_cards_available_today": max(0, new_cards_per_day - new_cards_available) if include_new else 0,
     }}
 
 

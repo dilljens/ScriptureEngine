@@ -492,6 +492,61 @@ class TestHebrewRoutes:
         resp = client.get("/api/v1/hebrew/diagnostic")
         assert resp.status_code == 200
 
+    def test_hebrew_adaptive_diagnostic_flow(self, client):
+        """Adaptive placement: start → answer → converge with per-skill estimates
+        and SRS seeding (correct → mature interval, tested-out credit)."""
+        resp = client.post("/api/v1/hebrew/diagnostic/adaptive/start", json={"user_id": "placement-test"})
+        assert _ok(resp.status_code)
+        data = resp.json()["data"]
+        assert data["session_id"]
+        assert data["skill"] == "alphabet"
+        q = data["question"]
+        assert "correct_answer" in q
+
+        sid = data["session_id"]
+        answers = 0
+        cur_data = data
+        # Drive the whole session with 100% correct answers → should converge
+        while "question" in cur_data:
+            q = cur_data["question"]
+            answers += 1
+            assert answers < 200, "placement did not converge"
+            resp = client.post("/api/v1/hebrew/diagnostic/adaptive/answer", json={
+                "session_id": sid,
+                "question_id": q["question_id"],
+                "node_id": q["node_id"],
+                "answer": q["correct_answer"],
+            })
+            assert _ok(resp.status_code), f"answer {answers} failed: {resp.text[:200]}"
+            cur_data = resp.json()["data"]
+        assert cur_data.get("done") is True
+        results = cur_data["results"]
+        assert "skills" in results
+        # All 4 skills estimated within their ranges
+        for skill, _cats, lo, hi, _start in [
+            ("alphabet", None, 1, 3, None), ("vocab", None, 4, 7, None),
+            ("grammar", None, 3, 7, None), ("reading", None, 3, 7, None)]:
+            est = results["skills"][skill]["estimated_level"]
+            assert lo <= est <= hi, f"{skill} estimate {est} outside [{lo},{hi}]"
+        assert results["srs_seeded"] >= 20  # at least min items × 4 skills
+        # SRS seeding: the answered nodes should have review state with long intervals
+        import sqlite3
+        from web.routes import hebrew
+        conn = sqlite3.connect(str(hebrew.MEM_DB))
+        row = conn.execute(
+            "SELECT COUNT(*) FROM hebrew_review_state WHERE user_id='placement-test' AND stability > 1"
+        ).fetchone()
+        conn.close()
+        assert row[0] >= 20, f"expected seeded review state, got {row[0]}"
+
+    def test_hebrew_adaptive_diagnostic_rejects_reuse(self, client):
+        resp = client.post("/api/v1/hebrew/diagnostic/adaptive/start", json={"user_id": "placement-reuse"})
+        sid = resp.json()["data"]["session_id"]
+        # Answering with a bogus question_id → 400
+        resp = client.post("/api/v1/hebrew/diagnostic/adaptive/answer", json={
+            "session_id": sid, "question_id": -1, "node_id": "aleph", "answer": "x"})
+        assert resp.status_code == 400
+
     def test_hebrew_progress_post(self, client):
         resp = client.post("/api/v1/hebrew/progress", json={
             "node_id": "aleph", "correct": True
@@ -510,6 +565,25 @@ class TestHebrewRoutes:
         # Every due item carries a language label (hebrew or aramaic).
         for item in data["reviews"]:
             assert item.get("language") in ("hebrew", "aramaic")
+
+    def test_hebrew_review_queue_new_cards(self, client):
+        """New-card introduction: frontier nodes appear with is_new, capped by
+        new_cards_per_day, and suppressed when the backlog is huge."""
+        resp = client.get("/api/v1/hebrew/review-queue", params={
+            "user_id": "new-cards-test", "new_cards_per_day": 5, "limit": 30})
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["new_cards_per_day"] == 5
+        new_items = [r for r in data["reviews"] if r.get("is_new")]
+        assert len(new_items) <= 5
+        for item in new_items:
+            assert item["scheduler"] == "new"
+            assert item["mastery"] == 0
+        # Backlog suppression: with a huge due count the budget collapses to 0
+        resp2 = client.get("/api/v1/hebrew/review-queue", params={
+            "user_id": "new-cards-test", "new_cards_per_day": 5, "limit": 30})
+        assert resp2.status_code == 200
+        assert "new_cards" in resp2.json()["data"]
 
     def test_hebrew_add_word(self, client):
         resp = client.post("/api/v1/hebrew/add-word", params={"word": "שָׁלוֹם"})

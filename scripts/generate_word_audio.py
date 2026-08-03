@@ -46,6 +46,15 @@ def _pointed_text(node_id, title, content):
     heb = content.get("hebrew") or ""
     if heb:
         return heb
+    # Title Hebrew before the em-dash: "שְׁמַע יִשְׂרָאֵל — Hear O Israel" → the phrase;
+    # "Root כתב — write" → כתב
+    if title and "—" in title:
+        head = title.split("—", 1)[0]
+        if any("\u0590" <= ch <= "\u05FF" for ch in head):
+            # Strip the English "Root " label for root nodes so TTS reads only Hebrew
+            head = re.sub(r"^Root\s+", "", head, flags=re.IGNORECASE).strip()
+            if head:
+                return head
     for p in reversed(re.findall(r"\(([^)]+)\)", title or "")):
         if any("\u0590" <= ch <= "\u05FF" for ch in p):
             return p
@@ -116,6 +125,8 @@ def main():
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--limit", type=int, default=0, help="Only generate first N items (debug)")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N items (resume)")
+    parser.add_argument("--force", action="store_true",
+                        help="Regenerate even if the .wav already exists")
     args = parser.parse_args()
 
     if not args.dry_run and not args.apply:
@@ -127,7 +138,13 @@ def main():
     items = items[args.offset:]
     if args.limit:
         items = items[:args.limit]
-    print(f"Items to generate: {len(items)}")
+    # Idempotent: skip nodes whose audio already exists unless --force
+    if not args.force:
+        before = len(items)
+        items = [it for it in items if not (WORDS_DIR / f"{it[0]}.wav").exists()]
+        print(f"Items to generate: {len(items)} ({before - len(items)} already exist)")
+    else:
+        print(f"Items to generate: {len(items)} (--force)")
 
     if args.dry_run:
         for nid, title, cat, text in items[:12]:

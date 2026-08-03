@@ -46,6 +46,26 @@ OPENVERSE_DELAY = 4.0
 COMMONS_DELAY = 1.0
 
 
+# Function words / abstract glosses that have no meaningful image. Skipped to
+# save API calls and avoid nonsense matches (e.g. "to", "who", "because").
+ABSTRACT_GLOSSES = {
+    "to", "of", "from", "in", "on", "at", "with", "by", "for", "as", "and",
+    "or", "but", "not", "if", "then", "that", "this", "these", "those", "who",
+    "which", "what", "when", "where", "why", "how", "all", "every", "whole",
+    "any", "no", "none", "there", "here", "upon", "against", "toward", "unto",
+    "before", "after", "between", "under", "over", "through", "because",
+    "direct object marker", "object marker", "definite article", "interrogative",
+    "relative pronoun", "preposition", "conjunction", "particle", "pronoun",
+    "he", "she", "it", "we", "you", "they", "i", "me", "him", "her", "us",
+    "them", "his", "her", "their", "my", "your", "our",
+}
+
+
+def is_abstract(gloss):
+    g = gloss.strip().lower()
+    return g in ABSTRACT_GLOSSES or len(g) <= 2
+
+
 def log(msg):
     print(msg, flush=True)
 
@@ -127,6 +147,18 @@ def commons_search(gloss):
     try:
         with urllib.request.urlopen(req, timeout=25) as r:
             data = json.load(r)
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            log("  [commons 429 — cooling down 30s]")
+            time.sleep(30)
+            try:
+                with urllib.request.urlopen(req, timeout=25) as r2:
+                    data = json.load(r2)
+            except Exception:
+                return []
+        else:
+            log(f"  [commons search error: {e}]")
+            return []
     except Exception as e:
         log(f"  [commons search error: {e}]")
         return []
@@ -210,7 +242,7 @@ def upsert_image(conn, word, node_id, source, url, attribution, w, h):
         ON CONFLICT(word_hebrew, source) DO UPDATE SET
             image_url=excluded.image_url, attribution=excluded.attribution,
             width=excluded.width, height=excluded.height
-    """, (word_norm, node_id, source, url, attribution, w, h))
+    """, (word_norm, node_id, source, url, attribution, w, h, ""))
 
 
 def main():
@@ -230,9 +262,12 @@ def main():
 
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=10000")
     # Openverse data lands in the scripture.db word_images table (shared by the
     # /hebrew/image endpoint which reads scripture.db), so upsert there too.
-    scr = sqlite3.connect(str(SCRIPTURE_DB)) if SCRIPTURE_DB.exists() else None
+    scr = sqlite3.connect(str(SCRIPTURE_DB), timeout=60) if SCRIPTURE_DB.exists() else None
+    if scr is not None:
+        scr.execute("PRAGMA busy_timeout=60000")
 
     rows = conn.execute("""
         SELECT l.node_id, l.content_json
@@ -252,6 +287,8 @@ def main():
             continue
         # Take the first gloss before any slash/semicolon — best search term
         term = re.split(r"[/;,]", g)[0].strip()
+        if is_abstract(term):
+            continue
         words.append({"hebrew": h, "gloss": term, "node_id": r["node_id"]})
 
     # Dedup by normalized Hebrew
@@ -264,11 +301,13 @@ def main():
             unique.append(w)
 
     token = openverse_token() if (args.source == "openverse" and not args.dry_run) else None
-    if token:
+    if args.source == "openverse" and token:
         log(f"Openverse authenticated (higher rate limits).")
-    else:
+    elif args.source == "openverse":
         log("Openverse anonymous mode — ~4s/word to respect rate limits. "
             "Set OPENVERSE_CLIENT_ID/SECRET for speed.")
+    else:
+        log("Wikimedia Commons mode — no API key needed, ~1s/word.")
 
     processed = 0
     fetched = 0

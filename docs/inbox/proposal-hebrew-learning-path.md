@@ -1,9 +1,10 @@
 ---
-status: proposed
+status: implemented
 kind: proposal
 area: hebrew-learning
 author: agent
 created: 2026-08-03
+implemented: 2026-08-03
 ---
 
 # Hebrew learning path: audio, images, quiz-in-lesson, SRS, placement
@@ -11,6 +12,9 @@ created: 2026-08-03
 Research-backed design for the Hebrew memorization feature. Covers: verse + word
 audio, word→image association, quiz-in-lesson, the interleaved learning path
 (words + grammar + reading), and an adaptive placement test.
+
+**Status: implemented (P1–P5, 2026-08-03).** See the "Implemented" section at the
+bottom for what shipped and how to extend it.
 
 **Headline:** the codebase already ships most of this — FSRS-5 spaced repetition
 (`hebrew.py` FSRS_W), an interleaved non-interference review queue
@@ -200,3 +204,63 @@ is real but wired to scripture `knowledge_items`, not Hebrew.
 - Duolingo placement blog (partial credit, adaptive, skill unlock)
 - Wikipedia CAT / IRT; psychophysics staircase methods (1-up-N-down)
 - Openverse API (live-tested); Wikimedia Commons API (live-tested)
+
+---
+
+## Implemented (2026-08-03)
+
+All five phases shipped. Every Hebrew test passes (31 in `TestHebrewRoutes`),
+frontend builds clean, server verified live.
+
+**P1 — Quiz-in-lesson + SRS wiring**
+- `GET /api/v1/hebrew/lesson/{node_id}/quiz` — per-lesson quiz: practice items in
+  micro-scaffolding order (MC → recall → typing), plus confusable distractors
+  from `hebrew_confusability` appended last. Returns the `/hebrew/quiz` shape.
+- "Start Quiz" button in `HebrewLessonView` → full-screen `HebrewQuiz` (nodeId mode).
+- `HebrewQuiz` now renders ALL practice types: MC/true_false/contrast as choice,
+  transliteration/cloze/recall/typing/letter_name as typed input with Hebrew
+  keyboard + niqqud-insensitive grading. Quiz answers POST to `/hebrew/progress`,
+  which feeds the FSRS review state — so quizzes are retrieval practice, not just tests.
+
+**P2 — Word images (local, licensed)**
+- `scripts/ingest_word_images.py` — Openverse (primary, with optional auth) or
+  Wikimedia Commons (no daily cap, 429 backoff built in) search by English gloss,
+  filters commercial-safe licenses (cc0/by/by-sa, excludes by-nd), downloads to
+  `data/images/words/`, upserts LOCAL url + attribution into `word_images`.
+  Resumable, idempotent, skips abstract function words.
+- `/images/words/` static mount + `/hebrew/image/{word}` prefers local files.
+- `HebrewLessonView` shows the word image + attribution for vocab nodes.
+
+**P3 — Audio coverage**
+- 605 word/phrase/root WAVs now exist (was 580; 25 more generated via
+  phonikud → Kokoro, including phrase_* and root_* nodes via improved title
+  extraction). `generate_word_audio.py` is idempotent (--force to regen).
+- `/api/v1/audio/word/{node_id}` endpoint; `/hebrew/audio/{word}` falls back to
+  words/ dir then node-id lookup. RFC 5987 Content-Disposition for Hebrew names
+  (fixed a 500 on `root_כתב`).
+- Practice items + lesson responses now carry `audio_url` / `hebrew_word` /
+  `gloss` / `transliteration` so the UI avoids fragile word lookups.
+
+**P4 — Adaptive placement test**
+- `POST /api/v1/hebrew/diagnostic/adaptive/start|answer` — per-skill
+  (alphabet/vocab/grammar/reading) 1-up-3-down staircase over curriculum level
+  (converges ~79%, no calibrated item bank needed). Min 6 / max 15 items/skill.
+- EAP-style estimate per skill, clamped to the skill's level range; confidence.
+- On completion: tested-out credit (nodes ≥2 levels below estimate → mastery 0.8),
+  SRS seeding per answer (correct → mature interval, miss → review soon).
+- `HebrewDiagnostic.jsx` rewritten to drive the adaptive flow one question at a
+  time with per-skill results.
+
+**P5 — Sentence-cloze + new-card guardrails**
+- `scripts/generate_sentence_cloze.py` — 150 sentence-cloze items across 26
+  reading nodes: Hebrew cloze (blank the word in the real verse, type it) +
+  English MC cloze (blank the gloss, pick the Hebrew word), with prefix-aware
+  distractor filtering (excludes ומיהוה vs יהוה).
+- Review queue: `new_cards_per_day` cap (default 10), frontier = unlocked-unpracticed
+  nodes, mixed into the interleaved queue (`is_new: true`), suppressed when the
+  backlog > 3× the daily cap (Anki manual guidance).
+
+**Extending:** images are rate-limited by Wikimedia (~1-3/word after 429 backoff);
+re-run `scripts/ingest_word_images.py --apply` to grow coverage (resumable). Set
+`OPENVERSE_CLIENT_ID/SECRET` for a much higher rate limit. Audio: run
+`venv-align/bin/python scripts/generate_word_audio.py --apply` after adding nodes.
