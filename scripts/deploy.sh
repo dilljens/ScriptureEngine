@@ -127,8 +127,10 @@ rsync -avz scripts/scripture-api.service "$HOST:$REMOTE_DIR/scripture-api.servic
 ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scripture-api.service"
 
 # 3. Install Python dependencies on remote
+# Ubuntu 24.04 system Python is externally-managed (PEP 668) — the VPS runs
+# the API on system python3, so --break-system-packages is required there.
 echo "Installing Python dependencies..."
-ssh "$HOST" "cd $REMOTE_DIR && pip install -r web/requirements.txt 2>&1 | tail -5"
+ssh "$HOST" "cd $REMOTE_DIR && pip install --break-system-packages -r web/requirements.txt 2>&1 | tail -5"
 
 # 4. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
