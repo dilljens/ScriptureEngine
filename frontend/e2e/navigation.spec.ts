@@ -25,7 +25,7 @@ test.describe('Navigation — chapter, book, work levels', () => {
   })
 
   test('toolbar up arrow zooms out to book view', async ({ page }) => {
-    const upArrow = page.locator('button[title*="Zoom out"]')
+    const upArrow = page.locator('header button[title*="Up a level"]')
     await expect(upArrow).toBeVisible()
     await upArrow.click()
     await expect(page.getByRole('button', { name: '1', exact: true }).first()).toBeVisible({ timeout: 5000 })
