@@ -168,6 +168,8 @@ def main():
     parser.add_argument("--all", action="store_true", help="Align every verse that has audio")
     parser.add_argument("--device", default="cuda", help="cuda or cpu")
     parser.add_argument("--model", default=HEBREW_ALIGN_MODEL, help="wav2vec2 alignment model")
+    parser.add_argument("--only-missing", action="store_true",
+                        help="only align verses with <3 existing word timestamps")
     args = parser.parse_args()
 
     conn = get_db()
@@ -179,10 +181,10 @@ def main():
         where.append("verse_id = ?")
         params.append(args.verse)
     if args.book:
-        where.append("book_id = ?")
+        where.append("t.book_id = ?")
         params.append(args.book)
     if args.chapter:
-        where.append("chapter = ?")
+        where.append("t.chapter = ?")
         params.append(args.chapter)
 
     verses = conn.execute(
@@ -191,8 +193,9 @@ def main():
             FROM audio_timestamps t
             LEFT JOIN verses v ON v.id = t.verse_id
             WHERE {' AND '.join(where)} AND v.text_hebrew IS NOT NULL
+              AND (NOT ? OR COALESCE(json_array_length(t.word_timestamps), 0) < 3)
             ORDER BY t.verse_id""",
-        params).fetchall()
+        params + [1 if args.only_missing else 0]).fetchall()
 
     print(f"Found {len(verses)} verses to align")
     if args.dry_run:
