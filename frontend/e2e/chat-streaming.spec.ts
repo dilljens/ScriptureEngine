@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+// The app's service worker owns every GET request (network-first fetch
+// handler), which would make GETs invisible to page.route mocks below.
+// Block it so the mocked background-job polls are actually intercepted.
+test.use({ serviceWorkers: 'block' })
+
 test.describe('Chat streaming — real-time responses', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
@@ -70,7 +75,7 @@ test.describe('Chat streaming — real-time responses', () => {
 
   test('completed streamed response remains visible after done event', async ({ page }) => {
     // Background-job flow: POST /api/v1/chat/jobs → poll GET /api/v1/chat/jobs/{id}?after_seq=N
-    await page.route('**/api/v1/chat/jobs**', async route => {
+    await page.route(url => url.href.includes('/api/v1/chat/jobs'), async route => {
       const req = route.request()
       if (req.method() === 'POST') {
         await route.fulfill({
