@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Generate Hebrew word audio with F5-TTS Hebrew v2.
+"""Generate Hebrew word audio: phonikud G2P → Kokoro-hebrew (ONNX).
 
-Math Academy Way + audio review decision: word-level audio is TTS (real
-Shmuelof audio is CC BY-NC-ND — splicing it into word clips is not legal for
-a public app). F5-TTS Hebrew v2 is Apache-2.0 and was re-vocalized with the
-Phonikud G2P at training time, so it reads pointed Hebrew (niqqud) correctly
-from the pointed text directly — no separate G2P step at inference.
+Math Academy Way + audio review decision: word-level audio is TTS. Pipeline:
 
-Loads the model exactly as the model card requires: `model_state_dict`
-(not ema), `text_num_embeds` overridden to the custom vocab size, the
-included `vocab.txt` for tokenization, and `model.sample()` called directly
-(the high-level F5 API is documented as broken for fine-tuned models).
-Uses `no_ref_audio=True` so no reference clip is needed (built-in voice).
+  1. phonikud (Hebrew G2P → IPA, MIT) converts POINTED text to correct IPA.
+     Essential: espeak-ng (Kokoro's default phonemizer) DROPS Hebrew vowels
+     entirely (בָּרָא → 'vrʔ'), but phonikud produces correct 'bara', and
+     distinguishes qatal (katˈal) from qittel (kitˈel).
+  2. Kokoro-hebrew ONNX (thewh1teagle/kokoro-hebrew-nc) speaks the IPA with
+     is_phonemes=True. Single speaker (he_shaul), non-commercial terms,
+     downloadable WITHOUT a gated HF token.
+
+Requires Python <3.13 (phonikud constraint). Use the venv-align venv:
+    uv venv venv-align --python 3.12
+    uv pip install --python venv-align/bin/python \
+        git+https://github.com/thewh1teagle/phonikud.git kokoro-onnx
 
 Output: data/audio/words/{node_id}.wav, mirrored to data/audio/letters/ for
 consonant/vowel nodes so the existing letter endpoint works.
@@ -19,12 +22,13 @@ consonant/vowel nodes so the existing letter endpoint works.
 Usage:
     python3 scripts/generate_word_audio.py --dry-run
     python3 scripts/generate_word_audio.py --apply
-    python3 scripts/generate_word_audio.py --apply --nfe 24   # faster, slightly lower quality
+    python3 scripts/generate_word_audio.py --apply --limit 50
 """
 
 import argparse
 import json
 import re
+import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -33,6 +37,9 @@ BASE = Path(__file__).parent.parent
 MEM_DB = BASE / "data" / "memorize.db"
 WORDS_DIR = BASE / "data" / "audio" / "words"
 LETTERS_DIR = BASE / "data" / "audio" / "letters"
+KOKORO_MODEL = BASE / "data" / "audio" / "kokoro" / "kokoro.onnx"
+KOKORO_VOICES = BASE / "data" / "audio" / "kokoro" / "voices-hebrew.bin"
+VOICE = "he_shaul"
 
 
 def _pointed_text(node_id, title, content):
@@ -64,87 +71,51 @@ def _iter_items(conn):
         yield (r["id"], r["title"], r["category"], text)
 
 
-def load_f5_model(device="cuda"):
-    """Load F5-TTS Hebrew v2 using the official loader + F5TTS_v1_Base arch.
+def load_models():
+    """Load phonikud (G2P) and Kokoro (TTS)."""
+    from phonikud import phonemize
+    from kokoro_onnx import Kokoro
+    kokoro = Kokoro(str(KOKORO_MODEL), str(KOKORO_VOICES))
+    return phonemize, kokoro
 
-    Model card: use `model_state_dict` (NOT ema) — the fine-tune checkpoint
-    is already pruned to a single state dict.
+
+def synth_word(phonemize, kokoro, pointed_text, out_path, category=None):
+    """Synthesize one pointed word: phonikud → IPA → Kokoro phonemes.
+
+    Vowel nodes carry only a niqqud mark (e.g. 'ַ'), which has no sound alone —
+    synthesize it on a carrier syllable (bet + vowel) so the learner hears the
+    vowel's sound. The explanation field gives the sound for the UI.
     """
-    from cached_path import cached_path
-    from f5_tts.infer.utils_infer import load_model
+    import numpy as np
+    import soundfile as sf
 
-    ckpt = cached_path("hf://Yzamari/f5tts-hebrew-v2/model.safetensors")
-    vocab_file = cached_path("hf://Yzamari/f5tts-hebrew-v2/vocab.txt")
+    if category == "vowel":
+        # carrier: bet + the vowel mark → e.g. בַּ = 'ba'
+        carrier = "\u05d1" + pointed_text
+        text_for_ipa = carrier
+    else:
+        text_for_ipa = pointed_text
 
-    from f5_tts.model import DiT
-    model = load_model(
-        DiT,
-        dict(
-            dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512,
-            text_mask_padding=True, conv_layers=4, attn_backend="torch",
-            attn_mask_enabled=False,
-        ),
-        str(ckpt),
-        mel_spec_type="vocos",
-        vocab_file=str(vocab_file),
-        use_ema=False,  # model card: NOT ema
-        device=device,
-    )
-    model = model.to(device).eval()
-    return model
-
-
-def synth_f5_word(text, model, device="cuda", nfe=32, seed=None):
-    """Synthesize one pointed Hebrew word with the fine-tuned F5 model.
-
-    Mirrors f5_tts's _infer_basic but with no_ref_audio=True (no reference
-    clip → built-in voice) and a duration scaled to the word length.
-    """
-    import torch
-    from f5_tts.infer.utils_infer import convert_char_to_pinyin, target_sample_rate, hop_length
-
-    final_text_list = convert_char_to_pinyin([text])
-
-    # cond is the WAVEFORM (CFM converts to mel internally). With
-    # no_ref_audio=True it gets zeroed, but it must have a real waveform shape
-    # for the internal mel computation — use a short silence prompt.
-    ref_audio_len = int(0.6 * target_sample_rate / hop_length)  # 0.6s silence
-    gen_text_len = len(text.encode("utf-8"))
-    duration = ref_audio_len + max(40, int(gen_text_len * 24) + 40)
-
-    with torch.inference_mode():
-        generated, _ = model.sample(
-            cond=torch.zeros(1, int(0.6 * target_sample_rate), device=device),
-            text=final_text_list,
-            duration=duration,
-            steps=nfe,
-            cfg_strength=2.0,          # F5 default
-            sway_sampling_coef=-1.0,   # F5 default
-            seed=seed,
-            no_ref_audio=True,
-        )
-        generated = generated[:, ref_audio_len:, :]  # drop silence-prompt prefix
-        generated = generated.permute(0, 2, 1).float()  # [B, time, mel] -> [B, mel, time]
-
-    # decode mel → wav with the model's vocos vocoder
-    from f5_tts.infer.utils_infer import load_vocoder
-    vocoder = load_vocoder("vocos", device=device)
-    wav = vocoder.decode(generated)
-    # normalize to F5's target RMS (0.1) so short words aren't whisper-quiet
-    import torch as _t
-    rms = _t.sqrt(_t.mean(wav ** 2))
-    if rms.item() > 0:
-        wav = wav * (0.1 / rms)
-    return wav
+    ipa = phonemize(text_for_ipa).strip()
+    if not ipa:
+        raise ValueError(f"no IPA for: {pointed_text!r}")
+    samples, sr = kokoro.create(ipa, voice=VOICE, lang="he", is_phonemes=True)
+    samples = np.asarray(samples, dtype=np.float32)
+    rms = float(np.sqrt(np.mean(samples ** 2)))
+    if rms > 1e-6:
+        samples = samples * (0.12 / rms)
+        samples = np.clip(samples, -1.0, 1.0)
+    sf.write(str(out_path), samples, sr)
+    voiced = int((np.abs(samples) > 0.01).sum()) / sr
+    return len(samples) / sr, voiced
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Hebrew word audio")
+    parser = argparse.ArgumentParser(description="Generate Hebrew word audio (phonikud → Kokoro)")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--nfe", type=int, default=32)
     parser.add_argument("--limit", type=int, default=0, help="Only generate first N items (debug)")
+    parser.add_argument("--offset", type=int, default=0, help="Skip first N items (resume)")
     args = parser.parse_args()
 
     if not args.dry_run and not args.apply:
@@ -153,6 +124,7 @@ def main():
 
     conn = sqlite3.connect(str(MEM_DB))
     items = list(_iter_items(conn))
+    items = items[args.offset:]
     if args.limit:
         items = items[:args.limit]
     print(f"Items to generate: {len(items)}")
@@ -166,31 +138,29 @@ def main():
     WORDS_DIR.mkdir(parents=True, exist_ok=True)
     LETTERS_DIR.mkdir(parents=True, exist_ok=True)
 
-    import torch
-    import torchaudio
-    print("Loading F5-TTS Hebrew v2...")
-    model = load_f5_model(args.device)
+    print("Loading phonikud + Kokoro-hebrew...")
+    phonemize, kokoro = load_models()
 
     done = 0
     errors = 0
+    silent = 0
     for nid, title, cat, text in items:
         out = WORDS_DIR / f"{nid}.wav"
         try:
-            wav = synth_f5_word(text, model, args.device, nfe=args.nfe)
-            if wav.dim() == 1:
-                wav = wav.unsqueeze(0)
-            torchaudio.save(str(out), wav.cpu(), 24000)
+            dur, voiced = synth_word(phonemize, kokoro, text, out, category=cat)
+            if voiced < 0.15:
+                silent += 1
             if cat in ("consonant", "vowel"):
-                torchaudio.save(str(LETTERS_DIR / f"{nid}.wav"), wav.cpu(), 24000)
+                shutil.copy(out, LETTERS_DIR / f"{nid}.wav")
             done += 1
-            if done % 10 == 0:
+            if done % 25 == 0:
                 print(f"  {done}/{len(items)} ({nid})")
         except Exception as e:
             errors += 1
             print(f"  ERROR {nid} ({text!r}): {e}")
 
     conn.close()
-    print(f"Done: {done} generated, {errors} errors")
+    print(f"Done: {done} generated, {errors} errors, {silent} suspiciously-short")
 
 
 if __name__ == "__main__":

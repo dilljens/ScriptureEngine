@@ -81,6 +81,84 @@ def get_read_along_data(verse_id: str):
     return {"ok": True, "data": result}
 
 
+def _normalize_hebrew_word(w: str) -> str:
+    """Normalize an OSHB word for matching: strip the '/' morph separator and
+    niqqud/cantillation marks, and map final forms to their regular letters."""
+    import re as _re
+    w = _re.sub(r"[\u0591-\u05C7]", "", w or "")   # niqqud + cantillation
+    w = w.replace("/", "").strip()
+    w = w.replace("ך", "כ").replace("ם", "מ").replace("ן", "נ") \
+         .replace("ף", "פ").replace("ץ", "צ")
+    return w
+
+
+@router.get("/api/v1/hebrew/word-audio/{verse_id:path}")
+def get_word_audio(verse_id: str, word: str = ""):
+    """Play the audio slice for one word in an aligned verse.
+
+    Finds the word's [start, end] in audio_timestamps.word_timestamps (matching
+    by normalized Hebrew form), then streams that slice from the source file.
+    This is verse-level playback of the licensed recording (in-browser slice),
+    not a redistributed clip — the ND-safe use.
+    """
+    import re as _re
+    vid = verse_id.strip("/").replace(":", ".").replace(" ", ".").lower()
+    m = _re.match(r'([a-zA-Z0-9_]+)\.?(\d+)\.?(\d+)', vid)
+    vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}" if m else vid
+
+    target = _normalize_hebrew_word(word)
+    if not target:
+        raise HTTPException(400, "word required")
+
+    conn = get_db()
+    ts_row = conn.execute(
+        "SELECT source_file, word_timestamps FROM audio_timestamps WHERE verse_id=?",
+        (vid,)).fetchone()
+    conn.close()
+    if not ts_row or not ts_row["source_file"]:
+        raise HTTPException(404, f"No alignment for verse: {vid}")
+
+    try:
+        words = json.loads(ts_row["word_timestamps"] or "[]")
+    except (json.JSONDecodeError, TypeError):
+        words = []
+
+    match = None
+    for w in words:
+        if _normalize_hebrew_word(w.get("word", "")) == target:
+            match = w
+            break
+    if not match:
+        raise HTTPException(404, f"Word '{word}' not found in aligned {vid}")
+
+    start, end = float(match["start"]), float(match["end"])
+    src = RAW_AUDIO_DIR / ts_row["source_file"]
+    if not src.exists():
+        alt = AUDIO_DIR / ts_row["source_file"]
+        if not alt.exists():
+            raise HTTPException(404, f"Source audio not found: {ts_row['source_file']}")
+        src = alt
+
+    # small padding so the word isn't clipped at the boundary
+    pad = 0.03
+    cmd = [
+        "ffmpeg", "-y", "-ss", str(max(0, start - pad)), "-to", str(end + pad),
+        "-i", str(src), "-f", "wav", "-acodec", "pcm_s16le",
+        "-ar", "24000", "-ac", "1", "pipe:1",
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired as e:
+        raise HTTPException(500, "Audio extraction timed out") from e
+    if proc.returncode != 0 or not proc.stdout:
+        raise HTTPException(500, f"ffmpeg slice failed for {vid}")
+    return StreamingResponse(
+        io.BytesIO(proc.stdout),
+        media_type="audio/wav",
+        headers={"Content-Disposition": f'inline; filename="{vid}.wav"'},
+    )
+
+
 @router.get("/api/v1/audio/letter/{letter_id}")
 def play_letter_audio(letter_id: str):
     """Serve pre-generated Hebrew letter audio."""

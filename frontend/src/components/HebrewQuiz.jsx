@@ -4,7 +4,8 @@ import HebrewKeyboard from './HebrewKeyboard'
 /**
  * HebrewQuiz — cumulative interleaved quiz from recently studied material.
  *
- * Fetches mixed-category questions from /api/v1/hebrew/quiz,
+ * Fetches mixed-category questions from /api/v1/hebrew/quiz (or a per-lesson
+ * quiz from /api/v1/hebrew/lesson/{nodeId}/quiz when nodeId is provided),
  * presents them one at a time with timers, shows results at the end.
  */
 const TYPE_COLORS = {
@@ -12,7 +13,13 @@ const TYPE_COLORS = {
   cloze: 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20',
   transliteration: 'border-cyan-200 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-900/20',
   true_false: 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20',
+  recall: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20',
+  typing: 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20',
+  contrast: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20',
 }
+
+// Question types answered via text input (vs. tapping an option)
+const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name'])
 
 const CATEGORY_BADGES = {
   word: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Vocab' },
@@ -29,7 +36,7 @@ function getTimeLimit(q) {
   return Math.round(base + wordBonus)
 }
 
-export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson }) {
+export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId }) {
   const [questions, setQuestions] = useState([])
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -49,8 +56,12 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { submittedRef.current = submitted }, [submitted])
 
+  const quizUrl = nodeId
+    ? `/api/v1/hebrew/lesson/${encodeURIComponent(nodeId)}/quiz?count=${count}`
+    : `/api/v1/hebrew/quiz?count=${count}`
+
   useEffect(() => {
-    fetch(`/api/v1/hebrew/quiz?count=${count}`)
+    fetch(quizUrl)
       .then(r => r.json())
       .then(d => {
         if (d.ok && d.data?.questions?.length > 0) {
@@ -62,21 +73,30 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       })
       .catch(() => setError('Failed to load quiz'))
       .finally(() => setLoading(false))
-  }, [count])
+  }, [quizUrl])
 
   const current = questions[idx]
+
+  // Strip niqqud + case for Hebrew answers so typing אבא vs אָב counts the same
+  const normalizeAnswer = (value) => {
+    const text = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+    return /[\u0590-\u05ff]/.test(text)
+      ? text.replace(/[\u0591-\u05af]/g, '').replace(/\//g, '')
+      : text
+  }
 
   const submitAnswer = useCallback((timedOut = false) => {
     if (submittedRef.current[idx] !== undefined) return
     const ans = answersRef.current[idx]
     const correct = !timedOut && ans !== undefined && ans !== null && ans !== ''
-      && (ans === current.correct || ans.toLowerCase().trim() === current.correct.toLowerCase().trim())
+      && normalizeAnswer(ans) === normalizeAnswer(current.correct)
     setSubmitted(prev => ({ ...prev, [idx]: correct }))
     setResults(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
     if (!correct) {
       setMissedItems(prev => [...prev, { ...current, yourAnswer: ans || '(timed out)' }])
     }
-    // Report progress
+    // Report progress — /hebrew/progress feeds the FSRS review state, so every
+    // quiz answer is retrieval practice that schedules the next review.
     try {
       fetch('/api/v1/hebrew/progress', {
         method: 'POST',
@@ -185,9 +205,9 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
           <div className="flex gap-3 justify-center">
             <button onClick={onBack}
               className="px-6 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-sm font-medium cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors">
-              ← Back to Lessons
+              {nodeId ? '← Back to Lesson' : '← Back to Lessons'}
             </button>
-            <button onClick={() => { setDone(false); setIdx(0); setAnswers({}); setSubmitted({}); setResults({ correct: 0, total: 0 }); setMissedItems([]); setLoading(true); setError(null); fetch(`/api/v1/hebrew/quiz?count=${count}`).then(r => r.json()).then(d => { if (d.ok) setQuestions(d.data.questions); setLoading(false) }).catch(() => setError('Failed')) }}
+            <button onClick={() => { setDone(false); setIdx(0); setAnswers({}); setSubmitted({}); setResults({ correct: 0, total: 0 }); setMissedItems([]); setLoading(true); setError(null); fetch(quizUrl).then(r => r.json()).then(d => { if (d.ok) setQuestions(d.data.questions); setLoading(false) }).catch(() => setError('Failed')) }}
               className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
               🔄 New Quiz
             </button>
@@ -239,7 +259,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         {/* Answer area */}
         {!showResult ? (
           <>
-            {current.type === 'multiple_choice' && current.options?.length > 0 && (
+            {current.type !== 'true_false' && current.options?.length > 0 && (
               <div className="space-y-2">
                 {current.options.map((opt, i) => (
                   <button key={i} onClick={() => setAnswer(opt)}
@@ -267,12 +287,14 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
                 ))}
               </div>
             )}
-            {['transliteration', 'cloze'].includes(current.type) && (
+            {TEXT_INPUT_TYPES.has(current.type) && (
               <div>
                 <input type="text" value={answers[idx] || ''}
                   onChange={e => setAnswer(e.target.value)}
                   onFocus={() => setShowKeyboard(true)}
-                  placeholder="Type your answer..."
+                  placeholder={current.type === 'typing' || current.type === 'letter_name'
+                    ? 'Type Hebrew characters...'
+                    : 'Type your answer...'}
                   className="w-full px-4 py-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-sm outline-none focus:border-indigo-400 dark:focus:border-indigo-500 font-hebrew-biblical"
                   dir="auto"
                   autoFocus
@@ -318,7 +340,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       </div>
 
       {/* Hebrew keyboard */}
-      {showKeyboard && ['transliteration', 'cloze'].includes(current.type) && (
+      {showKeyboard && TEXT_INPUT_TYPES.has(current.type) && (
         <div className="mt-4">
           <HebrewKeyboard onCharClick={(c) => setAnswer((answers[idx] || '') + c)} />
           <button onClick={() => setShowKeyboard(false)}

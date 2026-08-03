@@ -460,6 +460,34 @@ class TestHebrewRoutes:
         resp = client.get("/api/v1/hebrew/lesson/zzz_nonexistent")
         assert _ok(resp.status_code)
 
+    def test_hebrew_lesson_quiz(self, client):
+        """Per-lesson quiz returns the lesson's practice items in quiz shape,
+        ordered for micro-scaffolding (recognition before production), with
+        confusable distractor items appended last."""
+        resp = client.get("/api/v1/hebrew/lesson/qal_perfect/quiz")
+        assert _ok(resp.status_code)
+        data = resp.json()["data"]
+        assert data["node_id"] == "qal_perfect"
+        assert len(data["questions"]) > 0
+        # Every question carries the quiz-renderer contract
+        for q in data["questions"]:
+            for field in ("node_id", "question_id", "type", "question", "options", "correct", "category"):
+                assert field in q, f"missing {field} in {q}"
+        # Scaffolding: any multiple_choice must precede any typing question
+        types = [q["type"] for q in data["questions"]]
+        mc_positions = [i for i, t in enumerate(types) if t == "multiple_choice"]
+        typing_positions = [i for i, t in enumerate(types) if t == "typing"]
+        if mc_positions and typing_positions:
+            assert max(mc_positions) < min(typing_positions)
+        # Distractors (if any) come last
+        distractors = [i for i, q in enumerate(data["questions"]) if q.get("is_distractor")]
+        if distractors and not data["questions"][-1].get("is_distractor"):
+            assert max(distractors) == len(data["questions"]) - 1
+
+    def test_hebrew_lesson_quiz_missing(self, client):
+        resp = client.get("/api/v1/hebrew/lesson/zzz_nonexistent/quiz")
+        assert resp.status_code == 404
+
     def test_hebrew_diagnostic(self, client):
         resp = client.get("/api/v1/hebrew/diagnostic")
         assert resp.status_code == 200

@@ -32,6 +32,7 @@ data/audio/verses/
 data/audio/raw/
 data/audio/words/
 data/audio/letters/
+data/audio/kokoro/
 data/agent_connections/
 data/llm_connections/
 data/dss/

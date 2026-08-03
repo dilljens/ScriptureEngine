@@ -1010,6 +1010,101 @@ def get_hebrew_practice(node_id: str):
     return {"ok": True, "data": {"items": result, "total": len(result)}}
 
 
+def _practice_to_quiz_question(item, node):
+    """Convert a hebrew_practice_items row to the /hebrew/quiz question shape."""
+    try:
+        opts = json.loads(item["options_json"]) if item["options_json"] else []
+    except (TypeError, json.JSONDecodeError):
+        opts = []
+    return {
+        "node_id": node["id"],
+        "question_id": item["id"],
+        "type": item["question_type"],
+        "question": item["question_text"],
+        "options": opts,
+        "correct": item["correct_answer"],
+        "category": node["category"],
+        "difficulty": item["difficulty"] or 0.5,
+        "node_title": node["title"],
+    }
+
+
+@router.get("/api/v1/hebrew/lesson/{node_id}/quiz")
+def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default"):
+    """Per-lesson quiz: this lesson's practice items interleaved by difficulty,
+    plus up to 2 confusable distractor items for discrimination practice.
+
+    Returns questions in the same shape as /api/v1/hebrew/quiz so the quiz UI
+    renders them identically. Every answer is posted to /hebrew/progress (which
+    feeds the FSRS review state), so the quiz is retrieval practice, not just a
+    test — per the Math Academy Way: quizzes are themselves review.
+    """
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"questions": [], "node_id": node_id, "total": 0}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    node = conn.execute("SELECT id, title, category FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+    if not node:
+        conn.close()
+        raise HTTPException(404, f"Lesson not found: {node_id}")
+
+    questions = []
+    items = conn.execute("""
+        SELECT id, question_type, question_text, options_json, correct_answer, difficulty
+        FROM hebrew_practice_items
+        WHERE node_id=?
+    """, (node_id,)).fetchall()
+    for item in items:
+        questions.append(_practice_to_quiz_question(item, node))
+
+    # Confusable distractors: pull 1 item from each node confused with this one,
+    # so the quiz trains discrimination, not just recall (non-interference practice).
+    try:
+        conf_rows = conn.execute("""
+            SELECT node_a, node_b FROM hebrew_confusability
+            WHERE node_a=? OR node_b=?
+        """, (node_id, node_id)).fetchall()
+        distractor_ids = []
+        for r in conf_rows:
+            other = r["node_b"] if r["node_a"] == node_id else r["node_a"]
+            if other not in distractor_ids:
+                distractor_ids.append(other)
+        for other_id in distractor_ids[:2]:
+            other_node = conn.execute("SELECT id,title,category FROM hebrew_nodes WHERE id=?",
+                                      (other_id,)).fetchone()
+            if not other_node:
+                continue
+            ditem = conn.execute("""
+                SELECT id, question_type, question_text, options_json, correct_answer, difficulty
+                FROM hebrew_practice_items
+                WHERE node_id=? AND question_type IN ('multiple_choice','cloze','transliteration')
+                ORDER BY difficulty LIMIT 1
+            """, (other_id,)).fetchone()
+            if ditem:
+                q = _practice_to_quiz_question(ditem, other_node)
+                q["is_distractor"] = True
+                questions.append(q)
+    except Exception:
+        log.warning("silent_exception", exc_info=True)
+        pass
+
+    # Micro-scaffolding order: recognition (MC) first, production (typing) last.
+    # Distractors go last so the learner's own skill is assessed first.
+    order = {"multiple_choice": 0, "true_false": 0, "letter_recognition": 0, "classification": 0,
+             "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
+             "letter_name": 2, "typing": 3}
+    questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), q["difficulty"]))
+    conn.close()
+
+    return {"ok": True, "data": {
+        "questions": questions[:count],
+        "node_id": node_id,
+        "node_title": node["title"],
+        "category": node["category"],
+        "total": len(questions),
+    }}
+
+
 @router.get("/api/v1/hebrew/audio/{word:path}")
 def get_hebrew_audio(word: str):
     word_clean = word.strip()
@@ -1069,13 +1164,27 @@ def get_hebrew_audio(word: str):
 def get_hebrew_image(word: str):
     """Get an image associated with a Hebrew word.
 
-    Returns image URL from word_images table (FreeBibleImages.org, etc.)
-    or a 404 if no image is available.
+    Prefers LOCAL images (downloaded by scripts/ingest_word_images.py and served
+    from /images/words/), falling back to remote FreeBibleImages URLs.
     """
     word_clean = word.strip()
     if not word_clean:
         raise HTTPException(400, "Word required")
     conn = get_db()
+    # Local images first: source != 'freebible' (ingested, self-hosted).
+    row = conn.execute(
+        "SELECT image_url, source, attribution, width, height, prompt "
+        "FROM word_images WHERE word_hebrew = ? AND source != 'freebible' "
+        "ORDER BY width DESC LIMIT 1",
+        (word_clean,)
+    ).fetchone()
+    if row and str(row["image_url"]).startswith("/"):
+        # Confirm the local file exists so we never serve a broken src
+        fname = Path(str(row["image_url"])).name
+        if (BASE_DIR / "data" / "images" / "words" / fname).exists():
+            conn.close()
+            return {"ok": True, "data": dict(row)}
+    # Fallback: remote FreeBibleImages entry
     row = conn.execute(
         "SELECT image_url, source, attribution, width, height, prompt "
         "FROM word_images WHERE word_hebrew = ? ORDER BY source LIMIT 1",
@@ -1692,6 +1801,12 @@ def get_hebrew_lesson(node_id: str):
             result["lesson"] = json.loads(c) if c.startswith("{") else c
         except (json.JSONDecodeError, ValueError):
             result["lesson"] = lesson['content_json']
+    # Surface the Hebrew stimulus + gloss at top level (mirrors /curriculum) so
+    # the lesson view can look up word audio/images without parsing content_json
+    _l = result.get("lesson") or {}
+    result["hebrew"] = _l.get("hebrew") or _l.get("glyph") or ""
+    result["gloss"] = _l.get("gloss") or ""
+    result["transliteration"] = _l.get("transliteration") or ""
     result["practice_items"] = [dict(p) for p in practices]
     result["prerequisites"] = [dict(p) for p in prereqs]
     result["verse_attestations"] = att_list

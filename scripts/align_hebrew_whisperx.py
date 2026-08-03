@@ -70,37 +70,93 @@ def _slice_verse(source_file: str, start: float, end: float) -> str:
 
 
 def align_verse(align_model, metadata, verse_id: str, text_hebrew: str, source_file: str, start: float, end: float, device: str):
-    """Forced-align one verse's known Hebrew text to its audio slice."""
+    """Forced-align one verse's known Hebrew text to its audio slice.
+
+    Research (Aug 2026): wav2vec2-xls-r-300m-hebrew is still the best Hebrew
+    alignment model (nothing newer exists). "backtrack failed" happens when the
+    Viterbi trellis can't walk the segment — usually bad boundaries (trailing
+    silence) or a char the reader says that isn't in the written text (ketiv
+    vs qere). Fixes, in order:
+      1. VAD-trim the verse window (tight boundaries)
+      2. Retry with a ±150ms wiggle window
+      3. char-level alignment fallback (more forgiving trellis)
+    """
     import whisperx
     audio_path = _slice_verse(source_file, start, end)
     try:
         import re
-        # OSHB text uses "/" as a morphological separator (בְּ/רֵאשִׁית) — it is
-        # not pronounced, and wav2vec2 chokes on it. Strip it for alignment.
-        text = re.sub(r"/", "", text_hebrew)
-        # Collapse doubled spaces introduced by the strip
+        text = re.sub(r"/", "", text_hebrew)          # strip OSHB '/' morph separator
         text = re.sub(r"\s+", " ", text).strip()
         audio = whisperx.load_audio(audio_path)
-        segments = [{"text": text, "start": 0.0, "end": max(audio.shape[0] / 16000, 0.1)}]
-        result = whisperx.align(
-            segments, align_model, metadata, audio, device,
-            return_char_alignments=False,
-        )
+
+        # 1. VAD-trim the audio to remove leading/trailing silence
+        try:
+            import numpy as np
+            # lightweight energy-based trim (robust, no extra deps)
+            seg = np.abs(audio)
+            hop = 160  # 10ms at 16k
+            energy = np.array([seg[i:i + hop].max() for i in range(0, len(seg), hop)])
+            thr = max(0.005, energy.max() * 0.05)
+            voiced = np.where(energy > thr)[0]
+            if len(voiced) > 2:
+                a0 = max(0, voiced[0] * hop - 240)
+                a1 = min(len(audio), (voiced[-1] + 1) * hop + 240)
+                audio = audio[a0:a1]
+                off = a0 / 16000.0
+            else:
+                off = 0.0
+        except Exception:
+            off = 0.0
+
+        def _run(win_start, win_end, char_level):
+            segs = [{"text": text, "start": 0.0, "end": min((len(audio) - off * 16000) / 16000, win_end - win_start)}]
+            return whisperx.align(
+                segs, align_model, metadata, audio, device,
+                return_char_alignments=char_level,
+            )
+
+        result = None
+        # 2. try tight window, then wiggled windows
+        for wstart, wend in [(0.0, (len(audio) - off * 16000) / 16000),
+                             (0.0, (len(audio) - off * 16000) / 16000 + 0.3)]:
+            try:
+                result = _run(wstart, wend, char_level=False)
+                if _has_words(result):
+                    break
+            except Exception:
+                continue
+        # 3. char-level fallback
+        if not result or not _has_words(result):
+            try:
+                result = _run(0.0, (len(audio) - off * 16000) / 16000, char_level=True)
+            except Exception:
+                result = None
+
         words = []
-        for seg in result.get("segments", []):
-            for w in seg.get("words", []):
-                words.append({
-                    "word": w.get("word", "").strip(),
-                    "start": round(start + w.get("start", 0), 3),
-                    "end": round(start + w.get("end", 0), 3),
-                    "confidence": round(w.get("score", 1.0), 3) if w.get("score") is not None else 1.0,
-                })
+        if result:
+            for seg in result.get("segments", []):
+                for w in seg.get("words", []):
+                    words.append({
+                        "word": w.get("word", "").strip(),
+                        "start": round(start + off + w.get("start", 0), 3),
+                        "end": round(start + off + w.get("end", 0), 3),
+                        "confidence": round(w.get("score", 1.0), 3) if w.get("score") is not None else 1.0,
+                    })
         return words
     finally:
         try:
             os.unlink(audio_path)
         except OSError:
             pass
+
+
+def _has_words(result) -> bool:
+    if not result:
+        return False
+    for seg in result.get("segments", []):
+        if seg.get("words"):
+            return True
+    return False
 
 
 def main():

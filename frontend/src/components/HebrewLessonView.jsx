@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
+import HebrewQuiz from './HebrewQuiz'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 
 /** Book ID → display name mapping for user-facing verse references */
@@ -136,6 +137,8 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   const [error, setError] = useState(null)
   const [audioPlaying, setAudioPlaying] = useState(null)
   const [practiceAnswers, setPracticeAnswers] = useState({})
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [wordImage, setWordImage] = useState(null) // {image_url, attribution}
   const audioRef = useRef(null)
 
   // Load lesson data
@@ -154,6 +157,17 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [nodeId])
+
+  // Fetch a word image when the lesson is a vocabulary word with a gloss
+  useEffect(() => {
+    if (!node || !node.hebrew) return
+    let cancelled = false
+    fetch(`/api/v1/hebrew/image/${encodeURIComponent(node.hebrew)}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled && d.ok) setWordImage(d.data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [node])
 
   // Convert practice items to cards, sorted by difficulty (MC first = Math Academy scaffolding)
   const practiceToCards = useCallback((items) => {
@@ -247,12 +261,32 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
 
   if (!node) return null
 
+  // Quiz mode — full-screen per-lesson quiz (retrieval practice that feeds SRS)
+  if (showQuiz) {
+    return (
+      <HebrewQuiz
+        nodeId={nodeId}
+        count={8}
+        onBack={() => setShowQuiz(false)}
+        onOpenLesson={(nid) => { setShowQuiz(false); onNavigate?.(nid) }}
+      />
+    )
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={onBack} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Back</button>
         <div className="flex items-center gap-2">
+          {cards.length > 0 && (
+            <button onClick={() => setShowQuiz(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors"
+              title="Quiz yourself on this lesson — answers feed your spaced-repetition review">
+              <span>📝</span>
+              <span>Start Quiz</span>
+            </button>
+          )}
           {hebrewWord && (
             <button onClick={() => playAudio(hebrewWord)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 cursor-pointer transition-colors">
@@ -272,6 +306,24 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">{node.title}</h2>
         {node.description && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{node.description}</p>}
       </div>
+
+      {/* Word image — concrete nouns get a picture (cow → 🐄), with attribution */}
+      {wordImage?.image_url && (
+        <div className="mb-6">
+          <div className="relative w-full overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50">
+            <img
+              src={wordImage.image_url}
+              alt={node.hebrew || node.title}
+              className="w-full h-48 sm:h-56 object-cover"
+              loading="lazy"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          </div>
+          {wordImage.attribution && (
+            <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-1" dir="ltr">{wordImage.attribution}</p>
+          )}
+        </div>
+      )}
 
       {/* Prerequisites — quick cross-links */}
       {node?.prerequisites?.length > 0 && (

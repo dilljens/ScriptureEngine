@@ -145,39 +145,89 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
     return result
   }, [verses, knownWords])
 
-  // Look up a word's definition
-  const lookupWord = async (word) => {
+  // Look up a word's definition + morphology (POS, prefixes) from its verse
+  const lookupWord = async (word, verseId) => {
     const cleaned = word.replace(/[^\u0590-\u05fe]/g, '')
+    const base = {
+      word: cleaned,
+      verse_id: verseId || null,
+      definition: 'Word not found',
+      lemma: '', root: '', transliteration: '', frequency: '',
+      pos: '', morph: '', prefix: null,
+    }
     try {
+      // 1. Morphology from the verse's grammar data (OSHB morph codes)
+      if (verseId) {
+        const g = await fetch(`/api/v1/verses/${verseId}/grammar`)
+        const gd = await g.json()
+        if (gd.ok) {
+          // find the word by normalized match (strip / and niqqud)
+          const norm = (s) => (s || '').replace(/[\u0591-\u05c7]/g, '').replace(/\//g, '')
+          const ntarget = norm(cleaned)
+          const gram = (gd.data?.words || []).find(w => norm(w.hebrew) === ntarget)
+          if (gram) {
+            base.pos = gram.pos || ''
+            base.morph = gram.morph || ''
+            // prefix: the surface form is "prefix/root" — split on '/'
+            const parts = (gram.hebrew || '').split('/')
+            if (parts.length > 1) {
+              base.prefix = parts.slice(0, -1).join('/')
+            }
+            if (gram.english) base.definition = gram.english
+          }
+        }
+      }
+      // 2. Lexicon definition
       const r = await fetch(`/api/v1/lexicon/search?q=${encodeURIComponent(cleaned)}&limit=1`)
       const d = await r.json()
       if (d.ok && d.data?.results?.length > 0) {
         const entry = d.data.results[0]
-        setSelectedWord({
-          word: cleaned,
-          definition: entry.definition || 'No definition available',
-          lemma: entry.lemma || '',
-          root: entry.root_letters || '',
-          transliteration: entry.transliteration || '',
-          frequency: entry.frequency || '',
-        })
+        base.definition = entry.definition || base.definition
+        base.lemma = entry.lemma || base.lemma
+        base.root = entry.root_letters || base.root
+        base.transliteration = entry.transliteration || base.transliteration
+        base.frequency = entry.frequency || base.frequency
       } else {
         // Try Strong's lookup
         const gem = await fetch(`/api/v1/strongs?word=${encodeURIComponent(cleaned)}`)
         const gd = await gem.json()
         if (gd.ok) {
-          setSelectedWord({
-            word: cleaned,
-            definition: gd.data?.definition || 'Word not found in lexicon',
-            lemma: gd.data?.lemma || '',
-          })
-        } else {
-          setSelectedWord({ word: cleaned, definition: 'Word not found', lemma: '' })
+          base.definition = gd.data?.definition || base.definition
+          base.lemma = gd.data?.lemma || base.lemma
         }
       }
     } catch {
-      setSelectedWord({ word: cleaned, definition: 'Lookup failed', lemma: '' })
+      base.definition = base.definition || 'Lookup failed'
     }
+    setSelectedWord(base)
+  }
+
+  // Play the clicked word: real audio slice from its verse, else TTS word audio
+  const playWord = async (word, verseId) => {
+    const cleaned = word.replace(/[^\u0590-\u05fe]/g, '')
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    try {
+      // 1. Try the real Shmuelof slice from the aligned verse (authentic)
+      if (verseId) {
+        const r = await fetch(`/api/v1/hebrew/word-audio/${verseId}?word=${encodeURIComponent(cleaned)}`)
+        if (r.ok) {
+          const url = r.url
+          const a = new Audio(url)
+          audioRef.current = a
+          a.play().catch(() => {})
+          return
+        }
+      }
+      // 2. Fallback: TTS word audio (kokoro) — served from lesson words by node?
+      //    The passage reader has no node_id, so try the plain-hebrew route.
+      const r2 = await fetch(`/api/v1/hebrew/audio/${encodeURIComponent(cleaned)}`)
+      const d2 = await r2.json()
+      if (d2.ok && d2.data?.audio_url) {
+        const a = new Audio(d2.data.audio_url)
+        audioRef.current = a
+        a.play().catch(() => {})
+      }
+    } catch {}
   }
 
   // Add unknown words to practice queue
@@ -257,7 +307,7 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
           dir="rtl">
           {tokens.map((t, i) => (
             <span key={i}
-              onClick={() => lookupWord(t.cleaned)}
+              onClick={() => lookupWord(t.cleaned, t.verse_id)}
               className={`cursor-pointer transition-colors rounded px-0.5 ${
                 t.known
                   ? 'text-green-600 dark:text-green-400'
@@ -295,15 +345,43 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
         </div>
       </details>
 
-      {/* Word definition popup */}
+      {/* Word definition popup — with morphology + audio */}
       {selectedWord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setSelectedWord(null)}>
           <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-5 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="text-right mb-3">
-              <p className="text-2xl font-serif text-neutral-800 dark:text-neutral-200"
-                style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
-                {selectedWord.word || ''}
-              </p>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-right">
+                <p className="text-2xl font-serif text-neutral-800 dark:text-neutral-200"
+                  style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
+                  {selectedWord.word || ''}
+                </p>
+                {/* Parts of speech + prefix breakdown */}
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {selectedWord.pos && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium uppercase tracking-wide">
+                      {selectedWord.pos}
+                    </span>
+                  )}
+                  {selectedWord.prefix && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-mono"
+                      title={`Prefix: ${selectedWord.prefix}`}>
+                      prefix {selectedWord.prefix}
+                    </span>
+                  )}
+                  {selectedWord.morph && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-mono"
+                      title={`OSHB morphology: ${selectedWord.morph}`}>
+                      {selectedWord.morph}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Play button — real slice or TTS */}
+              <button onClick={() => playWord(selectedWord.word, selectedWord.verse_id)}
+                className="shrink-0 w-11 h-11 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-lg flex items-center justify-center cursor-pointer transition-colors shadow-md"
+                title="Play word in Hebrew">
+                🔊
+              </button>
             </div>
             <p className="text-sm text-neutral-700 dark:text-neutral-300">{selectedWord.definition}</p>
             <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-neutral-400">

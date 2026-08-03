@@ -3257,6 +3257,12 @@ def verse_of_day(user_id: str = "default"):
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
+# Local Hebrew word images (ingested by scripts/ingest_word_images.py) — served
+# from disk so the frontend's <img src> works without hotlinking external hosts.
+WORDS_IMAGE_DIR = Path(__file__).resolve().parent.parent / "data" / "images" / "words"
+if WORDS_IMAGE_DIR.is_dir():
+    app.mount("/images/words", StaticFiles(directory=str(WORDS_IMAGE_DIR)), name="word_images")
+
 if FRONTEND_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="frontend_assets")
 
