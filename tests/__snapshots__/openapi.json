@@ -303,6 +303,95 @@
         }
       }
     },
+    "/api/v1/hebrew/diagnostic/adaptive/start": {
+      "post": {
+        "summary": "Start Adaptive Diagnostic",
+        "description": "Start an adaptive placement test: per-skill 1-up-3-down staircase.\n\nReturns the first question plus a session_id. Each answer is submitted to\n/answer which returns the next question (or results when done).",
+        "operationId": "start_adaptive_diagnostic_api_v1_hebrew_diagnostic_adaptive_start_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/diagnostic/adaptive/answer": {
+      "post": {
+        "summary": "Answer Adaptive Diagnostic",
+        "description": "Submit an answer to the adaptive placement test.\n\nBody: {session_id, question_id, node_id, answer}\nReturns the next question, or {done: true, results} when all skills finish.",
+        "operationId": "answer_adaptive_diagnostic_api_v1_hebrew_diagnostic_adaptive_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hebrew/diagnostic/apply": {
       "post": {
         "summary": "Apply Diagnostic Results",
@@ -718,6 +807,26 @@
               "type": "integer",
               "default": 10,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "new_cards_per_day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "title": "New Cards Per Day"
+            }
+          },
+          {
+            "name": "include_new",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include New"
             }
           }
         ],
@@ -1693,6 +1802,44 @@
             "schema": {
               "type": "string",
               "title": "Letter Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audio/word/{node_id}": {
+      "get": {
+        "summary": "Play Word Audio",
+        "description": "Serve pre-generated Hebrew word/phrase/root audio (kokoro TTS).\n\nThe /hebrew/audio/{word} lookup resolves a Hebrew word to a node and returns\nthis URL; the file lives in data/audio/words/{node_id}.wav.",
+        "operationId": "play_word_audio_api_v1_audio_word__node_id__get",
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Id"
             }
           }
         ],
