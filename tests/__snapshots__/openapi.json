@@ -2057,6 +2057,44 @@
         }
       }
     },
+    "/api/v1/cfm/lessons/{ref_id}/scriptures": {
+      "get": {
+        "summary": "Cfm Lesson Scriptures",
+        "description": "Parse a lesson's scripture_block into structured, chapter-resolved references.\n\ne.g. \"Genesis 1\u20132; Moses 2\u20133; Abraham 4\u20135\" \u2192 blocks with book ids and\nchapter lists, ready for the weekly-study view to fetch passage text.",
+        "operationId": "cfm_lesson_scriptures_api_v1_cfm_lessons__ref_id__scriptures_get",
+        "parameters": [
+          {
+            "name": "ref_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/conference/talks": {
       "get": {
         "summary": "Conference Talks List",

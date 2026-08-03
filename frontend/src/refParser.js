@@ -227,12 +227,16 @@ export function parseAndFuzzy(input, allBooks) {
     { cmd: 'chat', icon: '💬', label: 'Chat', desc: 'Open chat with a message', type: 'chat' },
     { cmd: 'search', icon: '🔍', label: 'Search', desc: 'Search scriptures', type: 'search' },
     { cmd: 'find', icon: '🔍', label: 'Find', desc: 'Search scriptures (alias)', type: 'search' },
-    { cmd: 'dark', icon: '🌙', label: 'Dark mode', desc: 'Toggle dark mode', type: 'command' },
-    { cmd: 'theme', icon: '🌙', label: 'Theme', desc: 'Toggle dark mode (alias)', type: 'command' },
-    { cmd: 'font', icon: '🔤', label: 'Font size', desc: '/font up, /font down, /font 120', type: 'command' },
+    { cmd: 'dark', icon: '🌙', label: 'Dark mode', desc: 'Toggle dark mode', type: 'dark' },
+    { cmd: 'theme', icon: '🌙', label: 'Theme', desc: 'Toggle dark mode (alias)', type: 'dark' },
+    { cmd: 'font', icon: '🔤', label: 'Font size', desc: '/font up, /font down, /font 120', type: 'font' },
     { cmd: 'toggle', icon: '🔘', label: 'Toggle feature', desc: 'Toggle footnotes, gematria, etc.', type: 'toggle' },
     { cmd: 'history', icon: '🕐', label: 'History', desc: 'Conversation history', type: 'history' },
     { cmd: 'structure', icon: '⟷', label: 'Isaiah structure', desc: 'Open Isaiah structure viewer', type: 'structure' },
+    { cmd: 'cfm', icon: '📖', label: 'Come Follow Me', desc: "Open this week's Come Follow Me study", type: 'collection', target: 'cfm-study' },
+    { cmd: 'conference', icon: '🎤', label: 'General Conference', desc: 'Browse General Conference talks', type: 'collection', target: 'conference' },
+    { cmd: 'collections', icon: '🗂️', label: 'Study collections', desc: 'Browse Come Follow Me + Conference collections', type: 'collection', target: 'cfm-browse' },
+    { cmd: 'library', icon: '🗂️', label: 'Library', desc: 'Go to the library', type: 'library' },
     { cmd: 'help', icon: '❓', label: 'Help', desc: 'Show this help', type: 'help' },
   ]
 
@@ -250,6 +254,7 @@ export function parseAndFuzzy(input, allBooks) {
           type: c.type,
           label: `${c.icon} /${c.cmd} — ${c.desc}`,
           cmd: c.cmd,
+          target: c.target,
           explanation: c.desc,
           matchIdxs: [],
         }))
@@ -270,15 +275,15 @@ export function parseAndFuzzy(input, allBooks) {
         return { type: 'search', query: args, results: [{ type: 'search', icon: '🔍', query: args, label: args ? `🔍 Search: ${args}` : '🔍 Search scriptures', explanation: 'Press Enter to search' }] }
       case 'dark':
       case 'theme':
-        return { type: 'command', results: [{ type: 'command', icon: '🌙', label: '🌙 Toggle dark mode', explanation: 'Toggle between light and dark theme' }] }
+        return { type: 'dark', results: [{ type: 'dark', icon: '🌙', label: '🌙 Toggle dark mode', explanation: 'Toggle between light and dark theme' }] }
       case 'font':
-        if (args === 'up' || args === '+') return { type: 'command', results: [{ type: 'command', icon: '🔤', label: '🔤 Increase font size', explanation: 'Make text larger' }] }
-        if (args === 'down' || args === '-') return { type: 'command', results: [{ type: 'command', icon: '🔤', label: '🔤 Decrease font size', explanation: 'Make text smaller' }] }
-        if (/^\d+$/.test(args)) return { type: 'command', results: [{ type: 'command', icon: '🔤', label: `🔤 Set font size to ${args}%`, explanation: `Font will be ${args}%` }] }
+        if (args === 'up' || args === '+') return { type: 'font', results: [{ type: 'font', direction: 'up', icon: '🔤', label: '🔤 Increase font size', explanation: 'Make text larger' }] }
+        if (args === 'down' || args === '-') return { type: 'font', results: [{ type: 'font', direction: 'down', icon: '🔤', label: '🔤 Decrease font size', explanation: 'Make text smaller' }] }
+        if (/^\d+$/.test(args)) return { type: 'font', results: [{ type: 'font', size: parseInt(args), icon: '🔤', label: `🔤 Set font size to ${args}%`, explanation: `Font will be ${args}%` }] }
         return { type: 'autocomplete', results: [
-          { type: 'command', icon: '🔤', label: '🔤 /font up — Larger text', explanation: 'Increase font size', matchIdxs: [] },
-          { type: 'command', icon: '🔤', label: '🔤 /font down — Smaller text', explanation: 'Decrease font size', matchIdxs: [] },
-          { type: 'command', icon: '🔤', label: '🔤 /font 120 — Set to 120%', explanation: 'Specific percentage', matchIdxs: [] },
+          { type: 'font', direction: 'up', icon: '🔤', label: '🔤 /font up — Larger text', explanation: 'Increase font size', matchIdxs: [] },
+          { type: 'font', direction: 'down', icon: '🔤', label: '🔤 /font down — Smaller text', explanation: 'Decrease font size', matchIdxs: [] },
+          { type: 'font', size: 120, icon: '🔤', label: '🔤 /font 120 — Set to 120%', explanation: 'Specific percentage', matchIdxs: [] },
         ]}
       case 'toggle':
         return { type: 'toggle', toggle: args, results: [{ type: 'toggle', icon: '🔘', toggle: args, label: args ? `🔘 Toggle: ${args}` : '🔘 Toggle a feature', explanation: args ? `Toggle ${args} on/off` : 'footnotes, gematria, lemma, chiasmus, etc.' }] }
@@ -286,6 +291,14 @@ export function parseAndFuzzy(input, allBooks) {
         return { type: 'history', results: [{ type: 'history', icon: '🕐', label: '🕐 Open conversation history', explanation: 'View past conversations' }] }
       case 'structure':
         return { type: 'structure', results: [{ type: 'structure', icon: '⟷', label: '⟷ Open Isaiah structure', explanation: 'View Isaiah parallelism' }] }
+      case 'cfm':
+        return { type: 'collection', results: [{ type: 'collection', target: 'cfm-study', icon: '📖', label: "📖 Come Follow Me — this week's study", explanation: 'Weekly lesson + scriptures + chat' }] }
+      case 'conference':
+        return { type: 'collection', results: [{ type: 'collection', target: 'conference', icon: '🎤', label: '🎤 General Conference — browse talks', explanation: 'Conference talks 2021–2026' }] }
+      case 'collections':
+        return { type: 'collection', results: [{ type: 'collection', target: 'cfm-browse', icon: '🗂️', label: '🗂️ Study collections — browse all', explanation: 'Come Follow Me + General Conference' }] }
+      case 'library':
+        return { type: 'library', results: [{ type: 'library', icon: '🗂️', label: '🗂️ Go to the library', explanation: 'All works + study collections' }] }
       case 'help':
       case '?':
         return {
@@ -301,7 +314,7 @@ export function parseAndFuzzy(input, allBooks) {
   if (clean === '/?' || clean === 'help') {
     return {
       type: 'help',
-      results: [{ type: 'help', label: 'Commands', text: `References: type a book or ref like "isa 55:6", "isa:34", "isa/34", or fuzzy like "isah"\nPaths: "/ot/isa/55", "/dc/76"\n\n/chat [message] — Open chat\n/search [query] — Search verses\n/dark — Toggle dark mode\n/font (up|down|120) — Font size\n/toggle [feature] — Toggle footnotes, gematria, lemma, etc.\n/history — Conversation history\n/structure — Isaiah structure\n/help — This help\n\nAdd + for new tab: "isa 55:6 +"` }],
+      results: [{ type: 'help', label: 'Commands', text: `References: type a book or ref like "isa 55:6", "isa:34", "isa/34", or fuzzy like "isah"\nPaths: "/ot/isa/55", "/dc/76"\n\n/chat [message] — Open chat\n/search [query] — Search verses\n/dark — Toggle dark mode\n/font (up|down|120) — Font size\n/toggle [feature] — Toggle footnotes, gematria, lemma, etc.\n/history — Conversation history\n/structure — Isaiah structure\n/cfm — This week's Come Follow Me study\n/conference — Browse General Conference talks\n/collections — Browse study collections\n/library — Go to the library\n/help — This help\n\nAdd + for new tab: "isa 55:6 +"` }],
     }
   }
 

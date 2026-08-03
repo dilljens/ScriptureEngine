@@ -36,7 +36,7 @@ const workCardColors = {
   'expanded': { bg: 'bg-teal-50 dark:bg-teal-900/20', border: 'border-teal-200 dark:border-teal-800', hover: 'hover:bg-teal-100 dark:hover:bg-teal-900/30', badge: 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300', icon: '⛪' },
 }
 
-export default function LibraryView({ bookData, onNavigate, bookError, onRetry, onOpenCollection }) {
+export default function LibraryView({ bookData, onNavigate, bookError, onRetry, onOpenCollection, onOpenStudy }) {
   const { goToWork: ctxGoToWork, goToBook, currentTab, viewRef } = useTabs()
   const works = bookData?.works || []
   const focusedWorkId = viewRef || works[0]?.id || null
@@ -124,7 +124,7 @@ export default function LibraryView({ bookData, onNavigate, bookError, onRetry, 
         <h3 className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3">Study Collections</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {COLLECTION_CARDS.map(c => (
-            <button key={c.id} onClick={() => onOpenCollection?.(c.id)}
+            <button key={c.id} onClick={() => (c.id === 'cfm' ? onOpenStudy?.() : onOpenCollection?.(c.id))}
               className={`flex flex-col gap-2 p-5 rounded-xl border-2 transition-all cursor-pointer text-left ${c.card} hover:shadow-md hover:-translate-y-0.5 active:translate-y-0`}>
               <div className="flex items-center gap-2">
                 <span className="text-xl">{c.icon}</span>
@@ -133,8 +133,9 @@ export default function LibraryView({ bookData, onNavigate, bookError, onRetry, 
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{c.sub}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${c.badge}`}>
-                  {c.countLabel(collections) || 'Browse'}
+                  {c.id === 'cfm' ? 'Weekly study' : (c.countLabel(collections) || 'Browse')}
                 </span>
+                {c.id === 'cfm' && <span className="text-[9px] text-neutral-400 dark:text-neutral-500">{c.countLabel(collections)}</span>}
               </div>
             </button>
           ))}
@@ -142,7 +143,7 @@ export default function LibraryView({ bookData, onNavigate, bookError, onRetry, 
       </div>
 
       <p className="text-[10px] text-neutral-400 dark:text-neutral-500 text-center mt-6">
-        ← → navigate works · ↑↓ zoom in/out · Enter to open
+        ↑ up a level · ← → navigate works · Enter to open
       </p>
     </div>
   )

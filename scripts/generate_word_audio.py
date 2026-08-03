@@ -118,19 +118,23 @@ def synth_f5_word(text, model, device="cuda", nfe=32, seed=None):
             text=final_text_list,
             duration=duration,
             steps=nfe,
-            cfg_strength=1.0,
-            sway_sampling_coef=None,
+            cfg_strength=2.0,          # F5 default
+            sway_sampling_coef=-1.0,   # F5 default
             seed=seed,
             no_ref_audio=True,
         )
-        generated = generated.to(torch.float32)  # mel spectrogram
-        if generated.dim() == 2:
-            generated = generated.unsqueeze(0)
+        generated = generated[:, ref_audio_len:, :]  # drop silence-prompt prefix
+        generated = generated.permute(0, 2, 1).float()  # [B, time, mel] -> [B, mel, time]
 
     # decode mel → wav with the model's vocos vocoder
     from f5_tts.infer.utils_infer import load_vocoder
     vocoder = load_vocoder("vocos", device=device)
     wav = vocoder.decode(generated)
+    # normalize to F5's target RMS (0.1) so short words aren't whisper-quiet
+    import torch as _t
+    rms = _t.sqrt(_t.mean(wav ** 2))
+    if rms.item() > 0:
+        wav = wav * (0.1 / rms)
     return wav
 
 

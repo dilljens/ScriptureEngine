@@ -32,3 +32,26 @@ The working tree contains an **uncommitted "chat background jobs" feature from a
 - New: lib/api/cfm.py, lib/ingest/church_site.py, web/routes/cfm.py, scripts/import_cfm.py, scripts/import_conference.py, frontend/src/components/CollectionView.jsx, tests/test_cfm.py, 3 plan docs
 - Modified: lib/db.py (+schema/migration), lib/api/__init__.py (+3 tools), web/routes/chat.py (+scopes gating +3 schemas), web/server.py (+router), frontend/src/{App,ToggleProvider,ChatPanel,LibraryView,api}.js(x), CHAT_AGENTS.md, .opencode/AGENTS.md, openapi snapshot
 - Data: 52 cfm_lessons + 375 talks ingested into data/processed/scripture.db
+
+## Session 2026-08-03 (follow-up: weekly study view)
+- **New**: dedicated **CFM Weekly Study view** (`frontend/src/components/CfmStudyView.jsx`) — "read the lesson, read the scriptures, ask chat":
+  - Week selector (52 weeks, default = current calendar week), prev/next + dropdown
+  - Full lesson text with scripture-block chips
+  - "Read the Scriptures": parses the scripture_block into resolvable book+chapter lists (backend `cfm_scripture_blocks` in `lib/api/cfm.py` + `GET /api/v1/cfm/lessons/{ref_id}/scriptures`), per-chapter expandable verse reading (chapter endpoint), per-verse 💬 ask-chat, "Open in reader ↗" navigation
+  - Sticky "Ask chat about this lesson" → opens chat pre-seeded with lesson context, CFM scope pre-enabled
+- **Entry points**: Library CFM card → weekly study (current week); CollectionView CFM rows → "Weekly study" button per lesson; "Browse all lessons" ↔ study view.
+- **Parser handles all 52 blocks**: ranges, continuation chapters ("Exodus 19–20; 24; 31–34"), bare/whole books ("Esther", "Ruth"), abbreviated ends ("Psalms 102–3"→102–103), \xa0 ("1\xa0Samuel"), holiday lessons (no scripture).
+- Tests: 14/14 in test_cfm.py (incl. 3 new parser tests + scriptures endpoint); frontend build clean; real-data smoke (lesson 03 → gen.1-2/moses.2-3/abraham.4-5, chapter fetches, Esther whole-book).
+- Net: +2 new files (CfmStudyView.jsx, none else) · modified api.js, LibraryView.jsx, CollectionView.jsx, App.jsx, lib/api/cfm.py, web/routes/cfm.py, tests/test_cfm.py, openapi snapshot.
+
+## Session 2026-08-03 (follow-up 2: navigation)
+- **Mobile + library directory navigation**: the mobile top bar's history arrows (←/→) were replaced with **directory navigation** — ↑ (up a level), ← (prev at current level), → (next at current level), matching the desktop header's semantics. History back/forward remains available via the More menu (🕐) and Alt+←/→.
+- **LibraryView hint fixed**: stale "↑↓ zoom in/out" → "↑ up a level · ← → navigate works · Enter to open".
+- **Command bar fixes** (real bugs):
+  - `onCommand` was never wired to CommandInput → `/dark /font /toggle /history /structure /search` from the palette silently did nothing. Now wired to `handleSearchCommand` and `executeResult` dispatches `{type:...}` objects matching the handler contract.
+  - refParser returned `type:'command'` for `/dark`//font` but consumers expect `'dark'`/`'font'` → both SearchBar and palette now classify correctly.
+  - **New commands**: `/cfm` (this week's study), `/conference` (browse talks), `/collections` (browse both), `/library` — wired into the library/study/collection views.
+  - Chapter-preview chips capped (max-h + scroll) + count label (Genesis 50 chapters no longer explode the list).
+  - TYPE_ICONS/TYPE_COLORS for collection/library types.
+- **gitignore**: `data/audio/words/` + `data/audio/letters/` (generated TTS output).
+- Verified: vite build clean; refParser unit-checked (/dark→dark, /font up→font+up, /cfm→collection+cfm-study, /c autocomplete carries targets); vitest 85/94 (9 failures all in chatStream.test.js — pre-existing, committed in ae5cb3c, untouched by this work).

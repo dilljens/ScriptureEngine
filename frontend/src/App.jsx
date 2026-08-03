@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
-import { getInfo, getBooks } from './api'
+import { getInfo, getBooks, getChapter } from './api'
 import { TabProvider, useTabs } from './tabContext.jsx'
 import { SettingsProvider, useSettings, useHistory } from './settings.jsx'
 import { ProgressProvider, useProgress } from './progress.jsx'
@@ -26,6 +26,7 @@ import BookView from './components/BookView'
 import WorkView from './components/WorkView'
 import LibraryView, { WORK_LABEL } from './components/LibraryView'
 import CollectionView from './components/CollectionView'
+import CfmStudyView from './components/CfmStudyView'
 import SettingsPanel from './components/SettingsPanel'
 import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -64,6 +65,7 @@ const TYPE_ICONS = {
   navigate: '📖', search: '🔍', chat: '💬', command: '🎯',
   toggle: '🔘', history: '🕐', help: '❓', structure: '⟷',
   dark: '🌙', font: '🔤', error: '⚠️', autocomplete: '?',
+  collection: '🗂️', library: '🗂️',
 }
 const TYPE_COLORS = {
   navigate: 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40',
@@ -74,6 +76,8 @@ const TYPE_COLORS = {
   history: 'text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/50',
   help: 'text-indigo-600 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/40',
   autocomplete: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-700/50',
+  collection: 'text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+  library: 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40',
 }
 
 function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, onToggle, onToggleHistory, onToggleStructure }) {
@@ -82,12 +86,45 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, 
   const [resultType, setResultType] = useState('empty')
   const [sel, setSel] = useState(0)
   const [showChapters, setShowChapters] = useState(false)  // tab toggles chapter preview
+  const [previewCh, setPreviewCh] = useState(1)
+  const [previewVerses, setPreviewVerses] = useState([])
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const previewCache = useRef({})
   const inputRef = useRef(null)
   const resultsRef = useRef(null)
+
+  // Live chapter preview (fzf --preview style): show the first verses of the
+  // selected book/chapter when the chapter preview is open.
+  const loadPreview = useCallback(async (book, ch) => {
+    if (!book) return
+    setPreviewCh(ch)
+    const key = `${book}.${ch}`
+    if (previewCache.current[key]) {
+      setPreviewVerses(previewCache.current[key])
+      return
+    }
+    setPreviewLoading(true)
+    try {
+      const r = await getChapter(key)
+      const verses = r.data?.verses?.slice(0, 6) || []
+      previewCache.current[key] = verses
+      setPreviewVerses(verses)
+    } catch {
+      setPreviewVerses([])
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (open) { setVal(''); setResults([]); setResultType('empty'); setSel(0); setShowChapters(false); setTimeout(() => inputRef.current?.focus(), 50) }
   }, [open])
+
+  const selResult = results[sel]?.type === 'navigate' ? results[sel] : null
+  useEffect(() => {
+    if (showChapters && selResult?.book) loadPreview(selResult.book, selResult.chapter || 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showChapters, sel])
 
   // Show all books when query is empty (fzf default behavior)
   const getAllBooksResults = useCallback(() => {
@@ -138,22 +175,28 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, 
         onChat(r.message || '')
         onClose(); break
       case 'search':
-        onCommand?.('search', r.query)
+        onCommand?.({ type: 'search', query: r.query })
         onClose(); break
       case 'dark':
-        onCommand?.('dark')
+        onCommand?.({ type: 'dark' })
         onClose(); break
       case 'font':
-        onCommand?.('font', r.direction || 'up', r.size)
+        onCommand?.({ type: 'font', direction: r.direction, size: r.size })
         onClose(); break
       case 'toggle':
-        if (r.toggle) onToggle?.(r.toggle)
+        if (r.toggle) onCommand?.({ type: 'toggle', toggle: r.toggle })
         onClose(); break
       case 'history':
-        onToggleHistory?.()
+        onCommand?.({ type: 'history' })
         onClose(); break
       case 'structure':
-        onToggleStructure?.()
+        onCommand?.({ type: 'structure' })
+        onClose(); break
+      case 'collection':
+        onCommand?.({ type: 'collection', target: r.target })
+        onClose(); break
+      case 'library':
+        onCommand?.({ type: 'library' })
         onClose(); break
     }
   }
@@ -196,8 +239,6 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, 
     'pseu': 'bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300',
     'expanded': 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-300',
   }
-
-  const selResult = results[sel]?.type === 'navigate' ? results[sel] : null
 
   function HighlightedLabel({ label, matchIdxs }) {
     if (!matchIdxs || matchIdxs.length === 0) return <>{label}</>
@@ -312,16 +353,37 @@ function CommandInput({ open, onClose, onNavigate, onChat, allBooks, onCommand, 
                 {/* Chapter preview (fzf-preview style) — toggled via Tab when a book is selected */}
                 {isSelected && showChapters && r.type === 'navigate' && r.book && (
                   <div className="px-4 py-2 pl-14 border-t border-b border-neutral-100 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] text-neutral-400 dark:text-neutral-500">Chapters of {r.bookTitle} · hover to preview</span>
+                      <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">{getChapters(r.book).length} total</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
                       {getChapters(r.book).map(ch => (
                         <button key={ch} onClick={() => { executeResult({ ...r, chapter: ch }); onClose() }}
-                          className="px-1.5 py-0.5 text-[10px] font-mono rounded border border-neutral-200 dark:border-neutral-600
-                            text-neutral-600 dark:text-neutral-400 bg-white dark:bg-neutral-800
-                            hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600
-                            hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer transition-colors">
+                          onMouseEnter={() => loadPreview(r.book, ch)}
+                          className={`px-1.5 py-0.5 text-[10px] font-mono rounded border transition-colors cursor-pointer
+                            ${ch === previewCh
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
+                              : 'border-neutral-200 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 bg-white dark:bg-neutral-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-700 dark:hover:text-blue-300'}`}>
                           {ch}
                         </button>
                       ))}
+                    </div>
+                    {/* Live verse preview for the hovered/selected chapter */}
+                    <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700 max-h-36 overflow-y-auto">
+                      <div className="text-[9px] text-neutral-400 uppercase tracking-wider mb-1">{r.bookTitle} {previewCh} — preview</div>
+                      {previewLoading ? (
+                        <div className="animate-pulse text-[11px] text-neutral-400 py-1">Loading chapter…</div>
+                      ) : previewVerses.length > 0 ? (
+                        previewVerses.map(v => (
+                          <div key={v.verse} className="flex gap-1.5 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+                            <span className="text-blue-500 dark:text-blue-400 text-[9px] font-mono shrink-0 w-5 text-right mt-0.5">{v.verse}</span>
+                            <span>{v.text_english}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[11px] text-neutral-400 py-1">No preview available.</div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -414,6 +476,7 @@ function AppInner() {
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
   const [collection, setCollection] = useState(null) // 'cfm' | 'conference' — library study collection browse
+  const [studyWeek, setStudyWeek] = useState(null)   // null | 'current' | week slug — CFM weekly study view
 
   // "Study in chat" from a collection item — pre-enable the matching scope and open chat
   const studyFromCollection = useCallback((msg, scopeHint) => {
@@ -644,9 +707,16 @@ const [showAssessment, setShowAssessment] = useState(false)
         ...(firstBook ? { book: firstBook } : {}),
       })
     } else if (viewLevel === 'library') {
+      // Inside a study collection / weekly-study view, "up" returns to the
+      // library grid first — jumping straight to tiles would skip it.
+      if (collection || studyWeek) {
+        setCollection(null)
+        setStudyWeek(null)
+        return
+      }
       updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
     }
-  }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab, isDc])
+  }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab, isDc, collection, studyWeek, setCollection, setStudyWeek])
 
   const goDownLevel = useCallback(() => {
     if (!currentTab?.id) return
@@ -834,8 +904,18 @@ const [showAssessment, setShowAssessment] = useState(false)
       case 'search':
         if (cmd.query) setShowCommand(true) // fallback to command palette
         break
+      case 'collection':
+        setStudyWeek(cmd.target === 'cfm-study' ? 'current' : null)
+        setCollection(cmd.target === 'conference' ? 'conference' : cmd.target === 'cfm-browse' ? 'cfm' : null)
+        // Ensure the tab is at the library level so the study/collection view renders
+        updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
+        break
+      case 'library':
+        setStudyWeek(null); setCollection(null)
+        updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
+        break
     }
-  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch])
+  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id])
 
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
@@ -1032,10 +1112,21 @@ const [showAssessment, setShowAssessment] = useState(false)
     }
     if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
     if (viewLevel === 'library') {
-      if (collection) {
-        return <CollectionView collection={collection} onBack={() => setCollection(null)} onStudyInChat={studyFromCollection} />
+      if (studyWeek) {
+        return (
+          <CfmStudyView
+            week={studyWeek === 'current' ? null : studyWeek}
+            onBack={() => { setStudyWeek(null); setCollection(null) }}
+            onBrowse={() => { setStudyWeek(null); setCollection('cfm') }}
+            onNavigate={(b, ch) => handleChatNavigate(b, ch)}
+            onStudyInChat={studyFromCollection}
+          />
+        )
       }
-      return <LibraryView bookData={bookData} bookError={bookError} onRetry={() => { setBookError(null); getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => { setBookError('Still could not load.') }) }} onNavigate={handleChatNavigate} onOpenCollection={setCollection} />
+      if (collection) {
+        return <CollectionView collection={collection} onBack={() => setCollection(null)} onStudyInChat={studyFromCollection} onStudy={(slug) => { setCollection(null); setStudyWeek(slug) }} />
+      }
+      return <LibraryView bookData={bookData} bookError={bookError} onRetry={() => { setBookError(null); getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => { setBookError('Still could not load.') }) }} onNavigate={handleChatNavigate} onOpenCollection={setCollection} onOpenStudy={() => { setCollection(null); setStudyWeek('current') }} />
     }
     if (viewLevel === 'work' && viewRef) return <WorkView workId={viewRef} />
     if (viewLevel === 'book') return <BookView bookId={book} />
@@ -1233,12 +1324,12 @@ const [showAssessment, setShowAssessment] = useState(false)
           <div className="flex items-center gap-0.5 text-sm min-w-0">
             {/* Up arrow — zoom out */}
             <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
-              title={`Zoom out (${getHotkey('goUp') || '↑'})`}>
+              title={`Up a level (${getHotkey('goUp') || '↑'})`}>
               <ChevronUp />
             </button>
             {/* Down arrow — zoom in */}
             <button onClick={goDownLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
-              title={`Zoom in (${getHotkey('goDown') || '↓'})`}>
+              title={`Down a level (${getHotkey('goDown') || '↓'})`}>
               <ChevronDown />
             </button>
 
@@ -1355,12 +1446,20 @@ const [showAssessment, setShowAssessment] = useState(false)
       {/* Mobile top bar — location breadcrumb + history arrows */}
       <div className={`flex sm:hidden items-center justify-between h-10 px-2 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 sticky top-0 z-40 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="flex items-center gap-1 text-sm min-w-0 flex-1">
-          {/* History back */}
-          <button onClick={doHistoryBack} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer shrink-0" title="Back">
+          {/* Directory navigation: up a level + prev/next at current level.
+              (History back/forward is available in the More menu.) */}
+          <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+            title="Up a level">
+            <ChevronUp />
+          </button>
+          <button onClick={isChapterView ? goPrevChapter : viewLevel === 'book' ? goPrevBookStay : goPrevWork}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+            title="Previous">
             <ChevronLeft />
           </button>
-          {/* History forward */}
-          <button onClick={doHistoryForward} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 cursor-pointer shrink-0" title="Forward">
+          <button onClick={isChapterView ? goNextChapter : viewLevel === 'book' ? goNextBookStay : goNextWork}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+            title="Next">
             <ChevronRight />
           </button>
           {/* Tappable breadcrumb or tab label */}
@@ -1507,7 +1606,7 @@ const [showAssessment, setShowAssessment] = useState(false)
       </Suspense>
       <CommandInput open={showCommand} onClose={() => setShowCommand(false)}
         allBooks={allBooks}
-        onNavigate={handleCommandNav} onChat={handleCommandChat} />
+        onNavigate={handleCommandNav} onChat={handleCommandChat} onCommand={handleSearchCommand} />
 
       {/* Split-pane chapter picker */}
       {showSplitPicker && (
@@ -1631,11 +1730,15 @@ const [showAssessment, setShowAssessment] = useState(false)
         switch (tab) {
           case 'read': {
             setShowCommand(false); setShowMobileMenu(false)
-            // Go to Library view if no read tabs exist
-            const readTab = currentWorkspace?.tabs?.slice().reverse().find(t => t.view !== 'chat')
+            // "Read" must only land on a scripture-reading tab — a learn/hebrew/
+            // wiki/memorize tab must not masquerade as Read (bug: showed Learn).
+            const READ_VIEWS = ['chapter', 'book', 'work', 'library']
+            const readTab = currentWorkspace?.tabs?.slice().reverse().find(t => READ_VIEWS.includes(t.view))
             if (readTab && readTab.id !== currentTab?.id) {
               selectTab(readTab.id)
             } else {
+              // No other reading tab — exit any study/collection view to the grid
+              setCollection(null); setStudyWeek(null)
               openLibraryView()
             }
             break

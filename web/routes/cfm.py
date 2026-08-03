@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from lib.db import get_db
+from lib.api.cfm import cfm_scripture_blocks
 
 router = APIRouter(prefix="/api/v1")
 
@@ -60,6 +61,20 @@ def cfm_lesson_detail(ref_id: str):
     if not r:
         raise HTTPException(status_code=404, detail=f"No lesson {ref_id}")
     return {"ok": True, "data": dict(r)}
+
+
+@router.get("/cfm/lessons/{ref_id}/scriptures")
+def cfm_lesson_scriptures(ref_id: str):
+    """Parse a lesson's scripture_block into structured, chapter-resolved references.
+
+    e.g. "Genesis 1–2; Moses 2–3; Abraham 4–5" → blocks with book ids and
+    chapter lists, ready for the weekly-study view to fetch passage text.
+    """
+    conn = get_db()
+    res = cfm_scripture_blocks(conn, ref_id)
+    if not res["ok"]:
+        raise HTTPException(status_code=404, detail=res.get("error", "Not found"))
+    return {"ok": True, "data": res}
 
 
 @router.get("/conference/talks")

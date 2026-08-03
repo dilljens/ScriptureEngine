@@ -111,6 +111,14 @@ export function getCfmLesson(refId) {
   return fetchJSON(`/cfm/lessons/${encodeURIComponent(refId)}`)
 }
 
+export function getCfmLessonScriptures(refId) {
+  return fetchJSON(`/cfm/lessons/${encodeURIComponent(refId)}/scriptures`)
+}
+
+export function getChapter(ref) {
+  return fetchJSON(`/chapter/${ref}`)
+}
+
 export function getConferenceTalks(year) {
   const q = year ? `?year=${encodeURIComponent(year)}` : ''
   return fetchJSON(`/conference/talks${q}`)

@@ -29,7 +29,7 @@ function conferenceLabel(year, month) {
   return `${MONTHS[month - 1]} ${year}`
 }
 
-export default function CollectionView({ collection, onBack, onStudyInChat }) {
+export default function CollectionView({ collection, onBack, onStudyInChat, onStudy }) {
   const meta = COLLECTION_META[collection] || COLLECTION_META.cfm
   const colors = COLORS[collection] || COLORS.cfm
   const [items, setItems] = useState(null)
@@ -131,17 +131,17 @@ export default function CollectionView({ collection, onBack, onStudyInChat }) {
             ? g.conferences.map(sg => (
                 <div key={sg.session} className="mb-3">
                   <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">{sg.session}</div>
-                  {sg.talks.map(t => <Row key={t.ref_id} item={t} collection={collection} colors={colors} expanded={expanded} detail={detail} detailLoading={detailLoading} toggle={toggle} studyInChat={studyInChat} />)}
+                  {sg.talks.map(t => <Row key={t.ref_id} item={t} collection={collection} colors={colors} expanded={expanded} detail={detail} detailLoading={detailLoading} toggle={toggle} studyInChat={studyInChat} onStudy={onStudy} />)}
                 </div>
               ))
-            : g.entries.map(it => <Row key={it.ref_id} item={it} collection={collection} colors={colors} expanded={expanded} detail={detail} detailLoading={detailLoading} toggle={toggle} studyInChat={studyInChat} />)}
+            : g.entries.map(it => <Row key={it.ref_id} item={it} collection={collection} colors={colors} expanded={expanded} detail={detail} detailLoading={detailLoading} toggle={toggle} studyInChat={studyInChat} onStudy={onStudy} />)}
         </div>
       ))}
     </div>
   )
 }
 
-function Row({ item, collection, colors, expanded, detail, detailLoading, toggle, studyInChat }) {
+function Row({ item, collection, colors, expanded, detail, detailLoading, toggle, studyInChat, onStudy }) {
   const isOpen = expanded === item.ref_id
   const title = collection === 'cfm' ? item.title : `${item.speaker} — ${item.title}`
   const sub = collection === 'cfm'
@@ -156,6 +156,13 @@ function Row({ item, collection, colors, expanded, detail, detailLoading, toggle
           <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">{sub}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {collection === 'cfm' && onStudy && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onStudy(item.week_slug) }}
+              className="px-2 py-1 rounded-md text-[10px] font-medium bg-amber-500 hover:bg-amber-600 text-white transition-colors cursor-pointer">
+              Weekly study
+            </button>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); studyInChat(item.ref_id, collection === 'cfm' ? item.title : item.title) }}
             className="px-2 py-1 rounded-md text-[10px] font-medium bg-indigo-500 hover:bg-indigo-600 text-white transition-colors cursor-pointer">

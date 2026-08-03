@@ -1,12 +1,26 @@
 """Tests for the Come Follow Me + General Conference corpora tools and routes."""
 
 import datetime
+import sqlite3
+import time
 
 import pytest
 
 from lib.db import get_db, init_db
 from lib.api import call_tool, TOOL_REGISTRY
 from web.routes.chat import _filter_tools, _scope_allowed, TOOL_DEFINITIONS
+
+
+def _exec(conn, sql, params=()):
+    """Write with retry — the app's background job sweeper can hold the DB lock."""
+    for attempt in range(40):
+        try:
+            return conn.execute(sql, params)
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e).lower() and attempt < 39:
+                time.sleep(0.5)
+                continue
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -33,20 +47,32 @@ def seeded():
          "Confidence in the Presence of God", "2025-04-06",
          "Charity and virtue bring confidence before God."),
     ]
-    conn.execute("DELETE FROM cfm_lessons")
-    conn.execute("DELETE FROM talks")
+    _exec(conn, "DELETE FROM cfm_lessons")
+    _exec(conn, "DELETE FROM talks")
+    # Seed books + minimal verses so cfm_scripture_blocks can resolve names
+    # (the shared test DB has only a few books).
+    book_rows = [
+        ("moses", "Moses", "ot"), ("abraham", "Abraham", "ot"),
+        ("ruth", "Ruth", "ot"), ("1sam", "1 Samuel", "ot"), ("2sam", "2 Samuel", "ot"),
+    ]
+    for bid, title, wid in book_rows:
+        _exec(conn, "INSERT OR IGNORE INTO books (id, title, work_id, position) VALUES (?,?,?,0)",
+              (bid, title, wid))
+    for ch in range(1, 5):
+        _exec(conn, "INSERT OR IGNORE INTO verses (id, book_id, chapter, verse, text_english) VALUES (?,?,?,?,?)",
+              (f"ruth.{ch}.1", "ruth", ch, 1, f"Ruth {ch}:1 test text"))
     for r in rows:
-        conn.execute(
-            "INSERT INTO cfm_lessons (ref_id, year, week_slug, date_range, start_date, end_date, title, scripture_block, text) "
-            "VALUES (?,?,?,?,?,?,?,?,?)", r)
+        _exec(conn,
+              "INSERT INTO cfm_lessons (ref_id, year, week_slug, date_range, start_date, end_date, title, scripture_block, text) "
+              "VALUES (?,?,?,?,?,?,?,?,?)", r)
     for t in talks:
-        conn.execute(
-            "INSERT INTO talks (ref_id, year, month, session, speaker, title, date, text) "
-            "VALUES (?,?,?,?,?,?,?,?)", t)
+        _exec(conn,
+              "INSERT INTO talks (ref_id, year, month, session, speaker, title, date, text) "
+              "VALUES (?,?,?,?,?,?,?,?)", t)
     conn.commit()
     yield {"lessons": rows, "talks": talks}
-    conn.execute("DELETE FROM cfm_lessons")
-    conn.execute("DELETE FROM talks")
+    _exec(conn, "DELETE FROM cfm_lessons")
+    _exec(conn, "DELETE FROM talks")
     conn.commit()
 
 
@@ -159,3 +185,57 @@ def test_library_endpoints(client, seeded):
 
     r = client.get("/api/v1/cfm/lessons/cfm.1999.01")
     assert r.status_code == 404
+
+
+
+def _set_block(conn, ref_id, block):
+    _exec(conn, "UPDATE cfm_lessons SET scripture_block=? WHERE ref_id=?", (block, ref_id))
+    conn.commit()
+
+
+def test_scripture_block_parser(seeded):
+    """Ranges, continuation chapters, book changes."""
+    from lib.api.cfm import cfm_scripture_blocks
+    conn = get_db()
+    _set_block(conn, "cfm.2026.03", "Exodus 19–20; 24; 31–34")
+    res = cfm_scripture_blocks(conn, "cfm.2026.03")
+    assert res["ok"]
+    exo = [b for b in res["blocks"] if b["book_id"] == "exo"][0]
+    assert exo["chapters"] == [19, 20, 24, 31, 32, 33, 34]
+    assert exo["whole_book"] is False
+
+    _set_block(conn, "cfm.2026.03", "Genesis 1–2; Moses 2–3; Abraham 4–5")
+    res = cfm_scripture_blocks(conn, "cfm.2026.03")
+    blocks = {b["book_id"]: b["chapters"] for b in res["blocks"]}
+    assert blocks["gen"] == [1, 2]
+    assert blocks["moses"] == [2, 3]
+    assert blocks["abraham"] == [4, 5]
+
+
+def test_scripture_block_bare_and_abbrev(seeded):
+    """Bare books → whole book; '1 Samuel …' with \xa0; abbreviated '102–3'."""
+    from lib.api.cfm import cfm_scripture_blocks
+    conn = get_db()
+    _set_block(conn, "cfm.2026.03", "Ruth; 1\u00a0Samuel 17–18; 24–26; 2\u00a0Samuel 5–7")
+    res = cfm_scripture_blocks(conn, "cfm.2026.03")
+    ruth = [b for b in res["blocks"] if b["book_id"] == "ruth"][0]
+    assert ruth["whole_book"] is True and ruth["chapters"] == [1, 2, 3, 4]
+    s1 = [b for b in res["blocks"] if b["book_id"] == "1sam"][0]
+    assert s1["chapters"] == [17, 18, 24, 25, 26]
+    s2 = [b for b in res["blocks"] if b["book_id"] == "2sam"][0]
+    assert s2["chapters"] == [5, 6, 7]
+
+    _set_block(conn, "cfm.2026.03", "Psalms 102–3; 116–19")
+    res = cfm_scripture_blocks(conn, "cfm.2026.03")
+    psa = [b for b in res["blocks"] if b["book_id"] == "psa"][0]
+    assert psa["chapters"] == [102, 103, 116, 117, 118, 119]
+
+
+def test_scriptures_endpoint(client, seeded):
+    _set_block(get_db(), "cfm.2026.03", "Genesis 1–2; Moses 2–3; Abraham 4–5")
+    r = client.get("/api/v1/cfm/lessons/cfm.2026.03/scriptures")
+    assert r.status_code == 200
+    data = r.json()["data"]
+    assert data["ref_id"] == "cfm.2026.03"
+    assert any(b["book_id"] == "gen" and b["chapters"] == [1, 2] for b in data["blocks"])
+    assert any(b["book_id"] == "abraham" and b["chapters"] == [4, 5] for b in data["blocks"])
