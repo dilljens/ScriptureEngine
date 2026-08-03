@@ -455,6 +455,64 @@
         }
       }
     },
+    "/api/v1/hebrew/lesson/{node_id}/quiz": {
+      "get": {
+        "summary": "Get Hebrew Lesson Quiz",
+        "description": "Per-lesson quiz: this lesson's practice items interleaved by difficulty,\nplus up to 2 confusable distractor items for discrimination practice.\n\nReturns questions in the same shape as /api/v1/hebrew/quiz so the quiz UI\nrenders them identically. Every answer is posted to /hebrew/progress (which\nfeeds the FSRS review state), so the quiz is retrieval practice, not just a\ntest \u2014 per the Math Academy Way: quizzes are themselves review.",
+        "operationId": "get_hebrew_lesson_quiz_api_v1_hebrew_lesson__node_id__quiz_get",
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 8,
+              "title": "Count"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hebrew/audio/{word}": {
       "get": {
         "summary": "Get Hebrew Audio",
@@ -495,7 +553,7 @@
     "/api/v1/hebrew/image/{word}": {
       "get": {
         "summary": "Get Hebrew Image",
-        "description": "Get an image associated with a Hebrew word.\n\nReturns image URL from word_images table (FreeBibleImages.org, etc.)\nor a 404 if no image is available.",
+        "description": "Get an image associated with a Hebrew word.\n\nPrefers LOCAL images (downloaded by scripts/ingest_word_images.py and served\nfrom /images/words/), falling back to remote FreeBibleImages URLs.",
         "operationId": "get_hebrew_image_api_v1_hebrew_image__word__get",
         "parameters": [
           {
@@ -1549,6 +1607,54 @@
             "schema": {
               "type": "string",
               "title": "Verse Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/word-audio/{verse_id}": {
+      "get": {
+        "summary": "Get Word Audio",
+        "description": "Play the audio slice for one word in an aligned verse.\n\nFinds the word's [start, end] in audio_timestamps.word_timestamps (matching\nby normalized Hebrew form), then streams that slice from the source file.\nThis is verse-level playback of the licensed recording (in-browser slice),\nnot a redistributed clip \u2014 the ND-safe use.",
+        "operationId": "get_word_audio_api_v1_hebrew_word_audio__verse_id__get",
+        "parameters": [
+          {
+            "name": "verse_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Verse Id"
+            }
+          },
+          {
+            "name": "word",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Word"
             }
           }
         ],
