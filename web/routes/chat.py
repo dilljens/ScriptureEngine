@@ -1,6 +1,7 @@
 """LLM Chat proxy with function calling."""
 import asyncio
 import json
+import logging
 import os
 import sys
 import time
@@ -18,8 +19,11 @@ sys.path.insert(0, str(BASE_DIR))
 from lib.api import call_tool
 from lib.api.staging import stage_connection, stage_study
 from lib.db import get_db
+from web.lib import jobs as _jobs
 
 router = APIRouter()
+
+logger = logging.getLogger("chat")
 
 # ─── LLM Chat Proxy with Function Calling (DeepSeek) ───
 
@@ -866,10 +870,90 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    # ── Opt-in scope-gated tools (Come Follow Me / General Conference) ──
+    # Schemas live here, but _filter_tools drops them unless the request
+    # declares the matching scope in ChatRequest.scopes.
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_cfm_lesson",
+            "description": "Look up a Come Follow Me weekly lesson (LDS curriculum). Returns the lesson's date range, title, scripture block, and full text. With no arguments returns the current week's lesson.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "year": {"type": "integer", "description": "Manual year (default: current year)"},
+                    "week": {"type": "string", "description": "Week slug, e.g. '03' (default: current calendar week)"},
+                    "ref_id": {"type": "string", "description": "Exact ref, e.g. 'cfm.2026.03'"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_conference_talk",
+            "description": "Look up a General Conference talk transcript. Filter by year/month/session/speaker/title, or pass ref_id for an exact hit. Returns speaker, session, title, and full text.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "year": {"type": "integer", "description": "Conference year, e.g. 2025"},
+                    "month": {"type": "integer", "description": "Conference month: 4 (April) or 10 (October)"},
+                    "session": {"type": "string", "description": "Session name, e.g. 'Saturday Morning'"},
+                    "speaker": {"type": "string", "description": "Speaker name (substring match), e.g. 'Holland'"},
+                    "title": {"type": "string", "description": "Talk title (substring match)"},
+                    "ref_id": {"type": "string", "description": "Exact ref, e.g. 'gc.2025.04.13holland'"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_cfm_search",
+            "description": "Search the Come Follow Me lessons and General Conference talks corpora. Returns ranked matches with snippets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term"},
+                    "corpus": {"type": "string", "enum": ["cfm", "conference", "both"], "default": "both", "description": "Which corpus to search"},
+                    "year": {"type": "integer", "description": "Optional year filter"},
+                    "limit": {"type": "integer", "default": 10, "description": "Max results (max 30)"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──
 STAGING_TOOLS = {"scripture_stage_connection", "scripture_stage_study"}
+
+# ─── Opt-in scoped tools (Come Follow Me / General Conference) ───
+# These tools read the CFM/GC prose corpora. They are ONLY advertised to the
+# LLM (and callable) when the request declares the matching scope — so the
+# feature is off by default and a raw API caller must explicitly opt in.
+# The frontend sets scopes from the Search Scope checkboxes.
+SCOPED_TOOLS = {
+    "scripture_cfm_lesson": ("cfm",),
+    "scripture_conference_talk": ("conference",),
+    "scripture_cfm_search": ("cfm", "conference"),  # searches both corpora
+}
+
+
+def _scope_allowed(tool_name: str, scopes: list) -> bool:
+    allowed = SCOPED_TOOLS.get(tool_name)
+    if allowed is None:
+        return True  # not a scoped tool — always allowed
+    s = set(scopes or [])
+    return any(x in s for x in allowed)
+
+
+def _filter_tools(tools: list, scopes: list, disabled_tools: list) -> list:
+    """Drop disabled tools AND scoped tools the request didn't opt into."""
+    disabled = set(disabled_tools or [])
+    return [t for t in tools
+            if t["function"]["name"] not in disabled
+            and _scope_allowed(t["function"]["name"], scopes)]
 
 
 def _compute_cost(usage: dict) -> dict:
@@ -946,6 +1030,23 @@ def _check_rate_limit(ip: str) -> bool:
 MAX_PROMPT_TOKENS = 200_000
 KEEP_EXCHANGES = 15  # user+assistant pairs to keep before compaction
 
+# ─── Output budget / truncation guards ───
+# DeepSeek thinking mode counts reasoning tokens against max_tokens, so a small
+# budget can be exhausted by CoT alone → finish_reason="length" → truncated.
+MIN_THINKING_TOKENS = 16_384
+MAX_OUTPUT_TOKENS = 128_000
+
+
+def _retry_budget(max_tokens: int) -> int:
+    """Bump max_tokens for a truncation retry (reasoning + answer share budget)."""
+    return min(max(max_tokens * 4, MIN_THINKING_TOKENS), MAX_OUTPUT_TOKENS)
+
+
+def _finish_reason(data: dict) -> str:
+    """Extract finish_reason from a DeepSeek chat completion response."""
+    choices = data.get("choices") or []
+    return str(choices[0].get("finish_reason") or "") if choices else ""
+
 
 def _estimate_tokens(text: str) -> int:
     """Rough token estimate: ~4 chars per token."""
@@ -1003,11 +1104,14 @@ def apply_context_budget(message_list: list[dict]) -> list[dict]:
 class ChatRequest(BaseModel):
     messages: list[dict]
     model: str = DEEPSEEK_MODEL
-    max_tokens: int = 4096
+    max_tokens: int = MIN_THINKING_TOKENS
     temperature: float = 0.7
     tools_enabled: bool = True
     disabled_tools: list[str] = []
+    scopes: list[str] = []  # opt-in scopes: "cfm", "conference" (default none = off)
     mode: str = "chat"  # "chat", "hebrew", "knowledge"
+    session_id: str = ""            # conversation session — job saves the completed answer here
+    client_message_id: str = ""     # user message id (idempotency context for the save)
 
 
 @router.get("/api/v1/chat/instructions")
@@ -1067,7 +1171,7 @@ async def llm_chat(body: ChatRequest, request: Request):
                     msgs[i] = {"role": "system", "content": prompt}
                     break
 
-    body.max_tokens = min(body.max_tokens, 128_000)
+    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
 
     msgs = apply_context_budget(msgs)
 
@@ -1081,12 +1185,8 @@ async def llm_chat(body: ChatRequest, request: Request):
         "temperature": body.temperature,
     }
     if body.tools_enabled:
-        # Filter out disabled tools
-        if body.disabled_tools:
-            payload["tools"] = [t for t in TOOL_DEFINITIONS
-                                if t["function"]["name"] not in body.disabled_tools]
-        else:
-            payload["tools"] = TOOL_DEFINITIONS
+        # Filter out disabled tools + scope-gated tools the request didn't opt into
+        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
         payload["tool_choice"] = "auto"
 
     tool_results = []
@@ -1108,12 +1208,32 @@ async def llm_chat(body: ChatRequest, request: Request):
         return {"ok": False, "error": f"{friendly} [{msg}]" if friendly else msg}
 
     rounds = 0
+    budget_retried = False
     while data.get("choices") and rounds < max_tool_rounds:
         choice = data["choices"][0]
         msg = choice.get("message", {})
+        finish_reason = choice.get("finish_reason")
 
         # Check for tool calls
         tool_calls = msg.get("tool_calls")
+
+        # Truncation guard: finish_reason="length" means the budget ran out
+        # (thinking + answer share max_tokens). Retry once with more room before
+        # accepting a partial answer or executing a possibly-partial tool call.
+        if finish_reason == "length" and not budget_retried:
+            budget_retried = True
+            logger.warning(
+                "chat: response truncated (finish_reason=length); retrying with max_tokens=%s",
+                _retry_budget(body.max_tokens),
+            )
+            payload["max_tokens"] = _retry_budget(body.max_tokens)
+            data = await call_deepseek(payload)
+            if "error" in data:
+                err = data["error"]
+                msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                return {"ok": False, "error": f"DeepSeek API error: {msg}"}
+            continue
+
         if not tool_calls:
             break  # No more tool calls, we have final response
 
@@ -1141,6 +1261,9 @@ async def llm_chat(body: ChatRequest, request: Request):
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
+            # Scope gate: a scoped tool must have been opted into via body.scopes
+            if not _scope_allowed(fn_name, body.scopes):
+                return tc, {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
             try:
                 return tc, call_tool(fn_name, conn, **fn_args)
             except Exception as e:
@@ -1273,6 +1396,7 @@ async def llm_chat(body: ChatRequest, request: Request):
             },
             "cost": cost,
             "tool_results": tool_results,
+            "finish_reason": _finish_reason(data),
         },
     }
 
@@ -1304,12 +1428,11 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
         "stream": stream,
     }
     if body.tools_enabled:
-        if body.disabled_tools:
-            payload["tools"] = [t for t in TOOL_DEFINITIONS
-                                if t["function"]["name"] not in body.disabled_tools]
-        else:
-            payload["tools"] = TOOL_DEFINITIONS
+        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
         payload["tool_choice"] = "auto"
+    if stream:
+        # Guarantees a usage chunk (incl. finish_reason + reasoning_tokens) before [DONE]
+        payload["stream_options"] = {"include_usage": True}
     return payload
 
 
@@ -1321,6 +1444,299 @@ def _sse_event(data: dict) -> str:
 async def _sse_yield(data: dict):
     """Async generator yielding a single SSE event (for error responses)."""
     yield _sse_event(data)
+
+
+_STOP = object()
+
+
+async def _next_line(iterator):
+    """Safe next() for an async iterator — converts StopAsyncIteration to _STOP."""
+    try:
+        return await iterator.__anext__()
+    except StopAsyncIteration:
+        return _STOP
+
+
+async def _heartbeat_lines(resp, interval: float = 15.0):
+    """Wrap resp.aiter_lines(): yield ('line', line) per line, plus ('hb', None)
+    whenever no line has arrived for `interval` seconds. Keeps browsers/proxies
+    from idle-timeout during long silent thinking pauses. Upstream errors are
+    re-raised via task.result()."""
+    iterator = resp.aiter_lines()
+    task = asyncio.ensure_future(_next_line(iterator))
+    try:
+        while True:
+            _done, _pending = await asyncio.wait({task}, timeout=interval)
+            if task.done():
+                line = task.result()
+                if line is _STOP:
+                    return
+                yield ("line", line)
+                task = asyncio.ensure_future(_next_line(iterator))
+            else:
+                yield ("hb", None)
+    finally:
+        if not task.done():
+            task.cancel()
+
+
+async def _chat_pipeline(body, msgs):
+    """Run the full chat pipeline — tool-calling rounds (non-streaming) then the
+    streamed final response — yielding plain event dicts:
+      heartbeat / tool_progress / thinking / text / truncated / error / done
+
+    Shared by the SSE stream endpoint and the background job runner, so both
+    paths behave identically (finish_reason guard, truncation retry, heartbeats).
+    `body` is a ChatRequest (or dict with the same fields); `msgs` is the
+    prepared message list (system prompt injected, budget applied).
+    """
+    tool_results = []
+
+    # ── Tool-calling rounds (non-streaming) ──
+    payload = _build_payload(body, msgs, stream=False)
+    max_tool_rounds = 15
+    rounds = 0
+
+    while rounds < max_tool_rounds:
+        # DeepSeek thinking rounds can take minutes with zero bytes on the
+        # wire — emit heartbeats so browsers/proxies don't idle-timeout.
+        round_task = asyncio.create_task(call_deepseek(payload))
+        while not round_task.done():
+            _done, _pending = await asyncio.wait({round_task}, timeout=15)
+            if not round_task.done():
+                yield {"type": "heartbeat"}
+        data = round_task.result()
+
+        if "error" in data:
+            err = data["error"]
+            message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            yield {"type": "error", "message": message}
+            return
+
+        choice = data.get("choices", [{}])[0]
+        msg = choice.get("message", {})
+        tool_calls = msg.get("tool_calls")
+
+        if not tool_calls:
+            # No more tool calls — break to streaming
+            break
+
+        # Yield tool progress
+        yield {"type": "tool_progress", "tools": [
+            {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
+            for tc in tool_calls
+        ]}
+
+        msgs.append(msg)
+        conn = get_db()
+
+        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
+        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+
+        async def run_ro(tc, conn=conn):
+            fn_name = tc["function"]["name"]
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            if not _scope_allowed(fn_name, body.scopes):
+                return tc, {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
+            try:
+                return tc, call_tool(fn_name, conn, **fn_args)
+            except Exception as e:
+                return tc, {"error": str(e)}
+
+        ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
+
+        staging_results = []
+        for tc in staging_calls:
+            fn_name = tc["function"]["name"]
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            try:
+                if fn_name == "scripture_stage_connection":
+                    result = stage_connection(conn, submitted_by="llm", **fn_args)
+                elif fn_name == "scripture_stage_study":
+                    steps = json.loads(fn_args.pop("steps_json", "[]"))
+                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                else:
+                    result = {"error": f"Unknown staging tool: {fn_name}"}
+            except Exception as e:
+                result = {"error": str(e)}
+            staging_results.append((tc, result))
+
+        all_results = ro_results + staging_results
+        for tc, result in all_results:
+            result_str = json.dumps(result, default=str, ensure_ascii=False)
+            if len(result_str) > 3000:
+                result_str = result_str[:3000] + '..." [truncated]'
+            tool_results.append({
+                "id": tc["id"],
+                "name": tc["function"]["name"],
+                "args": json.loads(tc["function"]["arguments"]),
+                "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
+            })
+            msgs.append({
+                "role": "tool",
+                "content": result_str,
+                "tool_call_id": tc["id"],
+            })
+
+        conn.close()
+
+        # Budget check
+        est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
+        if est > MAX_PROMPT_TOKENS * 0.8:
+            msgs = apply_context_budget(msgs)
+
+        payload["messages"] = msgs
+        rounds += 1
+
+    # ── Streaming final response ──
+    usage = {}
+    final_reasoning = ""
+    final_content = ""
+    finish_reason = ""
+    budget_retried = False
+
+    # Regenerate-once loop: if the output budget runs out mid-stream
+    # (finish_reason="length"), discard the partial and retry with more room.
+    while True:
+        stream_payload = _build_payload(body, msgs, stream=True)
+        if budget_retried:
+            stream_payload["max_tokens"] = _retry_budget(body.max_tokens)
+
+        # Pre-stream heartbeat — the final request can take a moment to open.
+        yield {"type": "heartbeat"}
+        try:
+            async with _http_client.stream(
+                "POST", f"{DEEPSEEK_BASE}/chat/completions",
+                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+                json=stream_payload,
+            ) as resp:
+                if not 200 <= resp.status_code < 300:
+                    raw_error = await resp.aread()
+                    try:
+                        error_data = json.loads(raw_error)
+                    except (TypeError, json.JSONDecodeError):
+                        error_data = {}
+                    error_value = error_data.get("error", error_data)
+                    if isinstance(error_value, dict):
+                        error_message = error_value.get("message") or str(error_value)
+                    else:
+                        error_message = str(error_value)
+                    yield {"type": "error", "message": f"Upstream chat error ({resp.status_code}): {error_message}"}
+                    return
+                async for kind, value in _heartbeat_lines(resp):
+                    if kind == "hb":
+                        # Long silent thinking pause — keep the proxy/browser alive
+                        yield {"type": "heartbeat"}
+                        continue
+                    line = value
+                    if not line.startswith("data: "):
+                        continue
+                    chunk = line[6:].strip()
+                    if chunk == "[DONE]":
+                        break
+                    try:
+                        chunk_data = json.loads(chunk)
+                    except json.JSONDecodeError:
+                        continue
+
+                    choice0 = chunk_data.get("choices", [{}])[0]
+                    delta = choice0.get("delta", {})
+                    fr = choice0.get("finish_reason")
+                    if fr:
+                        finish_reason = fr
+
+                    # Reasoning content (thinking) — stream it
+                    rc = delta.get("reasoning_content")
+                    if rc:
+                        final_reasoning += rc
+                        yield {"type": "thinking", "content": rc}
+
+                    # Visible content — stream it
+                    c = delta.get("content")
+                    if c:
+                        final_content += c
+                        yield {"type": "text", "content": c}
+
+                    # Track usage from the last chunk
+                    if chunk_data.get("usage"):
+                        usage = chunk_data["usage"]
+
+        except Exception as e:
+            yield {"type": "error", "message": f"Stream error: {str(e)}"}
+            return
+
+        # Truncation guard: regenerate once with a bigger budget
+        if finish_reason == "length" and not budget_retried:
+            budget_retried = True
+            usage = {}
+            final_reasoning = ""
+            final_content = ""
+            finish_reason = ""
+            logger.warning(
+                "chat: stream truncated (finish_reason=length); retrying with max_tokens=%s",
+                _retry_budget(body.max_tokens),
+            )
+            yield {"type": "truncated"}
+            continue
+        break
+
+    # Force summary if content is stub (tool listing), planning text, or empty
+    is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
+    is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    if (not final_content or is_planning or is_stub) and tool_results:
+        # LLM returned only tool results without synthesis — force a summary
+        msgs.append({"role": "user", "content":
+            "You have all the data you need from the tool calls above. "
+            "Now synthesize a complete thorough answer in natural language based on the information you found. "
+            "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
+            "Include specific gematria values, verse quotations, and connection details from the tool results. "
+            "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
+        retry_payload = _build_payload(body, msgs, stream=False)
+        retry_data = await call_deepseek(retry_payload)
+        if _finish_reason(retry_data) == "length":
+            retry_payload["max_tokens"] = _retry_budget(body.max_tokens)
+            retry_data = await call_deepseek(retry_payload)
+        if retry_data.get("choices"):
+            rc_msg = retry_data["choices"][0].get("message", {})
+            retry_content = rc_msg.get("content") or ""
+            retry_reasoning = rc_msg.get("reasoning_content") or ""
+            if retry_content:
+                yield {"type": "text", "content": retry_content}
+            if retry_reasoning:
+                yield {"type": "thinking", "content": retry_reasoning}
+            final_content = retry_content or final_content
+            final_reasoning = retry_reasoning or final_reasoning
+            retry_usage = retry_data.get("usage", {})
+            for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
+                if retry_usage.get(k):
+                    usage[k] = usage.get(k, 0) + retry_usage[k]
+
+    cost = _compute_cost(usage)
+    model = data.get("model", body.model) if rounds > 0 else body.model
+
+    yield {
+        "type": "done",
+        "usage": {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+            "cache_hit_tokens": usage.get("prompt_cache_hit_tokens", 0),
+        },
+        "cost": cost,
+        "model": model,
+        "tool_results": tool_results,
+        "finish_reason": finish_reason,
+        # Final content fallback: if the client missed chunks (proxy close,
+        # remount, aborted fetch), it can recover the full response from here.
+        "final_content": final_content,
+        "final_reasoning": final_reasoning,
+    }
 
 
 # ─── SSE Streaming Chat Endpoint ───
@@ -1377,236 +1793,103 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
                     msgs[i] = {"role": "system", "content": prompt}
                     break
 
-    body.max_tokens = min(body.max_tokens, 128_000)
+    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
     msgs = apply_context_budget(msgs)
 
     async def stream_generator():
         """Run tool rounds (non-streaming), then stream final response."""
-        tool_results = []
-        nonlocal msgs
-
-        # ── Tool-calling rounds (non-streaming) ──
-        payload = _build_payload(body, msgs, stream=False)
-        max_tool_rounds = 15
-        rounds = 0
-
-        while rounds < max_tool_rounds:
-            # DeepSeek thinking rounds can take minutes with zero bytes on the
-            # wire — emit heartbeats so browsers/proxies don't idle-timeout.
-            round_task = asyncio.create_task(call_deepseek(payload))
-            while not round_task.done():
-                _done, _pending = await asyncio.wait({round_task}, timeout=15)
-                if not round_task.done():
-                    yield _sse_event({"type": "heartbeat"})
-            data = round_task.result()
-
-            if "error" in data:
-                err = data["error"]
-                message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-                yield _sse_event({"type": "error", "message": message})
-                return
-
-            choice = data.get("choices", [{}])[0]
-            msg = choice.get("message", {})
-            tool_calls = msg.get("tool_calls")
-
-            if not tool_calls:
-                # No more tool calls — break to streaming
-                break
-
-            # Yield tool progress
-            tool_names = [tc["function"]["name"] for tc in tool_calls]
-            yield _sse_event({"type": "tool_progress", "tools": [
-                {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
-                for tc in tool_calls
-            ]})
-
-            msgs.append(msg)
-            conn = get_db()
-
-            staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
-            ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
-
-            async def run_ro(tc, conn=conn):
-                fn_name = tc["function"]["name"]
-                try:
-                    fn_args = json.loads(tc["function"]["arguments"])
-                except json.JSONDecodeError:
-                    fn_args = {}
-                try:
-                    return tc, call_tool(fn_name, conn, **fn_args)
-                except Exception as e:
-                    return tc, {"error": str(e)}
-
-            ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
-
-            staging_results = []
-            for tc in staging_calls:
-                fn_name = tc["function"]["name"]
-                try:
-                    fn_args = json.loads(tc["function"]["arguments"])
-                except json.JSONDecodeError:
-                    fn_args = {}
-                try:
-                    if fn_name == "scripture_stage_connection":
-                        result = stage_connection(conn, submitted_by="llm", **fn_args)
-                    elif fn_name == "scripture_stage_study":
-                        steps = json.loads(fn_args.pop("steps_json", "[]"))
-                        result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
-                    else:
-                        result = {"error": f"Unknown staging tool: {fn_name}"}
-                except Exception as e:
-                    result = {"error": str(e)}
-                staging_results.append((tc, result))
-
-            all_results = ro_results + staging_results
-            for tc, result in all_results:
-                result_str = json.dumps(result, default=str, ensure_ascii=False)
-                if len(result_str) > 3000:
-                    result_str = result_str[:3000] + '..." [truncated]'
-                tool_results.append({
-                    "id": tc["id"],
-                    "name": tc["function"]["name"],
-                    "args": json.loads(tc["function"]["arguments"]),
-                    "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
-                })
-                msgs.append({
-                    "role": "tool",
-                    "content": result_str,
-                    "tool_call_id": tc["id"],
-                })
-
-            conn.close()
-
-            # Budget check
-            est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
-            if est > MAX_PROMPT_TOKENS * 0.8:
-                msgs = apply_context_budget(msgs)
-
-            payload["messages"] = msgs
-            rounds += 1
-
-        # ── Streaming final response ──
-        usage = {}
-        final_reasoning = ""
-        final_content = ""
-
-        stream_payload = _build_payload(body, msgs, stream=True)
-        # Pre-stream heartbeat — the final request can take a moment to open.
-        yield _sse_event({"type": "heartbeat"})
-        try:
-            async with _http_client.stream(
-                "POST", f"{DEEPSEEK_BASE}/chat/completions",
-                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
-                json=stream_payload,
-            ) as resp:
-                if not 200 <= resp.status_code < 300:
-                    raw_error = await resp.aread()
-                    try:
-                        error_data = json.loads(raw_error)
-                    except (TypeError, json.JSONDecodeError):
-                        error_data = {}
-                    error_value = error_data.get("error", error_data)
-                    if isinstance(error_value, dict):
-                        error_message = error_value.get("message") or str(error_value)
-                    else:
-                        error_message = str(error_value)
-                    yield _sse_event({
-                        "type": "error",
-                        "message": f"Upstream chat error ({resp.status_code}): {error_message}",
-                    })
-                    return
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    chunk = line[6:].strip()
-                    if chunk == "[DONE]":
-                        break
-                    try:
-                        chunk_data = json.loads(chunk)
-                    except json.JSONDecodeError:
-                        continue
-
-                    delta = chunk_data.get("choices", [{}])[0].get("delta", {})
-
-                    # Reasoning content (thinking) — stream it
-                    rc = delta.get("reasoning_content")
-                    if rc:
-                        final_reasoning += rc
-                        yield _sse_event({"type": "thinking", "content": rc})
-
-                    # Visible content — stream it
-                    c = delta.get("content")
-                    if c:
-                        final_content += c
-                        yield _sse_event({"type": "text", "content": c})
-
-                    # Track usage from the last chunk
-                    if chunk_data.get("usage"):
-                        usage = chunk_data["usage"]
-
-        except Exception as e:
-            yield _sse_event({"type": "error", "message": f"Stream error: {str(e)}"})
-            return
-
-        # Force summary if content is stub (tool listing), planning text, or empty
-        is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
-        is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
-        if (not final_content or is_planning or is_stub) and tool_results:
-            # LLM returned only tool results without synthesis — force a summary
-            msgs.append({"role": "user", "content":
-                "You have all the data you need from the tool calls above. "
-                "Now synthesize a complete thorough answer in natural language based on the information you found. "
-                "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
-                "Include specific gematria values, verse quotations, and connection details from the tool results. "
-                "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
-            retry_payload = _build_payload(body, msgs, stream=False)
-            retry_data = await call_deepseek(retry_payload)
-            if retry_data.get("choices"):
-                rc_msg = retry_data["choices"][0].get("message", {})
-                retry_content = rc_msg.get("content") or ""
-                retry_reasoning = rc_msg.get("reasoning_content") or ""
-                if retry_content:
-                    yield _sse_event({"type": "text", "content": retry_content})
-                if retry_reasoning:
-                    yield _sse_event({"type": "thinking", "content": retry_reasoning})
-                final_content = retry_content or final_content
-                final_reasoning = retry_reasoning or final_reasoning
-                retry_usage = retry_data.get("usage", {})
-                for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
-                    if retry_usage.get(k):
-                        usage[k] = usage.get(k, 0) + retry_usage[k]
-
-        cost = _compute_cost(usage)
-        model = data.get("model", body.model) if rounds > 0 else body.model
-
-        yield _sse_event({
-            "type": "done",
-            "usage": {
-                "prompt_tokens": usage.get("prompt_tokens", 0),
-                "completion_tokens": usage.get("completion_tokens", 0),
-                "total_tokens": usage.get("total_tokens", 0),
-                "cache_hit_tokens": usage.get("prompt_cache_hit_tokens", 0),
-            },
-            "cost": cost,
-            "model": model,
-            "tool_results": tool_results,
-            # Final content fallback: if the client missed chunks (proxy close,
-            # remount, aborted fetch), it can recover the full response from here.
-            "final_content": final_content,
-            "final_reasoning": final_reasoning,
-        })
-
-        # Save to conversation history (fire-and-forget)
-        if tool_results:
-            try:
-                conn = get_db()
-                # Store tool results summary in the conversation
-                conn.close()
-            except Exception:
-                pass
+        async for event in _chat_pipeline(body, msgs):
+            yield _sse_event(event)
 
     return StreamingResponse(stream_generator(), media_type="text/event-stream", headers={
         "Cache-Control": "no-cache",
         "X-Accel-Buffering": "no",
     })
+
+
+# ─── Chat Background Jobs (decoupled runs) ───
+
+
+@router.post("/api/v1/chat/jobs")
+async def llm_chat_job_create(body: ChatRequest, request: Request):
+    """Create a background chat job. The DeepSeek run proceeds server-side
+    independent of the client connection — it survives phone minimize, network
+    drops, and tab switches. Poll GET /api/v1/chat/jobs/{id}?after_seq=N."""
+    if not DEEPSEEK_API_KEY:
+        return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
+
+    # Origin check — same gate as the other chat endpoints
+    origin = (request.headers.get("origin") or "").lower().rstrip("/")
+    referer = (request.headers.get("referer") or "").lower().rstrip("/")
+    if not (_origin_allowed(origin) or _origin_allowed(referer)):
+        return {"ok": False, "error": "Chat is only available from scriptureengine.org"}
+
+    client_ip = (
+        request.headers.get("cf-connecting-ip")
+        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    if not _check_rate_limit(client_ip):
+        return {"ok": False, "error": "Rate limit exceeded. Try again in a minute."}
+
+    # Prepare messages (same as the stream endpoint)
+    msgs = list(body.messages)
+    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
+    if prompt:
+        if not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": prompt})
+        else:
+            for i, m in enumerate(msgs):
+                if m.get("role") == "system":
+                    msgs[i] = {"role": "system", "content": prompt}
+                    break
+    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
+    msgs = apply_context_budget(msgs)
+
+    try:
+        job_id = _jobs.manager.create(body.model_dump(), msgs, client_ip)
+    except _jobs.JobLimitError as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": True, "data": {"job_id": job_id, "seq": 0, "status": "queued"}}
+
+
+@router.get("/api/v1/chat/jobs/{job_id}")
+async def llm_chat_job_poll(job_id: str, after_seq: int = 0):
+    """Poll a chat job: events since after_seq plus a final snapshot when done.
+
+    job_id is an unguessable UUID acting as a capability token, so this read
+    endpoint skips the origin gate (plain GETs don't carry Origin anyway)."""
+    job = _jobs.manager.get(job_id)
+    if job is None:
+        return {"ok": False, "error": "Chat job not found"}
+    events = job.events_since(after_seq)
+    done = None
+    if job.status in ("done", "failed"):
+        done = {
+            "status": job.status,
+            "content": job.final_content,
+            "reasoning": job.final_reasoning,
+            "finish_reason": job.finish_reason,
+            "usage": job.usage,
+            "cost": job.cost,
+            "model": job.model,
+            "tool_results": job.tool_results,
+        }
+    return {
+        "ok": True,
+        "data": {
+            "job_id": job.id,
+            "status": job.status,
+            "seq": job.seq,
+            "events": events,
+            "done": done,
+            "error": job.error or None,
+        },
+    }
+
+
+@router.post("/api/v1/chat/jobs/{job_id}/cancel")
+async def llm_chat_job_cancel(job_id: str):
+    """Cancel a running chat job (Stop button)."""
+    cancelled = _jobs.manager.cancel(job_id)
+    return {"ok": True, "data": {"job_id": job_id, "cancelled": cancelled}}

@@ -70,6 +70,17 @@ async def lifespan(app):
     _wiki_conn.close()
     if WIKI_CACHE:
         log.info("Cache loaded", cache="wiki_articles", count=len(WIKI_CACHE))
+
+    # Chat background jobs: ensure table + recover stale runs + periodic sweep.
+    # The DeepSeek run is decoupled from the client connection, so it survives
+    # phone minimize / network drops (see docs/plans/chat-background-jobs.md).
+    try:
+        from web.lib import jobs as _chat_jobs
+        _chat_jobs.manager.sweep()
+        _chat_jobs.start_sweeper()
+    except Exception as e:
+        log.warning("Chat job manager init failed", error=str(e))
+
     yield
 
 app = FastAPI(
@@ -299,6 +310,7 @@ from web.routes.assessment import router as assessment_router
 from web.routes.audio import router as audio_router
 from web.routes.auth import router as auth_router
 from web.routes.chat import router as chat_router
+from web.routes.cfm import router as cfm_router
 from web.routes.conversations import router as conversations_router
 from web.routes.forum import router as forum_router
 from web.routes.graph import router as graph_router
@@ -320,6 +332,7 @@ app.include_router(passage_router)
 app.include_router(wiki_router)
 app.include_router(audio_router)
 app.include_router(chat_router)
+app.include_router(cfm_router)
 app.include_router(studies_router)
 app.include_router(conversations_router)
 app.include_router(assessment_router)

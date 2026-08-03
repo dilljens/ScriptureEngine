@@ -96,6 +96,30 @@ export function getBooks() {
   return fetchJSON('/books')
 }
 
+// ─── Study collections (Come Follow Me + General Conference browsing) ───
+
+export function getCfmCollections() {
+  return fetchJSON('/cfm/collections')
+}
+
+export function getCfmLessons(year) {
+  const q = year ? `?year=${encodeURIComponent(year)}` : ''
+  return fetchJSON(`/cfm/lessons${q}`)
+}
+
+export function getCfmLesson(refId) {
+  return fetchJSON(`/cfm/lessons/${encodeURIComponent(refId)}`)
+}
+
+export function getConferenceTalks(year) {
+  const q = year ? `?year=${encodeURIComponent(year)}` : ''
+  return fetchJSON(`/conference/talks${q}`)
+}
+
+export function getConferenceTalk(refId) {
+  return fetchJSON(`/conference/talks/${encodeURIComponent(refId)}`)
+}
+
 // ─── Conversation / Chat API ───
 
 // Stable per-device identity used to scope conversation ownership.
@@ -275,118 +299,191 @@ export function chat(messages, opts = {}) {
 }
 
 /**
- * Streaming chat — reads SSE events from /api/v1/chat/stream
+ * Streaming chat — background job + polling (survives phone minimize).
+ *
+ * Creates a server-side chat job (POST /api/v1/chat/jobs) and polls it
+ * (GET /api/v1/chat/jobs/{id}?after_seq=N). The DeepSeek run proceeds on the
+ * server independent of this connection, so minimizing the app / network
+ * drops no longer cancel it — the next poll picks up where it left off.
  *
  * Calls onEvent callbacks as events arrive:
  *   onThinking(content)   — reasoning/thinking chunks
  *   onText(content)       — visible response chunks
  *   onToolProgress(tools) — tool names being executed
- *   onDone({usage, cost, model, tool_results, final_content, final_reasoning}) — final event
+ *   onTruncated()         — response hit the output limit and is regenerating
+ *   onDone(event)         — final event {usage, cost, model, tool_results,
+ *                            finish_reason, final_content, final_reasoning}
  *   onError(message)      — error event
  *
- * Guarantees: the promise ALWAYS settles. EOF without a terminal event
- * (proxy close, mid-stream crash) is treated as an error so callers never
- * hang waiting for a response that will never arrive.
+ * Guarantees: the promise ALWAYS settles. Polling only runs while the page is
+ * visible; when backgrounded the job keeps running server-side and the next
+ * poll after visibilitychange catches up.
  */
 export function chatStream(messages, opts = {}) {
-  const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, disabled_tools = [], signal } = opts
-  const { onThinking, onText, onToolProgress, onDone, onError } = opts
+  const {
+    model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7,
+    disabled_tools = [], scopes = [], mode = 'chat',
+    session_id = '', client_message_id = '', signal,
+  } = opts
+  const { onThinking, onText, onToolProgress, onTruncated, onDone, onError } = opts
+  const POLL_MS = 2000
 
   return new Promise((resolve, reject) => {
     let settled = false
-    const once = (fn, ...args) => { if (!settled && fn) { settled = true; fn(...args) } }
+    let jobId = null
+    let lastSeq = 0
+    let pollTimer = null
+    let backoff = POLL_MS
+    let visible = typeof document !== 'undefined' ? document.visibilityState !== 'hidden' : true
+    let cancelled = false
+    let abortHandler = null
 
-    fetch('/api/v1/chat/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools }),
-      signal,
-    }).then(async (response) => {
-      if (!response.ok) {
-        const msg = response.status === 500
-          ? 'The server encountered an error. Please try again.'
-          : `Server error: ${response.status}`
-        once(onError, msg)
-        reject(new Error(msg))
+    const cleanup = () => {
+      clearTimeout(pollTimer)
+      if (abortHandler && signal) signal.removeEventListener('abort', abortHandler)
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility)
+    }
+    const finish = (fn, value) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (fn) fn(value)
+    }
+
+    const processEvent = (event) => {
+      if (!event || settled) return
+      if (event.type === 'error' || (event.ok === false && event.error)) {
+        const message = event.message || event.error || 'Unknown error'
+        finish(() => { onError?.(message); reject(new Error(message)) })
         return
       }
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let terminal = false
-
-      const processEvent = (event) => {
-        if (!event || terminal) return
-        if (event.type === 'error' || (event.ok === false && event.error)) {
-          const message = event.message || event.error || 'Unknown error'
-          terminal = true
-          once(onError, message)
-          reject(new Error(message))
-          return
-        }
-        switch (event.type) {
-          case 'thinking':
-            onThinking?.(event.content)
-            break
-          case 'text':
-            onText?.(event.content)
-            break
-          case 'tool_progress':
-            onToolProgress?.(event.tools || [])
-            break
-          case 'done':
-            terminal = true
-            once(onDone, event)
-            resolve(event)
-            break
-          default:
-            // heartbeat and any future event types — ignore
-            break
-        }
+      switch (event.type) {
+        case 'thinking': onThinking?.(event.content); break
+        case 'text': onText?.(event.content); break
+        case 'tool_progress': onToolProgress?.(event.tools || []); break
+        case 'truncated': onTruncated?.(); break
+        case 'done':
+          finish(() => { onDone?.(event); resolve(event) })
+          break
+        default: break // heartbeat and any future event types
       }
+    }
 
-      while (!terminal) {
-        const { done, value } = await reader.read()
-        if (done) break
+    const schedule = (ms) => {
+      if (cancelled || settled) return
+      clearTimeout(pollTimer)
+      if (!visible) return // job keeps running server-side; resume on visibilitychange
+      pollTimer = setTimeout(pollOnce, ms)
+    }
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || '' // keep incomplete line
+    const onVisibility = () => {
+      visible = typeof document !== 'undefined' ? document.visibilityState !== 'hidden' : true
+      if (visible && !settled && jobId) {
+        backoff = POLL_MS
+        clearTimeout(pollTimer)
+        pollOnce() // catch up on everything that happened while backgrounded
+      }
+    }
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const raw = line.slice(6).trim()
-          if (!raw) continue
-
-          let event
-          try { event = JSON.parse(raw) } catch { continue }
-          processEvent(event)
-          if (terminal) return
+    const pollOnce = async () => {
+      if (cancelled || settled) return
+      let data
+      try {
+        data = await fetchJSON(`/chat/jobs/${jobId}?after_seq=${lastSeq}`)
+      } catch (err) {
+        if (cancelled || settled) return
+        // Transient network failure — retry with backoff (job survives server-side)
+        schedule(backoff)
+        backoff = Math.min(backoff * 2, 10000)
+        return
+      }
+      if (cancelled || settled) return
+      backoff = POLL_MS
+      const d = data?.data || {}
+      if (Array.isArray(d.events)) {
+        for (const ev of d.events) {
+          if (ev?.seq) lastSeq = Math.max(lastSeq, ev.seq)
+          processEvent(ev)
+          if (settled) return
         }
       }
-
-      // Flush a final partial line when the server closes without a trailing
-      // newline (common with abrupt proxy disconnects).
-      buffer += decoder.decode()
-      for (const line of buffer.split('\n')) {
-        if (!line.startsWith('data: ')) continue
-        const raw = line.slice(6).trim()
-        if (!raw) continue
-        try { processEvent(JSON.parse(raw)) } catch { /* malformed tail */ }
-        if (terminal) return
+      if (d.status === 'done' || d.status === 'failed') {
+        if (!settled && d.status === 'done' && d.done) {
+          // Terminal event may have been missed (other worker / eviction) —
+          // synthesize it from the final snapshot.
+          finish(() => {
+            const ev = {
+              type: 'done',
+              usage: d.done.usage || {},
+              cost: d.done.cost,
+              model: d.done.model,
+              tool_results: d.done.tool_results || [],
+              finish_reason: d.done.finish_reason || '',
+              final_content: d.done.content || '',
+              final_reasoning: d.done.reasoning || '',
+            }
+            onDone?.(ev)
+            resolve(ev)
+          })
+        } else if (!settled) {
+          finish(() => { onError?.(d.error || 'Chat job failed.'); reject(new Error(d.error || 'Chat job failed.')) })
+        }
+        return
       }
+      // Still running — poll again shortly (only while visible)
+      schedule(POLL_MS)
+    }
 
-      // EOF without a terminal event — treat as failure, never hang
-      const msg = 'The connection closed before the response finished. Please try again.'
-      once(onError, msg)
-      reject(new Error(msg))
+    // Stop button / caller abort → cancel the job server-side too
+    if (signal) {
+      abortHandler = () => {
+        cancelled = true
+        cleanup()
+        if (jobId) {
+          fetch(`/api/v1/chat/jobs/${jobId}/cancel`, { method: 'POST' }).catch(() => {})
+        }
+        const err = new Error('Chat request aborted')
+        err.name = 'AbortError'
+        reject(err)
+      }
+      if (signal.aborted) abortHandler()
+      else signal.addEventListener('abort', abortHandler)
+    }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility)
+
+    // Create the background job, then start polling
+    fetchJSON('/chat/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools, scopes, mode, session_id, client_message_id }),
+    }).then((res) => {
+      if (cancelled) return
+      const d = res?.data || {}
+      if (!d.job_id) throw new Error('Chat job was not created')
+      jobId = d.job_id
+      lastSeq = d.seq || 0
+      pollOnce()
     }).catch((err) => {
-      if (err.name === 'AbortError') {
-        reject(err)
-      } else {
-        once(onError, err.message)
-        reject(err)
-      }
+      if (cancelled) return
+      finish(() => { onError?.(err.message || 'Failed to start chat.'); reject(err) })
     })
   })
+}
+
+/**
+ * Non-streaming chat via the background job endpoint — returns the final
+ * {content, reasoning_content, usage, cost, model, finish_reason,
+ * tool_results}. Also survives phone minimize (job runs server-side).
+ */
+export async function chatComplete(messages, opts = {}) {
+  const result = await chatStream(messages, opts)
+  return {
+    content: result.final_content || '',
+    reasoning_content: result.final_reasoning || '',
+    usage: result.usage,
+    cost: result.cost,
+    model: result.model,
+    finish_reason: result.finish_reason || '',
+    tool_results: result.tool_results || [],
+  }
 }

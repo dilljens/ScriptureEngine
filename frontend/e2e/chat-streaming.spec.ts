@@ -69,21 +69,38 @@ test.describe('Chat streaming — real-time responses', () => {
   })
 
   test('completed streamed response remains visible after done event', async ({ page }) => {
-    await page.route('**/api/v1/chat/stream', async route => {
-      const body = [
-        `data: ${JSON.stringify({ type: 'thinking', content: 'checking' })}\n\n`,
-        `data: ${JSON.stringify({ type: 'text', content: 'The response stays visible after done.' })}\n\n`,
-        `data: ${JSON.stringify({
-          type: 'done',
-          final_content: 'The response stays visible after done.',
-          final_reasoning: 'checking',
-          usage: {}, cost: {}, model: 'test-model', tool_results: [],
-        })}\n\n`,
-      ].join('')
+    // Background-job flow: POST /api/v1/chat/jobs → poll GET /api/v1/chat/jobs/{id}?after_seq=N
+    await page.route('**/api/v1/chat/jobs**', async route => {
+      const req = route.request()
+      if (req.method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true, data: { job_id: 'e2e-job-1', seq: 0, status: 'queued' } }),
+        })
+        return
+      }
       await route.fulfill({
         status: 200,
-        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
-        body,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            job_id: 'e2e-job-1',
+            status: 'done',
+            seq: 3,
+            events: [
+              { seq: 1, type: 'thinking', content: 'checking' },
+              { seq: 2, type: 'text', content: 'The response stays visible after done.' },
+              { seq: 3, type: 'done', final_content: 'The response stays visible after done.', final_reasoning: 'checking', usage: {}, cost: {}, model: 'test-model', tool_results: [], finish_reason: 'stop' },
+            ],
+            done: {
+              status: 'done', content: 'The response stays visible after done.', reasoning: 'checking',
+              finish_reason: 'stop', usage: {}, cost: {}, model: 'test-model', tool_results: [],
+            },
+            error: null,
+          },
+        }),
       })
     })
 

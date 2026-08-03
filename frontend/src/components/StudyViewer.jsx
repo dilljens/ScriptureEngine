@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import VersePreviewCard from './VersePreviewCard'
 import StudyEditor from './StudyEditor'
+import { chatComplete } from '../api'
 
 const LAYER_COLORS = {
   linguistic:     { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
@@ -105,22 +106,12 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
           connections: (s.connections || []).slice(0, 5),
         })) || [],
       }
-      const res = await fetch('/api/v1/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: `You are a scripture study assistant. The user is studying: "${study?.title || 'a scripture study'}". Here is the study context:\n${JSON.stringify(context, null, 2)}\n\nAnswer based on the scriptures. Cite verse references when possible. Be concise.` },
-            { role: 'user', content: q },
-          ],
-          model: 'deepseek-chat',
-          max_tokens: 1000,
-          temperature: 0.5,
-        }),
-      })
-      const data = await res.json()
-      const answer = data?.choices?.[0]?.message?.content || data?.message?.content || data?.content || 'No answer received.'
-      setQaAnswer(answer)
+      // Background job (survives phone minimize) + server-side truncation retry
+      const result = await chatComplete([
+        { role: 'system', content: `You are a scripture study assistant. The user is studying: "${study?.title || 'a scripture study'}". Here is the study context:\n${JSON.stringify(context, null, 2)}\n\nAnswer based on the scriptures. Cite verse references when possible. Be concise.` },
+        { role: 'user', content: q },
+      ], { max_tokens: 1000, temperature: 0.5 })
+      setQaAnswer(result.content || 'No answer received.')
     } catch (err) {
       setQaAnswer(`Error: ${err.message}`)
     } finally {

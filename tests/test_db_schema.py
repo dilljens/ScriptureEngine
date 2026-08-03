@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from lib.db import SCHEMA_SQL
+
 ROOT = Path(__file__).parent.parent
 PROD_DB = ROOT / "data" / "processed" / "scripture.db"
 
@@ -54,6 +56,46 @@ class TestSchema:
         actual = {row[0] for row in cursor.fetchall()}
         for layer in EXPECTED_LAYERS:
             assert layer in actual, f"Missing layer: {layer}"
+
+
+class TestChatJobsSchema:
+    """chat_jobs table DDL — validated against an in-memory build from SCHEMA_SQL
+    (the prod snapshot predates the table, so we don't assert against it here)."""
+
+    EXPECTED_COLS = {
+        "id", "session_id", "client_message_id", "status", "seq", "model",
+        "max_tokens", "temperature", "tool_results_json", "usage_json",
+        "events_json", "finish_reason", "error", "final_content",
+        "final_reasoning", "created_at", "updated_at", "expires_at",
+    }
+
+    @pytest.fixture
+    def schema_db(self):
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(SCHEMA_SQL)
+        yield conn
+        conn.close()
+
+    def test_chat_jobs_table_exists(self, schema_db):
+        row = schema_db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='chat_jobs'"
+        ).fetchone()
+        assert row is not None, "chat_jobs table missing from SCHEMA_SQL"
+
+    def test_chat_jobs_columns(self, schema_db):
+        cols = {r[1] for r in schema_db.execute("PRAGMA table_info(chat_jobs)")}
+        assert self.EXPECTED_COLS.issubset(cols), (
+            f"Missing columns: {self.EXPECTED_COLS - cols}"
+        )
+
+    def test_chat_jobs_status_constraint(self, schema_db):
+        schema_db.execute(
+            "INSERT INTO chat_jobs (id, status) VALUES ('j1', 'running')"
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            schema_db.execute(
+                "INSERT INTO chat_jobs (id, status) VALUES ('j2', 'bogus')"
+            )
 
     def test_quality_levels_are_valid(self, db):
         bad = db.execute("""

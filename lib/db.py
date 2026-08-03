@@ -442,6 +442,66 @@ CREATE TRIGGER IF NOT EXISTS js_sources_au AFTER UPDATE ON js_sources BEGIN
     INSERT INTO js_sources_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
 END;
 
+-- Come Follow Me weekly lessons (LDS curriculum, prose corpus — not verse-structured)
+CREATE TABLE IF NOT EXISTS cfm_lessons (
+    ref_id TEXT PRIMARY KEY,             -- e.g., "cfm.2026.03"
+    year INTEGER NOT NULL,               -- 2026
+    week_slug TEXT NOT NULL,             -- "03" (manual page slug)
+    date_range TEXT DEFAULT '',          -- "January 12–18"
+    start_date TEXT DEFAULT '',          -- ISO "2026-01-12" (importer-computed)
+    end_date TEXT DEFAULT '',            -- ISO "2026-01-18"
+    title TEXT NOT NULL,                 -- "In the Beginning God Created the Heaven and the Earth"
+    scripture_block TEXT DEFAULT '',     -- "Genesis 1–2; Moses 2–3; Abraham 4–5"
+    text TEXT NOT NULL,                  -- Full lesson text
+    metadata TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_cfm_lessons_year ON cfm_lessons(year);
+CREATE INDEX IF NOT EXISTS idx_cfm_lessons_week ON cfm_lessons(week_slug);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS cfm_lessons_fts USING fts5(
+    title, text, content=cfm_lessons, content_rowid=rowid
+);
+CREATE TRIGGER IF NOT EXISTS cfm_lessons_ai AFTER INSERT ON cfm_lessons BEGIN
+    INSERT INTO cfm_lessons_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS cfm_lessons_ad AFTER DELETE ON cfm_lessons BEGIN
+    INSERT INTO cfm_lessons_fts(cfm_lessons_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS cfm_lessons_au AFTER UPDATE ON cfm_lessons BEGIN
+    INSERT INTO cfm_lessons_fts(cfm_lessons_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+    INSERT INTO cfm_lessons_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+
+-- General Conference talks (LDS semi-annual addresses, prose corpus)
+CREATE TABLE IF NOT EXISTS talks (
+    ref_id TEXT PRIMARY KEY,             -- e.g., "gc.2025.04.13holland"
+    year INTEGER NOT NULL,               -- 2025
+    month INTEGER NOT NULL,              -- 4 (April) or 10 (October)
+    session TEXT DEFAULT '',             -- "Saturday Morning"
+    speaker TEXT DEFAULT '',             -- "Jeffrey R. Holland"
+    title TEXT NOT NULL,                 -- "As a Little Child"
+    date TEXT DEFAULT '',                -- ISO date: "2025-04-05"
+    text TEXT NOT NULL,                  -- Full talk text
+    metadata TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_talks_year ON talks(year);
+CREATE INDEX IF NOT EXISTS idx_talks_month ON talks(month);
+CREATE INDEX IF NOT EXISTS idx_talks_speaker ON talks(speaker);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS talks_fts USING fts5(
+    title, text, content=talks, content_rowid=rowid
+);
+CREATE TRIGGER IF NOT EXISTS talks_ai AFTER INSERT ON talks BEGIN
+    INSERT INTO talks_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS talks_ad AFTER DELETE ON talks BEGIN
+    INSERT INTO talks_fts(talks_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS talks_au AFTER UPDATE ON talks BEGIN
+    INSERT INTO talks_fts(talks_fts, rowid, title, text) VALUES('delete', old.rowid, old.title, old.text);
+    INSERT INTO talks_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+END;
+
 -- Staging — proposed connections (LLM/UI → dev review → approved)
 CREATE TABLE IF NOT EXISTS staging_connections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -726,14 +786,55 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 """
 
 
+# Chat background jobs (decoupled LLM runs) — defined separately so the job
+# manager can lazily ensure the table at runtime: the web server never runs
+# init_db(), so a deployed DB gets chat_jobs on first job use.
+CHAT_JOBS_SQL = """
+CREATE TABLE IF NOT EXISTS chat_jobs (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    client_message_id TEXT,
+    status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','running','streaming','done','failed','cancelled')),
+    seq INTEGER NOT NULL DEFAULT 0,
+    model TEXT DEFAULT 'deepseek-v4-flash',
+    max_tokens INTEGER DEFAULT 16384,
+    temperature REAL DEFAULT 0.7,
+    tool_results_json TEXT DEFAULT '{}',
+    usage_json TEXT DEFAULT '{}',
+    events_json TEXT DEFAULT '[]',
+    finish_reason TEXT DEFAULT '',
+    error TEXT DEFAULT '',
+    final_content TEXT DEFAULT '',
+    final_reasoning TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_chat_jobs_status ON chat_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_chat_jobs_created ON chat_jobs(created_at);
+"""
+
+SCHEMA_SQL = SCHEMA_SQL + CHAT_JOBS_SQL
+
+
 def init_db(db_path=None):
     """Initialize the database schema."""
     path = db_path or DEFAULT_DB_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db(path)
     conn.executescript(SCHEMA_SQL)
+    _migrate(conn)
     conn.commit()
     return conn
+
+
+def _migrate(conn):
+    """Idempotent migrations for tables created before later column additions."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(cfm_lessons)").fetchall()}
+    if "start_date" not in cols:
+        conn.execute("ALTER TABLE cfm_lessons ADD COLUMN start_date TEXT DEFAULT ''")
+    if "end_date" not in cols:
+        conn.execute("ALTER TABLE cfm_lessons ADD COLUMN end_date TEXT DEFAULT ''")
 
 
 def verse_id(book, chapter, verse):

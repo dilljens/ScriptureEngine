@@ -1834,6 +1834,328 @@
         }
       }
     },
+    "/api/v1/chat/jobs": {
+      "post": {
+        "summary": "Llm Chat Job Create",
+        "description": "Create a background chat job. The DeepSeek run proceeds server-side\nindependent of the client connection \u2014 it survives phone minimize, network\ndrops, and tab switches. Poll GET /api/v1/chat/jobs/{id}?after_seq=N.",
+        "operationId": "llm_chat_job_create_api_v1_chat_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/jobs/{job_id}": {
+      "get": {
+        "summary": "Llm Chat Job Poll",
+        "description": "Poll a chat job: events since after_seq plus a final snapshot when done.\n\njob_id is an unguessable UUID acting as a capability token, so this read\nendpoint skips the origin gate (plain GETs don't carry Origin anyway).",
+        "operationId": "llm_chat_job_poll_api_v1_chat_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "after_seq",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "After Seq"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/jobs/{job_id}/cancel": {
+      "post": {
+        "summary": "Llm Chat Job Cancel",
+        "description": "Cancel a running chat job (Stop button).",
+        "operationId": "llm_chat_job_cancel_api_v1_chat_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cfm/collections": {
+      "get": {
+        "summary": "Cfm Collections",
+        "description": "Overview of the study collections (counts + available years) for library cards.",
+        "operationId": "cfm_collections_api_v1_cfm_collections_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cfm/lessons": {
+      "get": {
+        "summary": "Cfm Lessons List",
+        "description": "List Come Follow Me lessons \u2014 grouped client-side by month via date_range.",
+        "operationId": "cfm_lessons_list_api_v1_cfm_lessons_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cfm/lessons/{ref_id}": {
+      "get": {
+        "summary": "Cfm Lesson Detail",
+        "description": "Full text of one Come Follow Me lesson.",
+        "operationId": "cfm_lesson_detail_api_v1_cfm_lessons__ref_id__get",
+        "parameters": [
+          {
+            "name": "ref_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conference/talks": {
+      "get": {
+        "summary": "Conference Talks List",
+        "description": "List General Conference talks, newest first.",
+        "operationId": "conference_talks_list_api_v1_conference_talks_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Month"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conference/talks/{ref_id}": {
+      "get": {
+        "summary": "Conference Talk Detail",
+        "description": "Full text of one conference talk.",
+        "operationId": "conference_talk_detail_api_v1_conference_talks__ref_id__get",
+        "parameters": [
+          {
+            "name": "ref_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ref Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/studies/thematic/{guide_id}": {
       "get": {
         "summary": "Get Thematic Study",
@@ -7824,7 +8146,7 @@
           "max_tokens": {
             "type": "integer",
             "title": "Max Tokens",
-            "default": 4096
+            "default": 16384
           },
           "temperature": {
             "type": "number",
@@ -7844,10 +8166,28 @@
             "title": "Disabled Tools",
             "default": []
           },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes",
+            "default": []
+          },
           "mode": {
             "type": "string",
             "title": "Mode",
             "default": "chat"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id",
+            "default": ""
+          },
+          "client_message_id": {
+            "type": "string",
+            "title": "Client Message Id",
+            "default": ""
           }
         },
         "type": "object",

@@ -288,12 +288,18 @@ Be concise, accurate, and cite verse references.`
 // ── Chat Panel Component ──
 
 export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
-  const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools } = useToggles?.() || {}
+  const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools, searchScopes } = useToggles?.() || {}
   const userId = useRef(currentUserId())
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
   const [sessionId, setSessionId] = useState(null)
+  const [truncatedRun, setTruncatedRun] = useState(null)  // {placeholderId, allMessages} when finish_reason=length
+  const [regenerating, setRegenerating] = useState(false) // server auto-regenerating with more budget
+  const [resumedNotice, setResumedNotice] = useState(false) // "resumed in background" chip
+  const truncatedRunRef = useRef(null)
+  const waitingRef = useRef(false)
+  const pendingPollRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [showRecent, setShowRecent] = useState(false)
@@ -324,6 +330,22 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
+  useEffect(() => { waitingRef.current = waiting }, [waiting])
+  // Clear any pending-marker recovery poll on unmount
+  useEffect(() => () => { if (pendingPollRef.current) clearInterval(pendingPollRef.current) }, [])
+
+  // Foreground notice: when the app was backgrounded mid-run and the user
+  // returns, the job kept running server-side — show a brief "caught up" chip.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && waitingRef.current) {
+        setResumedNotice(true)
+        setTimeout(() => setResumedNotice(false), 2500)
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   // Estimate response length based on question content for auto mode
   const estimateTokens = useCallback((text) => {
@@ -430,6 +452,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
               })()
             }
             setRestoring(false)
+            recoverPendingChat(storedId)
             if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
             return
           }
@@ -917,7 +940,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     learning: ['scripture_hebrew_lessons', 'scripture_hebrew_lesson', 'scripture_hebrew_quiz', 'scripture_assess_start', 'scripture_assess_answer', 'scripture_assess_progress'],
   }
 
-  const performChat = async (allMessages) => {
+  const performChat = async (allMessages, maxTokensOverride = null) => {
     // Cancel any previous in-flight request
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
@@ -929,6 +952,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     setToolProgress([])
     setStreamingContent('')
     setStreamingThinking('')
+    setRegenerating(false)
+    setTruncatedRun(null)
+    truncatedRunRef.current = null
 
     // Build disabled tools list
     let disabledTools = []
@@ -940,12 +966,22 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       }
     }
 
-    const maxTokens = estimateTokens(allMessages[allMessages.length - 1]?.content || '')
+    // Opt-in study corpora scopes (server-enforced in web/routes/chat.py)
+    const scopes = []
+    if (searchScopes?.cfm) scopes.push('cfm')
+    if (searchScopes?.conference) scopes.push('conference')
+
+    const maxTokens = maxTokensOverride || estimateTokens(allMessages[allMessages.length - 1]?.content || '')
 
     // Add a placeholder assistant message immediately so the user sees something.
     // Finalization targets this stable id, never a mutable array index.
     const placeholderMsg = mkMsg('assistant', '', { reasoning_content: '', streaming: true })
     const requestSessionId = sessionRef.current
+
+    // Background-run marker: if the app is killed mid-run, the job keeps going
+    // server-side and saves the completed answer to the session — this marker
+    // lets a reload pick that up when it lands (see recoverPendingChat).
+    if (requestSessionId) writePendingMarker(requestSessionId, messagesRef.current.length)
     setMessages(prev => {
       const next = [...prev, placeholderMsg]
       messagesRef.current = next
@@ -971,7 +1007,18 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       await chatStream(allMessages, {
         max_tokens: maxTokens,
         disabled_tools: disabledTools,
+        scopes,
+        session_id: requestSessionId,
+        client_message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         signal: controller.signal,
+        onTruncated: () => {
+          if (requestId !== requestSeqRef.current) return
+          // The server hit the output limit and is regenerating with a bigger
+          // budget — clear the partial so the fresh answer replaces it.
+          setRegenerating(true)
+          streamingContentRef.current = ''
+          setStreamingContent('')
+        },
         onThinking: (chunk) => {
           if (requestId !== requestSeqRef.current) return
           streamingThinkingRef.current += chunk
@@ -987,6 +1034,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         },
         onDone: (event) => {
           if (requestId !== requestSeqRef.current) return
+          setRegenerating(false)
+          if (requestSessionId) clearPendingMarker(requestSessionId)
+          // If even the server's auto-retry hit the output limit, offer a
+          // "continue with more room" rerun (finish_reason="length").
+          if (event.finish_reason === 'length') {
+            truncatedRunRef.current = { placeholderId: placeholderMsg.id, allMessages }
+            setTruncatedRun({ placeholderId: placeholderMsg.id, allMessages })
+          }
           // Read accumulated content from refs (avoid stale closure on state);
           // fall back to the backend's final_content for lost/truncated chunks.
           const finalContent = event.final_content
@@ -1015,6 +1070,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         },
         onError: (message) => {
           if (requestId !== requestSeqRef.current) return
+          setRegenerating(false)
+          if (requestSessionId) clearPendingMarker(requestSessionId)
           finalizePlaceholder({
             content: `**LLM unavailable**: ${message}\n\nI can still search local scriptures. Try:\n• \`find scriptures about faith\`\n• \`show me isaiah 55:6\``,
             timestamp: new Date().toISOString(),
@@ -1025,6 +1082,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       if (requestId !== requestSeqRef.current) return
       if (err.name === 'AbortError') {
         // User canceled — drop the placeholder entirely, keep the user message.
+        if (requestSessionId) clearPendingMarker(requestSessionId)
         setMessages(prev => {
           const next = prev.filter(m => m.id !== placeholderMsg.id)
           messagesRef.current = next
@@ -1042,6 +1100,22 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         abortRef.current = null
       }
     }
+  }
+
+  // ── Truncated response: re-run the same question with the full output budget ──
+  const continueTruncated = () => {
+    const run = truncatedRunRef.current
+    if (!run) return
+    setTruncatedRun(null)
+    setRegenerating(false)
+    truncatedRunRef.current = null
+    // Drop the truncated assistant message so the rerun is clean
+    setMessages(prev => {
+      const next = prev.filter(m => m.id !== run.placeholderId)
+      messagesRef.current = next
+      return next
+    })
+    performChat(run.allMessages, 128000)
   }
 
   // ── Send message (append to end) ──
@@ -1076,6 +1150,16 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     if (enabledTools) {
       const disabled = Object.entries(enabledTools).filter(([, v]) => !v).map(([k]) => k)
       if (disabled.length > 0) scopeInstr += ` Do not use these tool categories: ${disabled.join(', ')}.`
+    }
+    // Opt-in study corpora — only in scope when the user checked them
+    if (searchScopes?.cfm) {
+      scopeInstr += ` The Come Follow Me corpus is in scope: use scripture_cfm_lesson / scripture_cfm_search to study weekly lessons, and tie lesson content to actual scripture verses with scripture_verse.`
+    }
+    if (searchScopes?.conference) {
+      scopeInstr += ` General Conference talks are in scope: use scripture_conference_talk / scripture_cfm_search to quote talks, and tie talk content to actual scripture verses with scripture_verse.`
+    }
+    if (searchScopes && !searchScopes.cfm && !searchScopes.conference) {
+      scopeInstr += ` The Come Follow Me and General Conference corpora are NOT in scope — do not reference them or use their tools.`
     }
 
     const allMessages = [
@@ -1150,6 +1234,41 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       }
     } catch {}
     setShowRecent(false)
+  }
+
+  // ── Recover a chat that was still running when the app was killed ──
+  // The background job saves the completed answer to the session server-side;
+  // poll until the message count grows past where the user message left off,
+  // then refresh the view.
+  const recoverPendingChat = (sid) => {
+    const marker = loadPendingMarker(sid)
+    if (!marker) return
+    const baseline = marker.msgCount || 0
+    const deadline = Date.now() + 10 * 60 * 1000
+    pendingPollRef.current = setInterval(async () => {
+      try {
+        const now = Date.now()
+        if (!loadPendingMarker(sid) || now > deadline) {
+          clearInterval(pendingPollRef.current)
+          pendingPollRef.current = null
+          clearPendingMarker(sid)
+          return
+        }
+        const res = await conversationGet(sid)
+        const msgs = res?.data?.messages || []
+        if (msgs.length > baseline) {
+          clearInterval(pendingPollRef.current)
+          pendingPollRef.current = null
+          clearPendingMarker(sid)
+          const merged = mergeMessages(
+            [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
+            mergeMessages(msgs, loadSnapshot(sid) || []),
+          )
+          setMessages(merged)
+          messagesRef.current = merged
+        }
+      } catch { /* keep polling */ }
+    }, 3000)
   }
 
   // ── Start a fresh chat: new session + cleared state (so saves work immediately) ──
@@ -1549,6 +1668,22 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             </div>
           </div>
         )}
+        {/* Background-run notices: resumed after minimize, auto-regenerating, or cut off */}
+        {(resumedNotice || regenerating) && (
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+            {resumedNotice && <span>↻ resumed in background — caught up</span>}
+            {regenerating && <span>… answer hit the output limit, regenerating with more room</span>}
+          </div>
+        )}
+        {truncatedRun && (
+          <div className="mb-1.5 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-[11px] text-amber-800 dark:text-amber-200">
+            <span>Answer was cut off (hit the output limit).</span>
+            <button onClick={continueTruncated}
+              className="px-2 py-0.5 rounded bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 cursor-pointer transition-colors shrink-0">
+              Continue with more room
+            </button>
+          </div>
+        )}
         <div className="flex gap-1.5 items-stretch">
           <input
             ref={inputRef}
@@ -1757,9 +1892,24 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
 const STORAGE_KEY = 'current_chat_session'
 const SNAPSHOT_PREFIX = 'chat_snapshot_'
+const PENDING_PREFIX = 'chat_pending_'
 function loadSessionId() { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 function saveSessionId(id) { try { localStorage.setItem(STORAGE_KEY, id) } catch {} }
 function clearSessionId() { try { localStorage.removeItem(STORAGE_KEY) } catch {} }
+
+// Background-run marker — written when a chat job starts, cleared when it
+// finishes. Lets a reload pick up the completed answer that the job saved
+// server-side (see recoverPendingChat).
+function writePendingMarker(sessionId, msgCount = 0) {
+  try { localStorage.setItem(PENDING_PREFIX + sessionId, JSON.stringify({ ts: new Date().toISOString(), msgCount })) } catch {}
+}
+function loadPendingMarker(sessionId) {
+  if (!sessionId) return null
+  try { const raw = localStorage.getItem(PENDING_PREFIX + sessionId); return raw ? JSON.parse(raw) : null } catch { return null }
+}
+function clearPendingMarker(sessionId) {
+  try { localStorage.removeItem(PENDING_PREFIX + sessionId) } catch {}
+}
 
 // Local message snapshot per session — covers the reload race where an
 // in-flight response finished after the server restore started.

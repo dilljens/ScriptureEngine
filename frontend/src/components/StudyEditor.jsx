@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import VersePreviewCard from './VersePreviewCard'
 import StudyViewer from './StudyViewer'
+import { chatComplete } from '../api'
 
 /**
  * StudyEditor — full study creation/editing with LLM-assisted modification.
@@ -222,14 +223,11 @@ export default function StudyEditor({ study: initialStudy, guideId, onSave, onNa
     setQaWaiting(true)
 
     try {
-      const res = await fetch('/api/v1/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: 'system',
-              content: `You are a scripture study editor assistant. You help create and modify studies.
+      // Background job (survives phone minimize) + server-side truncation retry
+      const result = await chatComplete([
+        {
+          role: 'system',
+          content: `You are a scripture study editor assistant. You help create and modify studies.
 
 Current study:
 ${JSON.stringify(studyContext, null, 2)}
@@ -249,17 +247,11 @@ Supported actions:
 
 Always explain what you're changing before the action block.
 Users must click "Apply" to execute changes — don't apply them automatically.`,
-            },
-            ...qaMessages,
-            { role: 'user', content: q },
-          ],
-          model: 'deepseek-chat',
-          max_tokens: 2000,
-          temperature: 0.5,
-        }),
-      })
-      const data = await res.json()
-      const answer = data?.choices?.[0]?.message?.content || data?.message?.content || data?.content || 'No response.'
+        },
+        ...qaMessages,
+        { role: 'user', content: q },
+      ], { max_tokens: 2000, temperature: 0.5 })
+      const answer = result.content || 'No response.'
       const actions = parseActions(answer)
 
       setQaMessages(prev => [...prev, { role: 'assistant', content: answer, actions }])
