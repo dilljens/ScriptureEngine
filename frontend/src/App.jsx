@@ -25,6 +25,7 @@ import StructureModal from './components/StructureModal'
 import BookView from './components/BookView'
 import WorkView from './components/WorkView'
 import LibraryView, { WORK_LABEL } from './components/LibraryView'
+import CollectionView from './components/CollectionView'
 import SettingsPanel from './components/SettingsPanel'
 import HotkeyCheatsheet from './components/HotkeyCheatsheet'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -376,7 +377,7 @@ function AppInner() {
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
-  const { toggles, dispatch: toggleDispatch } = useToggles()
+  const { toggles, dispatch: toggleDispatch, setSearchScopes } = useToggles()
 
   // Agent control hook (testing, enabled via ?agent=true)
   useAgentControl({
@@ -412,6 +413,15 @@ function AppInner() {
   const layersBtnRef = useRef(null)
   const [showStructure, setShowStructure] = useState(false)
   const [showChat, setShowChat] = useState(false); const [chatInitialMsg, setChatInitialMsg] = useState('')
+  const [collection, setCollection] = useState(null) // 'cfm' | 'conference' — library study collection browse
+
+  // "Study in chat" from a collection item — pre-enable the matching scope and open chat
+  const studyFromCollection = useCallback((msg, scopeHint) => {
+    if (scopeHint === 'cfm') setSearchScopes(s => ({ ...s, cfm: true }))
+    if (scopeHint === 'conference') setSearchScopes(s => ({ ...s, conference: true }))
+    setChatInitialMsg(msg)
+    setShowChat(true)
+  }, [setSearchScopes])
 const [showAssessment, setShowAssessment] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showHebrewLearn, setShowHebrewLearn] = useState(false)
@@ -1021,7 +1031,12 @@ const [showAssessment, setShowAssessment] = useState(false)
       )
     }
     if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
-    if (viewLevel === 'library') return <LibraryView bookData={bookData} bookError={bookError} onRetry={() => { setBookError(null); getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => { setBookError('Still could not load.') }) }} onNavigate={handleChatNavigate} />
+    if (viewLevel === 'library') {
+      if (collection) {
+        return <CollectionView collection={collection} onBack={() => setCollection(null)} onStudyInChat={studyFromCollection} />
+      }
+      return <LibraryView bookData={bookData} bookError={bookError} onRetry={() => { setBookError(null); getBooks().then(r => { setBookData(r.data); window.__bookData = r.data }).catch(() => { setBookError('Still could not load.') }) }} onNavigate={handleChatNavigate} onOpenCollection={setCollection} />
+    }
     if (viewLevel === 'work' && viewRef) return <WorkView workId={viewRef} />
     if (viewLevel === 'book') return <BookView bookId={book} />
     // Chat view — render ChatPanel inline

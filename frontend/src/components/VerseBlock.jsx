@@ -263,7 +263,7 @@ function ConnectionPanel({ extraConnections, tskRefs, navigateToRef }) {
   )
 }
 
-export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, reviewed, onToggleReview, wordData, extraConnections, displayLang, showTranslit, showEnglish, hebrewDisplayMode = 'reading' }) {
+export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highlights, footnotes, tskRefs, wordData, extraConnections, displayLang, showTranslit, showEnglish, hebrewDisplayMode = 'reading' }) {
   // Transliteration scheme preference
   let translitScheme = 'simple'
   try {
@@ -498,9 +498,9 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   }
 
   return (
-    <div className={`mb-5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-lg p-2 -m-2' : ''}`}>
+    <div className={`mb-2 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-lg p-2 -m-2' : ''}`}>
       {/* Content — verse number inline with text */}
-      <div className={`rounded-lg border transition-all relative ${showLines ? 'border-neutral-200 dark:border-neutral-700' : 'border-transparent'}`}>
+      <div className={`rounded-lg transition-all relative ${showLines ? 'border border-neutral-200 dark:border-neutral-700' : 'border-transparent'}`}>
         {showLines ? (
           <div className="flex">
             {chColor && toggles.chiasmus && <div className={`w-1 shrink-0 rounded-l ${chColor.bar}`} />}
@@ -528,10 +528,6 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
               <div className="flex items-start gap-1.5">
                 {/* Verse number + chiasm label inline */}
                 <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0 flex items-center">
-                  <span onClick={(e) => { e.stopPropagation(); onToggleReview?.() }}
-                    className={`inline-block w-2.5 h-2.5 rounded-sm mr-1 cursor-pointer border transition-colors
-                      ${reviewed ? 'bg-blue-500 dark:bg-blue-400 border-blue-500 dark:border-blue-400' : 'border-neutral-300 dark:border-neutral-600 hover:border-blue-400'}`}
-                    title={reviewed ? 'Mark as unread' : 'Mark as read'} />
                   {verse.verse}
                   {isHighlighted && <span className="text-amber-500 dark:text-amber-400 ml-0.5">★</span>}
                   {chiasmRole && toggles.chiasmus && (

@@ -53,7 +53,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const [tskRefs, setTskRefs] = useState(null)
   const [wordData, setWordData] = useState(null)
   const [chapterConnections, setChapterConnections] = useState(null)
-  const { isReviewed, toggleReviewed, markReviewed } = useProgress()
+  const { markReviewed } = useProgress()
   const [verseJump, setVerseJump] = useState('')
   const verseInputRef = useRef(null)
   const [wikiMode, setWikiMode] = useState(() => localStorage.getItem(LS_WIKI_KEY) === 'true')
@@ -217,8 +217,6 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   if (!data) return null
 
   const totalVerses = data.verses?.length || 0
-  const reviewedCount = data.verses?.filter(v => isReviewed(`${book}.${chapter}.${v.verse}`)).length || 0
-  const progressPct = totalVerses > 0 ? Math.round(reviewedCount / totalVerses * 100) : 0
 
   return (
     <div className="max-w-6xl mx-auto px-3 py-2">
@@ -309,7 +307,6 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         const verseTsk = tskRefs?.filter(r => { const vn = r.source_verse?.split('.').pop(); return vn === vs }) || []
         const verseWords = wordData?.[`${book}.${chapter}.${v.verse}`] || null
         const verseExtra = connectionsByVerse[vs] || null
-        const reviewed = isReviewed(`${book}.${chapter}.${v.verse}`)
         return (
           <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el} className={highlightVerse === v.verse ? 'scroll-mt-20' : ''}>
             <VerseBlock verse={v} toggles={toggles} poetryMode={poetryMode}
@@ -318,8 +315,6 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
               tskRefs={toggles.tsk ? verseTsk : []}
               wordData={displayLang !== 'english' ? verseWords : (toggles.gematria || toggles.lemma ? verseWords : null)}
               extraConnections={verseExtra}
-              reviewed={reviewed}
-              onToggleReview={() => toggleReviewed(`${book}.${chapter}.${v.verse}`)}
               displayLang={displayLang} showTranslit={showTranslit} showEnglish={showEnglish}
               hebrewDisplayMode={hebrewDisplayMode}
             />

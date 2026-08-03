@@ -24,6 +24,7 @@ from lib.api.connections import (
     get_pardes,
     research_topic,
 )
+from lib.api.cfm import cfm_lesson, cfm_search, conference_talk
 from lib.api.consensus import get_consensus
 from lib.api.conversations import (
     add_message,
@@ -197,6 +198,55 @@ register(
         "required": ["query"],
     },
     "Hybrid semantic search — uses transformer embeddings (multilingual, Hebrew/Greek/English) fused with BM25. Finds verses by meaning, not just keywords.",
+)
+
+# ─── Come Follow Me + General Conference corpora (opt-in chat scope) ───
+
+register(
+    "scripture_cfm_lesson",
+    cfm_lesson,
+    {
+        "type": "object",
+        "properties": {
+            "year": {"type": "integer", "description": "Manual year (default: current year)"},
+            "week": {"type": "string", "description": "Week slug, e.g. '03' (default: current calendar week)"},
+            "ref_id": {"type": "string", "description": "Exact ref, e.g. 'cfm.2026.03'"},
+        },
+    },
+    "Look up a Come Follow Me weekly lesson (LDS curriculum). Returns the lesson's date range, title, scripture block, and full text. With no arguments returns the current week's lesson.",
+)
+
+register(
+    "scripture_conference_talk",
+    conference_talk,
+    {
+        "type": "object",
+        "properties": {
+            "year": {"type": "integer", "description": "Conference year, e.g. 2025"},
+            "month": {"type": "integer", "description": "Conference month: 4 (April) or 10 (October)"},
+            "session": {"type": "string", "description": "Session name, e.g. 'Saturday Morning'"},
+            "speaker": {"type": "string", "description": "Speaker name (substring match), e.g. 'Holland'"},
+            "title": {"type": "string", "description": "Talk title (substring match)"},
+            "ref_id": {"type": "string", "description": "Exact ref, e.g. 'gc.2025.04.13holland'"},
+        },
+    },
+    "Look up a General Conference talk transcript. Filter by year/month/session/speaker/title, or pass ref_id for an exact hit. Returns speaker, session, title, and full text.",
+)
+
+register(
+    "scripture_cfm_search",
+    cfm_search,
+    {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search term"},
+            "corpus": {"type": "string", "enum": ["cfm", "conference", "both"], "default": "both", "description": "Which corpus to search"},
+            "year": {"type": "integer", "description": "Optional year filter"},
+            "limit": {"type": "integer", "default": 10, "description": "Max results (max 30)"},
+        },
+        "required": ["query"],
+    },
+    "Search the Come Follow Me lessons and General Conference talks corpora. Returns ranked matches with snippets.",
 )
 
 register(

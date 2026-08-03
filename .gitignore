@@ -12,6 +12,9 @@ __pycache__/
 # Virtual environment
 .venv/
 
+# Runtime logs
+logs/
+
 # Database (large binary)
 data/processed/*.db
 data/processed/*.db-wal

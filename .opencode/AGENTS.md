@@ -51,6 +51,14 @@ python3 tools/guided_study.py '{"action": "create", "title": "Why Jesus Died", "
 python3 tools/guided_study.py '{"action": "add_step", "guide_id": 1, "step_number": 1, "verse": "lev.17.11", "title": "The Blood Principle"}'
 python3 tools/guided_study.py '{"action": "get", "guide_id": 1}'
 python3 tools/guided_study.py '{"action": "export_json", "guide_id": 1}'
+
+# Study corpora (opt-in): Come Follow Me lessons + General Conference talks
+# Tools are scope-gated in chat (default OFF); browse in the Library under "Study Collections".
+python3 tools/connections.py '{"tool": "scripture_cfm_lesson", "year": 2026, "week": "03"}'
+python3 tools/connections.py '{"tool": "scripture_conference_talk", "year": 2025, "month": 4, "speaker": "Nelson"}'
+python3 tools/connections.py '{"tool": "scripture_cfm_search", "query": "covenant", "corpus": "both"}'
+# HTTP: GET /api/v1/cfm/lessons?year=2026 · GET /api/v1/conference/talks?year=2025
+# Ingest: python3 scripts/import_cfm.py · python3 scripts/import_conference.py
 python3 tools/guided_study.py '{"action": "publish", "guide_id": 1, "author_name": "user"}'
 python3 tools/guided_study.py '{"action": "list"}'
 ```

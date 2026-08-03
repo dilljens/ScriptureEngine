@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTabs } from '../tabContext'
+import { getCfmCollections } from '../api'
 
 export const WORK_LABEL = {
   'ot': 'Old Testament', 'nt': 'New Testament', 'bom': 'Book of Mormon',
@@ -7,6 +8,21 @@ export const WORK_LABEL = {
   'dss': 'Dead Sea Scrolls', 'apoc': 'Apocrypha',
   'pseu': 'Pseudepigrapha', 'expanded': 'Expanded Canon',
 }
+
+const COLLECTION_CARDS = [
+  {
+    id: 'cfm', label: 'Come Follow Me', sub: 'Weekly curriculum · Old Testament 2026',
+    icon: '📖', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300',
+    card: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30',
+    countLabel: (c) => c?.cfm?.count ? `${c.cfm.count} lessons` : '',
+  },
+  {
+    id: 'conference', label: 'General Conference', sub: 'Semi-annual talks · 2021–2026',
+    icon: '🎤', badge: 'bg-sky-100 dark:bg-sky-800 text-sky-700 dark:text-sky-300',
+    card: 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/30',
+    countLabel: (c) => c?.conference?.count ? `${c.conference.count} talks` : '',
+  },
+]
 
 const workCardColors = {
   'ot': { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800', hover: 'hover:bg-amber-100 dark:hover:bg-amber-900/30', badge: 'bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300', icon: '📜' },
@@ -20,10 +36,11 @@ const workCardColors = {
   'expanded': { bg: 'bg-teal-50 dark:bg-teal-900/20', border: 'border-teal-200 dark:border-teal-800', hover: 'hover:bg-teal-100 dark:hover:bg-teal-900/30', badge: 'bg-teal-100 dark:bg-teal-800 text-teal-700 dark:text-teal-300', icon: '⛪' },
 }
 
-export default function LibraryView({ bookData, onNavigate, bookError, onRetry }) {
+export default function LibraryView({ bookData, onNavigate, bookError, onRetry, onOpenCollection }) {
   const { goToWork: ctxGoToWork, goToBook, currentTab, viewRef } = useTabs()
   const works = bookData?.works || []
   const focusedWorkId = viewRef || works[0]?.id || null
+  const [collections, setCollections] = useState(null)
 
   // Error state with retry
   if (bookError) {
@@ -55,6 +72,15 @@ export default function LibraryView({ bookData, onNavigate, bookError, onRetry }
       ctxGoToWork(currentTab?.id, w.id, w.title || w.id, w.books?.[0]?.id)
     }
   }
+
+  // Load collection counts (52 lessons / 375 talks) for the study collection cards
+  useEffect(() => {
+    let cancelled = false
+    getCfmCollections()
+      .then(r => { if (!cancelled && r.data) setCollections(r.data) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
@@ -92,6 +118,29 @@ export default function LibraryView({ bookData, onNavigate, bookError, onRetry }
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading library...</p>
         </div>
       )}
+
+      {/* Study Collections — Come Follow Me + General Conference (prose corpora) */}
+      <div className="mt-10">
+        <h3 className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-3">Study Collections</h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {COLLECTION_CARDS.map(c => (
+            <button key={c.id} onClick={() => onOpenCollection?.(c.id)}
+              className={`flex flex-col gap-2 p-5 rounded-xl border-2 transition-all cursor-pointer text-left ${c.card} hover:shadow-md hover:-translate-y-0.5 active:translate-y-0`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{c.icon}</span>
+                <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">{c.label}</h3>
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{c.sub}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${c.badge}`}>
+                  {c.countLabel(collections) || 'Browse'}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <p className="text-[10px] text-neutral-400 dark:text-neutral-500 text-center mt-6">
         ← → navigate works · ↑↓ zoom in/out · Enter to open
       </p>

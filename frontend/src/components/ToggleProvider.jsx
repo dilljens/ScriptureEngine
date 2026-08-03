@@ -28,6 +28,9 @@ const GROUPS = [
 const ToggleCtx = createContext()
 export function useToggles() { return useContext(ToggleCtx) }
 
+// Works outside the core canon (OT/NT/BoM/D&C/PGP) — excludable via Core Canon Only
+export const NON_CORE_WORKS = ['dss', 'apoc', 'pseu', 'expanded']
+
 export function ToggleProvider({ children }) {
   const [toggles, st] = useState({
     footnotes: true, gematria: false, lemma: false,
@@ -64,6 +67,36 @@ export function ToggleProvider({ children }) {
     gematria: true, study: true, staging: false,
   })
 
+  // Study corpora (OPT-IN, default OFF) — Come Follow Me lessons + Conference talks.
+  // When a scope is on, the chat LLM gets the matching tools (server-enforced via scopes).
+  const [searchScopes, setSearchScopes] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('scripture_search_scopes') || 'null')
+      if (s && typeof s === 'object') return { cfm: !!s.cfm, conference: !!s.conference }
+    } catch {}
+    return { cfm: false, conference: false }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('scripture_search_scopes', JSON.stringify(searchScopes)) } catch {}
+  }, [searchScopes])
+
+  // Core Canon Only opt-out — excludes everything outside OT/NT/BoM/D&C/PGP
+  // (dss, apoc, pseu, expanded) from the chat search scope.
+  const [coreCanonOnly, setCoreCanonOnly] = useState(() => {
+    try { return localStorage.getItem('scripture_core_canon_only') === '1' } catch { return false }
+  })
+  const applyCoreCanonOnly = useCallback((on) => {
+    setCoreCanonOnly(on)
+    setSearchWorks(p => {
+      const next = { ...p }
+      for (const w of NON_CORE_WORKS) next[w] = !on
+      return next
+    })
+  }, [])
+  useEffect(() => {
+    try { localStorage.setItem('scripture_core_canon_only', coreCanonOnly ? '1' : '0') } catch {}
+  }, [coreCanonOnly])
+
   // Display language — which language to show verses in
   const [displayLang, setDisplayLang] = useState('english') // 'english' | 'hebrew' | 'greek'
   const [showTranslit, setShowTranslit] = useState(true)
@@ -80,7 +113,7 @@ export function ToggleProvider({ children }) {
     try { localStorage.setItem('scripture_translit_scheme', translitScheme) } catch {}
   }, [translitScheme])
 
-  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode, setHebrewDisplayMode, translitScheme, setTranslitScheme }}>{children}</ToggleCtx.Provider>
+  return <ToggleCtx.Provider value={{ toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, searchScopes, setSearchScopes, coreCanonOnly, applyCoreCanonOnly, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode, setHebrewDisplayMode, translitScheme, setTranslitScheme }}>{children}</ToggleCtx.Provider>
 }
 
 /* ── Pill toggle switch (iOS-style) ── */
@@ -110,7 +143,7 @@ function ToggleRow({ def, on, onToggle }) {
 
 /* ── Layers popover ── */
 export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, buttonRef }) {
-  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, bibleVersion, setBibleVersion, enabledTools, setEnabledTools } = useToggles()
+  const { toggles, dispatch, searchWorks, setSearchWorks, searchLayers, setSearchLayers, searchLang, setSearchLang, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, bibleVersion, setBibleVersion, enabledTools, setEnabledTools, searchScopes, setSearchScopes, coreCanonOnly, applyCoreCanonOnly } = useToggles()
   const popoverRef = useRef(null)
 
   // Click outside + Escape
@@ -274,6 +307,16 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
             Search Scope
           </summary>
           <div className="pl-2">
+            {/* Core Canon Only — opt-out of everything outside OT/NT/BoM/D&C/PGP */}
+            <div className="flex items-center justify-between py-1 pl-1 rounded cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              onClick={() => applyCoreCanonOnly(!coreCanonOnly)} role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); applyCoreCanonOnly(!coreCanonOnly) } }}>
+              <span className="text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">Core Canon Only <span className="text-neutral-400 dark:text-neutral-500">(OT · NT · BoM · D&C · PGP)</span></span>
+              <div className={`w-6 h-3.5 rounded-full p-0.5 transition-colors ${coreCanonOnly ? 'bg-indigo-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
+                <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${coreCanonOnly ? 'translate-x-3' : 'translate-x-0'}`} />
+              </div>
+            </div>
+
             {/* Works */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mb-1">Works</div>
             <ScopeRow label="Old Testament" id="ot" value={searchWorks} setter={setSearchWorks} />
@@ -281,10 +324,16 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
             <ScopeRow label="Book of Mormon" id="bom" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Doctrine &amp; Covenants" id="dc" value={searchWorks} setter={setSearchWorks} />
             <ScopeRow label="Pearl of Great Price" id="pgp" value={searchWorks} setter={setSearchWorks} />
-            <ScopeRow label="Dead Sea Scrolls" id="dss" value={searchWorks} setter={setSearchWorks} />
-            <ScopeRow label="Apocrypha" id="apoc" value={searchWorks} setter={setSearchWorks} />
-            <ScopeRow label="Pseudepigrapha" id="pseu" value={searchWorks} setter={setSearchWorks} />
-            <ScopeRow label="Expanded Canon" id="expanded" value={searchWorks} setter={setSearchWorks} />
+            <ScopeRow label="Dead Sea Scrolls" id="dss" value={searchWorks} setter={setSearchWorks} disabled={coreCanonOnly} />
+            <ScopeRow label="Apocrypha" id="apoc" value={searchWorks} setter={setSearchWorks} disabled={coreCanonOnly} />
+            <ScopeRow label="Pseudepigrapha" id="pseu" value={searchWorks} setter={setSearchWorks} disabled={coreCanonOnly} />
+            <ScopeRow label="Expanded Canon" id="expanded" value={searchWorks} setter={setSearchWorks} disabled={coreCanonOnly} />
+
+            {/* Study Corpora — OPT-IN (default off). When on, the chat LLM gets
+                the Come Follow Me / General Conference tools. */}
+            <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Study Corpora <span className="text-neutral-400">(opt-in)</span></div>
+            <ScopeRow label="Come Follow Me" id="cfm" value={searchScopes} setter={setSearchScopes} />
+            <ScopeRow label="Conference Talks" id="conference" value={searchScopes} setter={setSearchScopes} />
 
             {/* Language */}
             <div className="text-[9px] font-medium text-neutral-400 dark:text-neutral-500 mt-2 mb-1">Language</div>
@@ -371,13 +420,19 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
   )
 }
 
-/* ── Compact scope toggle row (for works/layers) ── */
-function ScopeRow({ label, id, value, setter }) {
+/* ── Compact scope toggle row (for works/layers/corpora) ── */
+function ScopeRow({ label, id, value, setter, disabled }) {
   const on = value[id] ?? true
   return (
-    <div onClick={() => setter(p => ({ ...p, [id]: !on }))} role="button" tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setter(p => ({ ...p, [id]: !on })) } }}
-      className="flex items-center justify-between py-1 pl-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
+    <div onClick={disabled ? undefined : () => setter(p => ({ ...p, [id]: !on }))}
+      role="button" tabIndex={disabled ? -1 : 0}
+      onKeyDown={disabled ? undefined : e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setter(p => ({ ...p, [id]: !on })) } }}
+      aria-disabled={disabled || undefined}
+      className={`flex items-center justify-between py-1 pl-1 rounded cursor-pointer ${
+        disabled
+          ? 'opacity-40 cursor-not-allowed'
+          : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
+      }`}>
       <span className="text-[11px] text-neutral-600 dark:text-neutral-400">{label}</span>
       <div className={`w-7 h-3.5 rounded-full p-0.5 transition-colors ${on ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}>
         <div className={`w-2.5 h-2.5 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-3.5' : 'translate-x-0'}`} />
