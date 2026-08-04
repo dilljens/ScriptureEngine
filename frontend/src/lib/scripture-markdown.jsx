@@ -37,6 +37,24 @@ function formatVerseRef(ref) {
   return verse ? `${bookName} ${chapter}:${verse}` : `${bookName} ${chapter}`
 }
 
+/**
+ * Default verse-open handler: dispatch a scripture-navigate event so the app
+ * opens the chapter and scrolls to the verse. Used by surfaces that render
+ * scripture-markdown without a custom onOpenVerse.
+ */
+export function openVerseRef(ref) {
+  if (!ref) return
+  const p = String(ref).split('.')
+  if (p.length < 2) return
+  window.dispatchEvent(new CustomEvent('scripture-navigate', {
+    detail: {
+      book: p[0].toLowerCase(),
+      chapter: parseInt(p[1]) || 1,
+      verse: p.length >= 3 ? (parseInt(p[2]) || undefined) : undefined,
+    },
+  }))
+}
+
 // ── Inline patterns ──
 
 const RULES = [
@@ -77,6 +95,8 @@ const ALL_PATTERNS = new RegExp(RULES.map(r => r.pattern.source).join('|'), 'g')
 
 /**
  * Pre-process markdown text: convert custom :syntax[args] to <span data-type=""> tags.
+ * Also auto-links bare verse references (e.g. "gen.1.1", "Genesis 1:1") so they
+ * become clickable without the explicit :verse[] wrapper.
  * Returns the processed string ready for react-markdown.
  */
 export function preprocess(text) {
@@ -108,9 +128,86 @@ export function preprocess(text) {
     lastIndex = match.index + match[0].length
   }
 
-  // Add remaining text
-  result += text.slice(lastIndex)
+  // Add remaining text, then auto-link bare verse references in it.
+  result += autoLinkBareRefs(text.slice(lastIndex))
   return result
+}
+
+// Detect bare verse references. Dot form first (most specific): "gen.1.1",
+// "1QS.1.1", "dc76.76.22". Colon form: "Gen 1:1", "Psalm 23:1" — but only when
+// the book name is a KNOWN book (avoids "The book of 1" false positives).
+const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?(?![\w\u0590-\u05FF])/g
+const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])([A-Za-z][A-Za-z ]{1,10})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+
+/**
+ * Auto-link bare verse references in plain text into verse spans.
+ * Skips refs already inside HTML tags.
+ */
+function autoLinkBareRefs(text) {
+  if (!text) return text
+  // Don't touch text inside existing <span ...>...</span> or other tags.
+  let out = ''
+  let idx = 0
+  const tagRe = /<[^>]+>/g
+  let tag
+  while ((tag = tagRe.exec(text)) !== null) {
+    out += text.slice(idx, tag.index)
+    out += tag[0]
+    idx = tag.index + tag[0].length
+  }
+  out += text.slice(idx)
+
+  // Merge matches from both patterns, dedupe by index, prefer dot-form (longer
+  // refs like "1QS.1.1" win over "QS.1.1" sub-matches).
+  const hits = []
+  let m
+  BARE_DOT_RE.lastIndex = 0
+  while ((m = BARE_DOT_RE.exec(out)) !== null) {
+    if (m[3]) {
+      hits.push({ index: m.index, len: m[0].length, ref: `${m[1].toLowerCase()}.${m[2]}.${m[3]}` })
+    } else {
+      // chapter-only "gen.1" — skip (not a verse ref)
+      continue
+    }
+  }
+  BARE_COLON_RE.lastIndex = 0
+  while ((m = BARE_COLON_RE.exec(out)) !== null) {
+    const bookKey = resolveBookKey(m[1].trim())
+    if (bookKey) {
+      hits.push({ index: m.index, len: m[0].length, ref: `${bookKey}.${m[2]}.${m[3]}` })
+    }
+  }
+  // sort by index, drop overlaps (keep the earliest/longest)
+  hits.sort((a, b) => a.index - b.index || b.len - a.len)
+  const clean = []
+  let lastEnd = -1
+  for (const h of hits) {
+    if (h.index >= lastEnd) {
+      clean.push(h)
+      lastEnd = h.index + h.len
+    }
+  }
+
+  let result = ''
+  let last = 0
+  for (const h of clean) {
+    result += out.slice(last, h.index)
+    result += `<span data-type="verse" data-ref="${h.ref}">${out.slice(h.index, h.index + h.len)}</span>`
+    last = h.index + h.len
+  }
+  result += out.slice(last)
+  return result
+}
+
+/** Resolve a display book name ("Psalm", "Psalms", "Genesis") to its key. */
+function resolveBookKey(name) {
+  const n = name.toLowerCase()
+  if (BOOK_TITLES[n]) return n
+  const found = Object.keys(BOOK_TITLES).find(
+    k => BOOK_TITLES[k].toLowerCase() === n
+      || BOOK_TITLES[k].toLowerCase() === n + 's'
+      || BOOK_TITLES[k].toLowerCase() === n.replace(/s$/, ''))
+  return found ? found.toLowerCase() : null
 }
 
 /**

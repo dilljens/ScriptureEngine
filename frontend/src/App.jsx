@@ -434,7 +434,7 @@ function AppInner() {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
-    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
+    openTab, closeTab, selectTab, updateTab, goToChapter, goToVerse, goToBook, goToWork, openChatTab,
     moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab,
   } = useTabs()
 
@@ -605,7 +605,11 @@ const [showAssessment, setShowAssessment] = useState(false)
         return
       }
       if (currentTab?.id && e.detail?.book && e.detail?.chapter) {
-        goToChapter(currentTab.id, e.detail.book, e.detail.chapter)
+        if (e.detail?.verse != null) {
+          goToVerse(currentTab.id, e.detail.book, e.detail.chapter, e.detail.verse)
+        } else {
+          goToChapter(currentTab.id, e.detail.book, e.detail.chapter)
+        }
       }
     }
     const handleTab = (e) => {
@@ -859,6 +863,23 @@ const [showAssessment, setShowAssessment] = useState(false)
       openTab(b, ch, { label: `${bt} ${ch}`, highlights: highlights || [] })
     }
   }
+
+  // Navigate to a full verse ref string ("gen.1.1" / "gen.1.1-12"): opens the
+  // chapter and scrolls/highlights the verse. Falls back to chapter navigation.
+  const navigateRef = useCallback((ref, newTab = false) => {
+    if (!ref) return
+    const p = String(ref).split('.')
+    if (p.length < 2) return
+    const b = p[0].toLowerCase()
+    const ch = parseInt(p[1]) || 1
+    const vs = p.length >= 3 ? parseInt(p[2]) || null : null
+    if (newTab) {
+      openTab(b, ch, { label: `${resolveBookTitle(b)} ${ch}`, highlights: vs ? [vs] : [] })
+    } else if (currentTab?.id) {
+      if (vs != null) goToVerse(currentTab.id, b, ch, vs)
+      else goToChapter(currentTab.id, b, ch)
+    }
+  }, [currentTab?.id, goToVerse, goToChapter, openTab, resolveBookTitle])
   const handleChatOpenTab = (b, ch, opts = {}) => { openTab(b, ch, { ...opts, label: `${resolveBookTitle(b)} ${ch}` }) }
   const handleCommandNav = useCallback((bookId, chapter, isNewTab) => {
     const bt = resolveBookTitle(bookId)
@@ -1099,7 +1120,7 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (showHubNotes) {
       return (
         <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading paths...</div>}>
-          <HubNoteView hubId={hubNoteId} onNavigate={(v) => { const p = v.split('.'); if (p.length >= 2) handleChatNavigate?.(p[0], parseInt(p[1])||1) }} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
+          <HubNoteView hubId={hubNoteId} onNavigate={(v) => navigateRef(v)} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
         </Suspense>
       )
     }
@@ -1200,7 +1221,7 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (viewLevel === 'hubnote') {
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading study path...</div>}>
-          <HubNoteView hubId={viewRef} onNavigate={(v) => { const p = v.split('.'); if (p.length >= 2) handleChatNavigate?.(p[0], parseInt(p[1])||1) }} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
+          <HubNoteView hubId={viewRef} onNavigate={(v) => navigateRef(v)} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
         </Suspense>
       )
     }

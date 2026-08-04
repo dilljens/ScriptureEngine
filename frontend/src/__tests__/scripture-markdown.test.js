@@ -71,4 +71,39 @@ describe('preprocess', () => {
     // Should not add another span tag inside the existing one
     expect(result).toBe(input)
   })
+
+  it('auto-links bare dot refs like gen.1.1', () => {
+    const result = preprocess('See gen.1.1 for context')
+    expect(result).toContain('<span data-type="verse" data-ref="gen.1.1">gen.1.1</span>')
+  })
+
+  it('auto-links "Genesis 1:1" style refs', () => {
+    const result = preprocess('Read Genesis 1:1 carefully')
+    expect(result).toContain('<span data-type="verse" data-ref="gen.1.1">Genesis 1:1</span>')
+  })
+
+  it('auto-links refs inside otherwise-plain sentences', () => {
+    const result = preprocess('In gen.2.4 the LORD God made the earth.')
+    expect(result).toContain('data-ref="gen.2.4"')
+  })
+
+  it('does not mislink plain numbers or unknown book names', () => {
+    expect(preprocess('Chapter 1:2 is a title')).not.toContain('data-type="verse"')
+    expect(preprocess('This is step 3.1')).not.toContain('data-type="verse"')
+    expect(preprocess('Fakebook 3:4 here')).not.toContain('data-type="verse"')
+  })
+
+  it('auto-links D&C dot refs and ranges', () => {
+    expect(preprocess('See dc76.76.22 for context')).toContain('data-ref="dc76.76.22"')
+    expect(preprocess('Read gen.1.1-12 now')).toContain('data-ref="gen.1.1-12"')
+  })
+
+  it('auto-links colon-style refs with book names and ranges', () => {
+    expect(preprocess('Psalm 23:1 is well known')).toContain('data-ref="psa.23.1"')
+    expect(preprocess('Exodus 20:3-17 lists commands')).toContain('data-ref="exo.20.3-17"')
+  })
+
+  it('keeps DSS refs with digits in book id', () => {
+    expect(preprocess('The book of 1QS.1.1 matters')).toContain('data-ref="1qs.1.1"')
+  })
 })

@@ -79,9 +79,11 @@ function renderTextWithRefs(text, onNavigate) {
     if (t.type === 'text') return <span key={i}>{t.value}</span>
     if (t.type === 'ref') return (
       <button key={i}
-        onClick={() => onNavigate?.(`${t.book.toLowerCase()}.${t.ch}`)}
+        onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {
+          detail: { book: t.book.toLowerCase(), chapter: parseInt(t.ch), verse: parseInt(t.vs) }
+        }))}
         className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
-        title={`Open ${t.book}.${t.ch}`}>
+        title={`Open ${t.book}.${t.ch}.${t.vs}`}>
         {t.raw}
       </button>
     )

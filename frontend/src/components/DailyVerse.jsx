@@ -251,7 +251,14 @@ export default function DailyVerse({ onNavigate, onOpenLesson }) {
       <div className="text-center mt-3">
         <button onClick={() => {
           const p = verse.verse_id.split('.')
-          if (p.length >= 2 && onNavigate) onNavigate(p[0], parseInt(p[1]))
+          if (p.length >= 3) {
+            // verse-level navigation (works even without an onNavigate prop)
+            window.dispatchEvent(new CustomEvent('scripture-navigate', {
+              detail: { book: p[0], chapter: parseInt(p[1]), verse: parseInt(p[2]) }
+            }))
+          } else if (p.length >= 2 && onNavigate) {
+            onNavigate(p[0], parseInt(p[1]))
+          }
         }}
           className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
           {verse.reference || verse.verse_id}

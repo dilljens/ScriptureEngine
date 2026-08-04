@@ -21,6 +21,42 @@ function typeLabel(type) {
   return (type || '').replace(/_/g, ' ')
 }
 
+/** Split text on scripture refs (gen.1.1 / Gen 1:1) and render clickable. */
+function VerseText({ text, className }) {
+  const refRe = /\b([a-z0-9_]{1,8})\.(\d+)\.(\d+)\b|\b([A-Za-z][A-Za-z ]{1,10})\s+(\d+):(\d+)\b/g
+  const tokens = []
+  let last = 0
+  let m
+  refRe.lastIndex = 0
+  while ((m = refRe.exec(text || '')) !== null) {
+    if (m.index > last) tokens.push({ type: 'text', value: text.slice(last, m.index) })
+    const book = m[1] || m[4]
+    const ch = m[2] || m[5]
+    const vs = m[3] || m[6]
+    const bookKey = m[1] ? m[1] : null
+    tokens.push({ type: 'ref', book: bookKey || book, ch, vs, raw: m[0] })
+    last = m.index + m[0].length
+  }
+  if (last < (text || '').length) tokens.push({ type: 'text', value: text.slice(last) })
+  if (tokens.length === 0) return <span className={className}>{text}</span>
+  return (
+    <span className={className}>
+      {tokens.map((t, i) => t.type === 'text' ? (
+        <span key={i}>{t.value}</span>
+      ) : (
+        <button key={i}
+          onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {
+            detail: { book: t.book.toLowerCase(), chapter: parseInt(t.ch), verse: parseInt(t.vs) }
+          }))}
+          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
+          title={`Open ${t.book}.${t.ch}.${t.vs}`}>
+          {t.raw}
+        </button>
+      ))}
+    </span>
+  )
+}
+
 /**
  * StudyViewer — interactive tab that renders a scripture study with
  * clickable verse refs, connection graph paths, expand/collapse steps,
@@ -170,7 +206,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
               {author?.name && <span>by {author.name}</span>}
               <span>{totalSteps} steps · {expandedCount}/{totalSteps} expanded</span>
               {graph_summary?.total_connections > 0 && <span>{graph_summary.total_connections} graph connections</span>}
-              {seed_verse && <button onClick={() => { const p = seed_verse.split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+              {seed_verse && <button onClick={() => { const p = seed_verse.split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1]), verse: p.length >= 3 ? parseInt(p[2]) : undefined}})) }}
   className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">seed: {seed_verse}</button>}
             </div>
           </div>
@@ -242,7 +278,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                 <span className="flex-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                   {step.title || `${step.verse}`}
                 </span>
-                <button onClick={() => { const p = (step.verse || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
+                <button onClick={(e) => { e.stopPropagation(); const p = (step.verse || '').split('.'); if (p.length >= 3) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1]), verse: parseInt(p[2])}})) }}
                   className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">{step.verse}</button>
                 {conns.length > 0 && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium">
@@ -257,9 +293,11 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
               {/* Step body */}
               {!isCollapsed && (
                 <div className="px-4 py-3 space-y-3">
-                  {/* Verse reference — clickable */}
+                  {/* Verse reference — clickable (navigates to the exact verse) */}
                   <div className="flex items-center gap-2">
-                    <button onClick={() => onNavigate && onNavigate(parts[0], parseInt(parts[1]) || 1)}
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {
+                      detail: { book: parts[0], chapter: parseInt(parts[1]) || 1, verse: parts.length >= 3 ? parseInt(parts[2]) : undefined }
+                    }))}
                       className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                       {step.verse}
                     </button>
@@ -274,9 +312,8 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
 
                   {/* Explanation */}
                   {step.explanation && (
-                    <div className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                      {step.explanation}
-                    </div>
+                    <VerseText text={step.explanation}
+                      className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed" />
                   )}
 
                   {/* Connections */}
@@ -297,7 +334,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                                 <span className="text-neutral-300 dark:text-neutral-600 ml-1">({c.strength?.toFixed(2)})</span>
                                 <button onClick={() => {
                                   const tp = (c.to || '').split('.')
-                                  if (tp.length >= 2 && onNavigate) onNavigate(tp[0], parseInt(tp[1]) || 1)
+                                  if (tp.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: tp[0], chapter: parseInt(tp[1]), verse: tp.length >= 3 ? parseInt(tp[2]) : undefined}}))
                                 }}
                                   className="block text-blue-600 dark:text-blue-400 hover:underline mt-0.5 cursor-pointer">
                                   → {c.to || ''}
@@ -319,7 +356,7 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
                         {step.choices.map((ch, ci) => (
                           <button key={ci} onClick={() => {
                             const cp = (ch.verse || '').split('.')
-                            if (cp.length >= 2 && onNavigate) onNavigate(cp[0], parseInt(cp[1]) || 1)
+                            if (cp.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: cp[0], chapter: parseInt(cp[1]), verse: cp.length >= 3 ? parseInt(cp[2]) : undefined}}))
                           }}
                             className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-300 border border-neutral-200 dark:border-neutral-600 transition-all cursor-pointer">
                             {ch.label || ch.verse} →

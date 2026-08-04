@@ -14,6 +14,41 @@ function fmtRef(ref) {
   return ref
 }
 
+/** Split text on scripture refs (gen.1.1 / Gen 1:1) and render clickable. */
+function VerseText({ text }) {
+  const refRe = /\b([a-z0-9_]{1,8})\.(\d+)\.(\d+)\b|\b([A-Za-z][A-Za-z ]{1,10})\s+(\d+):(\d+)\b/g
+  const tokens = []
+  let last = 0
+  let m
+  refRe.lastIndex = 0
+  while ((m = refRe.exec(text || '')) !== null) {
+    if (m.index > last) tokens.push({ type: 'text', value: text.slice(last, m.index) })
+    const book = (m[1] || m[4] || '').toLowerCase()
+    const ch = m[2] || m[5]
+    const vs = m[3] || m[6]
+    tokens.push({ type: 'ref', book, ch, vs, raw: m[0] })
+    last = m.index + m[0].length
+  }
+  if (last < (text || '').length) tokens.push({ type: 'text', value: text.slice(last) })
+  if (tokens.length === 0) return <>{text}</>
+  return (
+    <>
+      {tokens.map((t, i) => t.type === 'text' ? (
+        <span key={i}>{t.value}</span>
+      ) : (
+        <button key={i}
+          onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {
+            detail: { book: t.book, chapter: parseInt(t.ch), verse: parseInt(t.vs) }
+          }))}
+          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
+          title={`Open ${t.book}.${t.ch}.${t.vs}`}>
+          {t.raw}
+        </button>
+      ))}
+    </>
+  )
+}
+
 export default function HubNoteView({ hubId, onNavigate, onGraph }) {
   const [notes, setNotes] = useState([])
   const [currentHub, setCurrentHub] = useState(null)
@@ -164,9 +199,9 @@ export default function HubNoteView({ hubId, onNavigate, onGraph }) {
                   </div>
                 )}
 
-                {/* Explanation */}
+                {/* Explanation — refs clickable */}
                 <p className="ml-8 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed mb-2">
-                  {step.explanation}
+                  <VerseText text={step.explanation} />
                 </p>
 
                 {/* Step TG topics */}

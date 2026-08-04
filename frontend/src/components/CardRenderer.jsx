@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { preprocess, createComponents } from '../lib/scripture-markdown'
+import { preprocess, openVerseRef, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -339,7 +339,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
     return (
       <div>
         <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
             {preprocess(question || '')}
           </ReactMarkdown>
         </div>
@@ -398,7 +398,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
   return (
     <div className="space-y-3">
       <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
           {preprocess(question || '')}
         </ReactMarkdown>
       </div>
@@ -442,7 +442,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
       )}
       {explanation && (
         <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents()}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
             {preprocess(explanation)}
           </ReactMarkdown>
         </div>

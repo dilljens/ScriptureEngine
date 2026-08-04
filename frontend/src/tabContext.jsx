@@ -249,8 +249,18 @@ export function TabProvider({ children }) {
     // Convenience: navigate to chapter view
     goToChapter: useCallback((tabId, book, chapter, label) => {
       dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
-        book, chapter, view: 'chapter', viewRef: null,
+        book, chapter, view: 'chapter', viewRef: null, highlights: [],
         label: label || `${book} ${chapter}`,
+      }})
+    }, []),
+
+    // Navigate to a specific verse: opens the chapter and highlights/scrolls
+    // to the verse. Verse is optional — chapter-only navigation when omitted.
+    goToVerse: useCallback((tabId, book, chapter, verse, label) => {
+      dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
+        book, chapter, view: 'chapter', viewRef: null,
+        highlights: verse ? [verse] : undefined,
+        label: label || `${book} ${chapter}${verse ? `:${verse}` : ''}`,
       }})
     }, []),
 
