@@ -1,5 +1,83 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { getChapterEntities } from '../api'
+import { useVerseReadAlong } from '../lib/useVerseReadAlong'
+
+/**
+ * WikiVerse — a single verse with a per-verse audio play button and inline
+ * read-along word highlighting (uses the shared useVerseReadAlong hook).
+ */
+function WikiVerse({ v, book, chapter, toggles, chapterConnections }) {
+  const verseId = `${book}.${chapter}.${v.verse}`
+  const { readAlong, playState, curWord, togglePlay, seekWord, hasAudio } =
+    useVerseReadAlong(verseId, toggles?.displayLang === 'hebrew')
+  const vnum = String(v.verse)
+  const alignedWords = readAlong?.word_timestamps || null
+
+  return (
+    <div id={`wiki-verse-${book}.${chapter}.${vnum}`} className="group scroll-mt-16">
+      {/* Verse number + audio play button */}
+      <span className="inline-flex items-center gap-1.5 w-6 mr-2 float-left -ml-8 mt-0.5">
+        <a href={`#wiki-verse-${book}.${chapter}.${vnum}`}
+          className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors no-underline">
+          {vnum}
+        </a>
+        {hasAudio && (
+          <button onClick={(e) => { e.stopPropagation(); togglePlay() }}
+            className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] cursor-pointer transition-colors border ${
+              playState === 'playing'
+                ? 'bg-red-500 border-red-500 text-white'
+                : 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+            }`}
+            title={playState === 'playing' ? 'Stop' : 'Play verse audio'}>
+            {playState === 'playing' ? '⏸' : '▶'}
+          </button>
+        )}
+      </span>
+
+      {/* Verse text — per-word highlight when playing */}
+      <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
+        {toggles?.displayLang === 'hebrew' && v.text_hebrew && (
+          <span className="text-lg text-right block" dir="rtl">
+            {alignedWords && alignedWords.length > 0 ? (
+              <span>
+                {alignedWords.map((w, i) => (
+                  <span key={i}
+                    onClick={() => seekWord(i)}
+                    className={`cursor-pointer transition-colors duration-150 rounded px-0.5 ${
+                      i === curWord
+                        ? 'bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-indigo-100 shadow-sm'
+                        : playState === 'playing' ? 'hover:bg-neutral-100 dark:hover:bg-neutral-800' : ''
+                    }`}
+                    title={playState === 'playing' ? 'Click to jump' : undefined}>
+                    {w.word}{' '}
+                  </span>
+                ))}
+              </span>
+            ) : v.text_hebrew}
+          </span>
+        )}
+        {toggles?.displayLang === 'greek' && v.text_greek && (
+          <span className="block">{v.text_greek}</span>
+        )}
+        {(toggles?.displayLang === 'english' || !toggles?.displayLang) && (
+          <span>{v.text_english}</span>
+        )}
+      </div>
+
+      {/* Inline connection badges */}
+      {chapterConnections?.[vnum]?.length > 0 && (
+        <div className="mt-1.5 flex items-center gap-1 flex-wrap opacity-0 group-hover:opacity-100 transition-opacity">
+          {chapterConnections[vnum].slice(0, 3).map((c, i) => (
+            <LayerBadge key={i} layer={c.layer || 'intertextual'} />
+          ))}
+          {chapterConnections[vnum].length > 3 && (
+            <span className="text-[9px] text-neutral-400">+{chapterConnections[vnum].length - 3} more</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /**
  * WikiLayout — Wikipedia-style two-column chapter view.
@@ -335,38 +413,7 @@ export default function WikiLayout({ data, book, chapter, toggles, chapterConnec
             {verses.map((v) => {
               const vnum = String(v.verse)
               return (
-                <div key={vnum} id={`wiki-verse-${book}.${chapter}.${vnum}`} className="group scroll-mt-16">
-                  {/* Verse number */}
-                  <a href={`#wiki-verse-${book}.${chapter}.${vnum}`}
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold mr-2 float-left -ml-8 mt-0.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors no-underline">
-                    {vnum}
-                  </a>
-
-                  {/* Verse text */}
-                  <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">
-                    {toggles?.displayLang === 'hebrew' && v.text_hebrew && (
-                      <span className="text-lg text-right block" dir="rtl">{v.text_hebrew}</span>
-                    )}
-                    {toggles?.displayLang === 'greek' && v.text_greek && (
-                      <span className="block">{v.text_greek}</span>
-                    )}
-                    {(toggles?.displayLang === 'english' || !toggles?.displayLang) && (
-                      <span>{v.text_english}</span>
-                    )}
-                  </div>
-
-                  {/* Inline connection badges */}
-                  {chapterConnections?.[vnum]?.length > 0 && (
-                    <div className="mt-1.5 flex items-center gap-1 flex-wrap opacity-0 group-hover:opacity-100 transition-opacity">
-                      {chapterConnections[vnum].slice(0, 3).map((c, i) => (
-                        <LayerBadge key={i} layer={c.layer || 'intertextual'} />
-                      ))}
-                      {chapterConnections[vnum].length > 3 && (
-                        <span className="text-[9px] text-neutral-400">+{chapterConnections[vnum].length - 3} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <WikiVerse key={vnum} v={v} book={book} chapter={chapter} toggles={toggles} chapterConnections={chapterConnections} />
               )
             })}
           </div>

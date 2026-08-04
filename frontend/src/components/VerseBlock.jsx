@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 import { cleanHebrew as stripNiqqud, lineHasChiasmRole } from '../utils'
 import { useToggles } from './ToggleProvider'
+import { useVerseReadAlong } from '../lib/useVerseReadAlong'
 import WordPopup from './WordPopup'
 import DisagreementsPanel from './DisagreementsPanel'
 import JSTDiffViewer from './JSTDiffViewer'
@@ -281,6 +282,9 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
   const tooltipTimer = useRef(null)
   const [wordPopupData, setWordPopupData] = useState(null)
   const [readAlongCache, setReadAlongCache] = useState(null)
+  // ── Per-verse read-along audio: alignment + inline word highlight ──
+  const { readAlong, playState, curWord, togglePlay: toggleVerseAudio, seekWord: seekVerseWord, hasAudio } =
+    useVerseReadAlong(verse?.id, displayLang !== 'english')
   const lines = verse.lines || []
   const hasMultipleLines = lines.length >= 2
   const showLines = poetryMode && hasMultipleLines
@@ -334,14 +338,44 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
     // ── READING MODE: clean Hebrew, large font, English below ──
     if (hebrewDisplayMode === 'reading') {
       const cleanText = words.map(w => stripMorphSeparators(w)).join(' ')
+      const alignedWords = readAlong?.word_timestamps || null
       return (
         <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
           <div className="flex items-start gap-1">
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-1 shrink-0">{verse.verse}</span>
+            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-1 shrink-0 flex items-center gap-1">
+              {verse.verse}
+              {/* Per-verse audio play button (read-along) */}
+              {hasAudio && (
+                <button onClick={(e) => { e.stopPropagation(); toggleVerseAudio() }}
+                  className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] cursor-pointer transition-colors border ${
+                    playState === 'playing'
+                      ? 'bg-red-500 border-red-500 text-white'
+                      : 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                  }`}
+                  title={playState === 'playing' ? 'Stop' : 'Play verse audio'}>
+                  {playState === 'playing' ? '⏸' : '▶'}
+                </button>
+              )}
+            </span>
             <div className="flex-1 min-w-0">
-              {/* Hebrew text: large, clean, RTL */}
+              {/* Hebrew text: large, clean, RTL — per-word highlight when playing */}
               <div className="hebrew-reading font-hebrew-biblical mb-2" dir="rtl">
-                {cleanText}
+                {alignedWords && alignedWords.length > 0 ? (
+                  <span>
+                    {alignedWords.map((w, i) => (
+                      <span key={i}
+                        onClick={() => seekVerseWord(i)}
+                        className={`cursor-pointer transition-colors duration-150 rounded px-0.5 ${
+                          i === curWord
+                            ? 'bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-indigo-100 shadow-sm'
+                            : playState === 'playing' ? 'hover:bg-neutral-100 dark:hover:bg-neutral-800' : ''
+                        }`}
+                        title={playState === 'playing' ? 'Click to jump' : undefined}>
+                        {w.word}{' '}
+                      </span>
+                    ))}
+                  </span>
+                ) : cleanText}
               </div>
               {/* English translation below */}
               {showEnglish && (
