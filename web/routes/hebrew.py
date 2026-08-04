@@ -2004,6 +2004,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                 "items": compressed_group,
                 "count": len(compressed_group),
                 "primary_node_id": compressed_group[0]['node_id'],
+                "language": compressed_group[0].get("language") or "hebrew",
                 "question": f"Review {compressed_group[0]['category']}: " +
                            ", ".join(it['title'] for it in compressed_group),
             })
