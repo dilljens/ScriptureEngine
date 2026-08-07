@@ -8,7 +8,7 @@
     },
     "lsp": {
       "type": "local",
-      "command": ["python3", "/home/dillon/_code/oh-my-agent/mcp/lsp-mcp/server.py"],
+      "command": ["oma-run", "mcp/lsp-mcp/server.py"],
       "enabled": true
     }
   },
