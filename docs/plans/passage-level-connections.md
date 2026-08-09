@@ -201,7 +201,7 @@ All endpoints return structured JSON with:
 
 ---
 
-## Phase 2: Discovery Generators
+## Phase 2: Discovery Generators ✅ (implemented 2026-08-05)
 
 These generators find passage-level patterns directly from the text, rather than aggregating from verse-level connections.
 

@@ -29,6 +29,39 @@ CONNECTION_TYPE_MAP = {
     "symbolic": "Symbolic",
 }
 
+# Read-tracking for access_count instrumentation (see _bump_access_counts).
+def _bump_access_counts(conn, verse_id):
+    """Best-effort read counter for a verse's connections.
+
+    Feeds access-modulated temporal decay (lib/controls/temporal.py): reads
+    slow the confidence half-life decay for the verse's connections.
+
+    Bounded per request: ONE batched UPDATE covering the verse's connections,
+    committed only when a row actually changed. (A `% 10` modulo throttle is
+    not usable here — a counter that only advances on writes can never reach
+    the modulo trigger, so it would deadlock at the first write. We instead
+    keep this off the hot verse-lookup path and batch per request, per the
+    plan's primary instruction.)
+    - Skips entirely when the connections table lacks the access_count column
+      (un-migrated DB) — never raises.
+    """
+    try:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(connections)").fetchall()}
+        if "access_count" not in cols:
+            return
+        cur = conn.execute(
+            "UPDATE connections SET access_count = access_count + 1 "
+            "WHERE source_verse = ? OR target_verse = ?",
+            (verse_id, verse_id),
+        )
+        if cur.rowcount:
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
 
 def _get_connections_raw(conn, verse_id, layer=None):
     """Get connections from SQLite, optionally filtered by layer."""
@@ -58,6 +91,7 @@ def get_connections(conn, verse, layer=None, min_quality=None):
 
     Returns: dict with verse, layers list, connections grouped by layer
     """
+    _bump_access_counts(conn, verse)
     rows = _get_connections_raw(conn, verse, layer=layer)
     by_layer = defaultdict(list)
     for r in rows:
@@ -114,6 +148,7 @@ def get_intertext(conn, verse):
 
     Returns: dict with verse, count, connections list
     """
+    _bump_access_counts(conn, verse)
     rows = conn.execute(
         """
         SELECT c.type, c.subtype, c.strength, c.target_verse,
