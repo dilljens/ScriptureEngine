@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Refresh docs/wiki/wiki-metadata.json staleness after every commit so the wiki
+# doesn't rot silently (auto-render only fires at 50+ new entities).
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel 2>/dev/null || exit 0)"
+META="docs/wiki/wiki-metadata.json"
+[ -f "$META" ] || exit 0
+python3 - "$META" <<'PY' 2>/dev/null || exit 0
+import json, sys, datetime
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except Exception:
+    sys.exit(0)
+w = d.get("wiki", {})
+today = datetime.date.today().isoformat()
+w["lastCheck"] = today
+staleness = []
+for dom in w.get("domains", []):
+    try:
+        updated = datetime.date.fromisoformat(str(dom.get("lastUpdated") or today))
+    except ValueError:
+        updated = datetime.date.today()
+    days = (datetime.date.today() - updated).days
+    dom["staleness"] = days
+    dom["status"] = "FRESH" if days <= 7 else ("AGING" if days <= 30 else "STALE")
+    staleness.append(days)
+h = w.setdefault("health", {})
+h["avgStaleness"] = round(sum(staleness) / len(staleness)) if staleness else 0
+json.dump(d, open(p, "w"), indent=2)
+PY
+exit 0
