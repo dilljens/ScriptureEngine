@@ -72,7 +72,7 @@ from lib.api.study import (
     suggest_path,
     update_guide,
 )
-from lib.api.verse import lookup_verse, passage_guide, study_verse
+from lib.api.verse import lookup_verse, lookup_verses, passage_guide, study_verse
 from lib.api.passage import get_passage_connections, get_chapter_connections, get_book_summary
 from lib.api.sefirot import lookup_sefirot, get_sefirah_info
 from lib.api.versions import get_verse_text, list_versions
@@ -103,6 +103,21 @@ register(
         "required": ["book", "chapter", "verse"],
     },
     "Look up a verse with text, gematria, connections, and quality info",
+)
+
+register(
+    "scripture_batch_lookup",
+    lookup_verses,
+    {
+        "type": "object",
+        "properties": {
+            "verses": {"type": "array", "items": {"type": "string"},
+                       "description": "Verse refs like 'gen.1.1', 'john.3.16' (max 50)"},
+            "version": {"type": "string", "description": "Preferred Bible version (WEB, KJV, etc.)"},
+        },
+        "required": ["verses"],
+    },
+    "Look up MANY verses in one call — batch of verse refs. Use instead of calling scripture_verse repeatedly when a question involves several verses at once.",
 )
 
 register(
@@ -1272,7 +1287,7 @@ register(
 
 # ─── Materialized View Tools (require scripts/build_materialized_views.py) ───
 
-from lib.api.materialized import similar_verses, entity_cooccurrence
+from lib.api.materialized import similar_verses, entity_cooccurrence, entity_card
 
 register(
     "scripture_similar_verses",
@@ -1301,6 +1316,19 @@ register(
         "required": ["entity_id"],
     },
     "Find entities that frequently co-occur with a given entity in the same verse. Run scripts/build_materialized_views.py first.",
+)
+
+register(
+    "scripture_entity_card",
+    entity_card,
+    {
+        "type": "object",
+        "properties": {
+            "entity": {"type": "string", "description": "Entity ID (person.abraham, place.zion, concept.covenant)"},
+        },
+        "required": ["entity"],
+    },
+    "Get the pre-computed materialized card for an entity — metadata, aliases, all verses, connections among those verses, co-occurring entities, gematria. Run scripts/build_materialized_views.py first.",
 )
 
 # ── Passage-level tools ────────────────────────────────────────────────
