@@ -16,7 +16,137 @@ and CLI.
 import json
 from collections import defaultdict
 
+from lib.api.passage import derive_granularity, split_embedded_range
+
 # ─── Connection Graph Traversal ───
+
+
+# ── Passage-level edges (verse↔chapter / verse↔chunk / chapter↔book) ──
+
+def _parse_vid(vid):
+    """Parse 'book.ch.verse' → (book, ch, vs) for numeric comparison. Non-verse
+    refs (entity ids, commentary ids) return None."""
+    parts = str(vid).split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        return parts[0], int(parts[1]), int(parts[2])
+    except ValueError:
+        return None
+
+
+def _book_of(ref):
+    """Book prefix of a ref like 'gen.1.1' → 'gen'. None for unparseable refs."""
+    parts = str(ref or "").split(".")
+    return parts[0] if parts and parts[0] else None
+
+
+def _in_range(vid, start, end):
+    """True if vid falls within the inclusive range [start, end], compared
+    numerically per component (string BETWEEN is wrong for ch.10 < ch.2)."""
+    v = _parse_vid(vid)
+    s = _parse_vid(start)
+    e = _parse_vid(end)
+    if not (v and s and e) or v[0] != s[0] or v[0] != e[0]:
+        return False
+    return (s[1], s[2]) <= (v[1], v[2]) <= (e[1], e[2])
+
+
+# Module-level cache for the passage table — it changes only when generators
+# run (batch jobs), so a short TTL makes repeated traversal calls cheap while
+# staying fresh. Guarded implicitly by the GIL (worst case: two threads rebuild).
+_passages_cache = {"at": 0.0, "passages": None, "by_book": None}
+_PASSAGES_TTL = 30.0  # seconds
+
+
+def _load_passages(conn):
+    """Load all passage_connections, normalized (embedded '--' ranges split),
+    and index them by book on BOTH sides (source book and target book).
+
+    ~100k rows; cached for _PASSAGES_TTL seconds. The book index keeps per-verse
+    neighbor lookup O(passages-in-that-book) instead of O(all passages).
+    Returns (passages, by_book) where by_book[book] is a list of passage indices.
+    """
+    import time as _time
+    now = _time.time()
+    if _passages_cache["passages"] is not None and now - _passages_cache["at"] < _PASSAGES_TTL:
+        return _passages_cache["passages"], _passages_cache["by_book"]
+
+    rows = conn.execute("""
+        SELECT source_start, source_end, target_start, target_end,
+               layer, type, subtype, strength, confidence
+        FROM passage_connections
+    """).fetchall()
+    passages = []
+    by_book = defaultdict(list)
+    for r in rows:
+        ss, se = split_embedded_range(r["source_start"], r["source_end"])
+        ts, te = split_embedded_range(r["target_start"], r["target_end"])
+        idx = len(passages)
+        passages.append({
+            "source_start": ss, "source_end": se,
+            "target_start": ts, "target_end": te,
+            "layer": r["layer"], "type": r["type"], "subtype": r["subtype"] or "",
+            "strength": r["strength"], "confidence": r["confidence"],
+        })
+        for book in {_book_of(ss), _book_of(ts)}:
+            if book:
+                by_book[book].append(idx)
+    _passages_cache["at"] = now
+    _passages_cache["passages"] = passages
+    _passages_cache["by_book"] = by_book
+    return passages, by_book
+
+
+def _passage_neighbors(passages, by_book, verse_id):
+    """Passage-level edges touching verse_id: passages whose range contains it.
+
+    Only passages in the verse's own book are candidates (ranges never cross
+    into the verse's book from another book without being indexed under it).
+    Returns edge dicts whose `to` is the anchor verse of the far side of the
+    passage (the far range's start).
+    """
+    edges = []
+    book = _book_of(verse_id)
+    if not book or not _parse_vid(verse_id):
+        return edges
+    for idx in by_book.get(book, ()):
+        p = passages[idx]
+        if _in_range(verse_id, p["source_start"], p["source_end"]):
+            edges.append({
+                "to": p["target_start"],
+                "to_end": p["target_end"],
+                "layer": p["layer"], "type": p["type"], "subtype": p["subtype"],
+                "strength": p["strength"], "confidence": p["confidence"],
+                "passage": True,
+                "granularity": derive_granularity(p["source_start"], p["source_end"]),
+            })
+        elif _in_range(verse_id, p["target_start"], p["target_end"]):
+            edges.append({
+                "to": p["source_start"],
+                "to_end": p["source_end"],
+                "layer": p["layer"], "type": p["type"], "subtype": p["subtype"],
+                "strength": p["strength"], "confidence": p["confidence"],
+                "passage": True,
+                "granularity": derive_granularity(p["target_start"], p["target_end"]),
+            })
+    return edges
+
+
+def _passage_segment(from_verse, edge, reverse=False):
+    """Build a path segment dict for a passage edge."""
+    to = edge["to"] if not reverse else from_verse
+    frm = from_verse if not reverse else edge["to"]
+    return {
+        "from": frm,
+        "to": to,
+        "layer": edge["layer"],
+        "type": edge["type"],
+        "subtype": edge.get("subtype", ""),
+        "passage": True,
+        "passage_to": edge["to_end"],
+        "granularity": edge["granularity"],
+    }
 
 
 def graph_path(conn, start, end, max_depth=3, layers=None):
@@ -40,9 +170,12 @@ def graph_path(conn, start, end, max_depth=3, layers=None):
         # Try the recursive CTE approach which may find paths BFS misses
         rows = _cte_find_path(conn, start, end, max_depth, layers)
         if not rows:
-            return {"error": f"No path found between {start} and {end} within {max_depth} hops"}
-
-        path = _format_cte_path(start, rows)
+            # Finally: bridge through passage-level (chapter/chunk/book) edges
+            path = _passage_bridged_path(conn, start, end, max_depth)
+            if not path:
+                return {"error": f"No path found between {start} and {end} within {max_depth} hops"}
+        else:
+            path = _format_cte_path(start, rows)
 
     # Enrich with book titles and text
     enriched = []
@@ -129,6 +262,41 @@ def _get_verse_info(conn, verse_id):
     return None
 
 
+def _passage_bridged_path(conn, start, end, max_depth):
+    """Find a path where start/end hop onto passage-level (chapter/chunk/book)
+    edges: start --passage--> anchor ... direct verse link ... anchor' --passage--> end.
+
+    Only called when the verse-level BFS + CTE found nothing. Two shapes:
+      • start and end share the same passage anchor (2-hop passage path)
+      • the far-side anchors are directly verse-connected (3-hop mixed path)
+    Both are single cheap SELECTs — no recursive BFS (that's what made the
+    bridge slow). Returns a list of segments, or None.
+    """
+    passages, by_book = _load_passages(conn)
+    start_edges = sorted(_passage_neighbors(passages, by_book, start),
+                         key=lambda e: -(e["strength"] or 0))[:5]
+    end_edges = sorted(_passage_neighbors(passages, by_book, end),
+                       key=lambda e: -(e["strength"] or 0))[:5]
+    if not start_edges or not end_edges:
+        return None
+
+    for se in start_edges:
+        for ee in end_edges:
+            if se["to"] == ee["to"]:
+                return [_passage_segment(start, se), _passage_segment(end, ee, reverse=True)]
+            # Direct verse connection between the two anchors?
+            for frm, to in ((se["to"], ee["to"]), (ee["to"], se["to"])):
+                row = conn.execute(
+                    "SELECT layer, type, subtype FROM connections WHERE source_verse=? AND target_verse=? LIMIT 1",
+                    (frm, to),
+                ).fetchone()
+                if row:
+                    mid = {"from": frm, "to": to, "layer": row["layer"],
+                           "type": row["type"], "subtype": row["subtype"] or ""}
+                    return [_passage_segment(start, se), mid, _passage_segment(end, ee, reverse=True)]
+    return None
+
+
 def graph_reachable(conn, verse, max_depth=3, layers=None, limit=100):
     """Find all verses reachable within N hops from a starting verse.
 
@@ -168,17 +336,61 @@ def graph_reachable(conn, verse, max_depth=3, layers=None, limit=100):
     ).fetchall()
 
     by_depth = defaultdict(list)
+    seen = set()
     for r in rows:
-        info = _get_verse_info(conn, r["verse_id"])
+        vid = r["verse_id"]
+        if vid in seen:
+            continue
+        seen.add(vid)
+        info = _get_verse_info(conn, vid)
         by_depth[r["depth"]].append({
-            "verse": r["verse_id"],
+            "verse": vid,
             "text": info["text"] if info else "",
             "book": info["book"] if info else "",
         })
 
+    # Passage expansion: the seed verse AND verses inside a passage range reach
+    # the far side's anchor (chapter/chunk/book edges) at depth+1. Keep the
+    # strongest few per verse (a verse can sit in hundreds of passages) and
+    # insert them at the front of their depth bucket so the limit keeps them.
+    if max_depth > 1:
+        passages, by_book = _load_passages(conn)
+
+        def _expand(verse_id, target_depth):
+            for edge in sorted(_passage_neighbors(passages, by_book, verse_id),
+                               key=lambda e: -(e["strength"] or 0))[:5]:
+                to = edge["to"]
+                if to == verse_id or to in seen:
+                    continue
+                seen.add(to)
+                by_depth[target_depth].insert(0, {
+                    "verse": to,
+                    "text": "",
+                    "book": "",
+                    "passage": True,
+                    "passage_to": edge["to_end"],
+                    "layer": edge["layer"],
+                    "type": edge["type"],
+                    "granularity": edge["granularity"],
+                })
+
+        # Seed's own passage edges land at depth 1 (CTE never includes it).
+        _expand(verse, 1)
+        for depth in sorted(by_depth):
+            if depth >= max_depth:
+                break
+            for entry in list(by_depth[depth]):
+                _expand(entry["verse"], depth + 1)
+        # Re-truncate to the limit (passage expansion may have exceeded it)
+        flat = [(d, e) for d in sorted(by_depth) for e in by_depth[d]]
+        if len(flat) > limit:
+            by_depth = defaultdict(list)
+            for d, e in flat[:limit]:
+                by_depth[d].append(e)
+
     return {
         "start": verse,
-        "total": len(rows),
+        "total": sum(len(v) for v in by_depth.values()),
         "by_depth": dict(by_depth),
     }
 

@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS passage_connections (
     discovered_by TEXT DEFAULT 'algorithm',
     metadata TEXT DEFAULT '{}',
     hermeneutic TEXT DEFAULT NULL,
+    granularity TEXT DEFAULT '',      -- 'verse' | 'chunk' | 'chapter' | 'book' (derived when '' at read time)
     quality_version INTEGER DEFAULT 0,
     UNIQUE(source_start, source_end, target_start, target_end, layer, type, subtype)
 );
@@ -663,6 +664,33 @@ CREATE INDEX IF NOT EXISTS idx_struct_formulas_type ON structural_formulas(formu
 CREATE INDEX IF NOT EXISTS idx_verse_entities_verse ON verse_entities(verse_id);
 CREATE INDEX IF NOT EXISTS idx_verse_entities_entity ON verse_entities(entity_id);
 
+-- Materialized per-entity cards (metadata + verses + intra-set connections +
+-- co-occurring entities + gematria), populated by scripts/build_materialized_views.py
+CREATE TABLE IF NOT EXISTS entity_cards (
+    entity_id TEXT PRIMARY KEY,
+    card_json TEXT NOT NULL DEFAULT '{}',
+    built_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Archived connections: stale/low-confidence connections are MOVED here by
+-- scripts/consolidate.py (never hard-deleted)
+CREATE TABLE IF NOT EXISTS archived_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_verse TEXT NOT NULL,
+    target_verse TEXT NOT NULL,
+    layer TEXT NOT NULL,
+    type TEXT NOT NULL,
+    subtype TEXT DEFAULT '',
+    strength REAL DEFAULT 0.5,
+    confidence REAL DEFAULT 0.5,
+    discovered_by TEXT DEFAULT 'algorithm',
+    metadata TEXT DEFAULT '{}',
+    archived_at TEXT DEFAULT (datetime('now')),
+    archive_reason TEXT DEFAULT 'stale_low_confidence'
+);
+CREATE INDEX IF NOT EXISTS idx_archived_conn_source ON archived_connections(source_verse);
+CREATE INDEX IF NOT EXISTS idx_archived_conn_target ON archived_connections(target_verse);
+
 -- Conversation tracking (LLM chat sessions)
 CREATE TABLE IF NOT EXISTS conversation_sessions (
     id TEXT PRIMARY KEY,
@@ -835,6 +863,25 @@ def _migrate(conn):
         conn.execute("ALTER TABLE cfm_lessons ADD COLUMN start_date TEXT DEFAULT ''")
     if "end_date" not in cols:
         conn.execute("ALTER TABLE cfm_lessons ADD COLUMN end_date TEXT DEFAULT ''")
+
+    # Access-modulated temporal decay: reads (queries/study guides) slow the
+    # confidence half-life decay for a connection. Additive column — existing
+    # callers are unaffected (default 0 = no access credit).
+    conn_cols = {r[1] for r in conn.execute("PRAGMA table_info(connections)").fetchall()}
+    if "access_count" not in conn_cols:
+        conn.execute("ALTER TABLE connections ADD COLUMN access_count INTEGER NOT NULL DEFAULT 0")
+
+    # Merge support for consolidation: merged duplicate entities accumulate
+    # their alias surfaces here (JSON array of strings).
+    el_cols = {r[1] for r in conn.execute("PRAGMA table_info(entity_links)").fetchall()}
+    if "aliases" not in el_cols:
+        conn.execute("ALTER TABLE entity_links ADD COLUMN aliases TEXT DEFAULT '[]'")
+
+    # Passage-level granularity marker (verse|chunk|chapter|book). Empty on
+    # existing rows — derived at read time until a generator backfills it.
+    pc_cols = {r[1] for r in conn.execute("PRAGMA table_info(passage_connections)").fetchall()}
+    if "granularity" not in pc_cols:
+        conn.execute("ALTER TABLE passage_connections ADD COLUMN granularity TEXT DEFAULT ''")
 
 
 def verse_id(book, chapter, verse):

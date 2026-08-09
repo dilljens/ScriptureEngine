@@ -62,6 +62,9 @@ LAYERS = {
             "formula_marker",          # "And it came to pass", "Thus says the Lord"
             "acrostic",                # Alphabetic/acrostic structure
             "chiasm_detected",         # Algorithmically detected chiasm
+            # Passage-level types (ranges of verses / chapters / books)
+            "macro_chiastic",          # Macro-chiasm spanning paired sections
+            "macro_chiasm",            # Book-level mirrored chapter signatures
         ]
     },
     "intertextual": {
@@ -77,6 +80,15 @@ LAYERS = {
             "midrashic_connection",    # Interpretive re-use of earlier text
             "summarized",              # Earlier text summarized in later text
             "semantic_domain",         # Cross-canon semantic domain connections
+            # Passage-level types (ranges of verses / chapters / books)
+            "pericope_parallel",       # Parallel pericope (chunk) across texts
+            "book_thematic",           # Whole-book thematic parallel
+            "interpretation_chain",    # A→B→C quotation/interpretation chain
+            "prophecy_oracle",         # Oracle/prophecy unit parallel
+            "apocalyptic",             # Apocalyptic genre unit parallel
+            "gospel",                  # Gospel narrative unit parallel
+            "wisdom",                  # Wisdom unit parallel
+            "epistle",                 # Epistolary unit parallel
         ]
     },
     "textual": {
@@ -92,6 +104,8 @@ LAYERS = {
             "peshitta_variant",        # Syriac Peshitta reading
             "vulgate_variant",         # Latin Vulgate reading
             "inspired_revision",       # Modern prophetic revision (Moses, Abraham)
+            # Passage-level types (ranges of verses / chapters / books)
+            "translation_divergence",  # Passage-level translation divergence crux
         ]
     },
     "geographic": {
@@ -135,6 +149,15 @@ LAYERS = {
             "critical_scholarship",    # Source/form/redaction critical view
             "lectio_divina",           # Monastic/spiritual reading tradition
             "midrashic_connection",    # Interpretive re-use across traditions
+            # Passage-level types (ranges of verses / chapters / books)
+            "narrative_parallel",      # Parallel narrative passage
+            "covenant_structure",      # Treaty/covenant-form passage parallel
+            "shared_setting",          # Passages sharing a social/historical setting
+            "shared_rhetoric",         # Passages sharing rhetorical strategy
+            "shared_source",           # Passages drawing on a shared source
+            "shared_reception",        # Passages with shared reception history
+            "typology",                # Passage-level type/antitype parallel
+            "genealogy",               # Genealogy unit parallel
         ]
     },
     "frequency": {

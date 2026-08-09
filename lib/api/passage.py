@@ -16,6 +16,59 @@ def _parse_range(ref):
     return start, end
 
 
+def split_embedded_range(start, end):
+    """Split a '--' embedded range out of a single endpoint ref.
+
+    Data-quality fix for chiastic_promoter rows where a full range got written
+    into one field, e.g. source_start='1adae.21.5--1adae.21.9'. Returns
+    (start, end) with the range split across the two columns.
+    """
+    if start and "--" in start:
+        left, _, right = start.partition("--")
+        return left.strip(), (right.strip() or end or left.strip())
+    return start, end
+
+
+def derive_granularity(start, end):
+    """Classify a passage range: 'verse' | 'chunk' | 'chapter' | 'book'.
+
+    Derived from the endpoint refs rather than stored, so it works on the live
+    DB without a migration. Ranges are verse-shaped (gen.1.1); chapter and book
+    granularity is implied by the span.
+    """
+    start, end = split_embedded_range(start, end)
+    s = (start or "").split(".")
+    e = (end or start or "").split(".")
+    if len(s) < 2 or len(e) < 2:
+        return "book"
+    if s[0] != e[0]:
+        return "book"
+    if len(s) >= 3 and len(e) >= 3 and s[1] == e[1]:
+        try:
+            width = abs(int(e[2]) - int(s[2]))
+        except ValueError:
+            return "chunk"
+        if width == 0:
+            return "verse"
+        return "chunk" if width < 30 else "chapter"
+    return "chapter"
+
+
+def _format_row(r):
+    """Normalize a passage_connections row: parse metadata JSON, split embedded
+    '--' ranges, and derive a granularity label."""
+    d = dict(r)
+    if d.get("metadata") and isinstance(d["metadata"], str):
+        try:
+            d["metadata"] = json.loads(d["metadata"])
+        except (json.JSONDecodeError, TypeError):
+            d["metadata"] = {}
+    d["source_start"], d["source_end"] = split_embedded_range(d.get("source_start"), d.get("source_end"))
+    d["target_start"], d["target_end"] = split_embedded_range(d.get("target_start"), d.get("target_end"))
+    d["granularity"] = derive_granularity(d["source_start"], d["source_end"])
+    return d
+
+
 def get_passage_connections(conn, start, end, min_density=0.0):
     """Get all passage-level connections involving a verse range."""
     rows = conn.execute("""
@@ -29,12 +82,7 @@ def get_passage_connections(conn, start, end, min_density=0.0):
 
     results = []
     for r in rows:
-        d = dict(r)
-        if d.get("metadata") and isinstance(d["metadata"], str):
-            try:
-                d["metadata"] = json.loads(d["metadata"])
-            except (json.JSONDecodeError, TypeError):
-                d["metadata"] = {}
+        d = _format_row(r)
         density = d.get("metadata", {}).get("density", 1.0) if isinstance(d.get("metadata"), dict) else 1.0
         if density >= min_density:
             results.append(d)
@@ -100,13 +148,7 @@ def get_book_summary(conn, book):
 
     passages = []
     for r in passage_rows:
-        d = dict(r)
-        if d.get("metadata") and isinstance(d["metadata"], str):
-            try:
-                d["metadata"] = json.loads(d["metadata"])
-            except (json.JSONDecodeError, TypeError):
-                d["metadata"] = {}
-        passages.append(d)
+        passages.append(_format_row(r))
 
     # Top connected books
     top_books = conn.execute("""
@@ -165,13 +207,7 @@ def get_density_clusters(conn, book=None, min_density=0.3):
 
     results = []
     for r in rows:
-        d = dict(r)
-        if d.get("metadata") and isinstance(d["metadata"], str):
-            try:
-                d["metadata"] = json.loads(d["metadata"])
-            except (json.JSONDecodeError, TypeError):
-                d["metadata"] = {}
-        results.append(d)
+        results.append(_format_row(r))
     return results
 
 
