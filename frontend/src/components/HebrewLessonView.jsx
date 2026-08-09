@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
+import CardRenderer from './CardRenderer'
 import HebrewQuiz from './HebrewQuiz'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 
@@ -124,6 +125,194 @@ export function gradePracticeAnswer(answer, expected) {
 }
 
 /**
+ * StagedPractice — Math Academy-style 3-KP flow: recognition → recall → production.
+ *
+ * Each stage shows up to 2 practice items (cycling through the stage's pool on
+ * retry). A stage passes only when every item in the attempt is answered
+ * correctly; a failed stage surfaces the "review this stage" panel and retries
+ * with a fresh pair. When all stages pass, the lesson is complete.
+ *
+ * The single-pass flashcard flow remains available as "quick" mode via the
+ * toggle (passed as onSwitchMode).
+ */
+function StageItemCard({ card, onSubmitted, onContinue, isLast }) {
+  const [submitted, setSubmitted] = useState(false)
+  const [answer, setAnswer] = useState('')
+
+  const correct = submitted ? gradePracticeAnswer(answer, card.data?.correct) : null
+  const handleAnswer = (ans) => {
+    setAnswer(ans)
+    setSubmitted(true)
+    onSubmitted(card, ans, gradePracticeAnswer(ans, card.data?.correct))
+  }
+
+  return (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 p-4">
+      <CardRenderer
+        card={card}
+        showAnswer={submitted}
+        onAnswer={handleAnswer}
+        answerState={{ [card.id]: { submitted, answer, correct } }}
+      />
+      {submitted && (
+        <button onClick={onContinue}
+          className="mt-4 w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
+          {isLast ? 'Continue →' : 'Next →'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function StagedPractice({ stages, nodeId, toCards, onGrade, onSwitchMode, title }) {
+  const [stageIdx, setStageIdx] = useState(0)
+  const [cycle, setCycle] = useState(0)          // retry cycle → fresh item pair
+  const [pos, setPos] = useState(0)
+  const [passedFlags, setPassedFlags] = useState([])
+  const [showRetry, setShowRetry] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const stage = stages[stageIdx]
+  const stageName = stage?.stage || 'stage'
+  const stageLabel = stageName.charAt(0).toUpperCase() + stageName.slice(1)
+  const allItems = stage?.items || []
+
+  // 2 practice items per attempt; cycle through the stage's pool so retries
+  // present fresh items instead of rote repetition of the same pair.
+  const attemptItems = useMemo(() => {
+    if (allItems.length === 0) return []
+    const n = Math.min(2, allItems.length)
+    const start = (cycle * 2) % allItems.length
+    const picked = []
+    for (let k = 0; k < n; k++) picked.push(allItems[(start + k) % allItems.length])
+    return picked
+  }, [allItems, cycle])
+
+  const cards = useMemo(() => toCards(attemptItems), [attemptItems, toCards])
+  const current = cards[pos]
+
+  // A stage with no practice items can never block the lesson — pass through.
+  useEffect(() => {
+    if (!done && allItems.length === 0 && stage) {
+      if (stageIdx + 1 < stages.length) {
+        setStageIdx(stageIdx + 1)
+      } else {
+        setDone(true)
+      }
+    }
+  }, [allItems, stage, stageIdx, stages.length, done])
+
+  const handleSubmitted = (card, _ans, correct) => {
+    onGrade?.(card.data?.node_id || nodeId, correct)
+    setPassedFlags(prev => {
+      const next = [...prev]
+      next[pos] = correct
+      return next
+    })
+  }
+
+  const handleContinue = () => {
+    if (pos + 1 < cards.length) {
+      setPos(pos + 1)
+      return
+    }
+    const allCorrect = cards.length > 0 && passedFlags.length === cards.length && passedFlags.every(Boolean)
+    if (allCorrect) {
+      if (stageIdx + 1 < stages.length) {
+        setStageIdx(stageIdx + 1)
+        setCycle(0)
+        setPos(0)
+        setPassedFlags([])
+        setShowRetry(false)
+      } else {
+        setDone(true)
+      }
+    } else {
+      setShowRetry(true)   // failed stage → review this stage's content
+    }
+  }
+
+  const handleRetry = () => {
+    setCycle(c => c + 1)
+    setPos(0)
+    setPassedFlags([])
+    setShowRetry(false)
+  }
+
+  if (done) {
+    return (
+      <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-center">
+        <span className="text-4xl block mb-3">🎉</span>
+        <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-1">Lesson Complete</h3>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+          All {stages.length} stages passed — {title || 'practice'} complete.
+        </p>
+        <button onClick={onSwitchMode}
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
+          Continue to Quick practice
+        </button>
+      </div>
+    )
+  }
+
+  if (!stage) return null
+
+  return (
+    <div className="mb-6">
+      {/* Stage progress segments */}
+      <div className="flex items-center gap-1.5 mb-3">
+        {stages.map((s, i) => (
+          <div key={s.stage}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i < stageIdx ? 'bg-green-500'
+                : i === stageIdx ? 'bg-indigo-500'
+                  : 'bg-neutral-200 dark:bg-neutral-700'}`} />
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
+            Stage {stageIdx + 1} of {stages.length} — {stageLabel}
+          </span>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+            {cards.length > 0 ? `${pos + 1} of ${cards.length} · answer all correctly to continue` : 'No practice items'}
+          </p>
+        </div>
+        <button onClick={onSwitchMode}
+          className="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer transition-colors"
+          title="Switch to the single-pass flashcard flow">
+          ⚡ Quick mode
+        </button>
+      </div>
+
+      {showRetry ? (
+        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-700 mb-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-1">Review this stage</p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+            Review the material above, then retry the {stageLabel.toLowerCase()} practice.
+          </p>
+          <button onClick={handleRetry}
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium cursor-pointer transition-colors">
+            Retry stage
+          </button>
+        </div>
+      ) : (
+        current && (
+          <StageItemCard
+            key={`${stage.stage}-${cycle}-${pos}`}
+            card={current}
+            onSubmitted={handleSubmitted}
+            onContinue={handleContinue}
+            isLast={pos === cards.length - 1}
+          />
+        )
+      )}
+    </div>
+  )
+}
+
+/**
  * HebrewLessonView — Math Academy-style: compact intro → verse attestations → flashcard practice.
  *
  * The lesson explanation acts as a "worked example" — showing letter/word + essential info.
@@ -142,6 +331,11 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   const [showQuiz, setShowQuiz] = useState(false)
   const [wordImage, setWordImage] = useState(null) // {image_url, attribution}
   const audioRef = useRef(null)
+  // Practice flow: 'staged' (recognition → recall → production with pass gates)
+  // or 'quick' (single-pass flashcards). Choice persists per learner.
+  const [practiceMode, setPracticeMode] = useState(() => {
+    try { return localStorage.getItem('hebrew.practiceMode') || 'staged' } catch { return 'staged' }
+  })
 
   // Load lesson data
   useEffect(() => {
@@ -246,6 +440,26 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   const cards = useMemo(() => practiceToCards(practice), [practice, practiceToCards])
   const hebrewWord = node?.hebrew || node?.title?.split('—')[0]?.trim() || ''
   const explanation = node?.lesson?.explanation || ''
+  // Micro-scaffolding stage map from the lesson payload (server-derived).
+  const stages = useMemo(() => node?.kp_stages || [], [node])
+  const hasStages = stages.length > 0
+
+  const togglePracticeMode = useCallback((mode) => {
+    setPracticeMode(mode)
+    try { localStorage.setItem('hebrew.practiceMode', mode) } catch {}
+  }, [])
+
+  // Staged-mode grading posts straight to /hebrew/progress (same SRS feed as
+  // the flashcard flow).
+  const handleStagedGrade = useCallback(async (targetNodeId, correct) => {
+    try {
+      await fetch('/api/v1/hebrew/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id: targetNodeId || nodeId, correct, user_id: 'default' }),
+      })
+    } catch {}
+  }, [nodeId])
 
   if (loading) return (
     <div className="max-w-3xl mx-auto px-6 py-8 animate-pulse space-y-4">
@@ -281,6 +495,16 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
       <div className="flex items-center justify-between mb-4">
         <button onClick={onBack} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Back</button>
         <div className="flex items-center gap-2">
+          {hasStages && cards.length > 0 && (
+            <button onClick={() => togglePracticeMode(practiceMode === 'staged' ? 'quick' : 'staged')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+              title={practiceMode === 'staged'
+                ? 'Staged mode: recognition → recall → production with pass gates'
+                : 'Quick mode: single-pass flashcards'}>
+              <span>{practiceMode === 'staged' ? '⚡' : '📚'}</span>
+              <span>{practiceMode === 'staged' ? 'Quick' : 'Staged'}</span>
+            </button>
+          )}
           {cards.length > 0 && (
             <button onClick={() => setShowQuiz(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors"
@@ -472,19 +696,30 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         </div>
       )}
 
-      {/* CardQueue — flashcards sorted by difficulty (MC → recall → typing) */}
+      {/* Practice — staged 3-KP flow (default) or single-pass quick mode */}
       {cards.length > 0 ? (
-        <div className="mb-6">
-          <CardQueue
-            cards={cards}
-            onAnswer={handlePracticeAnswer}
-            answerState={practiceAnswers}
-            onRate={handleFlashcardRate}
-            onComplete={() => {}}
+        practiceMode === 'staged' && hasStages ? (
+          <StagedPractice
+            stages={stages}
+            nodeId={nodeId}
+            toCards={practiceToCards}
+            onGrade={handleStagedGrade}
+            onSwitchMode={() => togglePracticeMode('quick')}
             title={node?.title || 'Practice'}
-            emptyMessage="All done! Start another lesson or come back later."
           />
-        </div>
+        ) : (
+          <div className="mb-6">
+            <CardQueue
+              cards={cards}
+              onAnswer={handlePracticeAnswer}
+              answerState={practiceAnswers}
+              onRate={handleFlashcardRate}
+              onComplete={() => {}}
+              title={node?.title || 'Practice'}
+              emptyMessage="All done! Start another lesson or come back later."
+            />
+          </div>
+        )
       ) : (
         <div className="p-6 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 text-center">
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">No practice items for this lesson.</p>

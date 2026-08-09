@@ -46,8 +46,19 @@ Based on gap analysis against The Math Academy Way (June 2026 draft).
 
 ---
 
-### Phase 4: Micro-Scaffolding (3 KPs per Lesson)
+### Phase 4: Micro-Scaffolding (3 KPs per Lesson)  ✅ Shipped 2026-08-05
 **Goal:** Each lesson has progressive Knowledge Points like Math Academy.
+
+**Superseded-by / implementation:** `docs/plans/hebrew-improvements-remainder.md`
+Track A. Practice items are classified by cognitive type server-side
+(`KP_STAGE_RECOGNITION/RECALL/PRODUCTION` in `web/routes/hebrew.py`) and the
+lesson payload exposes a deterministic `kp_stages` map. `HebrewLessonView.jsx`
+renders a staged recognition → recall → production flow (worked example → 2
+practice → pass gate → next stage; failed stage reviews that stage) with the
+single-pass flashcard flow retained as "quick" mode.
+
+### Phase 5: Connect FSRS-5 + FIRe for Hebrew  ✅ Shipped (pre-existing)
+**Goal:** Use the existing FSRS-5 engine (verified against Rust test vectors) for Hebrew concept scheduling.
 
 **Implementation:**
 1. Restructure HebrewLessonView to support 3-stage KPs:
@@ -84,8 +95,15 @@ Based on gap analysis against The Math Academy Way (June 2026 draft).
 
 ---
 
-### Phase 6: Non-Interference in Topic Ordering
+### Phase 6: Non-Interference in Topic Ordering  ✅ Shipped 2026-08-05
 **Goal:** Similar/confusable topics are separated by 2-3 other lessons.
+
+**Superseded-by / implementation:** `docs/plans/hebrew-improvements-remainder.md`
+Track B. The mechanism (review-queue interleave + curriculum reorder reading
+`hebrew_confusability`) predates this plan; Track B seeded the matrix
+(`scripts/seed_hebrew_confusability.py`, now idempotent + `MEMORIZE_DB_PATH`
+aware) and added tests asserting a confusable pair is kept ≥3 items apart in
+the review queue.
 
 **Implementation:**
 1. Build confusability matrix:
@@ -104,8 +122,24 @@ Based on gap analysis against The Math Academy Way (June 2026 draft).
 
 ---
 
-### Phase 7: Student-Topic Learning Speeds
+### Phase 7: Student-Topic Learning Speeds  ✅ Shipped 2026-08-05
 **Goal:** Track per-user ability per-topic via ability/difficulty ratio.
+
+**Superseded-by / implementation:** `docs/plans/hebrew-improvements-remainder.md`
+Track C. Most of this phase already existed (ability/difficulty helpers,
+`compute_learning_speed`, interval modulation, `learning_speed < 0.5 → no FIRe`).
+Track C added the missing **per-user per-topic accuracy rollup** (aggregates
+`hebrew_progress` by node category) and applied the **0.25×–4× interval caps**.
+Direction note: this codebase's documented semantic is `interval *= learning_speed`
+("higher speed → longer intervals"), kept over the doc's `1/learning_speed`
+draft to avoid regressing existing users.
+
+---
+
+## Completion Status
+All phases shipped. Phases 1–3 & 5 were pre-existing; Phases 4/6/7 were
+completed 2026-08-05 in `docs/plans/hebrew-improvements-remainder.md` (see its
+progress log for test counts and line deltas).
 
 **Implementation:**
 1. Track per-user per-topic accuracy over time (add to hebrew_progress table)

@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 kind: plan
 area: hebrew-learning
 author: agent
@@ -11,6 +11,10 @@ created: 2026-07-31
 Goal: help learners read the pointed Hebrew Bible accurately through verified
 content, objective practice, staged reading, and transparent source provenance.
 
+> Follow-ups closed 2026-08-06 (see `docs/plans/hebrew-content-followups.md` +
+> `hebrew-content-followups-progress.md`): maqqef restoration ingest path,
+> per-user learner sessions, and the last top-frequency vocabulary surfaces.
+
 ## Requirements
 
 - [x] Audit all Hebrew lesson, practice, progression, reading, and UI systems.
@@ -18,7 +22,7 @@ content, objective practice, staged reading, and transparent source provenance.
 - [x] Correct the audited foundational factual errors and broken practice paths.
 - [x] Validate generated content and isolate unverified examples.
 - [x] Make lesson and diagnostic mastery depend on graded evidence rather than self-report or category inference.
-- [ ] Add missing Masoretic reading and Biblical Hebrew discourse topics.
+- [x] Add missing Masoretic reading and Biblical Hebrew discourse topics.
 
 ## Pre-resolved decisions
 

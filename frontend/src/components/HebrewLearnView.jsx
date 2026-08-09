@@ -7,6 +7,7 @@ import PassageReader from './PassageReader'
 import DailyVerse from './DailyVerse'
 import AudioReviewSession from './AudioReviewSession'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
+import { hebrewSessionUser } from '../api'
 
 /* ── Dropdown components for compact action menus ── */
 
@@ -106,13 +107,23 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [audioWords, setAudioWords] = useState([])
   const [showQuiz, setShowQuiz] = useState(false)
 
+  // Resolve the session-bound user (falls back to 'default' for anonymous
+  // learners, so a missing/expired token is never a hard failure). Curriculum,
+  // gamification and the review queue are all per-user, so a logged-in session
+  // lands review/progress data on the real account instead of the shared
+  // 'default' user. Returns '' when anonymous so the API keeps its default.
+  const sessionQuery = async () => {
+    const uid = await hebrewSessionUser()
+    return uid && uid !== 'default' ? `?user_id=${encodeURIComponent(uid)}` : ''
+  }
+
   // Load curriculum + gamification in parallel
   const loadAll = () => {
     setLoading(true)
-    Promise.all([
-      fetch('/api/v1/hebrew/curriculum').then(r => r.json()),
-      fetch('/api/v1/hebrew/gamification').then(r => r.json()),
-    ])
+    sessionQuery().then(q => Promise.all([
+      fetch(`/api/v1/hebrew/curriculum${q}`).then(r => r.json()),
+      fetch(`/api/v1/hebrew/gamification${q}`).then(r => r.json()),
+    ]))
       .then(([curData, gamData]) => {
         if (curData.ok) setCurriculum(curData.data)
         else setError(curData.detail || 'Failed to load')
@@ -453,7 +464,8 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             // Prefer the persisted scheduler's due items; fall back to unlocked nodes.
             let dueCards = []
             try {
-              const r = await fetch('/api/v1/hebrew/review-queue?limit=30')
+              const uq = await sessionQuery()
+              const r = await fetch(`/api/v1/hebrew/review-queue?limit=30${uq}`)
               const d = await r.json()
               if (d.ok && d.data?.reviews?.length) {
                 dueCards = d.data.reviews
@@ -489,7 +501,12 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             const unlocked = curriculum?.nodes?.filter(n => n.unlocked) || []
             const nodeCards = dueCards.length ? dueCards : hebrewToCards(unlocked)
             let drillCards = []
-            try { const r = await fetch('/api/v1/hebrew/verb-drill?limit=8'); const d = await r.json(); if (d.ok) drillCards = drillsToCards(d.data.drills || []) } catch {}
+            try {
+              const uq = await sessionQuery()
+              const r = await fetch(`/api/v1/hebrew/verb-drill?limit=8${uq}`)
+              const d = await r.json()
+              if (d.ok) drillCards = drillsToCards(d.data.drills || [])
+            } catch {}
             setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
             setShowHebrewReview(true)
           }} icon="🔄" label="Review 🔀" desc="Spaced repetition cards" />

@@ -97,6 +97,17 @@ def fsrs_schedule(stability, difficulty, rating):
 # ability = user's weighted accuracy across all topics
 # difficulty = 1 - average accuracy of all users on this topic
 
+# Interval-multiplier caps: a learner's speed modulates review interval by at
+# most 0.25× (slowest) .. 4× (fastest), per the plan.
+LEARNING_SPEED_MIN = 0.25
+LEARNING_SPEED_MAX = 4.0
+
+
+def clamp_learning_speed(speed):
+    """Clamp a learning speed to [LEARNING_SPEED_MIN, LEARNING_SPEED_MAX]."""
+    return max(LEARNING_SPEED_MIN, min(LEARNING_SPEED_MAX, speed))
+
+
 def _get_all_user_accuracy(user_id="default"):
     """Get all accuracy data for a specific user across all Hebrew nodes."""
     if not MEM_DB.exists(): return {}, 0, 0
@@ -109,6 +120,32 @@ def _get_all_user_accuracy(user_id="default"):
     total_correct = sum(r[2] for r in rows)
     user_acc = {r[0]: r[2] / max(r[1], 1) for r in rows if r[1] > 0}
     return user_acc, total_attempts, total_correct
+
+
+def _get_user_category_accuracy(user_id="default"):
+    """Per-user per-topic (category-level) accuracy rollup.
+
+    Aggregates the user's hebrew_progress attempts/correct up to the topic
+    cluster level (node category). Returns {category: accuracy} for categories
+    the user has practiced. This is the Phase 7 "per-user per-topic accuracy"
+    signal — it lets a learner's speed differ between, say, alphabet vs verbs
+    instead of a single global ability.
+    """
+    if not MEM_DB.exists():
+        return {}
+    conn = sqlite3.connect(str(MEM_DB))
+    rows = conn.execute("""
+        SELECT n.category, SUM(p.attempts) AS attempts, SUM(p.correct) AS correct
+        FROM hebrew_progress p JOIN hebrew_nodes n ON n.id = p.node_id
+        WHERE p.user_id=? AND p.attempts > 0
+        GROUP BY n.category
+    """, (user_id,)).fetchall()
+    conn.close()
+    rollup = {}
+    for category, attempts, correct in rows:
+        if attempts and attempts > 0:
+            rollup[category] = round(correct / attempts, 4)
+    return rollup
 
 
 def _get_topic_difficulty():
@@ -128,6 +165,11 @@ def compute_learning_speed(user_id="default"):
 
     Returns: {node_id: learning_speed, ...}
     Also returns overall_ability and topic_difficulties for transparency.
+
+    ability is per-topic when the user has category-level data (see
+    `_get_user_category_accuracy`), falling back to the user's overall
+    accuracy otherwise. Higher speed = learner is faster on this topic →
+    longer review intervals (applied with caps in the review scheduler).
     """
     user_acc, total_attempts, total_correct = _get_all_user_accuracy(user_id)
     topic_diff = _get_topic_difficulty()
@@ -135,13 +177,24 @@ def compute_learning_speed(user_id="default"):
     # User ability = overall accuracy (weighted toward recent via exponential decay is ideal,
     # but simple ratio works well for now — Math Academy uses weighted recent accuracy)
     overall_ability = total_correct / max(total_attempts, 1) if total_attempts > 0 else 0.5
+    cat_accuracy = _get_user_category_accuracy(user_id)
+
+    # Category per node, so the per-topic ability can be applied per node.
+    node_categories = {}
+    if cat_accuracy and topic_diff:
+        conn = sqlite3.connect(str(MEM_DB))
+        node_categories = dict(conn.execute(
+            "SELECT id, category FROM hebrew_nodes").fetchall())
+        conn.close()
 
     speeds = {}
     for node_id in topic_diff:
         diff = topic_diff[node_id]
         # Avoid division by zero: minimum difficulty of 0.1
         diff = max(0.1, diff)
-        speed = overall_ability / diff
+        category = node_categories.get(node_id, "")
+        ability = cat_accuracy.get(category, overall_ability)
+        speed = ability / diff
         speeds[node_id] = round(speed, 3)
 
     return speeds, round(overall_ability, 3), {k: round(v, 3) for k, v in topic_diff.items()}
@@ -366,7 +419,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     # Pre-compute read-only inputs before taking the write lock, because the
     # learning-speed helpers and graph cache open their own connections.
     speeds, ability, diffs = compute_learning_speed(user_id)
-    learning_speed = max(0.2, min(5.0, speeds.get(node_id, 1.0)))
+    learning_speed = clamp_learning_speed(speeds.get(node_id, 1.0))
     graph = get_hebrew_graph()
 
     conn = sqlite3.connect(str(MEM_DB))
@@ -1730,6 +1783,106 @@ def add_hebrew_word_to_learning(word: str, user_id: str = "default"):
     }}
 
 
+def _interleave_due_items(by_cat, confusable_pairs):
+    """Round-robin category interleaving with strict non-interference.
+
+    `by_cat`: {category: [item dicts with 'node_id', 'retrievability', ...]}
+    `confusable_pairs`: set of (a, b) pairs (both directions expected).
+
+    Confusable pairs are kept >=3 items apart (checked against the last 3
+    emitted node ids). Pure function so the non-interference contract is unit
+    testable without a live DB. Returns the interleaved item list.
+    """
+    if not by_cat:
+        return []
+
+    # 1. Sort categories by their lowest retrievability (most urgent first)
+    cat_priority = sorted(
+        by_cat.keys(),
+        key=lambda c: min(i['retrievability'] for i in by_cat[c]))
+
+    interleaved = []
+    remaining = {c: len(by_cat[c]) for c in cat_priority}
+    cat_cycle = list(cat_priority)  # mutable copy for cycling
+    total = sum(len(v) for v in by_cat.values())
+
+    last_cat = None
+    # Non-interference buffer: track recent node_ids to enforce ≥3 spacing
+    # for confusable pairs.
+    recent_nodes = []  # last 3 node_ids added
+
+    for _ in range(total):
+        chosen_cat = None
+
+        # Try categories in round-robin order, skipping last_cat and categories
+        # whose remaining items are all confusable with recent nodes.
+        for c in cat_cycle:
+            if remaining.get(c, 0) == 0:
+                continue
+            if c == last_cat:
+                continue
+            cat_items = sorted(by_cat[c], key=lambda x: x['retrievability'])
+            untaken = [it for it in cat_items if it not in interleaved]
+            if untaken:
+                candidate = untaken[0]
+                # Skip this category if its next item would cause interference.
+                if recent_nodes and any(
+                    (candidate['node_id'], recent_nid) in confusable_pairs
+                    for recent_nid in recent_nodes[-3:]
+                ):
+                    continue
+            chosen_cat = c
+            break
+
+        if not chosen_cat:
+            # Fallback: pick from any remaining category regardless.
+            for c in cat_cycle:
+                if remaining.get(c, 0) > 0:
+                    chosen_cat = c
+                    break
+
+        if not chosen_cat:
+            break
+
+        # Pick the most urgent item from this category.
+        cat_items_sorted = sorted(by_cat[chosen_cat], key=lambda x: x['retrievability'])
+        item = None
+        for candidate in cat_items_sorted:
+            if candidate not in interleaved:
+                item = candidate
+                break
+
+        if not item:
+            remaining[chosen_cat] = 0
+            continue
+
+        # If this item would be confusable with the recent window, try a
+        # non-confusable alternative from the same category.
+        if recent_nodes and any(
+            (item['node_id'], recent_nid) in confusable_pairs
+            for recent_nid in recent_nodes[-3:]
+        ):
+            for alternative in cat_items_sorted:
+                if alternative not in interleaved and alternative['node_id'] != item['node_id'] and not any(
+                    (alternative['node_id'], recent_nid) in confusable_pairs
+                    for recent_nid in recent_nodes[-3:]
+                ):
+                    item = alternative
+                    break
+
+        interleaved.append(item)
+        remaining[chosen_cat] -= 1
+        last_cat = chosen_cat
+        recent_nodes.append(item['node_id'])
+        if len(recent_nodes) > 6:
+            recent_nodes.pop(0)
+
+        # Rotate cat_cycle for true round-robin.
+        cat_cycle = cat_cycle[1:] + cat_cycle[:1]
+
+    return interleaved
+
+
 @router.get("/api/v1/hebrew/review-queue")
 def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                             new_cards_per_day: int = 10, include_new: bool = True):
@@ -1873,88 +2026,9 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         log.warning("silent_exception", exc_info=True)
         pass
 
-    # 3. Sort categories by their lowest retrievability (most urgent first)
-    cat_priority = sorted(by_cat.keys(), key=lambda c: min(i['retrievability'] for i in by_cat[c]))
-
-    # 4. Round-robin with strict non-interference
-    interleaved = []
-    remaining = {c: len(by_cat[c]) for c in cat_priority}
-    cat_cycle = list(cat_priority)  # mutable copy for cycling
-
-    last_cat = None
-    # Non-interference buffer: track recent node_ids to enforce ≥3 spacing for confusable pairs
-    recent_nodes = []  # last 3 node_ids added
-
-    for _ in range(len(due)):
-        chosen_cat = None
-
-        # Try categories in round-robin order, skipping last_cat and categories
-        # whose remaining items are all confusable with recent nodes
-        for c in cat_cycle:
-            if remaining.get(c, 0) == 0:
-                continue
-            if c == last_cat:
-                continue
-            # Check if ALL remaining items in this category would be confusable
-            # with any of the recent 3 nodes
-            cat_items = sorted(by_cat[c], key=lambda x: x['retrievability'])
-            untaken = [it for it in cat_items if it not in interleaved]
-            if untaken:
-                candidate = untaken[0]
-                # Non-interference check: skip if candidate is confusable with recent nodes
-                if recent_nodes and any(
-                    (candidate['node_id'], recent_nid) in confusable_pairs
-                    for recent_nid in recent_nodes[-3:]
-                ):
-                    continue  # skip this category for now — would cause interference
-            chosen_cat = c
-            break
-
-        if not chosen_cat:
-            # Fallback: pick from any remaining category regardless
-            for c in cat_cycle:
-                if remaining.get(c, 0) > 0:
-                    chosen_cat = c
-                    break
-
-        if not chosen_cat:
-            break
-
-        # Pick the most urgent item from this category
-        cat_items_sorted = sorted(by_cat[chosen_cat], key=lambda x: x['retrievability'])
-        item = None
-        for candidate in cat_items_sorted:
-            if candidate not in interleaved:
-                item = candidate
-                break
-
-        if not item:
-            remaining[chosen_cat] = 0
-            continue
-
-        # Check if this specific item is confusable with any of the last 3 items
-        if recent_nodes and any(
-            (item['node_id'], recent_nid) in confusable_pairs
-            for recent_nid in recent_nodes[-3:]
-        ):
-            # Try to find a different item in the same category that's not confusable
-            for alternative in cat_items_sorted:
-                if alternative not in interleaved and alternative['node_id'] != item['node_id'] and not any(
-                    (alternative['node_id'], recent_nid) in confusable_pairs
-                    for recent_nid in recent_nodes[-3:]
-                ):
-                    item = alternative
-                    break
-
-        interleaved.append(item)
-        remaining[chosen_cat] -= 1
-        last_cat = chosen_cat
-        recent_nodes.append(item['node_id'])
-        if len(recent_nodes) > 6:
-            recent_nodes.pop(0)
-
-        # Rotate cat_cycle for true round-robin
-        cat_cycle = cat_cycle[1:] + cat_cycle[:1]
+    # 3. Round-robin interleave with strict non-interference
+    # (confusable pairs kept ≥3 items apart) — pure, unit-tested helper.
+    interleaved = _interleave_due_items(by_cat, confusable_pairs)
 
     conn.close()
 
@@ -2189,6 +2263,57 @@ def get_hebrew_quiz(count: int = 8, user_id: str = "default"):
     return {"ok": True, "data": {"questions": interleaved[:count], "total_available": len(all_questions)}}
 
 
+# ── Micro-scaffolding: KP stage map (Phase 4) ──
+# Cognitive-stage classification of practice item types:
+#   recognition = choose / recognize (MC, TF, letter recognition, classify)
+#   recall      = retrieve from cues (cloze, transliteration, discrimination)
+#   production  = generate from scratch (typing, sentence)
+KP_STAGE_RECOGNITION = {"multiple_choice", "true_false", "letter_recognition", "classification"}
+KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall"}
+KP_STAGE_PRODUCTION = {"typing", "sentence"}
+KP_STAGE_ORDER = ["recognition", "recall", "production"]
+
+KP_STAGE_BY_TYPE = {}
+for _stage, _types in (("recognition", KP_STAGE_RECOGNITION),
+                       ("recall", KP_STAGE_RECALL),
+                       ("production", KP_STAGE_PRODUCTION)):
+    for _t in _types:
+        KP_STAGE_BY_TYPE[_t] = _stage
+
+
+def practice_stage(question_type):
+    """Map a practice item's question_type to its KP stage.
+
+    Returns 'recognition' | 'recall' | 'production' or None for unknown types
+    (unknown types are skipped rather than mis-classified).
+    """
+    return KP_STAGE_BY_TYPE.get(question_type)
+
+
+def build_kp_stages(practice_items):
+    """Deterministic KP stage grouping of practice items (recognition → recall → production).
+
+    Each returned stage dict is {stage, items, count} where items are the
+    practice-item dicts (annotated with their `kp_stage`) sorted by
+    (difficulty, id). Stages with no items are omitted so a lesson with only
+    MC items still completes — KP2/KP3 simply skip (never block).
+    """
+    stages = []
+    for stage in KP_STAGE_ORDER:
+        items = []
+        for it in practice_items:
+            qtype = it["question_type"]
+            if practice_stage(qtype) == stage:
+                d = dict(it)
+                d["kp_stage"] = stage
+                items.append(d)
+        if not items:
+            continue
+        items.sort(key=lambda x: (x.get("difficulty") or 0.0, x.get("id") or 0))
+        stages.append({"stage": stage, "items": items, "count": len(items)})
+    return stages
+
+
 @router.get("/api/v1/hebrew/lesson/{node_id}")
 def get_hebrew_lesson(node_id: str):
     if not MEM_DB.exists():
@@ -2248,7 +2373,12 @@ def get_hebrew_lesson(node_id: str):
     result["hebrew"] = _l.get("hebrew") or _l.get("glyph") or ""
     result["gloss"] = _l.get("gloss") or ""
     result["transliteration"] = _l.get("transliteration") or ""
-    result["practice_items"] = [dict(p) for p in practices]
+    practice_items = [dict(p) for p in practices]
+    for it in practice_items:
+        it["kp_stage"] = practice_stage(it.get("question_type"))
+    result["practice_items"] = practice_items
+    # Deterministic micro-scaffolding stage map: recognition → recall → production.
+    result["kp_stages"] = build_kp_stages(practice_items)
     result["prerequisites"] = [dict(p) for p in prereqs]
     result["verse_attestations"] = att_list
 

@@ -253,7 +253,13 @@ def generate_practice_items(hebrew_word, gloss, transliteration, root, verse_dat
 
 def main():
     parser = argparse.ArgumentParser(description="Seed Hebrew vocabulary lessons")
-    parser.add_argument("--count", type=int, default=500, help="Number of word lessons to create")
+    # 520 (was 500) covers the last top-frequency surfaces that had no lesson
+    # after the exact-frequency ranking rebuild — the next five OT surfaces by
+    # true frequency (H1197a בָּעַר, H8057 שִׂמְחָה construct, H2181 זנה 3fs,
+    # H2459 חֵלֶב, H1616 גֵּר) plus homonym skipping. The seeder is
+    # ranking-safe: any surface or (language, Strong's base) that already has a
+    # lesson is skipped, so raising the window is idempotent (2nd run = 0 new).
+    parser.add_argument("--count", type=int, default=520, help="Number of word lessons to create")
     parser.add_argument("--db", default=str(MEM_DB), help="Path to memorize.db")
     parser.add_argument("--min-frequency", type=int, default=10, help="Minimum word frequency")
     args = parser.parse_args()

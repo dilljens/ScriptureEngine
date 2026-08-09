@@ -4,6 +4,13 @@
 Ensures similar/confusable topics are separated by at least 3 other lessons
 in the curriculum to prevent associative interference (Math Academy Ch. 17).
 
+The review queue and curriculum generator read the `hebrew_confusability`
+table (node_a, node_b) and reorder so confusable pairs never sit adjacent.
+
+DB path resolution: honors the MEMORIZE_DB_PATH env var (same convention as
+web/routes/hebrew.py and lib/config.py); defaults to <repo>/data/memorize.db.
+Pass an explicit path as argv[1] to override both.
+
 Confusable pairs:
 - Shin (שׁ) vs Sin (שׂ) — same letter, different dot position
 - Samekh (ס) vs Sin (שׂ) — same S sound
@@ -15,12 +22,27 @@ Confusable pairs:
 - Zayin (ז) vs Tsade (צ) — similar shape in some scripts
 - Gimel (ג) vs Nun (נ) — similar shape
 - Dalet (ד) vs Resh (ר) — similar shape
+- Final vs non-final letter forms
+- Short vs long vowel pairs
+- Binyan/aspect pairs (active/passive, perfect/imperfect)
 """
 
+import os
 import sqlite3
+import sys
 from pathlib import Path
 
-MEM_DB = Path(__file__).parent.parent / "data" / "memorize.db"
+DEFAULT_MEM_DB = Path(__file__).parent.parent / "data" / "memorize.db"
+
+
+def _resolve_db_path():
+    """Honor MEMORIZE_DB_PATH, then argv[1], then the default path."""
+    if os.environ.get("MEMORIZE_DB_PATH"):
+        return Path(os.environ["MEMORIZE_DB_PATH"])
+    if len(sys.argv) > 1:
+        return Path(sys.argv[1])
+    return DEFAULT_MEM_DB
+
 
 # Confusable pairs with reason
 CONFUSABLE_PAIRS = [
@@ -61,8 +83,17 @@ CONFUSABLE_PAIRS = [
 ]
 
 
-def main():
-    conn = sqlite3.connect(str(MEM_DB))
+def seed(db_path):
+    """Insert all confusable pairs whose nodes exist. Idempotent.
+
+    Uses INSERT OR IGNORE guarded by a UNIQUE(node_a, node_b) index so
+    re-runs never duplicate rows and never delete manually-added pairs.
+    Returns the number of pairs actually inserted.
+    """
+    db_path = Path(db_path)
+    if not db_path.exists():
+        raise FileNotFoundError(f"Hebrew DB not found: {db_path}")
+    conn = sqlite3.connect(str(db_path))
 
     # Create confusability table
     conn.execute("""
@@ -76,30 +107,38 @@ def main():
             FOREIGN KEY (node_b) REFERENCES hebrew_nodes(id)
         )
     """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_hebrew_confusability_pair
+        ON hebrew_confusability(node_a, node_b)
+    """)
 
-    # Clear existing
-    conn.execute("DELETE FROM hebrew_confusability")
-
-    count = 0
+    inserted = 0
+    skipped = []
     for a, b, reason in CONFUSABLE_PAIRS:
-        # Check both nodes exist
         a_exists = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (a,)).fetchone()
         b_exists = conn.execute("SELECT id FROM hebrew_nodes WHERE id=?", (b,)).fetchone()
-        if not a_exists:
-            print(f"  SKIP {a}↔{b}: node '{a}' not found")
+        if not a_exists or not b_exists:
+            skipped.append((a, b))
             continue
-        if not b_exists:
-            print(f"  SKIP {a}↔{b}: node '{b}' not found")
-            continue
-        conn.execute(
-            "INSERT INTO hebrew_confusability (node_a, node_b, reason, strength) VALUES (?, ?, ?, 0.7)",
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO hebrew_confusability (node_a, node_b, reason, strength) VALUES (?, ?, ?, 0.7)",
             (a, b, reason))
-        count += 1
+        inserted += cur.rowcount
 
     conn.commit()
     conn.close()
 
-    print(f"Created {count} confusability pairs in hebrew_confusability table")
+    for a, b in skipped:
+        print(f"  SKIP {a}↔{b}: node not found (left for a future data pass)")
+    return inserted
+
+
+def main():
+    db_path = _resolve_db_path()
+    print(f"Seeding hebrew_confusability → {db_path}")
+    inserted = seed(db_path)
+    print(f"Inserted {inserted} new confusability pairs "
+          f"(of {len(CONFUSABLE_PAIRS)} defined)")
 
 
 if __name__ == '__main__':
