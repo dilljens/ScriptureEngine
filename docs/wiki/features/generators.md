@@ -231,6 +231,26 @@ scripts/evaluate_questions.py                   # Question quality evaluation
 | Rabbinic — Notarikon (acronym) | sod | Yes |
 | Numerological — Sacred Geometry | numerical | Yes |
 
+## Passage-Level Generators (Aug 2026)
+
+`generators/passage/` writes range connections to `passage_connections`
+(chunks, chapters, books — not verse↔verse):
+
+| Generator | Type written | Layer |
+|-----------|-------------|-------|
+| density_cluster | pericope_parallel | intertextual |
+| book_coherence | book_thematic | intertextual |
+| chiastic_promoter / macro_chiasm | macro_chiastic / macro_chiasm | structural |
+| narrative_parallel | narrative_parallel | interpretive |
+| interpretation_network | interpretation_chain | intertextual |
+| multilingual_network | translation_divergence | textual |
+| covenant_structure | covenant_structure | interpretive |
+| genre_tagger / theme_tracer | genre / theme pairs | interpretive |
+| typology / source_layers / reception_history / rhetorical / social_setting | curated lifts | interpretive |
+
+Runner: `scripts/build_passage_connections.py`. Rows carry a derived
+`granularity` label (verse|chunk|chapter|book) and feed graph traversal.
+
 ## Adding a New Generator
 
 1. Create `generators/my_generator.py` with a `run(conn, book_ids=None) -> int` function

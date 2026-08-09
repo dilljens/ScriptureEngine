@@ -27,7 +27,17 @@ The server supports both MCP protocol versions:
 
 Both dispatch to the same logic.
 
-## Available Tools (60)
+## Available Tools (65)
+
+### Chat & Agent Tools
+| Tool | Description |
+|------|-------------|
+| `scripture_batch_lookup` | Many verse refs in ONE call (max 50) — replaces repeated `scripture_verse` calls |
+| `scripture_research_parallel` | Deep parallel research — planner → ≤3 concurrent workers → merged findings |
+| `scripture_passage_connections` | Passage-level connections for a range (chunks, chapters, books) with granularity |
+| `scripture_chapter_connections` | All connections for a whole chapter (passage + verse count) |
+| `scripture_book_connections` | Book↔book connection summary with layer distribution |
+| `scripture_entity_card` | Precomputed materialized entity card (person.abraham, place.zion, …) |
 
 ### Core Scripture
 | Tool | Description |
@@ -126,8 +136,19 @@ Both dispatch to the same logic.
 | `scripture_assess_answer` | Submit answer and get next question |
 | `scripture_assess_progress` | Get current assessment progress |
 
-## Configuration
+## Chat pipeline (Aug 2026)
 
+`web/routes/chat.py` runs a tool-calling loop backed by `web/lib/subagents.py`:
+
+- **Parallel tools** — sync DB tools execute via `asyncio.to_thread` with per-call
+  connections; deterministic results cached in `lib/chat_cache.py`
+- **Subagent fan-out** — research-shaped questions go planner → ≤3 concurrent
+  workers → synthesizer (≈3 sequential LLM calls instead of up to 15);
+  `web/lib/subagents.py` + shared `_stream_final_response` helper
+- **Cross-granularity traversal** — `lib/api/graph.py` surfaces passage edges
+  (verse↔chapter/chunk/book) in `graph_reachable` and `graph_path`
+
+## Configuration
 In `.opencode/opencode.jsonc`:
 ```json
 "mcp": {

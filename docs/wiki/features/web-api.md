@@ -63,8 +63,21 @@ web/server.py
 | `ot_in_nt()` | `server.py:654` | Aggregated OT→NT quotation catalog |
 | `lexicon_search()` | `server.py:460` | Search lemma dictionary (Hebrew/English/Strong's) |
 
-## RAM Cache
+## Chat endpoints (Aug 2026)
 
+Chat lives in `web/routes/chat.py` (moved out of `server.py`):
+
+- `POST /api/v1/chat/stream` — SSE: tool rounds then streamed answer
+  (`tool_progress` / `thinking` / `text` / `done` events, heartbeats)
+- `POST /api/v1/chat/jobs` + `GET/POST …/{id}` — background jobs with seq-numbered
+  polling (survive phone minimize); `web/lib/jobs.py`
+- Pipeline: parallel threaded tools (`asyncio.to_thread` + `lib/chat_cache.py`),
+  subagent fan-out for research questions (`web/lib/subagents.py`), shared
+  `_stream_final_response` with finish_reason=length regenerate-once
+- Passage-level tools callable by the chat agent: `scripture_passage_connections`,
+  `scripture_chapter_connections`, `scripture_book_connections`
+
+## RAM Cache
 On startup, everything loads into memory:
 - 42K verses → `VERSE_CACHE` dict
 - 41K passage guides → `GUIDE_CACHE` dict  

@@ -110,11 +110,27 @@ Located in `lib/controls/`:
 
 ## Tool Registry Pattern
 
-The `lib/api/__init__.py` `TOOL_REGISTRY` is the **single source of truth** for all **60 tools**:
+The `lib/api/__init__.py` `TOOL_REGISTRY` is the **single source of truth** for all **65 tools**:
 - Both MCP server (`mcp_server.py`) and HTTP API (`web/server.py`) consume it
 - Adding a new tool = one registration + one function
 - Each tool has: `name`, `description`, `inputSchema` (JSON Schema)
 - Tools are discovered from `lib/api/*.py` modules, not manually listed
+
+## Connection Granularity (Aug 2026)
+
+Connections live at four granularities — verse-level `connections` and
+range-level `passage_connections` (chunks, chapters, books):
+
+- `lib/connections/types.py` registers 21 passage-level types (pericope_parallel,
+  book_thematic, macro_chiastic, narrative_parallel, interpretation_chain, …)
+- `lib/api/passage.py` derives a `granularity` label (verse|chunk|chapter|book)
+  per row and fixes embedded `--` ranges
+- `lib/api/graph.py` traverses passage edges: `graph_reachable` adds chapter/
+  chunk/book anchors at depth+1; `graph_path` finds mixed verse↔passage bridges
+- `lib/db.py` `passage_connections` has a `granularity` column (derived when empty)
+
+Chat helpers: `lib/chat_cache.py` (in-memory TTL tool-result cache) and
+`web/lib/subagents.py` (planner → parallel workers → synthesizer).
 
 ## Hebrew Assessment Engine
 
