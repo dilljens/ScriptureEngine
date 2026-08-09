@@ -4,6 +4,8 @@
 Pre-computes:
   1. entity_cooccurrence — which entities appear together in the same verse
   2. verse_similarity — which verses share the most entities + connection types
+  3. entity_cards — per-entity JSON cards (metadata, verses, connections,
+     co-occurring entities, gematria)
 
 Usage:
   .venv/bin/python3 scripts/build_materialized_views.py
@@ -265,6 +267,201 @@ def get_entity_cooccurrence(conn, entity_id, limit=20):
     return [dict(r) for r in rows]
 
 
+# ── Entity cards ─────────────────────────────────────────────────────
+
+def _strip_niqqud(text):
+    """Remove Hebrew vowel marks / cantillation for comparison."""
+    if not text:
+        return ""
+    return "".join(ch for ch in text if not (0x0590 <= ord(ch) <= 0x05CF))
+
+
+def _gematria_for_hebrew(conn, hebrew_name):
+    """Gematria values for an entity whose surface is a Hebrew word."""
+    if not hebrew_name or not hebrew_name.strip():
+        return None
+    target = hebrew_name.strip()
+    rows = conn.execute(
+        """
+        SELECT word_hebrew, value_standard, value_ordinal, value_reduced, verse_id
+        FROM gematria
+        WHERE word_hebrew = ?
+        LIMIT 5
+        """,
+        (target,),
+    ).fetchall()
+    # Fallback: niqqud-tolerant consonant match (compare on consonants only)
+    if not rows:
+        consonants = _strip_niqqud(target)
+        if consonants:
+            all_rows = conn.execute(
+                """
+                SELECT word_hebrew, value_standard, value_ordinal, value_reduced, verse_id
+                FROM gematria
+                WHERE word_hebrew IS NOT NULL
+                LIMIT 5000
+                """
+            ).fetchall()
+            rows = [r for r in all_rows if _strip_niqqud(r["word_hebrew"] or "") == consonants][:5]
+
+    if not rows:
+        return None
+
+    gematria = {
+        "word": rows[0]["word_hebrew"],
+        "values": [],
+        "verse_occurrences": len(rows),
+    }
+    seen_values = set()
+    for r in rows:
+        entry = {
+            "standard": r["value_standard"],
+            "ordinal": r["value_ordinal"],
+            "reduced": r["value_reduced"],
+        }
+        key = (entry["standard"], entry["ordinal"], entry["reduced"])
+        if key not in seen_values:
+            seen_values.add(key)
+            gematria["values"].append(entry)
+    return gematria
+
+
+def build_entity_cards(conn, reset=False, max_verses=500, max_connections=200, max_cooccurrence=20):
+    """Pre-compute one JSON card per entity.
+
+    Table: entity_cards (entity_id TEXT PRIMARY KEY, card_json, built_at).
+    Each card = entity metadata + aliases, all verses mentioning the entity,
+    connections among those verses, top co-occurring entities, and gematria
+    where the entity is a Hebrew surface.
+    """
+    if reset:
+        conn.execute("DROP TABLE IF EXISTS entity_cards")
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS entity_cards (
+            entity_id TEXT PRIMARY KEY,
+            card_json TEXT NOT NULL DEFAULT '{}',
+            built_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("DELETE FROM entity_cards")
+
+    entities = conn.execute(
+        "SELECT * FROM entity_links ORDER BY entity_id"
+    ).fetchall()
+
+    cards_built = 0
+    for ent in entities:
+        entity_id = ent["entity_id"]
+
+        # 1. Metadata
+        try:
+            aliases = json.loads(ent["aliases"] or "[]") if "aliases" in ent.keys() else []
+        except (ValueError, TypeError):
+            aliases = []
+        entity_info = {
+            "id": entity_id,
+            "type": ent["entity_type"],
+            "english_name": ent["english_name"],
+            "hebrew_name": ent["hebrew_name"],
+            "hebrew_strongs": ent["hebrew_strongs"],
+            "greek_name": ent["greek_name"],
+            "greek_strongs": ent["greek_strongs"],
+            "notes": ent["notes"],
+            "aliases": aliases,
+        }
+
+        # 2. All verses mentioning the entity
+        verse_rows = conn.execute(
+            """
+            SELECT ve.verse_id, ve.relationship_type, ve.confidence,
+                   v.text_english, b.title AS book_title, b.id AS book_id,
+                   v.chapter, v.verse
+            FROM verse_entities ve
+            JOIN verses v ON v.id = ve.verse_id
+            JOIN books b ON b.id = v.book_id
+            WHERE ve.entity_id = ?
+            ORDER BY b.position, v.chapter, v.verse
+            LIMIT ?
+            """,
+            (entity_id, max_verses),
+        ).fetchall()
+        verses = [
+            {
+                "verse": r["verse_id"],
+                "text": (r["text_english"] or "")[:200],
+                "book": r["book_title"],
+                "chapter": r["chapter"],
+                "verse_num": r["verse"],
+                "relationship": r["relationship_type"],
+                "confidence": r["confidence"],
+            }
+            for r in verse_rows
+        ]
+        verse_ids = [r["verse_id"] for r in verse_rows]
+
+        # 3. Connections among those verses (intra-set)
+        conn_rows = conn.execute(
+            """
+            SELECT c.source_verse, c.target_verse, c.layer, c.type, c.subtype,
+                   c.strength, c.confidence
+            FROM connections c
+            JOIN verse_entities ve1 ON ve1.verse_id = c.source_verse AND ve1.entity_id = ?
+            JOIN verse_entities ve2 ON ve2.verse_id = c.target_verse AND ve2.entity_id = ?
+            WHERE c.source_verse != c.target_verse
+            LIMIT ?
+            """,
+            (entity_id, entity_id, max_connections),
+        ).fetchall()
+        entity_connections = [dict(r) for r in conn_rows]
+
+        # 4. Top co-occurring entities
+        co_rows = conn.execute(
+            """
+            SELECT
+                CASE WHEN entity_a = ? THEN entity_b ELSE entity_a END AS related_entity,
+                frequency, avg_confidence,
+                el.english_name, el.entity_type
+            FROM entity_cooccurrence ec
+            JOIN entity_links el ON el.entity_id = CASE WHEN ec.entity_a = ? THEN ec.entity_b ELSE ec.entity_a END
+            WHERE ? IN (ec.entity_a, ec.entity_b)
+            ORDER BY frequency DESC
+            LIMIT ?
+            """,
+            (entity_id, entity_id, entity_id, max_cooccurrence),
+        ).fetchall()
+        co_occurring = [dict(r) for r in co_rows]
+
+        # 5. Gematria where the entity is a Hebrew surface
+        gematria = _gematria_for_hebrew(conn, ent["hebrew_name"])
+
+        card = {
+            "entity": entity_info,
+            "total_verses": len(verses),
+            "verses": verses,
+            "entity_connections": {
+                "total": len(entity_connections),
+                "connections": entity_connections[:100],
+            },
+            "co_occurring_entities": {
+                "total": len(co_occurring),
+                "entities": co_occurring,
+            },
+        }
+        if gematria is not None:
+            card["gematria"] = gematria
+
+        conn.execute(
+            "INSERT OR REPLACE INTO entity_cards (entity_id, card_json, built_at) VALUES (?, ?, datetime('now'))",
+            (entity_id, json.dumps(card, ensure_ascii=False)),
+        )
+        cards_built += 1
+
+    conn.commit()
+    print(f"  Entity cards: {cards_built}")
+    return cards_built
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build materialized views")
     parser.add_argument("--reset", action="store_true", help="Rebuild from scratch")
@@ -282,12 +479,17 @@ def main():
     print("\n--- Verse Similarity (entity-based) ---")
     build_verse_similarity(conn, reset=args.reset)
 
+    print("\n--- Entity Cards ---")
+    build_entity_cards(conn, reset=args.reset)
+
     # Stats
     ec_count = conn.execute("SELECT COUNT(*) FROM entity_cooccurrence").fetchone()[0]
     vs_count = conn.execute("SELECT COUNT(*) FROM verse_similarity").fetchone()[0]
+    ecard_count = conn.execute("SELECT COUNT(*) FROM entity_cards").fetchone()[0]
     print(f"\n  Summary:")
     print(f"    entity_cooccurrence: {ec_count} pairs")
     print(f"    verse_similarity:    {vs_count} pairs")
+    print(f"    entity_cards:        {ecard_count} cards")
 
     conn.close()
     print("\n  Done. These views are queried at runtime (no JOIN aggregation needed).")

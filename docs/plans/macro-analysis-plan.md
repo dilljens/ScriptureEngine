@@ -17,13 +17,13 @@ ScriptureEngine has **1.77M verse-to-verse connections** across 11 layers and 10
 | 1 | **Passage-level connections** | Verse ranges → verse ranges via density | ✅ Done | ★★★★★ |
 | 2 | **Genre clusters** | Passages/books by literary genre | Low | ★★★★★ |
 | 3 | **Thematic trajectories** | Passages by shared biblical theme | Medium | ★★★★★ |
-| 4 | **Inner-biblical interpretation network** | Quotation/allusion chains with transitive closure | Medium | ★★★★☆ |
-| 5 | **Narrative analogy (typology)** | OT type → NT antitype narrative arcs | Medium | ★★★★☆ |
-| 6 | **Source/critical layers** | Passages by scholarly source attribution | High | ★★★☆☆ |
-| 7 | **Multilingual textual network** | MT ↔ LXX ↔ Vulgate ↔ Peshitta passage alignment | Medium | ★★★☆☆ |
-| 8 | **Social setting / Sitz im Leben** | Passages by social context | High | ★★★☆☆ |
-| 9 | **Rhetorical analysis** | Passages by rhetorical structure | Medium | ★★★☆☆ |
-| 10 | **Reception history** | Passages linked through interpretive tradition | Very High | ★★★☆☆ |
+| 4 | **Inner-biblical interpretation network** | Quotation/allusion chains with transitive closure | Medium | ★★★★☆  ✅ |
+| 5 | **Narrative analogy (typology)** | OT type → NT antitype narrative arcs | Medium | ★★★★☆  ✅ |
+| 6 | **Source/critical layers** | Passages by scholarly source attribution | High | ★★★☆☆  ✅ |
+| 7 | **Multilingual textual network** | MT ↔ LXX ↔ Vulgate ↔ Peshitta passage alignment | Medium | ★★★☆☆  ✅ (translation-family divergence; LXX ingest still a gap) |
+| 8 | **Social setting / Sitz im Leben** | Passages by social context | High | ★★★☆☆  ✅ |
+| 9 | **Rhetorical analysis** | Passages by rhetorical structure | Medium | ★★★☆☆  ✅ |
+| 10 | **Reception history** | Passages linked through interpretive tradition | Very High | ★★★☆☆  ✅ (conservative: existing disagreement data only) |
 
 ---
 

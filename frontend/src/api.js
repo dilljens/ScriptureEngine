@@ -147,6 +147,33 @@ export function currentSessionToken() {
   try { return localStorage.getItem('scripture_session_token') || '' } catch { return '' }
 }
 
+/**
+ * Resolve the session-bound user id for per-user Hebrew learning data.
+ *
+ * The stored session token binds a caller to a real account server-side; the
+ * Hebrew reads (curriculum / gamification / review-queue / verb-drill) take
+ * `user_id`, while the writes (progress / fsrs-review / diagnostic-apply) take
+ * `session_token` in the body. This helper resolves the real user id from the
+ * token via /auth/me and returns 'default' (anonymous) when there is no valid
+ * session — so anonymous learners never hit a hard failure on a stale/absent
+ * token. Mirrors the getSessionToken() no-op-when-absent fallback.
+ */
+let _hebrewUserCache = null
+export function resetHebrewSessionUser() { _hebrewUserCache = null }
+
+export async function hebrewSessionUser() {
+  if (_hebrewUserCache) return _hebrewUserCache
+  const token = currentSessionToken()
+  if (!token) { _hebrewUserCache = 'default'; return _hebrewUserCache }
+  try {
+    const r = await fetchJSON(`/auth/me?session_token=${encodeURIComponent(token)}`)
+    _hebrewUserCache = r?.data?.user_id || 'default'
+  } catch {
+    _hebrewUserCache = 'default' // 401 invalid/expired or offline → anonymous
+  }
+  return _hebrewUserCache
+}
+
 const userQuery = () => {
   return `user_id=${encodeURIComponent(currentUserId())}`
 }

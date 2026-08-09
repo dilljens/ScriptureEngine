@@ -25,6 +25,12 @@ TEMPORAL_DECAY_HALF_LIFE = {
     "text": None,                # Text-explicit: never decays
 }
 
+# Access damping constant: effective_years = years / (1 + access_count * DAMPING).
+# Each access (query/study-guide read) buys back a fraction of the elapsed time
+# against decay — a frequently-read edge ages at 1/(1+n·0.2) the rate of an
+# unread one. Tuned so ~5 reads halve the aging rate; 10 reads cut it to a third.
+ACCESS_DAMPING = 0.2
+
 
 def half_life_for(discovered_by):
     """Get half-life in years for a discovery method."""
@@ -46,16 +52,31 @@ def years_elapsed(created_at):
         return 0
 
 
-def apply_temporal_decay(confidence, discovered_by, created_at):
+def _effective_years(created_at, access_count=0):
+    """Elapsed years, damped by read access.
+
+    Reads slow decay: effective_years = years / (1 + access_count * ACCESS_DAMPING).
+    access_count defaults to 0 → effective_years == raw years (backward compatible).
+    """
+    years = years_elapsed(created_at)
+    if years <= 0:
+        return 0.0
+    access = max(0, int(access_count or 0))
+    return years / (1 + access * ACCESS_DAMPING)
+
+
+def apply_temporal_decay(confidence, discovered_by, created_at, access_count=0):
     """Apply exponential decay to confidence based on elapsed time.
     
     Uses half-life model: confidence_decayed = confidence × 0.5^(years/half_life)
     Text-explicit connections (half_life=None) never decay.
+    Reads (access_count) slow the effective age — see _effective_years.
     
     Args:
         confidence: original 0.0-1.0 confidence
         discovered_by: discovery method string
         created_at: date string or datetime
+        access_count: number of reads since creation (default 0 = no damping)
     
     Returns:
         Decayed confidence value.
@@ -63,26 +84,28 @@ def apply_temporal_decay(confidence, discovered_by, created_at):
     hl = half_life_for(discovered_by)
     if hl is None:
         return confidence  # Never decays
-    
-    elapsed = years_elapsed(created_at)
+
+    elapsed = _effective_years(created_at, access_count)
     if elapsed <= 0:
         return confidence
-    
+
     decay_factor = 0.5 ** (elapsed / hl)
     return round(confidence * decay_factor, 3)
 
 
-def get_staleness(created_at, discovered_by):
+def get_staleness(created_at, discovered_by, access_count=0):
     """Classify connection staleness.
     
     Returns one of: 'fresh', 'aging', 'stale', 'critical'
+    Reads (access_count) slow the effective age, so a read edge stays
+    fresher longer than an unread one of the same age.
     """
     hl = half_life_for(discovered_by)
     if hl is None:
         return "fresh"  # Text never stales
-    
-    elapsed = years_elapsed(created_at)
-    
+
+    elapsed = _effective_years(created_at, access_count)
+
     if elapsed < hl * 0.5:
         return "fresh"
     elif elapsed < hl:
@@ -93,20 +116,22 @@ def get_staleness(created_at, discovered_by):
         return "critical"
 
 
-def needs_revalidation(created_at, discovered_by, threshold=0.3):
+def needs_revalidation(created_at, discovered_by, threshold=0.3, access_count=0):
     """Check if a connection falls below the confidence threshold after decay.
     
     Returns True if the connection's decayed confidence would be below threshold.
+    Reads (access_count) slow the effective age, so frequently-read edges are
+    revalidated less aggressively.
     """
     # We check if even full original confidence would decay below threshold
-    elapsed = years_elapsed(created_at)
+    elapsed = _effective_years(created_at, access_count)
     if elapsed <= 0:
         return False
-    
+
     hl = half_life_for(discovered_by)
     if hl is None:
         return False  # Text never needs revalidation
-    
+
     # Original confidence 1.0 would decay to...
     max_decayed = 1.0 * (0.5 ** (elapsed / hl))
     return max_decayed < threshold

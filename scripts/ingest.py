@@ -64,39 +64,71 @@ BOOK_IDS_PGP = {
 
 NS = "{http://www.bibletechnologies.net/2003/OSIS/namespace}"
 
+# ── OSHB / morphHB source pinning ──────────────────────────────────────────
+# The Hebrew OT pointed text + morphology come from the Open Scriptures Hebrew
+# Bible (morphhb), WLC-based OSIS XML. The commit below is pinned so maqqef
+# restoration (Track A of docs/plans/hebrew-content-followups.md) never silently
+# re-tokenizes the OT: the aligned/cloze/passage layers key on word_index, so a
+# reingest MUST preserve per-verse token counts. The maqqef is stored in the XML
+# as `<seg type="x-maqqef">־</seg>` BETWEEN <w> tokens; parse_morphhb_xml()
+# attaches it to the preceding token (the standard WLC convention) WITHOUT
+# changing the token count or word_index sequence.
+#
+# SHA-256 manifest = sha256 over each wlc/*.xml (excluding VerseMap.xml) in
+# filename order, hashed again as a joined string. Verify a vendor with:
+#   python3 -c "import hashlib;from pathlib import Path;w=Path('data/raw/morphhb/wlc');
+#   h=[hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(w.glob('*.xml'))
+#      if f.name!='VerseMap.xml'];
+#   print(hashlib.sha256('\n'.join(h).encode()).hexdigest())"
+OSHB_SOURCE = {
+    "id": "oshb-morphhb",
+    "url": "https://github.com/openscriptures/morphhb",
+    "commit": "3d15126fb1ef74867fc1434be1942e837932691f",
+    "wlc_manifest_sha256": "f32cf0c442ec090f54ed13c9d48a0809e6be33cd5926dbefac695ccb8472e0cd",
+    "license": "WLC text: public domain; OSHB morphology/lemmas: CC BY 4.0",
+}
 
-def extract_hebrew_text(words):
-    """Rebuild Hebrew text from OSIS word elements."""
-    parts = []
-    for w in words:
-        text = (w.text or "").strip()
-        if text:
-            parts.append(text)
-    return " ".join(parts)
+MAQQEF = "\u05be"
 
 
-def extract_hebrew_words(words):
-    """Extract individual Hebrew words from OSIS w elements."""
-    results = []
-    for i, w in enumerate(words):
-        text = (w.text or "").strip()
-        if text:
-            lemma = w.get("lemma", "")
-            morph = w.get("morph", "")
-            results.append({
-                "index": i,
-                "word": text,
-                "lemma": lemma,
-                "morph": morph,
-            })
-    return results
+def extract_hebrew_words_from_verse(verse_elem):
+    """Extract <w> tokens from a verse, preserving OSHB word_index.
+
+    The morphhb XML stores maqqef as `<seg type="x-maqqef">־</seg>` BETWEEN two
+    <w> elements. It is attached as a suffix to the PRECEDING token (the WLC
+    convention, e.g. `אֶת` + seg → `אֶת־`), never as a new token — so the
+    per-verse token count and the 0..n-1 word_index sequence are unchanged.
+    This is the invariant the alignment/cloze/passage layers depend on.
+    """
+    tokens = []
+    for child in verse_elem:
+        if child.tag == f"{NS}w":
+            text = (child.text or "").strip()
+            if text:
+                tokens.append({
+                    "index": len(tokens),
+                    "word": text,
+                    "lemma": child.get("lemma", ""),
+                    "morph": child.get("morph", ""),
+                })
+        elif child.tag == f"{NS}seg" and child.get("type") == "x-maqqef":
+            seg_text = (child.text or "").strip()
+            if seg_text and tokens:
+                tokens[-1]["word"] += seg_text
+    return tokens
+
+
+def extract_hebrew_text(words_data):
+    """Rebuild Hebrew text from extracted token dicts (space-separated tokens)."""
+    return " ".join(w["word"] for w in words_data if w["word"])
 
 
 def parse_morphhb_xml(filepath):
     """Parse a morphhb XML file and yield (chapter, verse, hebrew_text, words_data).
 
     The morphhb XML uses <chapter> tags for chapters and <verse> tags
-    that directly contain <w> word elements.
+    that directly contain <w> word elements. Maqqef `<seg>` elements are folded
+    into the preceding token so text/gematria stay aligned to the same word_index.
     """
     tree = ET.parse(filepath)
     root = tree.getroot()
@@ -130,16 +162,9 @@ def parse_morphhb_xml(filepath):
             except (ValueError, IndexError):
                 continue
 
-            # Collect words directly under this verse element
-            words = []
-            for w in verse_elem.findall(f"{NS}w"):
-                text = (w.text or "").strip()
-                if text:
-                    words.append(w)
-
-            if words:
-                words_data = extract_hebrew_words(words)
-                hebrew_text = extract_hebrew_text(words)
+            words_data = extract_hebrew_words_from_verse(verse_elem)
+            if words_data:
+                hebrew_text = extract_hebrew_text(words_data)
                 yield chapter, verse_num, hebrew_text, words_data
 
 
@@ -476,6 +501,80 @@ def ingest_hebrew(conn):
             print(f"  {filename}: NOT FOUND")
 
 
+def verify_maqqef_token_integrity(conn, hebrew_dir=None, sample_books=None):
+    """Regression gate for the maqqef reingestion (Track A).
+
+    The maqqef-preserving parser must never re-tokenize the OT: every verse in
+    the database must keep the exact same token count / word_index sequence as
+    the pinned morphHB source, with the ONLY difference being the U+05BE suffix
+    folded onto the preceding token. This function compares the DB's per-verse
+    gematria rows against the pinned source for a sampled book set (defaults to
+    the whole OT when sample_books is None) and returns the mismatches.
+
+    Returns (mismatches, stats) where stats carries the counts used by tests.
+    """
+    if hebrew_dir is None:
+        hebrew_dir = RAW_DIR / "morphhb" / "wlc"
+    hebrew_dir = Path(hebrew_dir)
+
+    hebrew_file_map = {
+        "Gen.xml": "gen", "Exod.xml": "exo", "Lev.xml": "lev", "Num.xml": "num",
+        "Deut.xml": "deu", "Josh.xml": "josh", "Judg.xml": "judg", "Ruth.xml": "ruth",
+        "1Sam.xml": "1sam", "2Sam.xml": "2sam", "1Kgs.xml": "1kgs", "2Kgs.xml": "2kgs",
+        "1Chr.xml": "1chr", "2Chr.xml": "2chr", "Ezra.xml": "ezra", "Neh.xml": "neh",
+        "Esth.xml": "esth", "Job.xml": "job", "Ps.xml": "psa", "Prov.xml": "prov",
+        "Eccl.xml": "eccl", "Song.xml": "song", "Isa.xml": "isa",
+        "Jer.xml": "jer", "Lam.xml": "lam", "Ezek.xml": "ezek", "Dan.xml": "dan",
+        "Hos.xml": "hos", "Joel.xml": "joel", "Amos.xml": "amos", "Obad.xml": "obad",
+        "Jonah.xml": "jonah", "Mic.xml": "mic", "Nah.xml": "nah", "Hab.xml": "hab",
+        "Zeph.xml": "zeph", "Hag.xml": "hag", "Zech.xml": "zech", "Mal.xml": "mal",
+    }
+    if sample_books is not None:
+        want = set(sample_books)
+        hebrew_file_map = {f: b for f, b in hebrew_file_map.items() if b in want}
+        if not hebrew_file_map:
+            raise ValueError("no source files for sample_books")
+
+    mismatches = []
+    verses_checked = 0
+    maqqef_tokens = 0
+    for filename, book_id in hebrew_file_map.items():
+        filepath = hebrew_dir / filename
+        if not filepath.exists():
+            mismatches.append(f"{filename}: pinned source not found at {filepath}")
+            continue
+        db_counts = {
+            r["verse_id"]: r["c"]
+            for r in conn.execute(
+                "SELECT g.verse_id, COUNT(*) AS c FROM gematria g "
+                "JOIN verses v ON v.id=g.verse_id "
+                "JOIN books b ON b.id=v.book_id WHERE b.id=? GROUP BY g.verse_id",
+                (book_id,),
+            )
+        }
+        for chapter, verse, _text, words_data in parse_morphhb_xml(filepath):
+            vid = f"{book_id}.{chapter}.{verse}"
+            verses_checked += 1
+            maqqef_tokens += sum(1 for w in words_data if w["word"].endswith(MAQQEF))
+            expected = len(words_data)
+            actual = db_counts.get(vid)
+            if actual != expected:
+                mismatches.append(f"{vid}: DB {actual} tokens vs source {expected}")
+            elif actual is not None:
+                # word_index must be exactly 0..n-1 in order (no gaps/dups).
+                idxs = [r[0] for r in conn.execute(
+                    "SELECT word_index FROM gematria WHERE verse_id=? ORDER BY word_index",
+                    (vid,),
+                )]
+                if idxs != list(range(actual)):
+                    mismatches.append(f"{vid}: word_index sequence not contiguous 0..{actual - 1}")
+    return mismatches, {
+        "verses_checked": verses_checked,
+        "maqqef_tokens_in_source": maqqef_tokens,
+        "pinned": OSHB_SOURCE,
+    }
+
+
 def build_initial_connections(conn):
     """Build some initial connections automatically."""
     print("\n--- Building initial connections ---")
@@ -551,6 +650,44 @@ def compute_verse_gematria_totals(conn):
 
 
 def main():
+    import argparse
+    import sqlite3 as _sqlite3
+
+    parser = argparse.ArgumentParser(description="Ingest scripture data")
+    parser.add_argument(
+        "--check-hebrew-tokens", action="store_true",
+        help="Run the maqqef token-integrity regression gate against an existing DB (no reingest)",
+    )
+    parser.add_argument(
+        "--sample-books", default="",
+        help="Comma-separated OT book ids to scope the token check (default: all OT books)",
+    )
+    parser.add_argument("--db", default=str(DB_PATH), help="Path to the scripture DB")
+    args = parser.parse_args()
+
+    if args.check_hebrew_tokens:
+        print("=" * 60)
+        print("Maqqef token-integrity regression gate")
+        print("=" * 60)
+        books = [b.strip() for b in args.sample_books.split(",") if b.strip()] or None
+        conn = _sqlite3.connect(args.db)
+        conn.row_factory = _sqlite3.Row
+        mismatches, stats = verify_maqqef_token_integrity(conn, sample_books=books)
+        conn.close()
+        pinned = stats["pinned"]
+        print(f"  Pinned source: {pinned['url']} @ {pinned['commit']}")
+        print(f"  WLC manifest sha256: {pinned['wlc_manifest_sha256']}")
+        print(f"  Verses checked: {stats['verses_checked']}")
+        print(f"  Maqqef tokens in pinned source: {stats['maqqef_tokens_in_source']}")
+        if mismatches:
+            print(f"  FAIL: {len(mismatches)} mismatch(es) — reingest would re-tokenize the OT")
+            for m in mismatches[:50]:
+                print(f"    {m}")
+            return 1
+        print("  PASS: per-verse token counts and word_index sequences match "
+              "the pinned OSHB source")
+        return 0
+
     print("=" * 60)
     print("Scripture Knowledge Engine — Data Ingest")
     print("=" * 60)

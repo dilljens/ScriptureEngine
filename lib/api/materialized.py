@@ -4,7 +4,13 @@ These queries use pre-computed tables created by:
   .venv/bin/python3 scripts/build_materialized_views.py
 """
 
+import json
+
 from lib.db import get_db
+
+
+def _materialized_error(what):
+    return {"error": f"Materialized view not available. Run: python3 scripts/build_materialized_views.py ({what})"}
 
 
 def similar_verses(verse_id: str, limit: int = 20, min_score: float = 0.1):
@@ -53,3 +59,41 @@ def entity_cooccurrence(entity_id: str, limit: int = 20):
     except Exception as e:
         conn.close()
         return {"error": f"Materialized view not available. Run: python3 scripts/build_materialized_views.py ({e})"}
+
+
+def entity_card(conn=None, entity=None):
+    """Get the pre-computed materialized card for an entity.
+
+    The card bundles entity metadata, aliases, all verses mentioning the
+    entity, connections among those verses, top co-occurring entities, and
+    gematria where the entity is a Hebrew surface.
+
+    Registry contract signature: (conn, entity). Opens its own connection when
+    conn is None (direct API style).
+
+    Args:
+        conn: SQLite connection (optional — one is opened if not given).
+        entity: canonical entity ID (person.abraham, place.zion, ...)
+
+    Returns: dict card, or {"error": ...} if the view is not built / unknown.
+    """
+    if not entity:
+        return {"error": "entity required"}
+    close_conn = conn is None
+    if conn is None:
+        conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT entity_id, card_json, built_at FROM entity_cards WHERE entity_id = ?",
+            (entity,),
+        ).fetchone()
+        if not row:
+            return {"error": f"Entity card not found: {entity}"}
+        card = json.loads(row["card_json"])
+        card["built_at"] = row["built_at"]
+        return card
+    except Exception as e:
+        return _materialized_error(e)
+    finally:
+        if close_conn:
+            conn.close()

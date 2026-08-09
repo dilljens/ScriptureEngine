@@ -419,11 +419,11 @@ This already exists in `_keyword_search()` as fallback. Considered done.
 | **P1** | Generator tier/cost metadata | ~50 | 🔴 Now |
 | **P2** | Tiered pipeline scheduler | ~170 | 🔴 Now |
 | **P3** | Write hooks → lightweight cascade | ~100 | 🔴 Now |
-| **P4** | Entity cards (materialized per-entity) | ~150 | 🟠 Next |
-| **P5** | Consolidation pipeline (dedup + merge) | ~200 | 🟠 Next |
+| **P4** | Entity cards (materialized per-entity) | ~150 | ✅ Done |
+| **P5** | Consolidation pipeline (dedup + merge) | ~200 | ✅ Done |
 | **P6** | Conversation → entity promotion | ~120 | 🟠 Next |
-| **P7** | Temporal decay enhancement | ~30 | 🟡 Future |
-| | **Total remaining** | **~820 lines** | |
+| **P7** | Temporal decay enhancement | ~30 | ✅ Done |
+| | **Total remaining** | **~490 lines** | |
 
 ### Two Highest-Impact Immediate Changes
 

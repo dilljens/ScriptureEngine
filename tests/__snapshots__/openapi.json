@@ -6218,6 +6218,44 @@
         }
       }
     },
+    "/api/v1/entities/{entity_id}": {
+      "get": {
+        "summary": "Get Entity Card",
+        "description": "Get the materialized entity card for a canonical entity ID.\n\nUses lib.db.get_db() so the endpoint honors the configured DB path\n(test DB override included), unlike get_conn()'s hardcoded prod path.\nReturns {\"ok\": True, \"data\": <card>}; 404 for unknown entities or\na missing/unbuilt entity_cards view.",
+        "operationId": "get_entity_card_api_v1_entities__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/memorize/queue": {
       "get": {
         "summary": "List Queue",

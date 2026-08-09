@@ -1140,3 +1140,31 @@ def submit_open_question(body: dict):
         passage_context=passage_context,
     )
     return grade_answer(grading_req)
+
+
+@router.get("/api/v1/entities/{entity_id:path}")
+def get_entity_card(entity_id: str):
+    """Get the materialized entity card for a canonical entity ID.
+
+    Uses lib.db.get_db() so the endpoint honors the configured DB path
+    (test DB override included), unlike get_conn()'s hardcoded prod path.
+    Returns {"ok": True, "data": <card>}; 404 for unknown entities or
+    a missing/unbuilt entity_cards view.
+    """
+    from lib.db import get_db as lib_get_db
+    from lib.api.materialized import entity_card as build_card
+
+    conn = lib_get_db()
+    try:
+        # Resolve entity existence first for a clean 404
+        exists = conn.execute(
+            "SELECT 1 FROM entity_links WHERE entity_id = ?", (entity_id,)
+        ).fetchone()
+        if not exists:
+            raise HTTPException(status_code=404, detail=f"Entity not found: {entity_id}")
+        card = build_card(conn, entity=entity_id)
+    finally:
+        conn.close()
+    if isinstance(card, dict) and "error" in card:
+        raise HTTPException(status_code=404, detail=card["error"])
+    return {"ok": True, "data": card}
