@@ -18,8 +18,10 @@ sys.path.insert(0, str(BASE_DIR))
 
 from lib.api import call_tool
 from lib.api.staging import stage_connection, stage_study
+from lib.chat_cache import tool_cache
 from lib.db import get_db
 from web.lib import jobs as _jobs
+from web.lib import subagents as _subagents
 
 router = APIRouter()
 
@@ -102,6 +104,22 @@ TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
+            "name": "scripture_batch_lookup",
+            "description": "Look up MANY verses in ONE call — pass a list of refs (e.g. ['gen.1.1', 'john.1.1', 'isa.6.1']) and get all their text/gematria/connections at once. ALWAYS prefer this over calling scripture_verse repeatedly for multiple verses.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "verses": {"type": "array", "items": {"type": "string"},
+                               "description": "Verse refs like 'gen.1.1', 'john.3.16' (max 50)"},
+                    "version": {"type": "string", "description": "Preferred Bible version (WEB, KJV, etc.)"},
+                },
+                "required": ["verses"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "scripture_passage_guide",
             "description": "Get pre-computed passage guide — all connections, gematria, and quality distribution",
             "parameters": {
@@ -110,6 +128,51 @@ TOOL_DEFINITIONS = [
                     "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
                 },
                 "required": ["verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_passage_connections",
+            "description": "Get PASSAGE-LEVEL connections for a verse range (chunks, chapters, books) — the bigger picture beyond single verses. Pass the range of the passage you're studying (e.g. start 'gen.1.1' end 'gen.1.31' for the chapter). Returns chapter↔chapter, chunk↔chapter, and chapter↔book connections with granularity labels.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start": {"type": "string", "description": "Start verse ID (e.g. 'gen.1.1')"},
+                    "end": {"type": "string", "description": "End verse ID (e.g. 'gen.1.31')"},
+                    "min_density": {"type": "number", "description": "Minimum density filter (0-1)"},
+                },
+                "required": ["start", "end"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_chapter_connections",
+            "description": "Get ALL connections for a whole CHAPTER — passage-level connections to other chapters/books plus verse-level connection count. Use when the user asks about an entire chapter's relationships. Returns chapter-level connections with granularity (chunk/chapter/book).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+                    "chapter": {"type": "integer", "description": "Chapter number"},
+                },
+                "required": ["book", "chapter"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_book_connections",
+            "description": "Get BOOK-LEVEL connection summary — which whole books this book connects to (book↔book connections), with layer distribution. Use for big-picture questions like 'how does Genesis connect to Revelation' or 'what books parallel Isaiah'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+                },
+                "required": ["book"],
             },
         },
     },
@@ -603,6 +666,20 @@ TOOL_DEFINITIONS = [
                     "max_verses": {"type": "integer", "default": 30, "description": "Max verses to collect"},
                 },
                 "required": ["seed_verse"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_research_parallel",
+            "description": "DEEP PARALLEL RESEARCH — breaks the query into independent sub-tasks, runs them concurrently, and returns merged findings in ONE call. Use for broad research questions spanning multiple topics/books that would otherwise need many sequential lookups. Slower than a single lookup but much faster than doing the work serially.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The research question to parallelize (e.g. 'trace atonement imagery from Leviticus through Hebrews')"},
+                },
+                "required": ["query"],
             },
         },
     },
@@ -1110,6 +1187,7 @@ class ChatRequest(BaseModel):
     disabled_tools: list[str] = []
     scopes: list[str] = []  # opt-in scopes: "cfm", "conference" (default none = off)
     mode: str = "chat"  # "chat", "hebrew", "knowledge"
+    subagents: bool = True  # planner → parallel workers → synthesizer for research questions
     session_id: str = ""            # conversation session — job saves the completed answer here
     client_message_id: str = ""     # user message id (idempotency context for the save)
 
@@ -1254,20 +1332,13 @@ async def llm_chat(body: ChatRequest, request: Request):
         staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
         ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
 
-        # Run read-only tools in parallel
-        async def run_ro(tc, conn=conn):
-            fn_name = tc["function"]["name"]
+        # Run read-only tools in parallel (threaded — sync DB tools off the loop)
+        async def run_ro(tc):
             try:
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            # Scope gate: a scoped tool must have been opted into via body.scopes
-            if not _scope_allowed(fn_name, body.scopes):
-                return tc, {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
-            try:
-                return tc, call_tool(fn_name, conn, **fn_args)
-            except Exception as e:
-                return tc, {"error": str(e)}
+            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
 
         ro_results = []
         if ro_calls:
@@ -1436,6 +1507,96 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
     return payload
 
 
+def _run_tool_thread(fn_name, fn_args, scopes):
+    """Run one read-only chat tool in a worker thread (own DB connection).
+
+    Executes off the event loop so concurrent tool calls in a round actually
+    run in parallel — the old asyncio.gather over the synchronous call_tool
+    just ran them serially on the loop (no await points). sqlite3 connections
+    aren't thread-safe, so each call opens its own via get_db() and closes it
+    inside the thread. Deterministic tools pass results through the in-memory
+    tool cache so repeat lookups skip the DB entirely.
+    """
+    if fn_name == "scripture_research_parallel":
+        # LLM-orchestrated parallel research — handled here (not in the tool
+        # registry) because it drives its own nested planner/worker LLM calls.
+        return _run_research_parallel(fn_args)
+    if not _scope_allowed(fn_name, scopes):
+        return {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
+    cached = tool_cache.get(fn_name, fn_args)
+    if cached is not None:
+        return cached
+    try:
+        conn = get_db()
+        try:
+            result = call_tool(fn_name, conn, **fn_args)
+        finally:
+            conn.close()
+        tool_cache.set(fn_name, fn_args, result)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def _research_llm(payload):
+    """Standalone DeepSeek call for the research_parallel tool. Uses its own
+    HTTP client + event loop — the shared _http_client is bound to the server's
+    loop and this runs inside a worker thread's fresh loop."""
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        resp = await client.post(
+            f"{DEEPSEEK_BASE}/chat/completions",
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+            json=payload,
+        )
+        return resp.json()
+
+
+def _run_research_parallel(args, call_llm=None):
+    """Run the subagent worker pool as a synchronous tool call.
+
+    Spawns its own event loop in the calling thread: planner → parallel
+    workers → merged findings, all in one tool call. The chat agent decides
+    when to invoke it for deep parallel research (the pipeline's own fan-out
+    covers most cases; this is the explicit lever).
+    """
+    query = str(args.get("query") or "").strip()
+    if not query:
+        return {"error": "query is required"}
+    llm = call_llm or _research_llm
+
+    async def _inner():
+        tool_defs = _filter_tools(TOOL_DEFINITIONS, [], [])
+        plan = await _subagents.plan_research(
+            llm, [{"role": "user", "content": query}],
+            [t["function"]["name"] for t in tool_defs])
+        if not plan:
+            return {"error": "planner could not break down the query — try scripture_research instead"}
+
+        async def _run_tool(tc):
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            return await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, [])
+
+        async def _noop(ev):
+            pass
+
+        reports = await _subagents.run_workers(plan, tool_defs, [], llm, _run_tool, _noop)
+        parts = []
+        for r in reports:
+            if r.get("error") and not r.get("content"):
+                parts.append(f"[worker {r['task_id']} failed: {r['error']}]")
+            else:
+                parts.append(r.get("content") or "(no findings)")
+        return {"tasks": len(plan), "findings": parts}
+
+    try:
+        return asyncio.run(_inner())
+    except Exception as e:
+        return {"error": f"research_parallel failed: {e}"}
+
+
 def _sse_event(data: dict) -> str:
     """Format a single SSE event."""
     return f"data: {json.dumps(data, default=str)}\n\n"
@@ -1480,121 +1641,14 @@ async def _heartbeat_lines(resp, interval: float = 15.0):
             task.cancel()
 
 
-async def _chat_pipeline(body, msgs):
-    """Run the full chat pipeline — tool-calling rounds (non-streaming) then the
-    streamed final response — yielding plain event dicts:
-      heartbeat / tool_progress / thinking / text / truncated / error / done
+async def _stream_final_response(body, msgs, tool_results):
+    """Stream the final LLM response for a completed message list.
 
-    Shared by the SSE stream endpoint and the background job runner, so both
-    paths behave identically (finish_reason guard, truncation retry, heartbeats).
-    `body` is a ChatRequest (or dict with the same fields); `msgs` is the
-    prepared message list (system prompt injected, budget applied).
+    Extracted from _chat_pipeline so both the sequential tool-loop path and the
+    subagent fan-out path share identical behavior: streaming (with heartbeat),
+    finish_reason="length" regenerate-once, forced summary for stub responses,
+    and the `done` event with merged usage + cost. Yields plain event dicts.
     """
-    tool_results = []
-
-    # ── Tool-calling rounds (non-streaming) ──
-    payload = _build_payload(body, msgs, stream=False)
-    max_tool_rounds = 15
-    rounds = 0
-
-    while rounds < max_tool_rounds:
-        # DeepSeek thinking rounds can take minutes with zero bytes on the
-        # wire — emit heartbeats so browsers/proxies don't idle-timeout.
-        round_task = asyncio.create_task(call_deepseek(payload))
-        while not round_task.done():
-            _done, _pending = await asyncio.wait({round_task}, timeout=15)
-            if not round_task.done():
-                yield {"type": "heartbeat"}
-        data = round_task.result()
-
-        if "error" in data:
-            err = data["error"]
-            message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-            yield {"type": "error", "message": message}
-            return
-
-        choice = data.get("choices", [{}])[0]
-        msg = choice.get("message", {})
-        tool_calls = msg.get("tool_calls")
-
-        if not tool_calls:
-            # No more tool calls — break to streaming
-            break
-
-        # Yield tool progress
-        yield {"type": "tool_progress", "tools": [
-            {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
-            for tc in tool_calls
-        ]}
-
-        msgs.append(msg)
-        conn = get_db()
-
-        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
-        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
-
-        async def run_ro(tc, conn=conn):
-            fn_name = tc["function"]["name"]
-            try:
-                fn_args = json.loads(tc["function"]["arguments"])
-            except json.JSONDecodeError:
-                fn_args = {}
-            if not _scope_allowed(fn_name, body.scopes):
-                return tc, {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
-            try:
-                return tc, call_tool(fn_name, conn, **fn_args)
-            except Exception as e:
-                return tc, {"error": str(e)}
-
-        ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
-
-        staging_results = []
-        for tc in staging_calls:
-            fn_name = tc["function"]["name"]
-            try:
-                fn_args = json.loads(tc["function"]["arguments"])
-            except json.JSONDecodeError:
-                fn_args = {}
-            try:
-                if fn_name == "scripture_stage_connection":
-                    result = stage_connection(conn, submitted_by="llm", **fn_args)
-                elif fn_name == "scripture_stage_study":
-                    steps = json.loads(fn_args.pop("steps_json", "[]"))
-                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
-                else:
-                    result = {"error": f"Unknown staging tool: {fn_name}"}
-            except Exception as e:
-                result = {"error": str(e)}
-            staging_results.append((tc, result))
-
-        all_results = ro_results + staging_results
-        for tc, result in all_results:
-            result_str = json.dumps(result, default=str, ensure_ascii=False)
-            if len(result_str) > 3000:
-                result_str = result_str[:3000] + '..." [truncated]'
-            tool_results.append({
-                "id": tc["id"],
-                "name": tc["function"]["name"],
-                "args": json.loads(tc["function"]["arguments"]),
-                "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
-            })
-            msgs.append({
-                "role": "tool",
-                "content": result_str,
-                "tool_call_id": tc["id"],
-            })
-
-        conn.close()
-
-        # Budget check
-        est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
-        if est > MAX_PROMPT_TOKENS * 0.8:
-            msgs = apply_context_budget(msgs)
-
-        payload["messages"] = msgs
-        rounds += 1
-
-    # ── Streaming final response ──
     usage = {}
     final_reasoning = ""
     final_content = ""
@@ -1718,7 +1772,6 @@ async def _chat_pipeline(body, msgs):
                     usage[k] = usage.get(k, 0) + retry_usage[k]
 
     cost = _compute_cost(usage)
-    model = data.get("model", body.model) if rounds > 0 else body.model
 
     yield {
         "type": "done",
@@ -1729,7 +1782,7 @@ async def _chat_pipeline(body, msgs):
             "cache_hit_tokens": usage.get("prompt_cache_hit_tokens", 0),
         },
         "cost": cost,
-        "model": model,
+        "model": body.model,
         "tool_results": tool_results,
         "finish_reason": finish_reason,
         # Final content fallback: if the client missed chunks (proxy close,
@@ -1737,6 +1790,176 @@ async def _chat_pipeline(body, msgs):
         "final_content": final_content,
         "final_reasoning": final_reasoning,
     }
+
+
+async def _chat_pipeline(body, msgs):
+    """Run the full chat pipeline — tool-calling rounds (non-streaming) then the
+    streamed final response — yielding plain event dicts:
+      heartbeat / tool_progress / thinking / text / truncated / error / done
+
+    Shared by the SSE stream endpoint and the background job runner, so both
+    paths behave identically (finish_reason guard, truncation retry, heartbeats).
+    `body` is a ChatRequest (or dict with the same fields); `msgs` is the
+    prepared message list (system prompt injected, budget applied).
+    """
+    tool_results = []
+
+    # ── Subagent fan-out (planner → parallel workers → synthesizer) ──
+    # For research-shaped questions, replace the sequential tool loop with one
+    # planner call, ≤3 concurrent worker tool-loops, then the shared final
+    # stream. Wall-clock ≈ 3 sequential LLM calls instead of up to 15.
+    if getattr(body, "subagents", True) and body.tools_enabled and _subagents.should_plan(msgs):
+        tool_defs = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
+        plan = await _subagents.plan_research(
+            call_deepseek, msgs, [t["function"]["name"] for t in tool_defs])
+        if plan:
+            yield {"type": "plan", "tasks": plan}
+
+            async def _run_worker_tool(tc):
+                try:
+                    fn_args = json.loads(tc["function"]["arguments"])
+                except json.JSONDecodeError:
+                    fn_args = {}
+                return await asyncio.to_thread(
+                    _run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
+
+            queue = asyncio.Queue()
+
+            async def _emit(ev):
+                await queue.put(ev)
+
+            workers_task = asyncio.create_task(_subagents.run_workers(
+                plan, tool_defs, body.scopes, call_deepseek, _run_worker_tool, _emit))
+
+            # Drain worker progress events until the pool finishes.
+            while True:
+                if not queue.empty():
+                    yield queue.get_nowait()
+                    continue
+                if workers_task.done():
+                    break
+                getter = asyncio.ensure_future(queue.get())
+                done, _ = await asyncio.wait({workers_task, getter},
+                                             return_when=asyncio.FIRST_COMPLETED)
+                if getter in done:
+                    try:
+                        yield getter.result()
+                    except asyncio.QueueEmpty:
+                        pass
+                else:
+                    getter.cancel()
+
+            reports = workers_task.result()
+            worker_tool_results = [tr for r in reports for tr in r.get("tool_results", [])]
+
+            # Fall back to the sequential loop when every worker failed.
+            if any(r.get("content") for r in reports):
+                tool_results = worker_tool_results
+                msgs = _subagents.build_synthesis_messages(msgs, reports)
+                async for ev in _stream_final_response(body, msgs, tool_results):
+                    yield ev
+                return
+
+    # ── Tool-calling rounds (non-streaming) ──
+    payload = _build_payload(body, msgs, stream=False)
+    max_tool_rounds = 15
+    rounds = 0
+
+    while rounds < max_tool_rounds:
+        # DeepSeek thinking rounds can take minutes with zero bytes on the
+        # wire — emit heartbeats so browsers/proxies don't idle-timeout.
+        round_task = asyncio.create_task(call_deepseek(payload))
+        while not round_task.done():
+            _done, _pending = await asyncio.wait({round_task}, timeout=15)
+            if not round_task.done():
+                yield {"type": "heartbeat"}
+        data = round_task.result()
+
+        if "error" in data:
+            err = data["error"]
+            message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            yield {"type": "error", "message": message}
+            return
+
+        choice = data.get("choices", [{}])[0]
+        msg = choice.get("message", {})
+        tool_calls = msg.get("tool_calls")
+
+        if not tool_calls:
+            # No more tool calls — break to streaming
+            break
+
+        # Yield tool progress
+        yield {"type": "tool_progress", "tools": [
+            {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
+            for tc in tool_calls
+        ]}
+
+        msgs.append(msg)
+        conn = get_db()
+
+        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
+        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+
+        async def run_ro(tc):
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
+
+        ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
+
+        staging_results = []
+        for tc in staging_calls:
+            fn_name = tc["function"]["name"]
+            try:
+                fn_args = json.loads(tc["function"]["arguments"])
+            except json.JSONDecodeError:
+                fn_args = {}
+            try:
+                if fn_name == "scripture_stage_connection":
+                    result = stage_connection(conn, submitted_by="llm", **fn_args)
+                elif fn_name == "scripture_stage_study":
+                    steps = json.loads(fn_args.pop("steps_json", "[]"))
+                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                else:
+                    result = {"error": f"Unknown staging tool: {fn_name}"}
+            except Exception as e:
+                result = {"error": str(e)}
+            staging_results.append((tc, result))
+
+        all_results = ro_results + staging_results
+        for tc, result in all_results:
+            result_str = json.dumps(result, default=str, ensure_ascii=False)
+            if len(result_str) > 3000:
+                result_str = result_str[:3000] + '..." [truncated]'
+            tool_results.append({
+                "id": tc["id"],
+                "name": tc["function"]["name"],
+                "args": json.loads(tc["function"]["arguments"]),
+                "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
+            })
+            msgs.append({
+                "role": "tool",
+                "content": result_str,
+                "tool_call_id": tc["id"],
+            })
+
+        conn.close()
+
+        # Budget check
+        est = sum(len(m.get("content", "") or "") // 4 for m in msgs)
+        if est > MAX_PROMPT_TOKENS * 0.8:
+            msgs = apply_context_budget(msgs)
+
+        payload["messages"] = msgs
+        rounds += 1
+
+    # ── Streaming final response (shared helper: sequential path and
+    # subagent fan-out both land here) ──
+    async for ev in _stream_final_response(body, msgs, tool_results):
+        yield ev
 
 
 # ─── SSE Streaming Chat Endpoint ───

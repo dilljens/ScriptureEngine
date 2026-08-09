@@ -347,7 +347,7 @@ export function createComponents(options = {}) {
       )
     },
     blockquote: ({ children }) => (
-      <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic">
+      <blockquote className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-3 py-2 my-2 text-[15px] sm:text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
         {children}
       </blockquote>
     ),

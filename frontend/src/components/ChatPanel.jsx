@@ -11,7 +11,6 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
-import VersePopup from './VersePopup'
 import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat, chatStream, currentUserId, currentSessionToken } from '../api'
@@ -306,7 +305,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [recentSessions, setRecentSessions] = useState([])
   const [loadingRecent, setLoadingRecent] = useState(false)
   const [restoring, setRestoring] = useState(false)
-  const [popupRef, setPopupRef] = useState(null)
+  const [activeVerse, setActiveVerse] = useState(null) // {msgIndex, ref} — inline verse expansion (one tap to open)
   const [editingIdx, setEditingIdx] = useState(null)   // index of user message being edited, or null
   const [editText, setEditText] = useState('')          // text while editing
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
@@ -1304,12 +1303,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // ── Markdown components with scripture integration ──
   // Uses the shared scripture-markdown module for :verse[], :entity[], :gematria[], etc.
-  const markdownComponents = createComponents({
-    onOpenVerse: (ref) => setPopupRef(ref),
-    customComponents: {
+  // Verse chips toggle an inline expansion inside the message (one tap opens —
+  // no screen-covering popup). The overrides are shared; onOpenVerse is bound
+  // per-message in renderContent so the expansion attaches to the right message.
+  const chatMarkdownOverrides = {
       // Chat-specific overrides for standard elements
       p: ({ children }) => (
-        <p className="my-0.5 text-sm leading-relaxed break-words">{children}</p>
+        <p className="my-0.5 text-[15px] sm:text-sm leading-relaxed break-words">{children}</p>
       ),
       strong: ({ children }) => (
         <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{children}</strong>
@@ -1330,7 +1330,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         )
       },
       blockquote: ({ children }) => (
-        <blockquote className="border-l-3 border-indigo-300 dark:border-indigo-600 pl-3 py-1 my-1.5 text-neutral-700 dark:text-neutral-300 text-sm italic">
+        <blockquote className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 px-3 py-2 my-2 text-[15px] sm:text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
           {children}
         </blockquote>
       ),
@@ -1376,8 +1376,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       td: ({ children }) => (
         <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400 align-top leading-relaxed">{children}</td>
       ),
-    },
-  })
+  };
 
   // ── Split text into segments at %% markers (inline, html-safe) ──
   // Returns an array of plain text and React elements.
@@ -1453,8 +1452,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // to get correct structure (tables, blockquotes), then replace markers
   // inline in the output.
 
-  function renderContent(content) {
+  function renderContent(content, msgIndex) {
     if (!content) return null
+
+    // Per-message components: verse chip taps expand inline under THIS message.
+    const comps = createComponents({
+      onOpenVerse: (ref) => setActiveVerse(prev =>
+        prev && prev.msgIndex === msgIndex && prev.ref === ref ? null : { msgIndex, ref }),
+      customComponents: chatMarkdownOverrides,
+    })
 
     // Step 1: Pre-process: replace natural-language refs with :verse[book.ch.vs] syntax
     let processed = preprocessVerses(content)
@@ -1476,7 +1482,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
     if (!hasActionMarkers) {
       return (
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={markdownComponents}>
+        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={comps}>
           {safeMarkdown(processed)}
         </Markdown>
       )
@@ -1491,7 +1497,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       // Regular markdown text (with <span> tags from scripture) — render with Markdown component
       if (part.trim()) {
         return (
-          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={markdownComponents}>
+          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={comps}>
             {safeMarkdown(part)}
           </Markdown>
         )
@@ -1536,6 +1542,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 </div>
               </div>
             ) : (
+              <>
               <div className={`group relative max-w-full sm:max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words
                 ${msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
@@ -1571,7 +1578,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {/* Streaming message: show live content from state */}
                 {msg.streaming ? (
                   <div role="status" aria-live="polite">
-                    {streamingContent && renderContent(streamingContent)}
+                    {streamingContent && renderContent(streamingContent, i)}
                     {!streamingContent && !streamingThinking && (
                       <span className="flex items-center gap-2">
                         <span className="flex gap-1">
@@ -1599,7 +1606,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                     )}
                   </div>
                 ) : (
-                  renderContent(msg.content)
+                  renderContent(msg.content, i)
                 )}
 
                 {/* Token display */}
@@ -1637,6 +1644,29 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   </button>
                 )}
               </div>
+
+              {/* Inline verse expansion — one tap on a verse chip opens it here
+                  (scrollable chapter, verse highlighted; no screen-covering popup) */}
+              {activeVerse && activeVerse.msgIndex === i && (
+                <div className="mt-2 w-full max-w-full">
+                  <VersePreviewCard
+                    refs={activeVerse.ref}
+                    onNavigate={(b, c) => { setActiveVerse(null); onNavigate(b, c) }}
+                    maxHeight="14rem"
+                  />
+                  <div className="flex items-center gap-2 mt-1">
+                    <button onClick={() => setActiveVerse(null)}
+                      className="px-2 py-0.5 rounded text-[11px] text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+                      title="Collapse verse">
+                      ▲ Collapse
+                    </button>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">
+                      tap another reference to open it here
+                    </span>
+                  </div>
+                </div>
+              )}
+              </>
             )}
           </div>
         ))}
@@ -1759,16 +1789,6 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Shared overlays (Verse popup + Recent sessions) ──
   const overlays = (
     <>
-      {popupRef && (
-        <VersePopup
-          verseRef={popupRef}
-          onClose={() => setPopupRef(null)}
-          onNavigate={(book, chapter) => {
-            setPopupRef(null)
-            onNavigate(book, chapter)
-          }}
-        />
-      )}
       {showRecent && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[10vh]"
           onClick={() => setShowRecent(false)}>

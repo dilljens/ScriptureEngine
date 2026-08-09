@@ -361,3 +361,26 @@ def passage_guide(conn, verse, guide_cache=None):
     if g.get("quality_summary"):
         result["quality_summary"] = json.loads(g["quality_summary"])
     return result
+
+
+def lookup_verses(conn, verses, version=None, limit=50):
+    """Batch lookup of many verse refs in ONE call.
+
+    verses: list of refs like 'gen.1.1', 'john.3.16'. Returns a dict keyed by
+    ref with the same data shape as lookup_verse, plus per-ref errors. Capped
+    at `limit` (default 50) to bound response size.
+    """
+    if not verses:
+        return {"error": "No verses provided"}
+    refs = [str(v).strip() for v in verses][:limit]
+    out = {}
+    for ref in refs:
+        parts = ref.split(".")
+        if len(parts) != 3 or not parts[1].isdigit() or not parts[2].isdigit():
+            out[ref] = {"error": f"Invalid ref: {ref} — use book.chapter.verse (e.g. gen.1.1)"}
+            continue
+        try:
+            out[ref] = lookup_verse(conn, parts[0], int(parts[1]), int(parts[2]), version)
+        except Exception as e:  # noqa: BLE001 — per-ref isolation
+            out[ref] = {"error": str(e)}
+    return {"verses": out, "count": len(out)}
