@@ -72,6 +72,102 @@ CONNECTION_TYPE_LABELS = {
 }
 
 
+def _enrich_tg_node(cursor, current, current_depth, all_nodes, node_meta):
+    """Fetch + append a TG topic node's metadata."""
+    slug = current[3:]
+    row = cursor.execute(
+        "SELECT name, description, verse_count, importance, slug FROM topical_guide WHERE slug=?",
+        (slug,)
+    ).fetchone()
+    if row:
+        node = {
+            "id": current,
+            "title": row[0],
+            "type": "topic",
+            "subtype": "tg",
+            "description": (row[1] or "")[:200],
+            "verse_count": row[2],
+            "importance": row[3],
+            "size": max(8, min(30, row[2] * 0.5 + 10)),
+            "depth": current_depth,
+        }
+        all_nodes.append(node)
+        node_meta[current] = node
+
+
+def _enrich_verse_node(cursor, current, current_depth, all_nodes, node_meta):
+    """Fetch + append a verse node's metadata."""
+    row = cursor.execute(
+        "SELECT id, book_id, chapter, verse FROM verses WHERE id=?",
+        (current,)
+    ).fetchone()
+    if row:
+        title = f"{row[1].upper()}.{row[2]}.{row[3]}" if row[1] else current
+        conn_count = cursor.execute(
+            "SELECT COUNT(*) FROM connections WHERE (source_verse=? OR target_verse=?) AND deprecated=0",
+            (current, current)
+        ).fetchone()[0]
+        node = {
+            "id": current,
+            "title": title,
+            "type": "verse",
+            "subtype": "",
+            "book": row[1],
+            "chapter": row[2],
+            "verse": row[3],
+            "connection_count": conn_count,
+            "size": max(5, min(25, conn_count * 0.3 + 5)),
+            "depth": current_depth,
+        }
+        all_nodes.append(node)
+        node_meta[current] = node
+    else:
+        all_nodes.append({
+            "id": current, "title": current, "type": "unknown",
+            "size": 5, "depth": current_depth,
+        })
+
+
+def _enrich_bd_node(cursor, current, current_depth, all_nodes, node_meta):
+    """Fetch + append a Bible Dictionary entry node's metadata."""
+    slug = current[3:]
+    row = cursor.execute(
+        "SELECT name, entry_text, slug FROM bible_dictionary WHERE slug=?",
+        (slug,)
+    ).fetchone()
+    if row:
+        node = {
+            "id": current,
+            "title": row[0],
+            "type": "bd_entry",
+            "subtype": "bd",
+            "description": (row[1] or "")[:200],
+            "size": 18,
+            "depth": current_depth,
+        }
+        all_nodes.append(node)
+        node_meta[current] = node
+
+
+def _enrich_verse_node(cursor, current, current_depth, all_nodes, node_meta):
+    """Fetch + append a verse node's metadata."""
+    row = cursor.execute(
+        "SELECT v.text_english, b.title, v.chapter, v.verse FROM verses v JOIN books b ON b.id=v.book_id WHERE v.id=?",
+        (current,)
+    ).fetchone()
+    if row:
+        node = {
+            "id": current,
+            "title": f"{row[1]} {row[2]}:{row[3]}",
+            "type": "verse",
+            "text": (row[0] or "")[:200],
+            "size": 10,
+            "depth": current_depth,
+        }
+        all_nodes.append(node)
+        node_meta[current] = node
+
+
 @router.get("/api/v1/graph/explore")
 def graph_explore(
     verse: str = Query("", description="Center verse ID (gen.1.1)"),
@@ -121,26 +217,7 @@ def graph_explore(
         is_bd_entry = current.startswith("bd:")
 
         if is_tg:
-            # TG topic node
-            slug = current[3:]
-            row = cursor.execute(
-                "SELECT name, description, verse_count, importance, slug FROM topical_guide WHERE slug=?",
-                (slug,)
-            ).fetchone()
-            if row:
-                node = {
-                    "id": current,
-                    "title": row[0],
-                    "type": "topic",
-                    "subtype": "tg",
-                    "description": (row[1] or "")[:200],
-                    "verse_count": row[2],
-                    "importance": row[3],
-                    "size": max(8, min(30, row[2] * 0.5 + 10)),
-                    "depth": current_depth,
-                }
-                all_nodes.append(node)
-                node_meta[current] = node
+            _enrich_tg_node(cursor, current, current_depth, all_nodes, node_meta)
 
             if current_depth < depth:
                 # Get all verses connected to this topic
@@ -224,39 +301,7 @@ def graph_explore(
                     })
 
         else:
-            # Regular verse node
-            row = cursor.execute(
-                "SELECT id, book_id, chapter, verse FROM verses WHERE id=?",
-                (current,)
-            ).fetchone()
-            if row:
-                title = f"{row[1].upper()}.{row[2]}.{row[3]}" if row[1] else current
-                # Get connection count for sizing
-                conn_count = cursor.execute(
-                    "SELECT COUNT(*) FROM connections WHERE (source_verse=? OR target_verse=?) AND deprecated=0",
-                    (current, current)
-                ).fetchone()[0]
-
-                node = {
-                    "id": current,
-                    "title": title,
-                    "type": "verse",
-                    "subtype": "",
-                    "book": row[1],
-                    "chapter": row[2],
-                    "verse": row[3],
-                    "connection_count": conn_count,
-                    "size": max(5, min(25, conn_count * 0.3 + 5)),
-                    "depth": current_depth,
-                }
-                all_nodes.append(node)
-                node_meta[current] = node
-            else:
-                # Unknown node — still add as placeholder
-                all_nodes.append({
-                    "id": current, "title": current, "type": "unknown",
-                    "size": 5, "depth": current_depth,
-                })
+            _enrich_verse_node(cursor, current, current_depth, all_nodes, node_meta)
 
             if current_depth < depth:
                 edges = cursor.execute("""

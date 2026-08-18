@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react'
 import VersePreviewCard from './VersePreviewCard'
-import StudyEditor from './StudyEditor'
 import { chatComplete } from '../api'
+
+// Lazy-loaded to break the StudyEditor ⇄ StudyViewer import cycle (editor
+// previews the viewer; the viewer hosts the editor). Only rendered in edit
+// mode, so the async boundary costs nothing on the read path.
+const StudyEditor = lazy(() => import('./StudyEditor'))
 
 const LAYER_COLORS = {
   linguistic:     { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
@@ -223,18 +227,20 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
 
       {/* Editor Mode */}
       {editMode && guideId && (
-        <StudyEditor
-          study={{ title, description, author, steps, graph_summary, seed_verse }}
-          guideId={guideId}
-          onSave={() => {
-            // Reload study after save
-            setEditMode(false)
-            if (onFetch) onFetch().then(setStudy)
-          }}
-          onNavigate={onNavigate}
-          onOpenTab={onOpenTab}
-          showQuickAsk={showQuickAsk}
-        />
+        <Suspense fallback={<div className="p-6 text-sm text-neutral-500 dark:text-neutral-400">Loading editor…</div>}>
+          <StudyEditor
+            study={{ title, description, author, steps, graph_summary, seed_verse }}
+            guideId={guideId}
+            onSave={() => {
+              // Reload study after save
+              setEditMode(false)
+              if (onFetch) onFetch().then(setStudy)
+            }}
+            onNavigate={onNavigate}
+            onOpenTab={onOpenTab}
+            showQuickAsk={showQuickAsk}
+          />
+        </Suspense>
       )}
       {editMode && !guideId && (
         <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-700 dark:text-amber-300 mb-4">

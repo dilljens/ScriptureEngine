@@ -308,7 +308,7 @@ def semantic_search_text(conn, query, limit=20, mode="hybrid"):
     Returns: dict with query, query_type, mode, total, results
     """
     try:
-        from web.server import _classify_query, _vector_search, _keyword_search, _merge_results, _search_hebrew, _search_greek
+        from lib.api.search_backend import _classify_query, _vector_search, _keyword_search, _merge_results, _search_hebrew, _search_greek
         from pathlib import Path
         import re
 
@@ -356,7 +356,7 @@ def semantic_search_text(conn, query, limit=20, mode="hybrid"):
                 pass
 
             try:
-                from web.server import _get_embed_model
+                from lib.api.search_backend import _get_embed_model
                 model = _get_embed_model()
                 if model is not None:
                     vec_results = _vector_search(conn, model, query, limit, mode)

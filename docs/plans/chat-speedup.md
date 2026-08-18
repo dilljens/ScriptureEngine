@@ -1,9 +1,10 @@
 ---
-status: active
+status: completed
 kind: plan
 area: chat/api
 author: plan-agent
 created: 2026-08-08
+completed: 2026-08-15
 ---
 
 # Project: Chat Speedup (Parallel Tools + Subagent Fan-Out)

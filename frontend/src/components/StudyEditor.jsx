@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import VersePreviewCard from './VersePreviewCard'
-import StudyViewer from './StudyViewer'
 import { chatComplete } from '../api'
 
 /**
@@ -271,26 +270,46 @@ Users must click "Apply" to execute changes — don't apply them automatically.`
   }, [])
 
   // ── Preview mode (read-only view of current state) ──
+  // Rendered inline (not via StudyViewer) to keep the component graph acyclic:
+  // StudyViewer hosts the editor, so the editor must not import StudyViewer.
   if (showPreview) {
-    const previewStudy = {
-      ...initialStudy,
-      title,
-      description,
-      steps: steps.map(s => ({
-        ...s,
-        // Build a minimal verse_refs array needed by StudyViewer
-        verse_refs: s.verse ? [s.verse] : [],
-      })),
-    }
     return (
-      <div>
-        <div className="max-w-4xl mx-auto px-6 pt-4">
+      <div className="max-w-4xl mx-auto px-6 pt-4 pb-8">
+        <div className="mb-4">
           <button onClick={() => setShowPreview(false)}
             className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
             ← Back to Editing
           </button>
         </div>
-        <StudyViewer study={previewStudy} onNavigate={onNavigate} onOpenTab={onOpenTab} showQuickAsk={false} />
+        <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-sm">
+          <div className="px-6 py-5 border-b border-neutral-100 dark:border-neutral-700">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{title || 'Untitled Study'}</h2>
+            {description && <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{description}</p>}
+          </div>
+          <div className="p-6 space-y-4">
+            {steps.length === 0 && (
+              <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">No steps yet — add verses to build the study.</p>
+            )}
+            {steps.map((step, idx) => (
+              <div key={idx} className="border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-100 dark:border-neutral-700">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white text-[11px] font-bold shrink-0">
+                    {step.step || idx + 1}
+                  </span>
+                  <span className="flex-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                    {step.title || (step.verse ? `Step ${idx + 1}` : 'Untitled step')}
+                  </span>
+                  {step.verse && (
+                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500">{step.verse}</span>
+                  )}
+                </div>
+                <div className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+                  {step.explanation || <span className="text-neutral-400 dark:text-neutral-500 italic">No explanation.</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

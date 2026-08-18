@@ -327,7 +327,7 @@ export function chat(messages, opts = {}) {
   const timer = controller ? setTimeout(() => controller.abort(), 600_000) : null
   return fetchJSON('/chat', {
     method: 'POST',
-    body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools: opts.disabled_tools || [] }),
+    body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools: opts.disabled_tools || [], user_id: opts.user_id || '' }),
     headers: { 'Content-Type': 'application/json' },
     signal: controller ? controller.signal : signal,
   }).finally(() => { if (timer) clearTimeout(timer) })
@@ -358,7 +358,7 @@ export function chatStream(messages, opts = {}) {
   const {
     model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7,
     disabled_tools = [], scopes = [], mode = 'chat',
-    session_id = '', client_message_id = '', signal,
+    session_id = '', client_message_id = '', user_id = '', signal,
   } = opts
   const { onThinking, onText, onToolProgress, onTruncated, onDone, onError } = opts
   const POLL_MS = 2000
@@ -490,7 +490,7 @@ export function chatStream(messages, opts = {}) {
     fetchJSON('/chat/jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools, scopes, mode, session_id, client_message_id }),
+      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools, scopes, mode, session_id, client_message_id, user_id }),
     }).then((res) => {
       if (cancelled) return
       const d = res?.data || {}

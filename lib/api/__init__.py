@@ -16,7 +16,14 @@ Adding a new tool:
   3. It's immediately available as MCP tool + HTTP API endpoint
 """
 
-from lib.api.assessment import get_progress, start_assessment, submit_answer
+from lib.api.assessment import (
+    get_diagnostic_report,
+    get_progress,
+    start_assessment,
+    start_diagnostic,
+    submit_answer,
+    submit_diagnostic_answer,
+)
 from lib.api.connections import (
     compare_verses,
     get_connections,
@@ -74,6 +81,7 @@ from lib.api.study import (
 )
 from lib.api.verse import lookup_verse, lookup_verses, passage_guide, study_verse
 from lib.api.passage import get_passage_connections, get_chapter_connections, get_book_summary
+from lib.api.progress import hebrew_placement, hebrew_progress, quiz_progress
 from lib.api.sefirot import lookup_sefirot, get_sefirah_info
 from lib.api.versions import get_verse_text, list_versions
 
@@ -890,6 +898,48 @@ register(
     "Get current assessment progress",
 )
 
+register(
+    "scripture_diagnostic_start",
+    start_diagnostic,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "default": "default"},
+            "max_items": {"type": "integer", "default": 30},
+        },
+        "required": [],
+    },
+    "Start a broad pre-assessment diagnostic across all layers — finds what the user already knows vs needs to learn. Samples widely, stops per-topic once confident. Use before recommending a study path.",
+)
+
+register(
+    "scripture_diagnostic_answer",
+    submit_diagnostic_answer,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "default": "default"},
+            "correct": {"type": "boolean"},
+            "correctness": {"type": "number", "description": "Optional partial credit 0.0-1.0"},
+        },
+        "required": ["correct"],
+    },
+    "Submit a diagnostic answer with conditional completion; returns the diagnostic report when complete.",
+)
+
+register(
+    "scripture_diagnostic_report",
+    get_diagnostic_report,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "default": "default"},
+        },
+        "required": [],
+    },
+    "Get a user's diagnostic report (what they know / don't know by connection type and PaRDeS layer) without running a new assessment.",
+)
+
 # ─── Source Provenance Tools ───
 
 register(
@@ -1283,6 +1333,51 @@ register(
         "required": [],
     },
     "Generate Hebrew knowledge quiz questions. Perfect for practicing letter names (aleph-bet), vowel recognition, and vocabulary. Defaults to consonant/aleph-bet questions.",
+)
+
+# ─── Progress Visibility Tools ───
+# Let the chat LLM see what a user has actually done (quiz results, Hebrew
+# learning progress, placement) so it can personalize teaching.
+
+register(
+    "scripture_quiz_progress",
+    quiz_progress,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "description": "User identifier (default: 'default')"},
+            "limit": {"type": "integer", "default": 10, "description": "How many recent answers to include"},
+        },
+        "required": [],
+    },
+    "See a user's multiple-choice question results: mastery by PaRDeS layer, IRT ability estimate, and their most recent answers. Use when the user has answered quiz/MC questions in the app or in chat and you need to know what they got right or wrong, what's weak, or how they're trending.",
+)
+
+register(
+    "scripture_hebrew_progress",
+    hebrew_progress,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "description": "User identifier (default: 'default')"},
+            "limit": {"type": "integer", "default": 10, "description": "How many practiced/due nodes to include"},
+        },
+        "required": [],
+    },
+    "See a user's Biblical Hebrew learning progress: mastery per category, due review items, XP/streak, and placement/diagnostic results. Use whenever the user asks about Hebrew, their Hebrew progress, what to study next, or how they're doing in the Hebrew course.",
+)
+
+register(
+    "scripture_hebrew_placement",
+    hebrew_placement,
+    {
+        "type": "object",
+        "properties": {
+            "user_id": {"type": "string", "description": "User identifier (default: 'default')"},
+        },
+        "required": [],
+    },
+    "See where a user placed on the Hebrew placement test (per-skill 1-up-3-down staircase results) and whether they've taken it. Returns the most recent placement per skill: level estimate, items answered, and whether it converged. Use this to recommend where the user should start.",
 )
 
 # ─── Materialized View Tools (require scripts/build_materialized_views.py) ───

@@ -4361,6 +4361,45 @@
         }
       }
     },
+    "/api/v1/quiz/record": {
+      "post": {
+        "summary": "Record Chat Quiz",
+        "description": "Record MC answers the user submitted in chat (from %%%QUIZ cards).\n\nBody: { \"user_id\": \"...\", \"answers\": [{\"question\": \"...\", \"user_answer\": \"...\",\n       \"correct\": bool, \"correct_answer\": \"...\"}], \"source\": \"chat\" }\nReturns how many were recorded.",
+        "operationId": "record_chat_quiz_api_v1_quiz_record_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/google": {
       "post": {
         "summary": "Google Signin",
@@ -8508,6 +8547,11 @@
             "title": "Mode",
             "default": "chat"
           },
+          "subagents": {
+            "type": "boolean",
+            "title": "Subagents",
+            "default": true
+          },
           "session_id": {
             "type": "string",
             "title": "Session Id",
@@ -8516,6 +8560,11 @@
           "client_message_id": {
             "type": "string",
             "title": "Client Message Id",
+            "default": ""
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
             "default": ""
           }
         },

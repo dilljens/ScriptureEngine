@@ -1007,6 +1007,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         max_tokens: maxTokens,
         disabled_tools: disabledTools,
         scopes,
+        user_id: userId.current,
         session_id: requestSessionId,
         client_message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         signal: controller.signal,
@@ -1381,6 +1382,43 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Split text into segments at %% markers (inline, html-safe) ──
   // Returns an array of plain text and React elements.
   // Note: verse references are now handled by the :verse[] syntax and scripture-markdown module
+
+  // ── Record chat quiz answers so the LLM can see them later ──
+  // The chat LLM asks MC questions via %%%QUIZ / %%%HEBREW_QUIZ cards; when
+  // the user submits, POST the results to /quiz/record so scripture_quiz_progress
+  // can surface them to the LLM on a later turn.
+  function recordQuizAnswers(questions, results) {
+    // QuizCard's onAnswer gives an array of booleans (correct per question),
+    // not the selected option text — record correctness so the LLM can see
+    // what the user got right/wrong.
+    const answers = (questions || []).map((q, idx) => ({
+      question: q.question || q.question_text || `Question ${idx + 1}`,
+      user_answer: '',
+      correct_answer: String(q.correctAnswer !== undefined ? q.correctAnswer : (q.correct ?? '')),
+      correct: results[idx] === true,
+    }))
+    if (!answers.length) return
+    fetch('/api/v1/quiz/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId.current, answers, source: 'chat' }),
+    }).catch(() => {})  // fire-and-forget — never break chat on a record failure
+  }
+
+  function recordHebrewQuizAnswer(quizData, correct) {
+    if (!quizData || !quizData.question) return
+    const correctAnswer = quizData.correctAnswer !== undefined ? quizData.correctAnswer : (quizData.correct ?? '')
+    fetch('/api/v1/quiz/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId.current,
+        answers: [{ question: quizData.question, user_answer: '', correct_answer: String(correctAnswer), correct: !!correct }],
+        source: 'hebrew-chat',
+      }),
+    }).catch(() => {})  // fire-and-forget
+  }
+
   function renderWithMarkers(text) {
     if (!text) return text
     const parts = text.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*}|[^%]+)%%%)/g)
@@ -1402,14 +1440,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           const quizData = JSON.parse(qm[1])
           // Handle both single question and array of questions
           const questions = Array.isArray(quizData) ? quizData : [quizData]
-          return <QuizCard key={`q${i}`} questions={questions} />
+          return <QuizCard key={`q${i}`} questions={questions} onAnswer={(results) => recordQuizAnswers(questions, results)} />
         } catch { return <span className="text-red-500 text-xs">[invalid quiz]</span> }
       }
       const hqm = part.match(/%%%HEBREW_QUIZ:({[^%]+})%%%/)
       if (hqm) {
         try {
           const quizData = JSON.parse(hqm[1])
-          return <HebrewQuizCard key={`hq${i}`} quizData={quizData} />
+          return <HebrewQuizCard key={`hq${i}`} quizData={quizData} onComplete={(correct) => recordHebrewQuizAnswer(quizData, correct)} />
         } catch { return <span className="text-red-500 text-xs">[invalid hebrew quiz]</span> }
       }
       const hm = part.match(/%%%HEBREW:({[^%]+})%%%/)

@@ -1,9 +1,10 @@
 ---
-status: in_progress
+status: completed
 kind: progress
 area: hebrew-learning
 plan: hebrew-improvements-remainder
 created: 2026-08-05
+completed: 2026-08-15
 ---
 
 # Hebrew Improvements Remainder — Progress Log

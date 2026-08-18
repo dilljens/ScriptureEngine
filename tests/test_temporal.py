@@ -75,7 +75,9 @@ class TestAccessSlowsDecay:
         assert needs_revalidation(created, "algorithm", access_count=100) is False
 
     def test_recent_connection_nearly_untouched(self):
-        created = "2026-08-01"  # days old → decay is negligible
+        import datetime
+
+        created = (datetime.date.today() - datetime.timedelta(days=2)).strftime("%Y-%m-%d")
         assert apply_temporal_decay(0.8, "algorithm", created, access_count=0) > 0.79
         assert apply_temporal_decay(0.8, "algorithm", created, access_count=0) == apply_temporal_decay(
             0.8, "algorithm", created, access_count=0

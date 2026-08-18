@@ -1000,6 +1000,174 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_quiz_progress",
+            "description": "See a user's multiple-choice question results: mastery by PaRDeS layer, IRT ability estimate, and their most recent answers. Use when the user has answered quiz/MC questions in the app or in chat and you need to know what they got right or wrong, what's weak, or how they're trending. The user_id defaults to the person chatting — omit it unless you have a specific reason.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "limit": {"type": "integer", "default": 10, "description": "How many recent answers to include"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_progress",
+            "description": "See a user's Biblical Hebrew learning progress: mastery per category (consonants, vowels, words, grammar...), due review items, XP/streak, and placement/diagnostic results. Use whenever the user asks about Hebrew, their Hebrew progress, what to study next, or how they're doing in the Hebrew course. The user_id defaults to the person chatting — omit it unless you have a specific reason.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "limit": {"type": "integer", "default": 10, "description": "How many practiced/due nodes to include"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_placement",
+            "description": "See where a user placed on the Hebrew placement test (per-skill 1-up-3-down staircase results: alphabet, vocab, grammar, reading) and whether they've taken it. Use to recommend where the user should start in the Hebrew course. The user_id defaults to the person chatting — omit it unless you have a specific reason.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_lessons",
+            "description": "List available Hebrew lesson nodes across categories (consonant, vowel, word, grammar, phrase, reading, root). Returns the full lesson catalog.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Optional category filter"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_lesson",
+            "description": "Get full lesson content for a Hebrew concept node: explanation, examples, vocabulary, practice items, and prerequisites.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "node_id": {"type": "string", "description": "Node ID (e.g. 'aleph', 'bet', 'qal_verb', 'construct_chain')"},
+                },
+                "required": ["node_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_hebrew_quiz",
+            "description": "Generate Hebrew knowledge quiz questions (consonants, vowels, vocabulary, grammar). Perfect for practicing aleph-bet or vocab in chat.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Category: consonant, vowel, word, grammar, phrase, reading"},
+                    "count": {"type": "integer", "default": 5, "description": "Number of questions"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_start",
+            "description": "Start an adaptive assessment session for scripture knowledge (BLIM/IRT, PaRDeS-layer aware). Returns the first question. The user_id defaults to the person chatting.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "target_layer": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "description": "Optional PaRDeS layer filter"},
+                    "max_items": {"type": "integer", "default": 20},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_answer",
+            "description": "Submit an answer to the active adaptive assessment and get the next question. Pass correct=True/False (or correctness 0.0-1.0 for partial credit).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "correct": {"type": "boolean"},
+                },
+                "required": ["correct"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_assess_progress",
+            "description": "Get a user's adaptive assessment progress (mastery by layer, outer fringe, items answered) without submitting an answer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_diagnostic_start",
+            "description": "Start a broad pre-assessment diagnostic across all layers — finds what the user already knows vs needs to learn. Samples widely, stops per-topic once confident. Use before recommending a study path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "max_items": {"type": "integer", "default": 30},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_diagnostic_answer",
+            "description": "Submit a diagnostic answer with conditional completion; returns the diagnostic report when complete.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "correct": {"type": "boolean"},
+                    "correctness": {"type": "number", "description": "Optional partial credit 0.0-1.0"},
+                },
+                "required": ["correct"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scripture_diagnostic_report",
+            "description": "Get a user's diagnostic report (what they know / don't know by connection type and PaRDeS layer) without running a new assessment.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                },
+            },
+        },
+    },
 ]
 
 # ── Staging tool names (recognized by the chat handler) ──
@@ -1023,6 +1191,25 @@ def _scope_allowed(tool_name: str, scopes: list) -> bool:
         return True  # not a scoped tool — always allowed
     s = set(scopes or [])
     return any(x in s for x in allowed)
+
+
+# Tools that take a `user_id` arg — the server injects the chatting user's id
+# when the LLM doesn't pass one explicitly.
+_USER_TOOLS = {
+    "scripture_quiz_progress",
+    "scripture_hebrew_progress",
+    "scripture_hebrew_placement",
+    "scripture_assess_start",
+    "scripture_assess_answer",
+    "scripture_assess_progress",
+    "scripture_diagnostic_start",
+    "scripture_diagnostic_answer",
+    "scripture_diagnostic_report",
+}
+
+
+def _tool_accepts_user_id(tool_name: str) -> bool:
+    return tool_name in _USER_TOOLS
 
 
 def _filter_tools(tools: list, scopes: list, disabled_tools: list) -> list:
@@ -1190,6 +1377,15 @@ class ChatRequest(BaseModel):
     subagents: bool = True  # planner → parallel workers → synthesizer for research questions
     session_id: str = ""            # conversation session — job saves the completed answer here
     client_message_id: str = ""     # user message id (idempotency context for the save)
+    user_id: str = ""               # who is chatting — progress/quiz/hebrew tools read per-user data
+
+
+def _normalize_user_id(user_id: str) -> str:
+    """Anonymous/empty chat users map to 'default' (the app's anonymous id for
+    quiz + hebrew progress). Authenticated users keep their account id."""
+    if not user_id or user_id in ("anonymous", "default"):
+        return "default"
+    return user_id
 
 
 @router.get("/api/v1/chat/instructions")
@@ -1338,7 +1534,7 @@ async def llm_chat(body: ChatRequest, request: Request):
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
+            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
 
         ro_results = []
         if ro_calls:
@@ -1507,7 +1703,7 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
     return payload
 
 
-def _run_tool_thread(fn_name, fn_args, scopes):
+def _run_tool_thread(fn_name, fn_args, scopes, user_id=""):
     """Run one read-only chat tool in a worker thread (own DB connection).
 
     Executes off the event loop so concurrent tool calls in a round actually
@@ -1523,6 +1719,10 @@ def _run_tool_thread(fn_name, fn_args, scopes):
         return _run_research_parallel(fn_args)
     if not _scope_allowed(fn_name, scopes):
         return {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
+    # Per-user tools (quiz/hebrew progress, assessment, diagnostic) default to
+    # the chatting user unless the LLM explicitly passed a user_id.
+    if user_id and _tool_accepts_user_id(fn_name) and not fn_args.get("user_id"):
+        fn_args["user_id"] = user_id
     cached = tool_cache.get(fn_name, fn_args)
     if cached is not None:
         return cached
@@ -1821,7 +2021,7 @@ async def _chat_pipeline(body, msgs):
                 except json.JSONDecodeError:
                     fn_args = {}
                 return await asyncio.to_thread(
-                    _run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
+                    _run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
 
             queue = asyncio.Queue()
 
@@ -1906,7 +2106,7 @@ async def _chat_pipeline(body, msgs):
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes)
+            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
 
         ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
 

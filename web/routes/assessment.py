@@ -442,3 +442,58 @@ def assessment_progress(user_id: str = "default"):
     result = get_progress(conn, user_id=user_id)
     conn.close()
     return {"ok": True, "data": result}
+
+
+# ── Chat quiz answer recording ──
+# When the chat LLM presents MC questions (%%%QUIZ or %%%HEBREW_QUIZ cards),
+# the frontend records the user's answers here so the LLM can later see them
+# via scripture_quiz_progress. Chat quizzes are ad-hoc (LLM-generated), so they
+# live in their own table rather than quiz_progress (which is keyed to
+# assessment_items).
+
+@router.post("/api/v1/quiz/record")
+def record_chat_quiz(body: dict):
+    """Record MC answers the user submitted in chat (from %%%QUIZ cards).
+
+    Body: { "user_id": "...", "answers": [{"question": "...", "user_answer": "...",
+           "correct": bool, "correct_answer": "..."}], "source": "chat" }
+    Returns how many were recorded.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_quiz_answers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'default',
+            question TEXT NOT NULL,
+            user_answer TEXT,
+            correct_answer TEXT,
+            correct INTEGER NOT NULL DEFAULT 0,
+            source TEXT DEFAULT 'chat',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    answers = body.get("answers") or []
+    user_id = body.get("user_id") or "default"
+    source = body.get("source") or "chat"
+    recorded = 0
+    for a in answers:
+        if not isinstance(a, dict) or not a.get("question"):
+            continue
+        cursor.execute(
+            """INSERT INTO chat_quiz_answers
+               (user_id, question, user_answer, correct_answer, correct, source)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                a["question"],
+                a.get("user_answer"),
+                a.get("correct_answer"),
+                1 if a.get("correct") else 0,
+                source,
+            ),
+        )
+        recorded += 1
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"recorded": recorded}}

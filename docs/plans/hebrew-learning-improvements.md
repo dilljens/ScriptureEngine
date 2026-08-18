@@ -9,21 +9,23 @@ Based on gap analysis against The Math Academy Way (June 2026 draft).
 
 ## Remaining Phases
 
-### Phase 2: Diagnostic Pre-Assessment
+### Phase 2: Diagnostic Pre-Assessment ✅ (shipped 2026-08-03 — see Completion Status)
 **Goal:** Determine what the learner already knows before starting, skip mastered topics.
 
-**Implementation:**
-1. Create `GET /api/v1/hebrew/diagnostic` endpoint that:
-   - Selects 2-3 sample questions from each category (consonant, vowel, word, grammar, reading)
-   - Returns them as a pre-assessment batch
-2. Create diagnostic UI before entering curriculum:
-   - Shows 10-15 quick questions covering all categories
-   - On 100% correct per category → mark all those category nodes as mastered
-   - On 60-80% → mark as "review only" (mastery = 0.7)
-   - On <60% → keep full curriculum
-3. Store diagnostic results in `hebrew_progress` table
+**Shipped as two features:**
+1. **Batch diagnostic** — `GET /api/v1/hebrew/diagnostic` (hebrew.py:650) selects 2-3 sample
+   questions per category into `hebrew_diagnostic_batches`; `POST /hebrew/diagnostic/apply`
+   (hebrew.py:1091) grants per-category mastery credit (100% → mastered, 60-80% → review-only
+   at 0.7, <60% → full curriculum). UI: `frontend/src/components/HebrewDiagnostic.jsx`.
+2. **Adaptive placement test** — `POST /api/v1/hebrew/diagnostic/adaptive/start` + `/answer`
+   (hebrew.py:961, 996): per-skill 1-up-3-down staircase over levels 1–7 for alphabet, vocab,
+   grammar, reading (PLACEMENT_SKILLS, hebrew.py:764). Convergence detection + EAP-style level
+   estimate; applies test-out mastery + SRS seeding. Persisted in `hebrew_placement_sessions`.
+3. **Chat visibility** — the LLM can read placement + progress via `scripture_hebrew_placement`
+   and `scripture_hebrew_progress` (registered in the chat tool list), and results land in
+   `hebrew_progress` per the original intent.
 
-**Files:** `web/server.py` (or routes/hebrew.py), `frontend/src/components/HebrewDiagnostic.jsx`, `frontend/src/components/HebrewLearnView.jsx`
+**Files:** `web/routes/hebrew.py`, `lib/api/progress.py`, `frontend/src/components/HebrewDiagnostic.jsx`, `frontend/src/components/HebrewLearnView.jsx`
 
 **Effort:** Medium | **Impact:** 🔴 Critical
 

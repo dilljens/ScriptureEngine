@@ -1,9 +1,10 @@
 ---
-status: active
+status: completed
 kind: plan
 area: chat-study
 author: dillon
 created: 2026-08-02
+completed: 2026-08-15
 ---
 
 # Opt-in Chat Study: Come Follow Me + General Conference
