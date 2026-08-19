@@ -2,6 +2,33 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { getChapter } from '../api'
 import { parseAndFuzzy, getChapters } from '../refParser'
 
+const TYPE_ICONS = {
+  navigate: '📖', search: '🔍', chat: '💬', command: '🎯',
+  toggle: '🔘', history: '🕐', help: '❓', structure: '⟷',
+  dark: '🌙', font: '🔤', error: '⚠️', autocomplete: '?',
+  collection: '🗂️', library: '🗂️',
+}
+
+const TYPE_COLORS = {
+  navigate: 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40',
+  search: 'text-green-600 dark:text-green-300 bg-green-100 dark:bg-green-900/40',
+  chat: 'text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40',
+  command: 'text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+  toggle: 'text-teal-600 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/40',
+  history: 'text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700/50',
+  help: 'text-indigo-600 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/40',
+  autocomplete: 'text-neutral-500 bg-neutral-100 dark:bg-neutral-700/50',
+  collection: 'text-amber-600 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+  library: 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40',
+}
+
+const WORK_LABEL = {
+  ot: 'Old Testament', nt: 'New Testament', bom: 'Book of Mormon',
+  dc: 'Doctrine & Covenants', pgp: 'Pearl of Great Price',
+  dss: 'Dead Sea Scrolls', apoc: 'Apocrypha', pseu: 'Pseudepigrapha',
+  expanded: 'Expanded Canon',
+}
+
 /**
  * CommandInput — slash-command palette ([/dark /font /toggle /history
  * /structure /search /cfm /conference /collections /library ...]).
