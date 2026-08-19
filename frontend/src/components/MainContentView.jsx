@@ -9,7 +9,8 @@ import CollectionView from './CollectionView'
 import CfmStudyView from './CfmStudyView'
 import ConversationHistory from './ConversationHistory'
 import TileDashboard from './TileDashboard'
-import { useTabs, useSettings } from '../tabContext.jsx'
+import { useTabs } from '../tabContext.jsx'
+import { useSettings } from '../settings.jsx'
 import { useToggles } from './ToggleProvider'
 
 const ChatPanel = React.lazy(() => import('./ChatPanel'))
@@ -51,6 +52,7 @@ export default function MainContentView(props) {
     currentTab, viewLevel, updateTab, openTab, workspaces, activeWorkspace, activeTab,
     selectWorkspace, goToBook, goToWork, openHebrewTab, openHubNoteTab, openLearnTab,
     openMemorizeTab, openWikiTab, selectTab, closeTab, moveTab,
+    newWorkspace, renameWorkspace, deleteWorkspace,
   } = useTabs()
   const { showQuickAsk } = useSettings()
   const { dispatch } = useToggles()
@@ -143,8 +145,6 @@ export default function MainContentView(props) {
         onNewWorkspace={newWorkspace}
         onRenameWorkspace={renameWorkspace}
         onDeleteWorkspace={deleteWorkspace}
-        onDeleteWorkspaces={deleteWorkspaces}
-        onReorderWorkspaces={reorderWorkspaces}
         onSelectTab={selectTab}
         onCloseTab={closeTab}
         onMoveTab={moveTab}
@@ -187,7 +187,7 @@ export default function MainContentView(props) {
   // Hebrew view — if viewRef is set, show lesson; otherwise show curriculum
   if (viewLevel === 'hebrew') {
     if (viewRef && typeof viewRef === 'string' && !viewRef.startsWith('heb-')) {
-      const HebrewLessonView = React.lazy(() => import('./components/HebrewLessonView'))
+      const HebrewLessonView = React.lazy(() => import('./HebrewLessonView'))
       return (
         <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
           <HebrewLessonView
@@ -231,7 +231,7 @@ export default function MainContentView(props) {
 
   // Studies list view
   if (viewLevel === 'studies') {
-    const StudiesListView = React.lazy(() => import('./components/StudiesListView'))
+    const StudiesListView = React.lazy(() => import('./StudiesListView'))
     return (
       <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading studies...</div>}>
         <StudiesListView onOpenStudy={(slug, title) => {

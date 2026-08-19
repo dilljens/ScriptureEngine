@@ -6,6 +6,9 @@ import ErrorBoundary from './ErrorBoundary'
 import StructureModal from './StructureModal'
 import SettingsPanel from './SettingsPanel'
 import HotkeyCheatsheet from './HotkeyCheatsheet'
+import CommandInput from './CommandInput'
+import MobileBottomNav from './MobileBottomNav'
+import MobileMenuDrawer from './MobileMenuDrawer'
 const ChatPanel = React.lazy(() => import('./ChatPanel'))
 const AssessmentView = React.lazy(() => import('./AssessmentView'))
 
@@ -21,6 +24,7 @@ export default function AppOverlays(props) {
     chatInitialMsg, mobileActiveTab, showAssessment, showChat, showCheatsheet,
     showCommand, showGlobalKeyboard, showHistory, showLayers, showMobileMenu,
     showSettings, showSplitPicker, showStructure, splitTarget, userId, userName, userAvatar,
+    uiVisible,
     setChatInitialMsg, setShowAssessment, setShowChat, setShowCheatsheet,
     setShowCommand, setShowGlobalKeyboard, setShowHistory, setShowLayers,
     setShowMobileMenu, setShowSettings, setShowSplitPicker, setShowStructure,
@@ -28,10 +32,13 @@ export default function AppOverlays(props) {
     allBooks, handleChatNavigate, handleChatOpenTab, handleCommandChat,
     handleCommandNav, handleConfirmSplit, handleSearchCommand, openLibraryView,
     openTilesView, setCollection, setHebrewLessonId, setStudyWeek,
+    setShowHebrewDiagnostic,
   } = props
 
   const {
     currentTab, viewLevel, goToChapter, updateTab,
+    currentWorkspace, selectTab, openChatTab, openHebrewTab, openLearnTab,
+    openMemorizeTab, openWikiTab, openHubNoteTab, openStudiesTab,
   } = useTabs()
   const {
     hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS,

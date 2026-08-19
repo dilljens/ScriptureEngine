@@ -6,6 +6,7 @@ import { ProgressProvider, useProgress } from './progress.jsx'
 import { parseAndFuzzy, getChapters } from './refParser'
 import CommandInput from './components/CommandInput'
 import AppOverlays from './components/AppOverlays'
+import MainContentView from './components/MainContentView'
 import SearchBar from './components/SearchBar'
 import './fonts.css'
 import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
@@ -24,6 +25,7 @@ const HebrewPassageReader = React.lazy(() => import('./components/HebrewPassageR
 import SubjectTabBar from './components/SubjectTabBar'
 
 import { getFootnotes, getTskCrossrefs, getChapterGrammar, getChapterConnections, searchVerses } from './api'
+import useAgentControl from './useAgentControl'
 
 // ── Chapter View ──
 
@@ -71,7 +73,7 @@ function AppInner() {
   const {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
-    selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace, deleteWorkspaces, reorderWorkspaces,
+    selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToVerse, goToBook, goToWork, openChatTab,
     moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab,
   } = useTabs()
@@ -758,10 +760,11 @@ const [showAssessment, setShowAssessment] = useState(false)
     chatInitialMsg, mobileActiveTab, showAssessment, showChat, showCheatsheet,
     showCommand, showGlobalKeyboard, showHistory, showLayers, showMobileMenu,
     showSettings, showSplitPicker, showStructure, splitTarget, userId, userName, userAvatar,
+    uiVisible,
     setChatInitialMsg, setShowAssessment, setShowChat, setShowCheatsheet,
     setShowCommand, setShowGlobalKeyboard, setShowHistory, setShowLayers,
     setShowMobileMenu, setShowSettings, setShowSplitPicker, setShowStructure,
-    setSplitTarget, setUiVisible, setUserAvatar, setUserId, setUserName,
+    setSplitTarget, setShowHebrewDiagnostic, setUiVisible, setUserAvatar, setUserId, setUserName,
     allBooks, handleChatNavigate, handleChatOpenTab, handleCommandChat,
     handleCommandNav, handleConfirmSplit, handleSearchCommand, openLibraryView,
     openTilesView, setCollection, setHebrewLessonId, setStudyWeek,
