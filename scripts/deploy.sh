@@ -136,6 +136,15 @@ echo "Syncing service config..."
 rsync -avz scripts/scripture-api.service "$HOST:$REMOTE_DIR/scripture-api.service"
 ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scripture-api.service"
 
+# Sync the Caddy site snippet and hot-reload ferrum-caddy (zero downtime).
+# NOTE: scriptureengine.org is fronted by Caddy in Docker, NOT nginx —
+# docs/deployment.md's nginx architecture section is stale. The canonical
+# site config is scripts/caddy-scriptureengine.conf; the server copy lives
+# at /opt/sololedger/deploy/sites/ (ro-mounted into the container).
+echo "Syncing Caddy site config..."
+rsync -avz scripts/caddy-scriptureengine.conf "$HOST:/opt/sololedger/deploy/sites/scriptureengine.conf"
+ssh "$HOST" "docker exec ferrum-caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null && docker exec ferrum-caddy caddy reload --config /etc/caddy/Caddyfile"
+
 # 3. Install Python dependencies on remote
 # Ubuntu 24.04 system Python is externally-managed (PEP 668) — the VPS runs
 # the API on system python3, so --break-system-packages is required there.
