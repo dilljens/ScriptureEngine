@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
 import CardRenderer from './CardRenderer'
-import HebrewQuiz from './HebrewQuiz'
+import HebrewQuiz, { submitHebrewProgress } from './HebrewQuiz'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
+import {
+  ANSWER_MODES,
+  answerModeForQuestion,
+  gradeQuizAnswer,
+  normalizeQuizAnswer,
+} from '../lib/quiz-grading'
+import { currentSessionToken } from '../api'
 
 /** Book ID → display name mapping for user-facing verse references */
 const BOOK_NAMES = {
@@ -108,20 +115,14 @@ function renderTextWithRefs(text, onNavigate) {
   })
 }
 
-function normalizePracticeAnswer(value) {
-  const text = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
-  return /[\u0590-\u05ff]/.test(text)
-    ? text.replace(/[\u0591-\u05af]/g, '').replace(/\//g, '')
-    : text
-}
+export const normalizePracticeAnswer = normalizeQuizAnswer
 
 export function gradePracticeAnswer(answer, expected) {
-  const actual = normalizePracticeAnswer(answer)
-  if (!actual) return false
-  return String(expected ?? '')
-    .split(/\s+(?:or|\/)\s+/i)
-    .map(normalizePracticeAnswer)
-    .some(candidate => candidate === actual)
+  return gradeQuizAnswer({
+    answer,
+    correctAnswer: expected,
+    mode: ANSWER_MODES.FREE_TEXT,
+  })
 }
 
 /**
@@ -138,12 +139,22 @@ export function gradePracticeAnswer(answer, expected) {
 function StageItemCard({ card, onSubmitted, onContinue, isLast }) {
   const [submitted, setSubmitted] = useState(false)
   const [answer, setAnswer] = useState('')
+  const [serverCorrect, setServerCorrect] = useState(null)
+  const [grading, setGrading] = useState(false)
 
-  const correct = submitted ? gradePracticeAnswer(answer, card.data?.correct) : null
+  const correct = serverCorrect
   const handleAnswer = (ans) => {
     setAnswer(ans)
     setSubmitted(true)
-    onSubmitted(card, ans, gradePracticeAnswer(ans, card.data?.correct))
+    setGrading(true)
+    const resolution = onSubmitted?.(card, ans)
+    if (resolution && typeof resolution.then === 'function') {
+      resolution.then(authoritative => {
+        if (typeof authoritative === 'boolean') setServerCorrect(authoritative)
+      }).catch(() => {}).finally(() => setGrading(false))
+    } else {
+      setGrading(false)
+    }
   }
 
   return (
@@ -155,9 +166,9 @@ function StageItemCard({ card, onSubmitted, onContinue, isLast }) {
         answerState={{ [card.id]: { submitted, answer, correct } }}
       />
       {submitted && (
-        <button onClick={onContinue}
-          className="mt-4 w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
-          {isLast ? 'Continue →' : 'Next →'}
+        <button onClick={onContinue} disabled={grading}
+          className="mt-4 w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
+          {grading ? 'Checking…' : isLast ? 'Continue →' : 'Next →'}
         </button>
       )}
     </div>
@@ -203,12 +214,26 @@ function StagedPractice({ stages, nodeId, toCards, onGrade, onSwitchMode, title 
   }, [allItems, stage, stageIdx, stages.length, done])
 
   const handleSubmitted = (card, _ans, correct) => {
-    onGrade?.(card.data?.node_id || nodeId, correct)
+    const cardIndex = cards.findIndex(item => item.id === card.id)
+    const setPassedResult = value => {
+      if (typeof value !== 'boolean' || cardIndex < 0) return value
+      setPassedFlags(prev => {
+        const next = [...prev]
+        next[cardIndex] = value
+        return next
+      })
+      return value
+    }
     setPassedFlags(prev => {
       const next = [...prev]
-      next[pos] = correct
+      next[cardIndex >= 0 ? cardIndex : pos] = correct
       return next
     })
+    const resolution = onGrade?.(card, _ans)
+    if (resolution && typeof resolution.then === 'function') {
+      return resolution.then(setPassedResult)
+    }
+    return setPassedResult(resolution)
   }
 
   const handleContinue = () => {
@@ -376,12 +401,16 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         id: `heb-practice-${nodeId}-${i}`,
         type: 'drill',
         data: {
+          question_id: q.id,
           question: q.question_text,
           options: opts,
-          correct: q.correct_answer,
           explanation: q.explanation || '',
           hebrew_word: hebWord,
           question_type: q.question_type,
+          answer_mode: q.answer_mode || answerModeForQuestion({
+            type: q.question_type,
+            options: opts,
+          }),
           node_id: nodeId,
         },
       }
@@ -394,21 +423,36 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
       [card.id]: {
         submitted: true,
         answer,
-        correct: gradePracticeAnswer(answer, card.data?.correct),
+        correct: null,
       },
     }))
   }, [])
 
   // Confidence follows objective grading; it does not determine correctness.
-  const handleFlashcardRate = useCallback(async (card, rating) => {
-    const correct = practiceAnswers[card.id]?.correct === true
-    try {
-      await fetch('/api/v1/hebrew/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id: card.data?.node_id || nodeId, correct, user_id: 'default' }),
+  const handleFlashcardRate = useCallback(async (card, _rating) => {
+    const answerState = practiceAnswers[card.id] || {}
+    if (card.data?.question_id === undefined || card.data?.question_id === null) return null
+
+    const progress = {
+      node_id: card.data?.node_id || nodeId,
+      user_id: 'default',
+      session_token: currentSessionToken(),
+      question_id: card.data.question_id,
+      answer: answerState.answer ?? '',
+      answer_mode: card.data.answer_mode || answerModeForQuestion(card.data),
+    }
+    const authoritativeCorrect = await submitHebrewProgress(progress)
+    if (typeof authoritativeCorrect === 'boolean') {
+      setPracticeAnswers(previous => {
+        const state = previous[card.id]
+        if (!state) return previous
+        return {
+          ...previous,
+          [card.id]: { ...state, correct: authoritativeCorrect, serverCorrect: authoritativeCorrect },
+        }
       })
-    } catch {}
+    }
+    return authoritativeCorrect
   }, [nodeId, practiceAnswers])
 
   const playAudio = useCallback(async (word) => {
@@ -451,14 +495,16 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
 
   // Staged-mode grading posts straight to /hebrew/progress (same SRS feed as
   // the flashcard flow).
-  const handleStagedGrade = useCallback(async (targetNodeId, correct) => {
-    try {
-      await fetch('/api/v1/hebrew/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id: targetNodeId || nodeId, correct, user_id: 'default' }),
-      })
-    } catch {}
+  const handleStagedGrade = useCallback(async (card, answer) => {
+    if (card.data?.question_id === undefined || card.data?.question_id === null) return null
+    return submitHebrewProgress({
+      node_id: card.data?.node_id || nodeId,
+      user_id: 'default',
+      session_token: currentSessionToken(),
+      question_id: card.data.question_id,
+      answer: answer ?? '',
+      answer_mode: card.data.answer_mode || answerModeForQuestion(card.data),
+    })
   }, [nodeId])
 
   if (loading) return (

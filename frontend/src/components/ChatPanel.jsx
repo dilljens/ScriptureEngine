@@ -13,7 +13,7 @@ import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
 import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
-import { conversationCreate, conversationAddMessage, conversationGet, conversationList, chat, chatStream, currentUserId, currentSessionToken } from '../api'
+import { conversationCreate, conversationAddMessage, conversationGet, conversationList, conversationShare, chat, chatStream, getChatInstructions, currentUserId, currentSessionToken } from '../api'
 import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 import { parseStandardRef, resolveBook } from '../refParser'
@@ -283,12 +283,17 @@ const SYSTEM_PROMPT = `You are a scripture study assistant for the Scripture Eng
 
 Be concise, accurate, and cite verse references.`
 
+const CHAT_MODE_LABELS = { chat: 'General', hebrew: 'Hebrew Tutor' }
+const normalizeChatMode = (mode) => mode === 'hebrew' ? 'hebrew' : 'chat'
+
 
 // ── Chat Panel Component ──
 
-export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, variant = 'overlay' }) {
+export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, mode: initialMode = 'chat', variant = 'overlay' }) {
   const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools, searchScopes } = useToggles?.() || {}
   const userId = useRef(currentUserId())
+  const [chatMode, setChatMode] = useState(() => normalizeChatMode(initialMode))
+  const [chatModel, setChatModel] = useState(null)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
@@ -313,6 +318,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [previewRef, setPreviewRef] = useState(null) // { ref: "gen.1.1", label: "Genesis 1:1" }
   const [responseMode, setResponseMode] = useState('auto') // 'auto', 'short', 'medium', 'deep'
   const [showModeMenu, setShowModeMenu] = useState(false)
+  const [showChatModeMenu, setShowChatModeMenu] = useState(false)
   const [toolProgress, setToolProgress] = useState([]) // tool names called in current request
   const [streamingContent, setStreamingContent] = useState('')  // live text being streamed
   const [streamingThinking, setStreamingThinking] = useState('')  // live thinking being streamed
@@ -326,6 +332,45 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const abortRef = useRef(null)
   const titleSet = useRef(false)
   const nearBottomRef = useRef(true)    // autoscroll only when the user is near the bottom
+
+  const switchChatMode = useCallback((nextMode) => {
+    const normalized = normalizeChatMode(nextMode)
+    if (normalized === chatMode) return
+    abortRef.current?.abort()
+    requestSeqRef.current += 1
+    setWaiting(false)
+    setChatMode(normalized)
+    setMessages([])
+    setSessionId(null)
+    sessionRef.current = null
+    messagesRef.current = []
+    setStreamingContent('')
+    setStreamingThinking('')
+    setToolProgress([])
+    setActiveVerse(null)
+    setTruncatedRun(null)
+  }, [chatMode])
+
+  // Resolve the provider-selected model instead of pinning the browser to
+  // one vendor. If this lookup is unavailable, omitting model lets the
+  // server apply its configured default.
+  useEffect(() => {
+    if (variant === 'overlay' && !open) return undefined
+    let active = true
+    setChatModel(null)
+    getChatInstructions(chatMode)
+      .then(res => {
+        const model = res?.data?.model
+        if (active && typeof model === 'string' && model.trim()) setChatModel(model)
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [chatMode, open, variant])
+
+  useEffect(() => {
+    const normalized = normalizeChatMode(initialMode)
+    if (normalized !== chatMode) switchChatMode(normalized)
+  }, [initialMode, chatMode, switchChatMode])
 
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
@@ -452,7 +497,12 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
             }
             setRestoring(false)
             recoverPendingChat(storedId)
-            if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
+            // One-shot question handed off from a shared-conversation fork
+            // (see SharedView / MainContentView). Cleared before sending so a
+            // remount can never resend it.
+            const pendingQuestion = takePendingQuestion()
+            const firstMessage = pendingQuestion || initialMessage
+            if (firstMessage) setTimeout(() => sendMessage(firstMessage), 300)
             return
           }
         } catch {}
@@ -884,6 +934,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     try {
       const result = await conversationAddMessage(sid, role, content, persistedMetadata)
       if (!result?.ok) throw new Error(result.error || 'Message save failed')
+      attachServerId(role, content, result.data?.id)
       setSaveError(false)
       removeSnapshotMessage(sid, snapshotMessage)
     } catch {
@@ -892,6 +943,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       try {
         const retryResult = await conversationAddMessage(sid, role, content, persistedMetadata)
         if (!retryResult?.ok) throw new Error(retryResult.error || 'Message retry failed')
+        attachServerId(role, content, retryResult.data?.id)
         setSaveError(false)
         removeSnapshotMessage(sid, snapshotMessage)
       } catch { /* surfaced via saveError banner */ }
@@ -900,11 +952,51 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     }
   }, [])
 
+  // Stamp the server row id onto the matching local message so per-message
+  // actions (share) can reference the persisted record.
+  const attachServerId = useCallback((role, content, serverId) => {
+    if (!serverId) return
+    setMessages(prev => {
+      const next = [...prev]
+      for (let k = next.length - 1; k >= 0; k--) {
+        if (next[k].role === role && next[k].content === content && !next[k].serverId) {
+          next[k] = { ...next[k], serverId }
+          break
+        }
+      }
+      messagesRef.current = next
+      return next
+    })
+  }, [])
+
   // ── Clipboard helpers ──
   const copyToClipboard = async (text, idx) => {
     try { await navigator.clipboard.writeText(text) } catch {}
     setCopiedIdx(idx)
     setTimeout(() => setCopiedIdx(null), 1500)
+  }
+
+  // ── Share (per-message snapshot → unlisted link) ──
+  const [sharedIdx, setSharedIdx] = useState(null)
+  const handleShare = async (msg, idx) => {
+    const sid = sessionRef.current
+    if (!sid) return
+    const serverMsgId =
+      typeof msg.serverId === 'number' ? msg.serverId
+      : typeof msg.id === 'number' ? msg.id
+      : null
+    try {
+      const res = await conversationShare(sid, serverMsgId)
+      if (res.ok && res.data?.url) {
+        try { await navigator.clipboard.writeText(`${window.location.origin}${res.data.url}`) } catch {}
+        setSharedIdx(idx)
+        setTimeout(() => setSharedIdx(null), 1500)
+      } else {
+        alert(res.error || 'Share failed')
+      }
+    } catch (e) {
+      alert('Share failed: ' + e.message)
+    }
   }
 
   const formatConversation = () => {
@@ -1004,9 +1096,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
     try {
       await chatStream(allMessages, {
+        ...(chatModel ? { model: chatModel } : {}),
         max_tokens: maxTokens,
         disabled_tools: disabledTools,
         scopes,
+        mode: chatMode,
         user_id: userId.current,
         session_id: requestSessionId,
         client_message_id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -1398,29 +1492,54 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       correct: results[idx] === true,
     }))
     if (!answers.length) return
+    const token = currentSessionToken()
     fetch('/api/v1/quiz/record', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId.current, answers, source: 'chat' }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        user_id: token ? userId.current : 'default',
+        session_token: token,
+        answers,
+        source: 'chat',
+      }),
     }).catch(() => {})  // fire-and-forget — never break chat on a record failure
   }
 
-  function recordHebrewQuizAnswer(quizData, correct) {
-    if (!quizData || !quizData.question) return
-    const correctAnswer = quizData.correctAnswer !== undefined ? quizData.correctAnswer : (quizData.correct ?? '')
-    fetch('/api/v1/quiz/record', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId.current,
-        answers: [{ question: quizData.question, user_answer: '', correct_answer: String(correctAnswer), correct: !!correct }],
-        source: 'hebrew-chat',
-      }),
-    }).catch(() => {})  // fire-and-forget
+  async function recordHebrewQuizAnswer(quizData, _correct, answer, answerMode) {
+    // Only questions issued by scripture_hebrew_quiz carry a practice item id
+    // that the server can grade. Hand-authored cards are display-only.
+    if (!quizData || !quizData.question || quizData.question_id == null || quizData.node_id == null) return null
+    try {
+      const token = currentSessionToken()
+      const response = await fetch('/api/v1/hebrew/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          user_id: token ? userId.current : 'default',
+          session_token: token,
+          node_id: quizData.node_id,
+          question_id: quizData.question_id,
+          answer: answer ?? '',
+          answer_mode: answerMode || quizData.answer_mode,
+        }),
+      })
+      if (!response.ok) return null
+      const payload = await response.json()
+      const data = payload?.data || payload
+      return typeof data?.is_correct === 'boolean' ? data.is_correct : null
+    } catch {
+      return null
+    }
   }
 
   function renderWithMarkers(text) {
     if (!text) return text
+    if (chatMode === 'chat') {
+      text = text.replace(/%%%(?:QUIZ|HEBREW_QUIZ):[\s\S]*?%%%/g, '[Interactive quizzes are available in the Hebrew/Learn section.]')
+    }
     const parts = text.split(/(%%%(?:CLICK|QUIZ|HEBREW|HEBREW_QUIZ):(?:\[[^%]*\]|{[^%]*}|[^%]+)%%%)/g)
     if (parts.length === 1) return text  // no markers, return as-is
 
@@ -1447,7 +1566,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       if (hqm) {
         try {
           const quizData = JSON.parse(hqm[1])
-          return <HebrewQuizCard key={`hq${i}`} quizData={quizData} onComplete={(correct) => recordHebrewQuizAnswer(quizData, correct)} />
+          return <HebrewQuizCard key={`hq${i}`} quizData={quizData} onComplete={(correct, answer, answerMode) => recordHebrewQuizAnswer(quizData, correct, answer, answerMode)} />
         } catch { return <span className="text-red-500 text-xs">[invalid hebrew quiz]</span> }
       }
       const hm = part.match(/%%%HEBREW:({[^%]+})%%%/)
@@ -1492,6 +1611,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   function renderContent(content, msgIndex) {
     if (!content) return null
+    const modeSafeContent = chatMode === 'chat'
+      ? content.replace(/%%%(?:QUIZ|HEBREW_QUIZ):[\s\S]*?%%%/g, '[Interactive quizzes are available in the Hebrew/Learn section.]')
+      : content
 
     // Per-message components: verse chip taps expand inline under THIS message.
     const comps = createComponents({
@@ -1501,7 +1623,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     })
 
     // Step 1: Pre-process: replace natural-language refs with :verse[book.ch.vs] syntax
-    let processed = preprocessVerses(content)
+    let processed = preprocessVerses(modeSafeContent)
     // Convert %%SUGGEST:N%% → %%%CLICK:text%%%
     processed = processed.replace(/%%%SUGGEST:(\d+)%%%/g, (m, idx) => {
       const text = SUGGESTIONS[parseInt(idx)]
@@ -1596,6 +1718,20 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                       <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
                     ) : (
                       <span className="text-neutral-400 dark:text-neutral-400">📋</span>
+                    )}
+                  </button>
+                )}
+
+                {/* Share button (left of copy) — snapshot this response to an unlisted link */}
+                {msg.role === 'assistant' && !msg.streaming && (
+                  <button onClick={() => handleShare(msg, i)}
+                    aria-label="Share message"
+                    className="absolute -top-1.5 -right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    title="Share this response — copies an unlisted link">
+                    {sharedIdx === i ? (
+                      <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
+                    ) : (
+                      <span>🔗</span>
                     )}
                   </button>
                 )}
@@ -1767,6 +1903,35 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
             disabled={waiting || restoring}
           />
+
+          {/* Chat mode selector — General remains the default */}
+          <div className="relative shrink-0">
+            <button onClick={() => setShowChatModeMenu(p => !p)}
+              aria-label={`Chat mode: ${CHAT_MODE_LABELS[chatMode]}`}
+              aria-expanded={showChatModeMenu}
+              className={`h-full px-2 py-2 rounded-lg text-[10px] font-medium border transition-colors cursor-pointer ${
+                chatMode === 'hebrew'
+                  ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
+                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600'
+              }`}
+              title={`Chat mode: ${CHAT_MODE_LABELS[chatMode]}`}>
+              {chatMode === 'hebrew' ? 'Hebrew' : 'General'}
+            </button>
+            {showChatModeMenu && (
+              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px]"
+                onMouseLeave={() => setShowChatModeMenu(false)}>
+                {Object.entries(CHAT_MODE_LABELS).map(([id, label]) => (
+                  <button key={id}
+                    onClick={() => { switchChatMode(id); setShowChatModeMenu(false) }}
+                    className={`w-full text-left px-3 py-1.5 text-xs cursor-pointer transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                      chatMode === id ? 'text-indigo-600 dark:text-indigo-400 font-medium' : 'text-neutral-700 dark:text-neutral-300'
+                    }`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Response mode selector */}
           <div className="relative shrink-0">
@@ -1951,9 +2116,24 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 const STORAGE_KEY = 'current_chat_session'
 const SNAPSHOT_PREFIX = 'chat_snapshot_'
 const PENDING_PREFIX = 'chat_pending_'
+const PENDING_QUESTION_KEY = 'chat_pending_question'
 function loadSessionId() { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 function saveSessionId(id) { try { localStorage.setItem(STORAGE_KEY, id) } catch {} }
 function clearSessionId() { try { localStorage.removeItem(STORAGE_KEY) } catch {} }
+
+// One-shot follow-up question handed off from a shared-conversation fork.
+// Read-and-clear: the question is consumed exactly once, on the mount that
+// restores the forked session.
+function takePendingQuestion() {
+  try {
+    const raw = localStorage.getItem(PENDING_QUESTION_KEY)
+    if (!raw) return null
+    localStorage.removeItem(PENDING_QUESTION_KEY)
+    const parsed = JSON.parse(raw)
+    const text = typeof parsed?.text === 'string' ? parsed.text.trim() : ''
+    return text || null
+  } catch { return null }
+}
 
 // Background-run marker — written when a chat job starts, cleared when it
 // finishes. Lets a reload pick up the completed answer that the job saved

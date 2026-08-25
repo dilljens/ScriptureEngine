@@ -25,6 +25,12 @@ def _due_item(node_id, category, level, retrievability=0.5):
     }
 
 
+def _session_token(user_id):
+    from web.routes import auth
+
+    return auth._generate_session_token(user_id)
+
+
 def _flatten_reviews(reviews):
     """Flatten compressed groups back to their member node ids."""
     flat = []
@@ -190,7 +196,9 @@ def _seed_due_pool(client):
 
 
 def test_review_queue_separates_confusable_pair_when_both_due(client, _seed_due_pool):
-    r = client.get("/api/v1/hebrew/review-queue", params={"user_id": "conf-user", "limit": 30})
+    r = client.get("/api/v1/hebrew/review-queue", params={
+        "user_id": "conf-user", "session_token": _session_token("conf-user"), "limit": 30,
+    })
     assert r.status_code == 200
     data = r.json()["data"]
     flat = _flatten_reviews(data["reviews"])
@@ -201,7 +209,9 @@ def test_review_queue_separates_confusable_pair_when_both_due(client, _seed_due_
 
 
 def test_review_queue_pair_confusability_warning(client, _seed_due_pool):
-    r = client.get("/api/v1/hebrew/review-queue", params={"user_id": "conf-user", "limit": 30})
+    r = client.get("/api/v1/hebrew/review-queue", params={
+        "user_id": "conf-user", "session_token": _session_token("conf-user"), "limit": 30,
+    })
     data = r.json()["data"]
     shin = next((it for it in data["reviews"]
                  if isinstance(it, dict) and it.get("node_id") == "shin"), None)

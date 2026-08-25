@@ -27,14 +27,19 @@ def _batch_insert(conn, batch):
 
 
 def run(conn, book_ids=None):
-    """Generate gematria sum relationship connections.
+    """RETIRED (Track B1 stop-list) — no longer generates connections.
 
-    For each verse, finds word triples where A + B = C.
-    Groups verses by their sum relationship signature and
-    connects those sharing the same pattern.
+    gematria_sum_relationship is a non-reproducible scan type. This module
+    is kept only as archived provenance for existing rows; existing
+    rows are neutralized in calibration until the archive/purge migration.
 
-    Returns count of connections created.
+    Returns 0 always.
     """
+    return 0
+
+
+def _run_retired(conn, book_ids=None):
+    """Original implementation, kept for provenance reference."""
     count = 0
     batch = []
 

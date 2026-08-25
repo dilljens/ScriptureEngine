@@ -7,6 +7,7 @@ Within a long-running MCP/HTTP server, the in-memory cache avoids disk I/O.
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -46,6 +47,7 @@ def _serialize(session):
     return {
         "user_id": state.user_id,
         "current_item": session.get("current_item"),
+        "current_question_id": session.get("current_question_id"),
         "history": session.get("history", []),
         "target_layer": session.get("target_layer"),
         "status": session.get("status", "idle"),
@@ -66,6 +68,7 @@ def _deserialize(data):
         "engine": None,
         "state": state,
         "current_item": data.get("current_item"),
+        "current_question_id": data.get("current_question_id"),
         "history": data.get("history", []),
         "target_layer": data.get("target_layer"),
         "status": data.get("status", "idle"),
@@ -84,6 +87,7 @@ def _get_session(user_id):
                 "times_correct": {},
                 "times_wrong": {},
                 "history": [],
+                "current_question_id": None,
                 "status": "idle",
                 "max_items": 20,
             })
@@ -125,6 +129,7 @@ def start_assessment(conn, user_id="default", target_layer=None, max_items=20):
     session["target_layer"] = target_layer
     session["status"] = "active"
     session["max_items"] = max_items
+    session["current_question_id"] = None
 
     # Select first item
     item_id = session["engine"].select_item(session["state"], target_layer=target_layer)
@@ -141,6 +146,7 @@ def start_assessment(conn, user_id="default", target_layer=None, max_items=20):
         session["status"] = "error"
         _save_session(user_id)
         return {"error": f"Could not load question for item {item_id}"}
+    session["current_question_id"] = question["item_id"]
 
     _save_session(user_id)
 
@@ -150,7 +156,7 @@ def start_assessment(conn, user_id="default", target_layer=None, max_items=20):
         "session_status": session["status"],
         "item_number": len(session["history"]) + 1,
         "total_items_planned": max_items,
-        "question": question,
+        "question": _public_question(question),
         "mastery": {
             "overall": session["state"].overall_mastery(),
             "by_layer": session["state"].mastery_by_layer(conn),
@@ -158,23 +164,62 @@ def start_assessment(conn, user_id="default", target_layer=None, max_items=20):
     }
 
 
-def submit_answer(conn, user_id="default", correct=False, correctness=None):
-    """Submit an answer and get the next question.
+def _assessment_answer_matches(answer, question):
+    """Grade an assessment response against the private question record."""
+    if isinstance(answer, dict):
+        answer = answer.get("selected", answer.get("answer", answer.get("openInput", "")))
+    options = question.get("options") or []
+    expected = question.get("correct_answer")
 
-    Supports partial credit via `correctness` parameter.
-    For simple True/False: just pass `correct=True/False`.
-    For multiple choice with weighted options: pass `correctness=0.0–1.0`
-    reflecting how correct the selected answer is (1.0 = fully correct,
-    0.5 = partially right, 0.0 = completely wrong).
+    def normalize(value):
+        return re.sub(r"\s+", " ", str(value if value is not None else "").strip().casefold())
+
+    def option_label(option):
+        return option.get("label", "") if isinstance(option, dict) else option
+
+    if options:
+        def option_index(value):
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, str) and re.fullmatch(r"[A-Za-z]", value.strip()):
+                index = ord(value.strip().upper()) - ord("A")
+                return index if 0 <= index < len(options) else None
+            if isinstance(value, int) or (isinstance(value, str) and value.strip().isdigit()):
+                index = int(value)
+                return index if 0 <= index < len(options) else None
+            value = normalize(value)
+            for index, option in enumerate(options):
+                if normalize(option_label(option)) == value:
+                    return index
+            return None
+
+        actual_index = option_index(answer)
+        expected_index = option_index(expected)
+        if actual_index is not None or expected_index is not None:
+            return actual_index is not None and actual_index == expected_index
+
+    actual = normalize(answer)
+    if not actual:
+        return False
+    candidates = [str(expected or ""), *re.split(r"\s+or\s+|[|/]", str(expected or ""), flags=re.IGNORECASE)]
+    return any(actual == normalize(candidate) for candidate in candidates)
+
+
+def submit_answer(conn, user_id="default", answer=None, correct=None, correctness=None):
+    """Grade an answer server-side and get the next question.
+
+    ``correct`` and client-supplied ``correctness`` are retained as ignored
+    compatibility parameters; learner state is derived from ``answer``.
 
     Args:
         user_id: User identifier
-        correct: Whether the answer was correct (simple True/False)
-        correctness: Optional float 0.0–1.0 for partial credit (defaults to 1.0 or 0.0)
+        answer: The submitted option, index, or free-text answer
 
     Returns:
         Dict with updated state and next question (or completion)
     """
+    if answer is None:
+        return {"error": "answer required; client correctness is not accepted"}
     session = _get_session(user_id)
     if session["status"] != "active":
         return {"error": "No active session. Call start_assessment first."}
@@ -186,9 +231,14 @@ def submit_answer(conn, user_id="default", correct=False, correctness=None):
     if item_id is None:
         return {"error": "No current item to assess"}
 
-    # Default correctness: 1.0 for correct, 0.0 for wrong
-    if correctness is None:
-        correctness = 1.0 if correct else 0.0
+    issued_question_id = session.get("current_question_id")
+    if issued_question_id is None:
+        return {"error": "Assessment session needs to be restarted"}
+    question = _get_question(conn, item_id, issued_question_id)
+    if not question:
+        return {"error": "Could not load current question"}
+    correct = _assessment_answer_matches(answer, question)
+    correctness = 1.0 if correct else 0.0
 
     # Record response with partial credit support
     session["engine"].assess_response(session["state"], item_id, correct, correctness)
@@ -252,6 +302,9 @@ def submit_answer(conn, user_id="default", correct=False, correctness=None):
 
     session["current_item"] = next_item
     question = _get_question(conn, next_item)
+    if not question:
+        return {"error": f"Could not load question for item {next_item}"}
+    session["current_question_id"] = question["item_id"]
 
     _save_session(user_id)
 
@@ -260,7 +313,7 @@ def submit_answer(conn, user_id="default", correct=False, correctness=None):
         "user_id": user_id,
         "session_status": "active",
         "item_number": len(session["history"]) + 1,
-        "question": question,
+        "question": _public_question(question),
         "mastery": {
             "overall": session["state"].overall_mastery(),
             "by_layer": session["state"].mastery_by_layer(conn),
@@ -291,16 +344,18 @@ def get_progress(conn, user_id="default"):
     }
 
 
-def _get_question(conn, item_id):
-    """Get a question for a knowledge item from the assessment_items table."""
+def _get_question(conn, item_id, question_id=None):
+    """Get the issued question, or select one for a knowledge item."""
     # Try to get pre-generated question
+    lookup_column = "id" if question_id is not None else "knowledge_item_id"
+    lookup_value = question_id if question_id is not None else item_id
     row = conn.execute(
         """SELECT id, question_type, question_text, options_json, correct_answer,
-                  layer, bloom_level
+                  layer, bloom_level, knowledge_item_id
            FROM assessment_items
-           WHERE knowledge_item_id = ?
-           ORDER BY RANDOM() LIMIT 1""",
-        (item_id,)
+           WHERE """ + lookup_column + """ = ?
+           """ + ("ORDER BY RANDOM() LIMIT 1" if question_id is None else "LIMIT 1"),
+        (lookup_value,)
     ).fetchone()
 
     if row:
@@ -334,7 +389,7 @@ def _get_question(conn, item_id):
             "bloom_level": row[6],
         }
         # Add wiki article suggestions
-        result["learn_more"] = _get_wiki_links(conn, item_id)
+        result["learn_more"] = _get_wiki_links(conn, row[7] or item_id)
         return result
 
     # Fallback: create question on the fly from knowledge_items
@@ -362,6 +417,20 @@ def _get_question(conn, item_id):
     # Add wiki article suggestions
     result["learn_more"] = _get_wiki_links(conn, item_id)
     return result
+
+
+def _public_question(question):
+    """Expose an assessment prompt without its answer key or weights."""
+    if not question:
+        return question
+    public = dict(question)
+    for key in ("correct_answer", "correctAnswer", "correct", "is_correct", "correctness_weight"):
+        public.pop(key, None)
+    public["options"] = [
+        option.get("label", "") if isinstance(option, dict) else option
+        for option in public.get("options", [])
+    ]
+    return public
 
 
 def _get_wiki_links(conn, item_id):
@@ -463,6 +532,7 @@ def start_diagnostic(conn, user_id="default", max_items=30):
     session["target_layer"] = None  # all layers
     session["status"] = "diagnostic"
     session["max_items"] = max_items
+    session["current_question_id"] = None
 
     # Select first item (broad coverage, max information)
     item_id = session["engine"].select_item(session["state"], n_candidates=200)
@@ -477,6 +547,7 @@ def start_diagnostic(conn, user_id="default", max_items=30):
         session["status"] = "error"
         _save_session(user_id)
         return {"error": f"Could not load question for item {item_id}"}
+    session["current_question_id"] = question["item_id"]
 
     _save_session(user_id)
 
@@ -487,20 +558,23 @@ def start_diagnostic(conn, user_id="default", max_items=30):
         "session_status": session["status"],
         "item_number": len(session["history"]) + 1,
         "total_items_planned": max_items,
-        "question": question,
+        "question": _public_question(question),
     }
 
 
-def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness=None):
+def submit_diagnostic_answer(conn, user_id="default", answer=None, correct=None, correctness=None):
     """Submit a diagnostic answer with conditional completion.
 
-    Supports partial credit via `correctness` parameter (0.0–1.0).
+    Correctness is derived from the submitted answer; client booleans and
+    partial-credit values are ignored for learner state.
     Implements conditional completion from Math Academy Way (Ch 30):
     When mastery probability for a connection type + layer combination
     crosses 0.8, the system stops asking about that combination.
 
     Returns the diagnostic report when complete.
     """
+    if answer is None:
+        return {"error": "answer required; client correctness is not accepted"}
     session = _get_session(user_id)
     if session["status"] not in ("diagnostic", "active"):
         return {"error": "No active diagnostic. Call start_diagnostic first."}
@@ -511,9 +585,14 @@ def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness
     if item_id is None:
         return {"error": "No current item"}
 
-    # Default correctness: 1.0 for correct, 0.0 for wrong
-    if correctness is None:
-        correctness = 1.0 if correct else 0.0
+    issued_question_id = session.get("current_question_id")
+    if issued_question_id is None:
+        return {"error": "Diagnostic session needs to be restarted"}
+    question = _get_question(conn, item_id, issued_question_id)
+    if not question:
+        return {"error": "Could not load current question"}
+    correct = _assessment_answer_matches(answer, question)
+    correctness = 1.0 if correct else 0.0
 
     # Record response with partial credit support
     session["engine"].assess_response(session["state"], item_id, correct, correctness)
@@ -558,6 +637,7 @@ def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness
 
     if not question:
         return _finish_diagnostic(conn, session, user_id, reason="question_error")
+    session["current_question_id"] = question["item_id"]
 
     return {
         "ok": True,
@@ -565,7 +645,7 @@ def submit_diagnostic_answer(conn, user_id="default", correct=False, correctness
         "mode": "diagnostic",
         "session_status": session["status"],
         "item_number": total + 1,
-        "question": question,
+        "question": _public_question(question),
     }
 
 

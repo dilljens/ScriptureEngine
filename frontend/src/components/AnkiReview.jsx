@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { fetchJSON } from '../api'
+import { currentSessionToken, fetchJSON, hebrewSessionUser } from '../api'
 
 /**
  * AnkiReview — Dedicated flip-card study view for Hebrew vocabulary.
@@ -85,10 +85,18 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     setRatings(prev => ({ ...prev, [currentCard.id]: rating }))
     // Submit rating to FSRS
     try {
+      await hebrewSessionUser()
+      const sessionToken = currentSessionToken()
       await fetchJSON('/hebrew/fsrs/review', {
         method: 'POST',
-        body: JSON.stringify({ node_id: currentCard.node_id, rating, user_id: 'default' }),
-        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: currentCard.node_id, rating, user_id: 'default',
+          session_token: sessionToken,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
       })
     } catch (_) {}
     // Advance

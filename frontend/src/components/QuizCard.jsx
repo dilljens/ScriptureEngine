@@ -1,4 +1,9 @@
 import React, { useState } from 'react'
+import {
+  ANSWER_MODES,
+  getChoiceFeedback,
+  gradeQuizAnswer,
+} from '../lib/quiz-grading'
 
 /**
  * QuizCard — displays 1-5 questions at once in the chat.
@@ -24,7 +29,13 @@ export default function QuizCard({ questions, onAnswer }) {
     qs.forEach((q, i) => {
       const ans = answers[i]
       if (ans === undefined) return
-      newSubmitted[i] = ans === (q.correctAnswer !== undefined ? q.correctAnswer : (q.correct || 0))
+      const correctAnswer = q.correctAnswer !== undefined ? q.correctAnswer : (q.correct ?? 0)
+      newSubmitted[i] = gradeQuizAnswer({
+        answer: ans,
+        correctAnswer,
+        options: q.options || [],
+        mode: q.answerMode || q.answer_mode || ANSWER_MODES.CHOICE_INDEX,
+      })
     })
     setSubmitted(newSubmitted)
     setBatchDone(true)
@@ -44,6 +55,7 @@ export default function QuizCard({ questions, onAnswer }) {
       {qs.map((q, qi) => {
         const isCorrect = submitted[qi]
         const options = q.options || []
+        const correctAnswer = q.correctAnswer !== undefined ? q.correctAnswer : (q.correct ?? 0)
 
         return (
           <div key={qi} className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
@@ -55,10 +67,15 @@ export default function QuizCard({ questions, onAnswer }) {
                 const isSelected = answers[qi] === oi
                 let cls = 'w-full text-left px-3 py-2 rounded-lg text-sm border transition-all cursor-pointer '
                 if (batchDone) {
-                  const isOptCorrect = oi === (q.correctAnswer !== undefined ? q.correctAnswer : (q.correct || 0))
-                  cls += isOptCorrect
+                  const feedback = getChoiceFeedback({
+                    answer: answers[qi],
+                    optionIndex: oi,
+                    correctAnswer,
+                    options,
+                  })
+                  cls += feedback.isCorrectOption
                     ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                    : isSelected && !isOptCorrect
+                    : feedback.isIncorrectSelection
                       ? 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                       : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400'
                 } else {

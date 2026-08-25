@@ -67,7 +67,7 @@ def _complete_stream(content="hello job"):
 def _stub_no_tools(monkeypatch, call_fn=None):
     """Stub the tool-round call so the pipeline goes straight to the final stream."""
     monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
-    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip: True)
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
 
     async def default_call(payload):
         return {"choices": [{"message": {"role": "assistant", "content": "ok"}}], "usage": {}}

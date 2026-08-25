@@ -742,6 +742,23 @@ CREATE TABLE IF NOT EXISTS conversation_connections (
 );
 CREATE INDEX IF NOT EXISTS idx_conv_conn_session ON conversation_connections(session_id);
 
+-- Shared conversation snapshots (unlisted link sharing).
+-- A share is a frozen copy of a conversation — or a single response within
+-- it — readable by anyone with the link. Asking a follow-up question forks
+-- the snapshot into a new session owned by the asker (see lib/api/sharing.py).
+CREATE TABLE IF NOT EXISTS shared_conversations (
+    id TEXT PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    source_session_id TEXT,
+    source_message_id INTEGER,
+    title TEXT DEFAULT '',
+    content_json TEXT NOT NULL,
+    created_by TEXT DEFAULT 'anonymous',
+    view_count INTEGER DEFAULT 0,
+    fork_count INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Audio alignment timestamps for verse-level and word-level audio
 CREATE TABLE IF NOT EXISTS audio_timestamps (
     verse_id TEXT PRIMARY KEY REFERENCES verses(id),

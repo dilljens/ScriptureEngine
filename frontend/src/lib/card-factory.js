@@ -13,14 +13,11 @@
  * show options. If they've been correct, hide options for pure recall.
  *
  * @param {Object} module — module with questions array
- * @param {Object} progress — { [question_id]: { correct, attempts } }
  * @returns {Array} learn_question cards
  */
-export function lessonToCards(module, progress = {}) {
+export function lessonToCards(module) {
   if (!module?.questions) return []
   return module.questions.map((q, i) => {
-    const prog = progress[q.id] || {}
-    const showOptions = prog.attempts > 0 && prog.correct < prog.attempts
     return {
       id: `lesson-${module.id}-q-${q.id || i}`,
       type: 'learn_question',
@@ -28,13 +25,13 @@ export function lessonToCards(module, progress = {}) {
         question_id: q.id,
         question: q.question,
         options: q.options || [],
-        correct_answer: q.correct_answer,
         explanation: q.explanation || '',
         tier: q.tier || '',
         bloom_level: q.bloom_level || '',
         is_open: Boolean(q.is_open),
+        answer_mode: q.answer_mode || (q.options?.length && !q.is_open ? 'choice_index' : 'free_text'),
         source: module.title,
-        show_options: showOptions && (q.options?.length > 0),
+        show_options: Boolean(q.options?.length),
       },
     }
   })
@@ -293,31 +290,25 @@ export function interleaveCards(cardArrays, maxConsecutive = 2) {
  * Convert assessment items to flashcards.
  * Follows The Math Academy Way Ch 20: retrieval before reveal.
  *
- * Adaptive MC: if user has struggled (answered wrong before), show options.
- * If user has been correct, hide options for pure recall.
+ * Options remain display-only; answer keys are never copied into cards.
  *
- * @param {Array} items — assessment_items rows from /api/v1/quiz
- * @param {Object} progress — { [question_id]: { correct, attempts } } from quiz_progress
+ * @param {Array} items — public assessment_items rows from /api/v1/quiz
  * @returns {Array} assessment_question cards
  */
-export function assessmentToCards(items, progress = {}) {
+export function assessmentToCards(items) {
   if (!items?.length) return []
   return items.map(item => {
-    const prog = progress[item.question_id] || progress[item.id] || { correct: 0, attempts: 0 }
-    // Show MC options if the user has ever answered this item wrong
-    const showOptions = prog.attempts > 0 && prog.correct < prog.attempts
     return {
       id: `assessment-${item.question_id || item.id}`,
       type: 'assessment_question',
       data: {
         question: item.question || item.question_text,
-        answer: item.correct_answer,
         explanation: item.explanation || '',
         options: item.options || [],
         tier: item.tier || 'text',
         bloom_level: item.bloom_level || '',
         layer: item.layer || '',
-        show_options: showOptions && (item.options?.length > 0),
+        show_options: Boolean(item.options?.length),
       },
     }
   })

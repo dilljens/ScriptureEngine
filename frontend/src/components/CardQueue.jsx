@@ -29,6 +29,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   const [showAnswer, setShowAnswer] = useState(false)
   const [results, setResults] = useState([])
   const [done, setDone] = useState(false)
+  const [rateError, setRateError] = useState(false)
 
   // Reset when cards change
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
     setShowAnswer(false)
     setResults([])
     setDone(false)
+    setRateError(false)
   }, [cards])
 
   const current = cards?.[idx]
@@ -48,19 +50,35 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
 
   const handleRate = useCallback(async (val) => {
     if (rating !== null) return
+    setRateError(false)
     setRating(val)
-    setResults(prev => [...prev, {
-      card: current,
-      rating: val,
-      correct: answerState?.[current?.id]?.correct,
-    }])
 
     // Submit rating if callback provided
+    let authoritativeCorrect
+    let authoritativeAttempted = false
     if (onRate && current) {
+      authoritativeAttempted = true
       try {
-        await onRate(current, val)
+        authoritativeCorrect = await onRate(current, val)
       } catch {}
     }
+    if (authoritativeAttempted && authoritativeCorrect === null) {
+      setRating(null)
+      setRateError(true)
+      return
+    }
+    const result = {
+      card: current,
+      rating: val,
+      authoritative: authoritativeAttempted && authoritativeCorrect !== undefined,
+      correct: typeof authoritativeCorrect === 'boolean'
+        ? authoritativeCorrect
+        : authoritativeAttempted && authoritativeCorrect !== undefined
+          ? null
+          : answerState?.[current?.id]?.correct,
+    }
+    const nextResults = [...results, result]
+    setResults(nextResults)
 
     // Advance after brief delay
     setTimeout(() => {
@@ -70,10 +88,10 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         setShowAnswer(false)
       } else {
         setDone(true)
-        if (onComplete) onComplete()
+        if (onComplete) onComplete(nextResults)
       }
     }, 800)
-  }, [rating, current, idx, cards.length, onRate, onComplete, answerState])
+  }, [rating, current, idx, cards.length, onRate, onComplete, answerState, results])
 
   // Flip on Enter/Space
   const handleKey = useCallback((e) => {
@@ -90,7 +108,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
 
   // ── Completion screen ──
   if (done) {
-    const correct = results.filter(r => r.correct ?? r.rating >= 3).length
+    const correct = results.filter(r => r.authoritative ? r.correct === true : (r.correct ?? r.rating >= 3)).length
     const total = results.length
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0
     return (
@@ -195,6 +213,11 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
       {/* Rating feedback */}
       {rating !== null && (
         <p className="text-center text-sm text-green-600 font-medium mt-4">✓ Recorded</p>
+      )}
+      {rateError && (
+        <p className="text-center text-sm text-red-600 dark:text-red-400 font-medium mt-4">
+          Could not record this answer. Try the rating again.
+        </p>
       )}
     </div>
   )

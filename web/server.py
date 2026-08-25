@@ -2123,6 +2123,41 @@ def get_connection_status(connection_id: int):
 # Every tool registered in lib/api/__init__.py is available here.
 # GET for simple args, POST for complex args (body JSON).
 
+_USER_SCOPED_TOOL_NAMES = frozenset({
+    "scripture_quiz_progress",
+    "scripture_hebrew_progress",
+    "scripture_hebrew_placement",
+    "scripture_assess_start",
+    "scripture_assess_answer",
+    "scripture_assess_progress",
+    "scripture_diagnostic_start",
+    "scripture_diagnostic_answer",
+    "scripture_diagnostic_report",
+})
+
+
+def _bind_tool_user(tool_name: str, args: dict, request: Request, session_token: str = ""):
+    """Bind user-scoped generic tools to a bearer/session owner."""
+    if tool_name not in _USER_SCOPED_TOOL_NAMES:
+        return
+    authorization = request.headers.get("authorization", "")
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    if session_token:
+        from web.routes.auth import _resolve_user_from_token
+        user_id = _resolve_user_from_token(session_token)
+        if not user_id:
+            raise HTTPException(401, "Invalid or expired session token")
+        args["user_id"] = user_id
+        return
+    requested = args.get("user_id", "default")
+    if requested not in ("", "default", "anonymous"):
+        raise HTTPException(401, "session_token required for a user-scoped tool")
+    args["user_id"] = "default"
+
 @app.get("/api/v1/tools/{tool_name:path}")
 def call_tool_get(tool_name: str, request: Request):
     """Call any registered tool by name — auto-generated from the shared tool registry.
@@ -2137,6 +2172,7 @@ def call_tool_get(tool_name: str, request: Request):
 
     fn, schema, desc = TOOL_REGISTRY[tool_name]
     args = dict(request.query_params)
+    session_token = args.pop("session_token", "")
 
     # Parse types per schema
     props = schema.get("properties", {})
@@ -2164,6 +2200,8 @@ def call_tool_get(tool_name: str, request: Request):
             except (ValueError, json.JSONDecodeError):
                 typed_args[key] = val
 
+    _bind_tool_user(tool_name, typed_args, request, session_token)
+
     conn = get_db()
     try:
         result = call_tool(tool_name, conn, **typed_args)
@@ -2175,15 +2213,18 @@ def call_tool_get(tool_name: str, request: Request):
 
 
 @app.post("/api/v1/tools/{tool_name:path}")
-def call_tool_post(tool_name: str, body: dict):
+def call_tool_post(tool_name: str, body: dict, request: Request):
     """Call any registered tool by name with JSON body arguments."""
     tool_name = tool_name.strip("/")
     if tool_name not in TOOL_REGISTRY:
         raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
 
+    args = dict(body or {})
+    session_token = args.pop("session_token", "")
+    _bind_tool_user(tool_name, args, request, session_token)
     conn = get_db()
     try:
-        result = call_tool(tool_name, conn, **body)
+        result = call_tool(tool_name, conn, **args)
         return {"ok": True, "data": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

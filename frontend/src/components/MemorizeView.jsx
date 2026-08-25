@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import MemorizeQueue from './MemorizeQueue'
 import CardQueue from './CardQueue'
+import { currentSessionToken } from '../api'
 
 /**
  * MemorizeView — spaced repetition verse memorization.
@@ -10,10 +11,15 @@ export default function MemorizeView() {
   const [view, setView] = useState('queue') // queue | review
   const [reviewData, setReviewData] = useState([])
   const [stats, setStats] = useState({ total: 0, mastered: 0, learning: 0 })
+  const sessionToken = () => currentSessionToken()
+  const sessionHeaders = () => {
+    const token = sessionToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
 
   const loadStats = async () => {
     try {
-      const r = await fetch('/api/v1/memorize/queue')
+      const r = await fetch('/api/v1/memorize/queue', { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) {
         const verses = d.data.verses || []
@@ -28,7 +34,7 @@ export default function MemorizeView() {
 
   const startReview = async () => {
     try {
-      const r = await fetch('/api/v1/memorize/review?limit=10')
+      const r = await fetch('/api/v1/memorize/review?limit=10', { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) {
         // Map backend reviews to generic card format
@@ -54,8 +60,8 @@ export default function MemorizeView() {
     if (card.queue_id) {
       await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating }),
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ rating, session_token: sessionToken() }),
       })
     }
   }

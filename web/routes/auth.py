@@ -26,7 +26,7 @@ import logging
 import secrets
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 log = logging.getLogger(__name__)
 
@@ -94,6 +94,29 @@ def _resolve_user_from_token(session_token):
         log.warning("silent_exception", exc_info=True)
         pass
     return None
+
+
+def _resolve_request_user(
+    user_id: str = "default", session_token: str = "", authorization: str = ""
+) -> str:
+    """Resolve a user id for an HTTP read/write without trusting a claim.
+
+    Anonymous requests may use only the shared ``default`` profile. A bearer or
+    explicit session token is the sole authority for account-scoped data.
+    """
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    if session_token:
+        resolved = _resolve_user_from_token(session_token)
+        if not resolved:
+            raise HTTPException(401, "Invalid or expired session token")
+        return resolved
+    if user_id not in ("", "default", "anonymous"):
+        raise HTTPException(401, "session_token required for a user-scoped operation")
+    return "default"
 
 
 @router.post("/api/v1/auth/google")
@@ -194,16 +217,21 @@ def merge_anonymous_progress(body: dict):
     if not session_token or not anonymous_id:
         raise HTTPException(400, "session_token and anonymous_id required")
 
-    # Look up user by session token (simplified — in production use a sessions table)
+    user_id = _resolve_user_from_token(session_token)
+    if not user_id:
+        raise HTTPException(401, "Invalid or expired session token")
+
+    # The anonymous id must belong to the authenticated account. Never let the
+    # caller choose an unrelated victim as the merge source.
     conn = get_conn()
-    user = conn.execute("SELECT id, anon_id FROM users WHERE anon_id=? OR id=?",
-                       (anonymous_id, anonymous_id)).fetchone()
+    user = conn.execute(
+        "SELECT id, anon_id FROM users WHERE id=?", (user_id,)
+    ).fetchone()
 
-    if not user:
+    if not user or user["anon_id"] != anonymous_id:
         conn.close()
-        raise HTTPException(404, "User not found. Sign in first.")
+        raise HTTPException(403, "Anonymous progress does not belong to this session")
 
-    user_id = user["id"]
     merged = {}
 
     # Merge memorize_queue
@@ -226,18 +254,38 @@ def merge_anonymous_progress(body: dict):
 
     # Merge memorize_progress
     prog = conn.execute(
-        "SELECT verse_id, mastery, attempts, correct, stability, difficulty, last_review, next_review "
+        "SELECT verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review "
         "FROM memorize_progress WHERE user_id=?", (anonymous_id,)
     ).fetchall()
     count = 0
     for p in prog:
         try:
-            conn.execute("""
-                INSERT OR REPLACE INTO memorize_progress
-                    (user_id, verse_id, mastery, attempts, correct, stability, difficulty, last_review, next_review)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (user_id, p["verse_id"], p["mastery"], p["attempts"], p["correct"],
-                  p["stability"], p["difficulty"], p["last_review"], p["next_review"]))
+            existing = conn.execute(
+                "SELECT mastery, attempts, correct, stability, difficulty, last_review, next_review "
+                "FROM memorize_progress WHERE user_id=? AND verse_id=?",
+                (user_id, p["verse_id"]),
+            ).fetchone()
+            if existing:
+                conn.execute("""
+                    UPDATE memorize_progress SET
+                        mastery=MAX(mastery, ?), attempts=attempts+?, correct=correct+?,
+                        stability=MAX(stability, ?), difficulty=MIN(difficulty, ?),
+                        fi_re_credit=MAX(COALESCE(fi_re_credit, 0.0), COALESCE(?, 0.0)),
+                        last_review=MAX(COALESCE(last_review, ''), COALESCE(?, '')),
+                        next_review=MIN(COALESCE(next_review, '9999-12-31'), COALESCE(?, '9999-12-31'))
+                    WHERE user_id=? AND verse_id=?
+                """, (
+                    p["mastery"], p["attempts"], p["correct"], p["stability"],
+                    p["difficulty"], p["fi_re_credit"], p["last_review"], p["next_review"],
+                    user_id, p["verse_id"],
+                ))
+            else:
+                conn.execute("""
+                    INSERT INTO memorize_progress
+                        (user_id, verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (user_id, p["verse_id"], p["mastery"], p["attempts"], p["correct"],
+                      p["stability"], p["difficulty"], p["fi_re_credit"], p["last_review"], p["next_review"]))
             count += 1
         except Exception:
             log.warning("silent_exception", exc_info=True)
@@ -538,12 +586,26 @@ def save_user_settings(body: dict):
 
 
 @router.get("/api/v1/user/progress/{user_id}")
-def get_user_progress(user_id: str):
+def get_user_progress(
+    user_id: str, session_token: str = "", authorization: str = Header("")
+):
     """Aggregate all progress data for a user — quiz, memorize, Hebrew, chat.
 
     Returns structured data that can be fed to an LLM for personalized
     feedback, study recommendations, and app improvement insights.
     """
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    if session_token:
+        user_id = _resolve_user_from_token(session_token)
+        if not user_id:
+            raise HTTPException(401, "Invalid or expired session token")
+    elif user_id not in ("default", "anonymous"):
+        raise HTTPException(401, "session_token required for user progress")
+
     import sqlite3 as _sql
     from pathlib import Path
     ROOT = Path(__file__).resolve().parent.parent.parent

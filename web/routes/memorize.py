@@ -18,7 +18,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -30,6 +30,26 @@ def _memorize_db_path() -> Path:
     """Resolve the learning database, honoring MEMORIZE_DB_PATH for isolation."""
     override = os.environ.get("MEMORIZE_DB_PATH")
     return Path(override) if override else BASE_DIR / "data" / "memorize.db"
+
+
+def _require_review_user(
+    user_id: str = "default", session_token: str = "", authorization: str = ""
+) -> str:
+    """Bind aggregate review reads to a session owner."""
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    if session_token:
+        from web.routes.auth import _resolve_user_from_token
+        resolved = _resolve_user_from_token(session_token)
+        if not resolved:
+            raise HTTPException(401, "Invalid or expired session token")
+        return resolved
+    if user_id not in ("", "default", "anonymous"):
+        raise HTTPException(401, "session_token required for a user-scoped review")
+    return "default"
 
 
 def get_conn():
@@ -323,8 +343,11 @@ def get_graph_centrality(conn, limit=5):
 
 
 @router.get("/api/v1/memorize/queue")
-def list_queue(user_id: str = "default"):
+def list_queue(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """List all verses in the memorize queue with progress."""
+    user_id = _require_review_user(user_id, session_token, authorization)
     conn = get_conn()
     rows = conn.execute("""
         SELECT m.id, m.verse_id, m.added_at,
@@ -362,11 +385,15 @@ def list_queue(user_id: str = "default"):
 
 
 @router.post("/api/v1/memorize/queue")
-def add_to_queue(body: dict):
+def add_to_queue(body: dict, request: Request):
     """Add a verse to the memorize queue."""
+    user_id = _require_review_user(
+        (body or {}).get("user_id", "default"),
+        (body or {}).get("session_token", ""),
+        request.headers.get("authorization", ""),
+    )
     conn = get_conn()
     verse_id = body.get("verse_id", "")
-    user_id = body.get("user_id", "default")
 
     if not verse_id:
         conn.close()
@@ -400,8 +427,12 @@ def add_to_queue(body: dict):
 
 
 @router.delete("/api/v1/memorize/queue/{item_id}")
-def remove_from_queue(item_id: int, user_id: str = "default"):
+def remove_from_queue(
+    item_id: int, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Remove a verse from the memorize queue."""
+    user_id = _require_review_user(user_id, session_token, authorization)
     conn = get_conn()
     conn.execute("DELETE FROM memorize_queue WHERE id=? AND user_id=?", (item_id, user_id))
     conn.commit()
@@ -410,7 +441,7 @@ def remove_from_queue(item_id: int, user_id: str = "default"):
 
 
 @router.post("/api/v1/memorize/queue/batch")
-def add_chapter_to_queue(body: dict):
+def add_chapter_to_queue(body: dict, request: Request):
     """Add verses to the memorize queue — by chapter or by verse range.
 
     For a full chapter: send { book: "gen", chapter: 1 }
@@ -422,7 +453,10 @@ def add_chapter_to_queue(body: dict):
     chapter = body.get("chapter", 0)
     verse_start = body.get("verse_start")
     verse_end = body.get("verse_end")
-    user_id = body.get("user_id", "default")
+    user_id = _require_review_user(
+        body.get("user_id", "default"), body.get("session_token", ""),
+        request.headers.get("authorization", ""),
+    )
 
     if not book or not chapter:
         conn.close()
@@ -468,7 +502,11 @@ def add_chapter_to_queue(body: dict):
 
 
 @router.get("/api/v1/memorize/review")
-def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = False, palace_order: bool = False):
+def get_due_reviews(
+    user_id: str = "default", limit: int = 10, compress: bool = False,
+    palace_order: bool = False, session_token: str = "",
+    authorization: str = Header("")
+):
     """Get due reviews from the memorize queue, ordered by urgency.
 
     Features:
@@ -477,6 +515,7 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
     - Repetition compression (if compress=True): connected cards grouped together
     - Palace-guided ordering (if palace_order=True): ordered by memory palace loci
     """
+    user_id = _require_review_user(user_id, session_token, authorization)
     conn = get_conn()
     now = datetime.datetime.now()
 
@@ -604,9 +643,13 @@ def get_due_reviews(user_id: str = "default", limit: int = 10, compress: bool = 
 
 
 @router.post("/api/v1/memorize/review/{queue_id}")
-def submit_review(queue_id: int, body: dict):
+def submit_review(queue_id: int, body: dict, request: Request):
     """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy)."""
-    user_id = body.get("user_id", "default")
+    user_id = _require_review_user(
+        (body or {}).get("user_id", "default"),
+        (body or {}).get("session_token", ""),
+        request.headers.get("authorization", ""),
+    )
     rating = max(1, min(4, body.get("rating", 3)))
 
     conn = get_conn()
@@ -694,7 +737,10 @@ def suggest_verses(limit: int = 5, user_id: str = "default"):
 # ── Macro-Interleaving ──
 
 @router.get("/api/v1/review/interleaved")
-def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
+def get_interleaved_reviews(
+    user_id: str = "default", limit: int = 15, session_token: str = "",
+    authorization: str = Header("")
+):
     """Get interleaved reviews from ALL areas: memorize + hebrew + learn.
 
     Implements Math Academy's macro-interleaving (Ch 19):
@@ -702,6 +748,7 @@ def get_interleaved_reviews(user_id: str = "default", limit: int = 15):
     - Interleaves them: no more than 2 consecutive from same area
     - Returns a mixed session for maximum retention
     """
+    user_id = _require_review_user(user_id, session_token, authorization)
     now = datetime.datetime.now()
     all_cards = []
 
@@ -856,12 +903,16 @@ def get_non_interference_distance(conn, verse_a, verse_b):
 
 
 @router.get("/api/v1/review/next")
-def get_next_review(user_id: str = "default", last_verse: str = ""):
+def get_next_review(
+    user_id: str = "default", last_verse: str = "", session_token: str = "",
+    authorization: str = Header("")
+):
     """Get the next review card, respecting non-interference.
 
     Ensures the next card doesn't interfere with the last one reviewed.
     Avoids scheduling confusable pairs consecutively.
     """
+    user_id = _require_review_user(user_id, session_token, authorization)
     conn = get_conn()
 
     # Get next due card from memorize queue
@@ -902,7 +953,10 @@ def get_next_review(user_id: str = "default", last_verse: str = ""):
 # ── Targeted Remediation ──
 
 @router.get("/api/v1/review/weakest")
-def get_weakest_reviews(user_id: str = "default", limit: int = 5):
+def get_weakest_reviews(
+    user_id: str = "default", limit: int = 5, session_token: str = "",
+    authorization: str = Header("")
+):
     """Get cards where the user is weakest for targeted remediation.
 
     Implements Math Academy's targeted remediation (Ch 21):
@@ -910,6 +964,7 @@ def get_weakest_reviews(user_id: str = "default", limit: int = 5):
     - Prioritizes verses with most failed attempts
     - Returns targeted mini-session for weak areas
     """
+    user_id = _require_review_user(user_id, session_token, authorization)
     conn = get_conn()
 
     rows = conn.execute("""
@@ -942,3 +997,80 @@ def get_weakest_reviews(user_id: str = "default", limit: int = 5):
 
     conn.close()
     return {"ok": True, "data": {"reviews": results, "total": len(results)}}
+
+
+# ── Track E1: single mode registry / capability matrix ─────────────────────
+# One discoverable list of every memorization mode, what backs it, and its
+# live status, so the dashboard can show all modes with due counts instead of
+# users discovering surfaces by accident.
+
+_MODE_STATUSES = ("available", "partial", "planned")
+
+
+def _mode_registry() -> list:
+    """Static capability matrix. Statuses are honest, not aspirational:
+      available — route + queue + rating flow all work today
+      partial   — backend exists but UI/flow incomplete
+      planned   — on the roadmap (see docs/plans/hebrew-tutor-phase2.md)
+    """
+    return [
+        {"id": "scripture_queue", "label": "Scripture verse queue",
+         "surface": "/api/v1/memorize/queue", "scheduler": "fsrs-5",
+         "status": "available"},
+        {"id": "interleaved_review", "label": "Interleaved review",
+         "surface": "/api/v1/review/interleaved", "scheduler": "fsrs-5",
+         "status": "available"},
+        {"id": "palace_walk", "label": "Memory palace walk",
+         "surface": "/api/v1/review/interleaved?palace_order=true",
+         "scheduler": "fsrs-5", "status": "available"},
+        {"id": "weakest_first", "label": "Weakest-first review",
+         "surface": "/api/v1/review/weakest", "scheduler": "fsrs-5",
+         "status": "available"},
+        {"id": "next_best", "label": "Next-best review",
+         "surface": "/api/v1/review/next", "scheduler": "fsrs-5",
+         "status": "available"},
+        {"id": "hebrew_review", "label": "Hebrew review queue",
+         "surface": "/api/v1/hebrew/review-queue", "scheduler": "fsrs-5",
+         "status": "available"},
+        {"id": "hebrew_quiz_practice",
+         "label": "Hebrew quiz-in-lesson practice",
+         "surface": "/api/v1/hebrew/lesson/{node_id}/quiz",
+         "scheduler": "fsrs-5 (via /hebrew/progress)", "status": "available"},
+        {"id": "progressive_hints", "label": "Progressive hints",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "audio_mode", "label": "Audio review mode",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "hebrew_cloze", "label": "Hebrew cloze deletion cards",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "two_way_translation", "label": "Two-way translation cards",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "daily_maintenance", "label": "Daily maintenance / verse of day",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "audio_first_commute", "label": "Audio-first commute mode",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "hebrew_visual_only", "label": "Hebrew-only visual mode",
+         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+    ]
+
+
+@router.get("/api/v1/memorize/modes")
+def list_memorize_modes():
+    """Capability matrix for every memorization mode (plan Track E1)."""
+    queued = None
+    try:
+        conn = sqlite3.connect(str(_memorize_db_path()))
+        try:
+            queued = conn.execute(
+                "SELECT COUNT(*) FROM memorize_queue").fetchone()[0]
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        pass  # queue table not created yet — totals stay null, modes still list
+    return {
+        "ok": True,
+        "data": {
+            "modes": _mode_registry(),
+            "scheduler": "fsrs-5",
+            "totals": {"scripture_queued": queued},
+        },
+    }

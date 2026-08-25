@@ -47,6 +47,21 @@ LAYER_COMPATIBILITY = {
 
 DEFAULT_LAYER_COMPATIBILITY = 0.2
 
+# Numerical-path ceiling: a chain consisting only of numerical-layer hops
+# must not aggregate into plausible-looking confidence merely because
+# several gematria hops line up. Numerical evidence is candidate evidence;
+# propagated paths made only of it stay in the weak band. Paths containing
+# a retired numerical type are capped harder.
+NUMERICAL_PATH_MAX_CONFIDENCE = 0.35
+RETIRED_NUMERICAL_TYPES = frozenset({
+    "gematria_factor",
+    "gematria_sum_relationship",
+    "sacred_number",
+    "verse_gematria_total",
+    "divine_name_distribution",
+})
+RETIRED_NUMERICAL_PATH_MAX_CONFIDENCE = 0.10
+
 
 def layer_compatibility(layer_a, layer_b):
     """Get compatibility score between two layers."""
@@ -105,6 +120,15 @@ def path_confidence(path, fallback_confidence=0.5):
         compat_product *= layer_compatibility(hops[i]["layer"], hops[i + 1]["layer"])
     
     propagated = conf_product * length_penalty * compat_product
+
+    # Numerical-only chains are capped: multiple weak gematria hops must
+    # not multiply into a high-confidence conclusion (Track B2 ceiling).
+    if hops and all(h["layer"] == "numerical" for h in hops):
+        if any(h["type"] in RETIRED_NUMERICAL_TYPES for h in hops):
+            propagated = min(propagated, RETIRED_NUMERICAL_PATH_MAX_CONFIDENCE)
+        else:
+            propagated = min(propagated, NUMERICAL_PATH_MAX_CONFIDENCE)
+
     return round(min(propagated, 1.0), 4)
 
 

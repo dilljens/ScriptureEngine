@@ -604,25 +604,9 @@ def build_initial_connections(conn):
                               metadata={"divine_name": d["name"], "value": val})
                 count += 1
 
-    # 2. Sacred number connections
-    sacred_nums = {7, 12, 40, 70, 10}
-    for snum in sacred_nums:
-        rows = conn.execute("""
-            SELECT g.verse_id, g.value_standard
-            FROM gematria g
-            WHERE g.value_standard = ?
-            LIMIT 10
-        """, (snum,)).fetchall()
-        verses = [r["verse_id"] for r in rows]
-        for i in range(min(len(verses), 8)):
-            for j in range(i + 1, min(len(verses), 8)):
-                add_connection(conn, verses[i], verses[j],
-                              layer="numerical",
-                              type_name="sacred_number",
-                              subtype=f"value_{snum}",
-                              strength=0.5, confidence=0.6,
-                              discovered_by="algorithm")
-                count += 1
+    # 2. Sacred number connections — RETIRED (Track B1 stop-list).
+    # Broad sacred-number matches are not reproducible traditional
+    # comparisons; no longer seeded on ingest.
 
     conn.commit()
     print(f"  Created {count} initial connections")

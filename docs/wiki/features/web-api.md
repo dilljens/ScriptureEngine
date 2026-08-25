@@ -76,6 +76,26 @@ Chat lives in `web/routes/chat.py` (moved out of `server.py`):
   `_stream_final_response` with finish_reason=length regenerate-once
 - Passage-level tools callable by the chat agent: `scripture_passage_connections`,
   `scripture_chapter_connections`, `scripture_book_connections`
+- **Tool boundary (plan Track A2):** general `mode=chat` cannot see or invoke
+  quiz/assessment/learner-progress tools (`GENERAL_CHAT_BLOCKED_TOOLS`);
+  Hebrew tutor uses an explicit allowlist (`HEBREW_TOOL_ALLOWLIST`)
+- **Capacity safety (Track G3):** per-IP sliding-window limits scoped per mode
+  (`CHAT_RATE_LIMIT` / `HEBREW_RATE_LIMIT`, default 20/60s), emergency
+  switches `CHAT_DISABLED` / `HEBREW_CHAT_DISABLED`, contributor-tier
+  `data_handling` disclosure, and a public-safe provider summary
+  (`public_summary()` — availability only; model inventory/worker counts stay operator-side)
+- **Citation checks (Track A3 stage 1):** non-stream answers run deterministic
+  quote-vs-verse verification (`lib/controls/claims.py`); unverifiable quotes
+  are prefixed and returned in `claim_check.unsupported`
+- `GET /api/v1/chat/instructions` — mode-scoped prompt/tool surface for clients
+
+## Memorization modes registry (Aug 2026)
+
+`GET /api/v1/memorize/modes` returns the single capability matrix for every
+memorization mode (available/partial/planned + backing route + scheduler),
+plus queue totals. The dashboard should read this rather than hardcoding.
+Hebrew attempt evidence: `GET /api/v1/hebrew/attempts` exposes the append-only
+`hebrew_attempt_events` log behind learner level (Track C2).
 
 ## RAM Cache
 On startup, everything loads into memory:

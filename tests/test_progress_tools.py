@@ -14,6 +14,7 @@ import pytest
 from lib.api import call_tool, TOOL_REGISTRY
 from lib.db import get_db
 from web.routes.chat import TOOL_DEFINITIONS, _tool_accepts_user_id, _normalize_user_id
+from web.routes import auth
 
 
 @pytest.fixture(scope="module")
@@ -167,6 +168,17 @@ def test_hebrew_placement_tool_real_db():
         conn.close()
 
 
+def test_hebrew_lesson_tool_hides_answer_keys():
+    conn = get_db()
+    try:
+        result = call_tool("scripture_hebrew_lesson", conn, node_id="aleph")
+        assert result.get("id") == "aleph"
+        assert "correct_answer" not in result
+        assert all("correct_answer" not in item for item in result.get("practice_items", []))
+    finally:
+        conn.close()
+
+
 def test_record_chat_quiz_endpoint(client):
     """POST /api/v1/quiz/record stores answers readable by scripture_quiz_progress."""
     conn = get_db()
@@ -179,6 +191,7 @@ def test_record_chat_quiz_endpoint(client):
         "/api/v1/quiz/record",
         json={
             "user_id": "ep-test",
+            "session_token": auth._generate_session_token("ep-test"),
             "answers": [
                 {"question": "Test Q1", "user_answer": "A", "correct_answer": "B", "correct": False},
                 {"question": "Test Q2", "user_answer": "B", "correct_answer": "B", "correct": True},

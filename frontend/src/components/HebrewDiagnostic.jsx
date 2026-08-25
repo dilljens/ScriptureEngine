@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /**
  * HebrewDiagnostic — adaptive placement test (1-up-3-down staircase).
@@ -27,13 +28,22 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
 
   // Start the placement test
   useEffect(() => {
-    fetch('/api/v1/hebrew/diagnostic/adaptive/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id }),
-    })
-      .then(r => r.json())
-      .then(d => {
+    let cancelled = false
+    const start = async () => {
+      await hebrewSessionUser()
+      if (cancelled) return
+      const token = currentSessionToken()
+      try {
+        const response = await fetch('/api/v1/hebrew/diagnostic/adaptive/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ user_id, session_token: token }),
+        })
+        const d = await response.json()
+        if (cancelled) return
         if (d.ok) {
           setSessionId(d.data.session_id)
           setSkill(d.data.skill)
@@ -43,20 +53,31 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
         } else {
           setError(d.detail || 'Failed to start assessment')
         }
-      })
-      .catch(() => setError('Failed to connect'))
-      .finally(() => setLoading(false))
+      } catch {
+        if (!cancelled) setError('Failed to connect')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    start()
+    return () => { cancelled = true }
   }, [user_id])
 
   const submitAnswer = () => {
     if (!question || submitted) return
+    const token = currentSessionToken()
     fetch('/api/v1/hebrew/diagnostic/adaptive/answer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         session_id: sessionId,
+        user_id,
+        session_token: token,
         question_id: question.question_id,
-        node_id: question.node_id,
+        question_nonce: question.question_nonce,
         answer,
       }),
     })

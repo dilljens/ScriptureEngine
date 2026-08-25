@@ -15,6 +15,7 @@ from lib.api.conversations import (
     promote_connection,
     update_session,
 )
+from lib.api.sharing import fork_shared, get_shared, share_conversation
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -292,3 +293,60 @@ def promote_conversation_connection(
     if result.get("ok"):
         return {"ok": True, "data": result}
     return {"ok": False, "error": result.get("error", "Promotion failed")}
+
+# ─── Shared snapshots (unlisted link sharing) ───
+
+class ShareCreate(BaseModel):
+    message_id: int | None = None  # None = share the whole conversation
+
+@router.post("/api/v1/conversations/{session_id}/share")
+def share_conversation_route(
+    session_id: str,
+    body: ShareCreate,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
+    """Snapshot a conversation (or one response) into an unlisted share link."""
+    conn = get_db()
+    session = _require_session_owner(conn, session_id, user_id, session_token, authorization)
+    if not session:
+        conn.close()
+        return {"ok": False, "error": "Session not found"}
+    result = share_conversation(
+        conn, session_id,
+        created_by=_owner_id(user_id, session_token, authorization),
+        message_id=body.message_id,
+    )
+    conn.close()
+    if result.get("error"):
+        return {"ok": False, "error": result["error"]}
+    return {"ok": True, "data": result}
+
+@router.get("/api/v1/shared/{slug}")
+def get_shared_route(slug: str):
+    """Read a shared snapshot. Public by design — access is via unlisted link."""
+    conn = get_db()
+    data = get_shared(conn, slug)
+    conn.close()
+    if not data:
+        return {"ok": False, "error": "Shared conversation not found"}
+    return {"ok": True, "data": data}
+
+@router.post("/api/v1/shared/{slug}/fork")
+def fork_shared_route(
+    slug: str,
+    user_id: str = "",
+    session_token: str = "",
+    authorization: str = Header(default=""),
+):
+    """Fork a shared snapshot into a new conversation owned by the caller."""
+    conn = get_db()
+    result = fork_shared(
+        conn, slug,
+        created_by=_owner_id(user_id, session_token, authorization),
+    )
+    conn.close()
+    if result.get("error"):
+        return {"ok": False, "error": result["error"]}
+    return {"ok": True, "data": result}

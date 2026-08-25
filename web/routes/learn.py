@@ -18,13 +18,18 @@ Endpoints:
 import contextlib
 import datetime
 import json
+import logging
 import math
+import re
 import sqlite3
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
+
+from web.routes.auth import _resolve_request_user
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "processed" / "scripture.db"
 
@@ -91,6 +96,51 @@ def get_conn():
     """)
 
     return conn
+
+
+def _normalize_practice_answer(value):
+    return re.sub(r"\s+", " ", str(value if value is not None else "").strip().casefold())
+
+
+def _public_options(options):
+    return [option.get("label", "") if isinstance(option, dict) else option for option in (options or [])]
+
+
+def _practice_answer_matches(answer, expected, question_type, options, answer_mode):
+    """Grade a submitted Learn answer against the private assessment key."""
+    if isinstance(answer, dict):
+        answer = answer.get("selected", answer.get("openInput", ""))
+    options = options or []
+    mode = answer_mode or (
+        "choice_index" if question_type in {"multiple_choice", "true_false", "classification"} and options
+        else "free_text"
+    )
+    if mode == "choice_index" and options:
+        def option_index(value):
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, str) and re.fullmatch(r"[A-Za-z]", value.strip()):
+                index = ord(value.strip().upper()) - ord("A")
+                return index if 0 <= index < len(options) else None
+            if isinstance(value, int) or (isinstance(value, str) and value.strip().isdigit()):
+                index = int(value)
+                return index if 0 <= index < len(options) else None
+            normalized = _normalize_practice_answer(value)
+            for index, option in enumerate(options):
+                if _normalize_practice_answer(option) == normalized:
+                    return index
+            return None
+
+        actual = option_index(answer)
+        expected_index = option_index(expected)
+        return actual is not None and actual == expected_index
+
+    actual = _normalize_practice_answer(answer)
+    if not actual:
+        return False
+    expected_text = str(expected if expected is not None else "")
+    candidates = [expected_text, *re.split(r"\s+or\s+|[|/]", expected_text, flags=re.IGNORECASE)]
+    return any(actual == _normalize_practice_answer(candidate) for candidate in candidates)
 
 
 # ── FSRS-5 (same as hebrew.py) ──
@@ -253,8 +303,11 @@ def seed_modules():
 # ── API Endpoints ──
 
 @router.get("/api/v1/learn/modules")
-def list_modules(user_id: str = "default"):
+def list_modules(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """List all learning modules with user progress and due review count."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     seed_modules()
     conn = get_conn()
     now = datetime.datetime.now()
@@ -353,8 +406,12 @@ def list_modules(user_id: str = "default"):
 
 
 @router.get("/api/v1/learn/modules/{module_id}")
-def get_module(module_id: str, user_id: str = "default"):
+def get_module(
+    module_id: str, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Get a full learning module with lesson content, worked examples, and practice questions."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     seed_modules()
     conn = get_conn()
 
@@ -400,17 +457,19 @@ def get_module(module_id: str, user_id: str = "default"):
     for q in questions:
         opts = []
         with contextlib.suppress(json.JSONDecodeError, ValueError):
-            opts = json.loads(q["options_json"]) if q["options_json"] else []
+            opts = _public_options(json.loads(q["options_json"]) if q["options_json"] else [])
         q_list.append({
             "id": q["id"],
             "type": q["question_type"],
             "question": q["question_text"],
             "options": opts,
-            "correct_answer": q["correct_answer"],
             "bloom_level": q["bloom_level"],
             "tier": q["tier"],
             "explanation": q["explanation"] or "",
             "is_open": bool(q["question_type_open"]),
+            "answer_mode": "choice_index"
+            if q["question_type"] in {"multiple_choice", "true_false", "classification"} and opts
+            else "free_text",
             "user_correct": q["user_correct"],
             "user_attempts": q["user_attempts"],
         })
@@ -448,18 +507,78 @@ def get_module(module_id: str, user_id: str = "default"):
 
 
 @router.post("/api/v1/learn/modules/{module_id}/practice")
-def submit_practice(module_id: str, body: dict):
+def submit_practice(module_id: str, body: dict, authorization: str = Header("")):
     """Submit a practice answer for a module question.
 
     Uses FSRS-5 for spaced repetition scheduling.
     Rating mapping: Again(1), Hard(2), Good(3), Easy(4).
     """
-    user_id = body.get("user_id", "default")
+    user_id = _resolve_request_user(
+        body.get("user_id", "default"), body.get("session_token", ""), authorization
+    )
     question_id = body.get("question_id", 0)
-    correct = body.get("correct", False)
-    rating = body.get("rating", 3 if correct else 1)
+    if not question_id:
+        raise HTTPException(400, "question_id required")
+    if "correct" in body:
+        raise HTTPException(400, "client correctness is not accepted")
 
     conn = get_conn()
+    question = conn.execute("""
+        SELECT a.question_type, a.options_json, a.correct_answer
+        FROM module_questions mq
+        JOIN assessment_items a ON a.id = mq.question_id
+        WHERE mq.module_id=? AND a.id=?
+    """, (module_id, question_id)).fetchone()
+    if not question:
+        conn.close()
+        raise HTTPException(400, "question_id does not belong to module")
+    if "answer" not in body:
+        conn.close()
+        raise HTTPException(400, "answer required")
+    try:
+        options = json.loads(question["options_json"]) if question["options_json"] else []
+    except (json.JSONDecodeError, TypeError):
+        options = []
+    correct = _practice_answer_matches(
+        body.get("answer"), question["correct_answer"], question["question_type"],
+        options, body.get("answer_mode", "")
+    )
+    try:
+        rating = int(body.get("rating", 3 if correct else 1))
+    except (TypeError, ValueError):
+        conn.close()
+        raise HTTPException(400, "rating must be 1, 2, 3, or 4")
+    if rating not in (1, 2, 3, 4):
+        conn.close()
+        raise HTTPException(400, "rating must be 1, 2, 3, or 4")
+
+    attempt_id = str(body.get("attempt_id", body.get("idempotency_key", ""))).strip()
+    if not attempt_id or len(attempt_id) > 200:
+        conn.close()
+        raise HTTPException(400, "attempt_id required")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS learning_attempts (
+            user_id TEXT NOT NULL,
+            attempt_id TEXT NOT NULL,
+            response_json TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY (user_id, attempt_id)
+        )
+    """)
+    inserted = conn.execute(
+        "INSERT OR IGNORE INTO learning_attempts (user_id, attempt_id) VALUES (?, ?)",
+        (user_id, attempt_id),
+    ).rowcount
+    if inserted == 0:
+        prior_attempt = conn.execute(
+            "SELECT response_json FROM learning_attempts WHERE user_id=? AND attempt_id=?",
+            (user_id, attempt_id),
+        ).fetchone()
+        if prior_attempt and prior_attempt[0]:
+            conn.close()
+            return {"ok": True, "data": json.loads(prior_attempt[0])}
+        conn.close()
+        raise HTTPException(409, "attempt is already being processed")
 
     # Record in quiz_progress
     existing = conn.execute(
@@ -485,6 +604,7 @@ def submit_practice(module_id: str, body: dict):
         "SELECT stability, difficulty, last_review, attempts, correct FROM learning_progress WHERE user_id=? AND module_id=?",
         (user_id, module_id)
     ).fetchone()
+    previous_mastery = prog["mastery"] if prog else 0.0
 
     if prog and prog["last_review"]:
         # Existing progression — update with FSRS
@@ -539,12 +659,8 @@ def submit_practice(module_id: str, body: dict):
     xp_gained = 10 + (5 if rating >= 3 else 0) + (5 if correct else 0)
     today = now.strftime("%Y-%m-%d")
 
-    # Check if this is the first time reaching mastery >= 0.8
-    prior_mastery = conn.execute(
-        "SELECT COALESCE(mastery, 0) FROM learning_progress WHERE user_id=? AND module_id=?",
-        (user_id, module_id)
-    ).fetchone()
-    was_not_mastered = prior_mastery is None or prior_mastery[0] < 0.8
+    # Check if this is the first time reaching mastery >= 0.8.
+    was_not_mastered = previous_mastery < 0.8
     just_completed = mastery >= 0.8 and was_not_mastered
 
     gam = conn.execute(
@@ -590,10 +706,9 @@ def submit_practice(module_id: str, body: dict):
         log.warning("silent_exception", exc_info=True)
         pass
 
-    conn.commit()
-    conn.close()
-
-    return {"ok": True, "data": {
+    response_data = {
+        "attempt_id": attempt_id,
+        "is_correct": bool(correct),
         "mastery": round(mastery, 3),
         "stability": round(new_s, 2),
         "difficulty": round(new_d, 2),
@@ -602,12 +717,24 @@ def submit_practice(module_id: str, body: dict):
         "xp_gained": xp_gained,
         "total_xp": new_xp,
         "streak": new_streak,
-    }}
+    }
+    conn.execute(
+        "UPDATE learning_attempts SET response_json=? WHERE user_id=? AND attempt_id=?",
+        (json.dumps(response_data), user_id, attempt_id),
+    )
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "data": response_data}
 
 
 @router.get("/api/v1/learn/review")
-def get_learn_reviews(user_id: str = "default", limit: int = 10):
+def get_learn_reviews(
+    user_id: str = "default", limit: int = 10, session_token: str = "",
+    authorization: str = Header("")
+):
     """Get due module reviews with actual practice questions for interleaved review."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_conn()
     now = datetime.datetime.now()
 
@@ -653,15 +780,17 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
             for q in questions:
                 opts = []
                 with contextlib.suppress(json.JSONDecodeError, ValueError):
-                    opts = json.loads(q["options_json"]) if q["options_json"] else []
+                    opts = _public_options(json.loads(q["options_json"]) if q["options_json"] else [])
                 qs.append({
                     "id": q["id"],
                     "type": q["question_type"],
                     "question": q["question_text"],
                     "options": opts,
-                    "correct_answer": q["correct_answer"],
                     "explanation": q["explanation"] or "",
                     "tier": q["tier"],
+                    "answer_mode": "choice_index"
+                    if q["question_type"] in {"multiple_choice", "true_false", "classification"} and opts
+                    else "free_text",
                 })
 
             reviews.append({
@@ -677,8 +806,11 @@ def get_learn_reviews(user_id: str = "default", limit: int = 10):
 
 
 @router.get("/api/v1/learn/gamification")
-def get_learn_gamification(user_id: str = "default"):
+def get_learn_gamification(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get gamification stats for LearnView."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.db import get_db as _get_db
     conn = _get_db()
     conn.row_factory = sqlite3.Row

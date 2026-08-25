@@ -85,7 +85,7 @@ GENERATOR_DEFS = [
         "layers": ["numerical"],
         "automatic": True,
         "requires": "gematria table (present)",
-        "description": "Sacred-number verse totals + rare standard-value word matches",
+        "description": "Rare standard-value word matches (sacred-number verse totals retired per Track B1 stop-list)",
         "tier": "idle",
         "cost": "free",
         "precision": 0.93,

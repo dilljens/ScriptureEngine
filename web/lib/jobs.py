@@ -232,6 +232,17 @@ class ChatJob:
             from lib.api.conversations import add_message
             conn = get_db()
             try:
+                session = conn.execute(
+                    "SELECT created_by FROM conversation_sessions WHERE id=?",
+                    (session_id,),
+                ).fetchone()
+                owner_id = self.body.get("user_id") or "anonymous"
+                if not session or session["created_by"] != owner_id:
+                    logger.warning(
+                        "chat job %s refused conversation save: session owner mismatch",
+                        self.id,
+                    )
+                    return
                 add_message(
                     conn,
                     session_id=session_id,

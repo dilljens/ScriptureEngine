@@ -7,7 +7,7 @@ import PassageReader from './PassageReader'
 import DailyVerse from './DailyVerse'
 import AudioReviewSession from './AudioReviewSession'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
-import { hebrewSessionUser } from '../api'
+import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /* ── Dropdown components for compact action menus ── */
 
@@ -117,12 +117,17 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return uid && uid !== 'default' ? `?user_id=${encodeURIComponent(uid)}` : ''
   }
 
+  const sessionHeaders = () => {
+    const token = currentSessionToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   // Load curriculum + gamification in parallel
   const loadAll = () => {
     setLoading(true)
     sessionQuery().then(q => Promise.all([
-      fetch(`/api/v1/hebrew/curriculum${q}`).then(r => r.json()),
-      fetch(`/api/v1/hebrew/gamification${q}`).then(r => r.json()),
+      fetch(`/api/v1/hebrew/curriculum${q}`, { headers: sessionHeaders() }).then(r => r.json()),
+      fetch(`/api/v1/hebrew/gamification${q}`, { headers: sessionHeaders() }).then(r => r.json()),
     ]))
       .then(([curData, gamData]) => {
         if (curData.ok) setCurriculum(curData.data)
@@ -465,7 +470,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             let dueCards = []
             try {
               const uq = await sessionQuery()
-              const r = await fetch(`/api/v1/hebrew/review-queue?limit=30${uq}`)
+              const r = await fetch(`/api/v1/hebrew/review-queue?limit=30${uq}`, { headers: sessionHeaders() })
               const d = await r.json()
               if (d.ok && d.data?.reviews?.length) {
                 dueCards = d.data.reviews
@@ -503,7 +508,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             let drillCards = []
             try {
               const uq = await sessionQuery()
-              const r = await fetch(`/api/v1/hebrew/verb-drill?limit=8${uq}`)
+              const r = await fetch(`/api/v1/hebrew/verb-drill?limit=8${uq}`, { headers: sessionHeaders() })
               const d = await r.json()
               if (d.ok) drillCards = drillsToCards(d.data.drills || [])
             } catch {}

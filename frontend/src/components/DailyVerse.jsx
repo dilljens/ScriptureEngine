@@ -3,6 +3,7 @@ import { preprocess, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import { currentSessionToken } from '../api'
 
 /**
  * DailyVerse — maintenance mode: one random verse per day with analysis.
@@ -47,7 +48,10 @@ export default function DailyVerse({ onNavigate, onOpenLesson }) {
 
   // Fetch studied vocabulary to highlight known words
   useEffect(() => {
-    fetch('/api/v1/hebrew/curriculum').then(r => r.json()).then(d => {
+    const token = currentSessionToken()
+    fetch('/api/v1/hebrew/curriculum', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(r => r.json()).then(d => {
       if (d.ok && d.data?.nodes) {
         const studied = new Set()
         for (const node of d.data.nodes) {

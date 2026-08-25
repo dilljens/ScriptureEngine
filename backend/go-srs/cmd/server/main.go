@@ -26,7 +26,11 @@ import (
 func main() {
 	port := flag.String("port", "8090", "HTTP port")
 	dbPath := flag.String("db", "data/memorize.db", "SQLite database path")
+	bindHost := flag.String("host", "127.0.0.1", "Bind host (use 0.0.0.0 only behind an authenticated gateway)")
 	flag.Parse()
+	if *bindHost != "127.0.0.1" && *bindHost != "[::1]" && os.Getenv("MEMORIZE_ALLOW_INSECURE_BIND") != "1" {
+		log.Fatal("refusing non-loopback bind without MEMORIZE_ALLOW_INSECURE_BIND=1 and an authenticated gateway")
+	}
 
 	// Open database
 	database, err := db.Open(*dbPath)
@@ -48,7 +52,7 @@ func main() {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         ":" + *port,
+		Addr:         *bindHost + ":" + *port,
 		Handler:      srv,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -63,7 +67,7 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Memorization server starting on :%s", *port)
+		log.Printf("Memorization server starting on %s:%s", *bindHost, *port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}

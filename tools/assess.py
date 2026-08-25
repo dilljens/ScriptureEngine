@@ -4,10 +4,10 @@ MCP Tool: scripture_assess — Adaptive scripture knowledge assessment.
 
 Usage:
   python3 tools/assess.py '{"action": "start", "target_layer": "pshat"}'
-  python3 tools/assess.py '{"action": "answer", "correct": true}'
+  python3 tools/assess.py '{"action": "answer", "answer": "True"}'
   python3 tools/assess.py '{"action": "progress"}'
   python3 tools/assess.py '{"action": "diagnostic"}'
-  python3 tools/assess.py '{"action": "diagnostic_answer", "correct": true}'
+  python3 tools/assess.py '{"action": "diagnostic_answer", "answer": "True"}'
   python3 tools/assess.py '{"action": "diagnostic_report"}'
 """
 
@@ -45,7 +45,7 @@ def main():
         result = submit_answer(
             conn,
             user_id=args.get("user_id", "default"),
-            correct=args.get("correct", False),
+            answer=args.get("answer"),
         )
     elif action == "progress":
         result = get_progress(
@@ -62,7 +62,7 @@ def main():
         result = submit_diagnostic_answer(
             conn,
             user_id=args.get("user_id", "default"),
-            correct=args.get("correct", False),
+            answer=args.get("answer"),
         )
     elif action == "diagnostic_report":
         result = get_diagnostic_report(

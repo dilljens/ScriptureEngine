@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -21,27 +22,27 @@ from lib.api.staging import stage_connection, stage_study
 from lib.chat_cache import tool_cache
 from lib.db import get_db
 from web.lib import jobs as _jobs
+from web.lib.llm_provider import ProviderRouter
 from web.lib import subagents as _subagents
 
 router = APIRouter()
 
 logger = logging.getLogger("chat")
 
-# ─── LLM Chat Proxy with Function Calling (DeepSeek) ───
+# ─── LLM Chat Proxy with Function Calling ───
 
 DEEPSEEK_API_KEY: str = os.environ.get("DEEPSEEK_API_KEY", "")
-DEEPSEEK_BASE = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-v4-flash"
+DEEPSEEK_BASE = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
+_llm_provider = ProviderRouter()
+_INTERACTIVE_MARKER_RE = re.compile(r"%%%(?:QUIZ|HEBREW_QUIZ):.*?%%%", re.DOTALL)
 
 # Reusable HTTP client for DeepSeek API calls (avoids creating a new connection each time)
 _http_client = httpx.AsyncClient(timeout=600.0)  # 10 min — DeepSeek thinking mode can take 8+ min
 
-# Pricing per 1M tokens (deepseek-v4-flash)
-PRICING = {
-    "input": 0.14,
-    "output": 0.28,
-    "cache_hit": 0.07,
-}
+# Pricing per 1M tokens. OpenCode Go is subscription-backed by default, so its
+# accounting values are zero unless an operator supplies internal prices.
+PRICING = _llm_provider.pricing(DEEPSEEK_MODEL)
 
 # Load system prompts by mode
 _CHAT_PROMPTS_DIR = BASE_DIR
@@ -1101,14 +1102,14 @@ TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "scripture_assess_answer",
-            "description": "Submit an answer to the active adaptive assessment and get the next question. Pass correct=True/False (or correctness 0.0-1.0 for partial credit).",
+            "description": "Submit the selected option, index, or free-text answer to the active adaptive assessment and get the next question. Grading is server-authoritative.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "correct": {"type": "boolean"},
+                    "answer": {"description": "Selected option, option index, or free-text answer"},
                 },
-                "required": ["correct"],
+                "required": ["answer"],
             },
         },
     },
@@ -1148,10 +1149,9 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "correct": {"type": "boolean"},
-                    "correctness": {"type": "number", "description": "Optional partial credit 0.0-1.0"},
+                    "answer": {"description": "Selected option, option index, or free-text answer"},
                 },
-                "required": ["correct"],
+                "required": ["answer"],
             },
         },
     },
@@ -1184,6 +1184,41 @@ SCOPED_TOOLS = {
     "scripture_cfm_search": ("cfm", "conference"),  # searches both corpora
 }
 
+# General Scripture chat is intentionally not a learning/progress surface.
+# Keep these definitions registered for the dedicated Hebrew/Learn routes, but
+# never advertise or execute them from the general chat mode.
+GENERAL_CHAT_BLOCKED_TOOLS = frozenset({
+    "scripture_quiz_progress",
+    "scripture_hebrew_progress",
+    "scripture_hebrew_placement",
+    "scripture_hebrew_lessons",
+    "scripture_hebrew_lesson",
+    "scripture_hebrew_quiz",
+    "scripture_assess_start",
+    "scripture_assess_answer",
+    "scripture_assess_progress",
+    "scripture_diagnostic_start",
+    "scripture_diagnostic_answer",
+    "scripture_diagnostic_report",
+})
+
+# Hebrew Tutor gets only language-learning/reference tools.  In particular,
+# it cannot stage studies or invoke the general Scripture assessment system.
+HEBREW_TOOL_ALLOWLIST = frozenset({
+    "scripture_verse",
+    "scripture_search",
+    "scripture_search_xlingual",
+    "scripture_gematria",
+    "scripture_interlinear",
+    "scripture_strongs",
+    "scripture_hebrew_progress",
+    "scripture_hebrew_placement",
+    "scripture_hebrew_lessons",
+    "scripture_hebrew_lesson",
+    "scripture_hebrew_quiz",
+    "scripture_quiz_progress",
+})
+
 
 def _scope_allowed(tool_name: str, scopes: list) -> bool:
     allowed = SCOPED_TOOLS.get(tool_name)
@@ -1212,22 +1247,159 @@ def _tool_accepts_user_id(tool_name: str) -> bool:
     return tool_name in _USER_TOOLS
 
 
-def _filter_tools(tools: list, scopes: list, disabled_tools: list) -> list:
-    """Drop disabled tools AND scoped tools the request didn't opt into."""
+def _mode_allowed(tool_name: str, mode: str = "chat") -> bool:
+    """Enforce the mode boundary before tools reach the model or executor."""
+    if mode == "hebrew":
+        return tool_name in HEBREW_TOOL_ALLOWLIST
+    if mode in ("chat", "knowledge"):
+        return tool_name not in GENERAL_CHAT_BLOCKED_TOOLS
+    # Unknown modes should fail closed rather than inherit general privileges.
+    return False
+
+
+def _filter_tools(tools: list, scopes: list, disabled_tools: list, mode: str = "chat") -> list:
+    """Drop disabled, scoped, and mode-incompatible tools."""
     disabled = set(disabled_tools or [])
     return [t for t in tools
             if t["function"]["name"] not in disabled
-            and _scope_allowed(t["function"]["name"], scopes)]
+            and _scope_allowed(t["function"]["name"], scopes)
+            and _mode_allowed(t["function"]["name"], mode)]
 
 
-def _compute_cost(usage: dict) -> dict:
-    """Estimate cost from DeepSeek usage response."""
+def _effective_mode(mode: str) -> str:
+    """Only general chat and Hebrew Tutor are interactive chat modes."""
+    return "hebrew" if mode == "hebrew" else "chat"
+
+
+# ─── Hebrew Tutor learner-state hydration (Track C1) ──────────────────
+# Each Hebrew-mode turn gets a compact, deterministic progress snapshot so
+# the tutor adapts to the real learner without reading the whole database.
+# General chat never receives this context.
+
+_SNAPSHOT_MAX_CATEGORIES = 6
+_SNAPSHOT_MAX_DUE = 3
+_SNAPSHOT_MAX_RECENT = 5
+
+
+def _hebrew_learner_snapshot(user_id: str) -> str | None:
+    """Build a bounded learner-progress block for the Hebrew Tutor mode.
+
+    Returns None when there is no progress data (new learner) or on any
+    failure — hydration must never break the chat request.
+    """
+    try:
+        from lib.api.progress import hebrew_progress
+
+        data = hebrew_progress(None, user_id=user_id, limit=_SNAPSHOT_MAX_RECENT)
+    except Exception:
+        return None
+    if not isinstance(data, dict) or not data.get("ok") or not data.get("has_progress"):
+        return None
+
+    lines = ["[LEARNER PROGRESS SNAPSHOT · server-derived · read-only]"]
+
+    placement = data.get("placement") or {}
+    levels = placement.get("level_estimates") if isinstance(placement, dict) else None
+    if isinstance(levels, dict) and levels:
+        parts = [
+            f"{skill} L{lvl}"
+            for skill, lvl in list(levels.items())[:4]
+        ]
+        lines.append("Placement: " + ", ".join(parts))
+
+    cats = data.get("by_category") or []
+    cat_parts = []
+    for c in cats[:_SNAPSHOT_MAX_CATEGORIES]:
+        total = c.get("total", 0) or 0
+        mastered = c.get("mastered", 0) or 0
+        avg = int(round((c.get("avg_mastery", 0) or 0) * 100))
+        cat_parts.append(f"{c.get('category', '?')} {avg}% ({mastered}/{total} mastered)")
+    if cat_parts:
+        lines.append("Mastery by category: " + "; ".join(cat_parts))
+
+    due = data.get("due_reviews") or {}
+    due_count = due.get("count", 0) or 0
+    if due_count:
+        next_items = ", ".join(
+            i.get("title", i.get("node_id", "?"))
+            for i in (due.get("next_items") or [])[:_SNAPSHOT_MAX_DUE]
+        )
+        lines.append(f"Due reviews: {due_count} item(s)" + (f" — next: {next_items}" if next_items else ""))
+
+    practiced = data.get("practiced_nodes") or []
+    recent = [p.get("title", p.get("node_id", "?")) for p in practiced[:_SNAPSHOT_MAX_RECENT]]
+    if recent:
+        lines.append("Recent practice: " + ", ".join(recent))
+
+    gam = data.get("gamification")
+    if isinstance(gam, dict):
+        xp = gam.get("xp")
+        streak = gam.get("streak_count")
+        bits = []
+        if xp is not None:
+            bits.append(f"XP {xp}")
+        if streak is not None:
+            bits.append(f"streak {streak}d")
+        if bits:
+            lines.append(" · ".join(bits))
+
+    lines.append(
+        "[End snapshot — teach within this level; never invent or exceed "
+        "recorded progress. For anything not listed, ask the learner.]"
+    )
+    return "\n".join(lines)
+
+
+def _prepare_chat_messages(body) -> list[dict]:
+    """Assemble the outbound message list for every chat endpoint:
+
+    mode-specific system prompt → Hebrew learner snapshot (hebrew mode only,
+    bound server-side identity only) → context budget. Shared by llm_chat,
+    llm_chat_stream, and the background job runner so all paths hydrate
+    identically.
+    """
+    msgs = list(body.messages)
+    prompt = CHAT_PROMPTS.get(_effective_mode(body.mode), CHAT_SYSTEM_PROMPT)
+    if prompt:
+        if not any(m.get("role") == "system" for m in msgs):
+            msgs.insert(0, {"role": "system", "content": prompt})
+        else:
+            # Replace existing system prompt with mode-specific one
+            for i, m in enumerate(msgs):
+                if m.get("role") == "system":
+                    msgs[i] = {"role": "system", "content": prompt}
+                    break
+
+    # Hebrew Tutor hydration — compact learner state, bound identity only.
+    # Never injected for general chat; never from client-supplied ids.
+    if _effective_mode(body.mode) == "hebrew":
+        snapshot = _hebrew_learner_snapshot(_chat_tool_user_id(body))
+        if snapshot:
+            msgs.insert(1, {"role": "system", "content": snapshot})
+
+    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
+    return apply_context_budget(msgs)
+
+
+def _sanitize_chat_content(content: str, mode: str) -> str:
+    """Prevent quiz cards from leaking into general chat output."""
+    if _effective_mode(mode) != "chat" or not content:
+        return content
+    return _INTERACTIVE_MARKER_RE.sub(
+        "[Interactive quizzes are available in the Hebrew/Learn section.]",
+        content,
+    )
+
+
+def _compute_cost(usage: dict, model: str = "") -> dict:
+    """Estimate cost from the configured provider's usage response."""
+    pricing = _llm_provider.pricing(model or DEEPSEEK_MODEL)
     p_in = usage.get("prompt_tokens", 0)
     p_out = usage.get("completion_tokens", 0)
     cache_hit = usage.get("prompt_cache_hit_tokens", 0)
-    cost_input = p_in * PRICING["input"] / 1_000_000
-    cost_output = p_out * PRICING["output"] / 1_000_000
-    cost_cache = cache_hit * PRICING["cache_hit"] / 1_000_000
+    cost_input = p_in * pricing["input"] / 1_000_000
+    cost_output = p_out * pricing["output"] / 1_000_000
+    cost_cache = cache_hit * pricing["cache_hit"] / 1_000_000
     return {
         "total": round(cost_input + cost_output - cost_cache, 6),
         "input": round(cost_input, 6),
@@ -1271,22 +1443,56 @@ def _origin_allowed(value: str) -> bool:
     host = (parts.hostname or "").lower()
     return host.endswith(".scriptureengine.org") and parts.scheme in ("https", "http")
 
-# Simple in-memory rate limiter (per IP, 20 req / 60s window)
+# Simple in-memory rate limiter (per IP, sliding 60s window). General chat and
+# Hebrew Tutor carry separate budgets so one heavy mode cannot exhaust the
+# other's capacity (plan Track G3: per-feature budgets).
 _rate_limits: dict[str, list[float]] = {}
-RATE_LIMIT = 20
 RATE_WINDOW = 60  # seconds
 
-def _check_rate_limit(ip: str) -> bool:
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _mode_rate_limit(mode: str) -> int:
+    """Requests per RATE_WINDOW for this chat mode (env-overridable)."""
+    if _effective_mode(mode) == "hebrew":
+        return _env_int("HEBREW_RATE_LIMIT", 20)
+    return _env_int("CHAT_RATE_LIMIT", 20)
+
+
+def _check_rate_limit(ip: str, limit: int | None = None) -> bool:
     """Return True if request is allowed, False if rate-limited."""
     now = time.time()
     timestamps = _rate_limits.get(ip, [])
     # Prune expired entries
     timestamps = [t for t in timestamps if now - t < RATE_WINDOW]
-    if len(timestamps) >= RATE_LIMIT:
+    if len(timestamps) >= (limit if limit is not None else _env_int("CHAT_RATE_LIMIT", 20)):
         return False
     timestamps.append(now)
     _rate_limits[ip] = timestamps
     return True
+
+
+def _chat_disabled(mode: str) -> str | None:
+    """Emergency disable switches (Track G3).
+
+    CHAT_DISABLED kills both chat modes; HEBREW_CHAT_DISABLED kills Hebrew
+    Tutor only. Scripture lookup endpoints are unaffected either way.
+    Returns a user-facing error message, or None when chat may proceed.
+    """
+    def _flag_set(name: str) -> bool:
+        return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+    m = _effective_mode(mode)
+    if _flag_set("CHAT_DISABLED"):
+        return "Chat is temporarily unavailable. Scripture lookups still work."
+    if m == "hebrew" and _flag_set("HEBREW_CHAT_DISABLED"):
+        return "Hebrew Tutor is temporarily unavailable."
+    return None
 
 
 # ─── Context Budget Management ───
@@ -1367,7 +1573,7 @@ def apply_context_budget(message_list: list[dict]) -> list[dict]:
 
 class ChatRequest(BaseModel):
     messages: list[dict]
-    model: str = DEEPSEEK_MODEL
+    model: str = _llm_provider.default_model
     max_tokens: int = MIN_THINKING_TOKENS
     temperature: float = 0.7
     tools_enabled: bool = True
@@ -1377,27 +1583,146 @@ class ChatRequest(BaseModel):
     subagents: bool = True  # planner → parallel workers → synthesizer for research questions
     session_id: str = ""            # conversation session — job saves the completed answer here
     client_message_id: str = ""     # user message id (idempotency context for the save)
-    user_id: str = ""               # who is chatting — progress/quiz/hebrew tools read per-user data
+    user_id: str = ""               # who is chatting — Hebrew Tutor tools are mode-scoped
+    session_token: str = ""         # optional auth token; resolved server-side
+    tool_user_id: str = ""           # server-bound identity for user-scoped tools
 
 
 def _normalize_user_id(user_id: str) -> str:
-    """Anonymous/empty chat users map to 'default' (the app's anonymous id for
-    quiz + hebrew progress). Authenticated users keep their account id."""
+    """Anonymous/empty chat users map to the app's anonymous id."""
     if not user_id or user_id in ("anonymous", "default"):
         return "default"
     return user_id
 
 
+def _bind_chat_identity(body: ChatRequest, request: Request) -> str:
+    """Resolve an authenticated chat identity and overwrite client claims.
+
+    Anonymous clients retain the existing stable local id for compatibility;
+    authenticated clients must prove ownership with the session token. The
+    resolved id is then injected into every user-scoped tool call.
+    """
+    token = (body.session_token or "").strip()
+    authorization = (request.headers.get("authorization") or "").strip()
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            return "Invalid authorization header"
+        token = value.strip()
+    if token:
+        try:
+            from web.routes.auth import _resolve_user_from_token
+            resolved = _resolve_user_from_token(token)
+        except Exception:
+            resolved = None
+        if not resolved:
+            return "Invalid session token"
+        body.user_id = resolved
+    else:
+        body.user_id = _normalize_user_id(body.user_id)
+        # A client-local id is suitable for anonymous conversation ownership,
+        # but it is not an authorization credential for learner data.
+        body.tool_user_id = "default"
+    if token:
+        body.tool_user_id = body.user_id
+    # Tokens are never needed after identity binding and must not enter jobs DB.
+    body.session_token = ""
+    return ""
+
+
+def _chat_tool_user_id(body) -> str:
+    """Return the identity authorized for user-scoped tool calls."""
+    return getattr(body, "tool_user_id", "") or "default"
+
+
+def _provider_configured(model: str) -> bool:
+    """Honor legacy tests/config while supporting native provider workers."""
+    valid, _ = _llm_provider.validate_model(model)
+    if not valid:
+        return False
+    if _llm_provider.is_opencode_go_model(model):
+        return _llm_provider.configured(model)
+    return bool(DEEPSEEK_API_KEY) or _llm_provider.configured(model)
+
+
+def _provider_error(model: str) -> str:
+    valid, message = _llm_provider.validate_model(model)
+    if not valid:
+        return message
+    if not _llm_provider.is_opencode_go_model(model) and not DEEPSEEK_API_KEY:
+        return "DEEPSEEK_API_KEY not configured"
+    return "No configured chat provider for the selected model"
+
+
+def _verify_citations_sync(content: str, mode: str):
+    """Blocking part of citation verification (runs in an executor thread)."""
+    try:
+        from lib.controls.claims import check_quotations
+    except Exception:
+        return None
+
+    def _lookup(ref: str):
+        parts = ref.split(".")
+        if len(parts) != 3 or not parts[1].isdigit() or not parts[2].isdigit():
+            return None
+        res = _run_tool_thread(
+            "scripture_verse",
+            {"book": parts[0], "chapter": int(parts[1]), "verse": int(parts[2])},
+            [],
+            "citation-check",
+            mode,
+        )
+        if isinstance(res, dict) and not res.get("error"):
+            return res.get("text_english")
+        return None
+
+    return check_quotations(content, _lookup)
+
+
+async def _verify_citations(content: str, mode: str):
+    """Deterministic quotation-vs-verse checks on a final answer (Track A3).
+
+    Stage 1 of the grounded-verification pipeline: quoted spans adjacent to a
+    verse ref must appear verbatim in that verse's text. Returns None when
+    there is nothing to check (no quotes / Hebrew tutor mode). Bounded: at
+    most six verse fetches per answer, no LLM in the loop.
+    """
+    if mode == "hebrew" or not content:
+        return None
+    if '"' not in content and "\u201c" not in content:
+        return None
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _verify_citations_sync, content, mode)
+
+
+def _contributor_disclosure() -> str | None:
+    """Contributor-tier data-handling disclosure (Track G3).
+
+    When the default model runs on a contributor tier, users must be told
+    before sending material — the tier may be training-opt-in upstream.
+    """
+    if "contributor" in (_llm_provider.default_model or "").lower():
+        return ("This model runs on a contributor service tier: conversation "
+                "content may be used for provider training. Do not send "
+                "private or sensitive material.")
+    return None
+
+
 @router.get("/api/v1/chat/instructions")
-def chat_instructions():
-    """Return the AGENTS-style system prompt and tool definitions for the chat LLM."""
+def chat_instructions(mode: str = "chat"):
+    """Return mode-scoped instructions and tools without learner leakage."""
+    mode = _effective_mode(mode)
     return {
         "ok": True,
         "data": {
-            "system_prompt": CHAT_SYSTEM_PROMPT,
-            "tools": TOOL_DEFINITIONS,
-            "model": DEEPSEEK_MODEL,
-            "pricing": PRICING,
+            "system_prompt": CHAT_PROMPTS.get(mode, CHAT_SYSTEM_PROMPT),
+            "tools": _filter_tools(TOOL_DEFINITIONS, [], [], mode),
+            "model": _llm_provider.default_model,
+            "pricing": _llm_provider.pricing(_llm_provider.default_model),
+            # Public-safe availability only — no model inventory or worker-pool
+            # counts on an unauthenticated endpoint (Track G3).
+            "provider": _llm_provider.public_summary(),
+            "data_handling": _contributor_disclosure(),
         },
     }
 
@@ -1409,8 +1734,11 @@ async def llm_chat(body: ChatRequest, request: Request):
     If the LLM requests a tool call, the server executes it against the
     scripture engine and feeds the result back to the LLM for a final response.
     """
-    if not DEEPSEEK_API_KEY:
-        return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
+    if not _provider_configured(body.model):
+        return {"ok": False, "error": _provider_error(body.model)}
+    identity_error = _bind_chat_identity(body, request)
+    if identity_error:
+        return {"ok": False, "error": identity_error}
 
     # Origin check — only allow requests from the SPA or local dev
     origin = (request.headers.get("origin") or "").lower().rstrip("/")
@@ -1418,36 +1746,27 @@ async def llm_chat(body: ChatRequest, request: Request):
     if not (_origin_allowed(origin) or _origin_allowed(referer)):
         return {"ok": False, "error": "Chat is only available from scriptureengine.org"}
 
-    # Rate limiting — per-IP, max 20 requests per 60s
+    # Emergency disable switch (Track G3) — checked before any work
+    disable_msg = _chat_disabled(body.mode)
+    if disable_msg:
+        return {"ok": False, "error": disable_msg}
+
+    # Rate limiting — per-IP budgets scoped per chat mode
     # Prefer Cloudflare's connecting IP, then X-Forwarded-For, then direct client
     client_ip = (
         request.headers.get("cf-connecting-ip")
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")
     )
-    if not _check_rate_limit(client_ip):
+    if not _check_rate_limit(client_ip, _mode_rate_limit(body.mode)):
         return {"ok": False, "error": "Rate limit exceeded. Try again in a minute."}
 
     # from lib.api import call_tool, list_tools
     # from lib.api.staging import stage_connection, stage_study
     # from lib.db import get_db
 
-    # Build messages with system prompt (mode-specific)
-    msgs = list(body.messages)
-    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
-    if prompt:
-        if not any(m.get("role") == "system" for m in msgs):
-            msgs.insert(0, {"role": "system", "content": prompt})
-        else:
-            # Replace existing system prompt with mode-specific one
-            for i, m in enumerate(msgs):
-                if m.get("role") == "system":
-                    msgs[i] = {"role": "system", "content": prompt}
-                    break
-
-    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
-
-    msgs = apply_context_budget(msgs)
+    # Build messages with system prompt (mode-specific) + Hebrew hydration
+    msgs = _prepare_chat_messages(body)
 
     # Prepare request payload (no explicit thinking flags — let DeepSeek use own defaults
     # like OpenCode does. No thinking/reasoning_effort forcing means the model naturally
@@ -1460,7 +1779,7 @@ async def llm_chat(body: ChatRequest, request: Request):
     }
     if body.tools_enabled:
         # Filter out disabled tools + scope-gated tools the request didn't opt into
-        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
+        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
         payload["tool_choice"] = "auto"
 
     tool_results = []
@@ -1525,8 +1844,14 @@ async def llm_chat(body: ChatRequest, request: Request):
         round_tool_names = [tc["function"]["name"] for tc in tool_calls]
 
         # Separate staging (write) tools from read-only tools
-        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
-        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+        staging_calls = [
+            tc for tc in tool_calls
+            if tc["function"]["name"] in STAGING_TOOLS
+            and _mode_allowed(tc["function"]["name"], body.mode)
+        ]
+        # A tool call that is not allowed in this mode is deliberately routed
+        # through the read-only guard so it returns an error instead of writing.
+        ro_calls = [tc for tc in tool_calls if tc not in staging_calls]
 
         # Run read-only tools in parallel (threaded — sync DB tools off the loop)
         async def run_ro(tc):
@@ -1534,7 +1859,14 @@ async def llm_chat(body: ChatRequest, request: Request):
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
+            return tc, await asyncio.to_thread(
+                _run_tool_thread,
+                tc["function"]["name"],
+                fn_args,
+                body.scopes,
+                _chat_tool_user_id(body),
+                body.mode,
+            )
 
         ro_results = []
         if ro_calls:
@@ -1647,7 +1979,20 @@ async def llm_chat(body: ChatRequest, request: Request):
                 if retry_usage.get(k):
                     usage[k] = usage.get(k, 0) + retry_usage[k]
 
-    cost = _compute_cost(usage)
+    final_content = _sanitize_chat_content(final_content, body.mode)
+
+    # Track A3 stage 1: label unverifiable quotations before the answer ships.
+    # Nothing is deleted — the prefix plus claim_check metadata let the UI and
+    # the user judge; regeneration/softening stays a later pipeline stage.
+    claim_check = await _verify_citations(final_content, body.mode)
+    if claim_check and claim_check["unsupported"]:
+        refs = ", ".join(sorted({u["ref"] for u in claim_check["unsupported"]}))
+        final_content = (
+            "⚠️ Some quotations could not be verified against the cited verses "
+            f"({refs}); treat those citations as provisional.\n\n" + final_content
+        )
+
+    cost = _compute_cost(usage, body.model)
 
     return {
         "ok": True,
@@ -1664,6 +2009,7 @@ async def llm_chat(body: ChatRequest, request: Request):
             "cost": cost,
             "tool_results": tool_results,
             "finish_reason": _finish_reason(data),
+            "claim_check": claim_check,
         },
     }
 
@@ -1672,7 +2018,19 @@ async def llm_chat(body: ChatRequest, request: Request):
 
 
 async def call_deepseek(req_payload):
-    """Non-streaming call to DeepSeek API. Used for tool-calling rounds."""
+    """Non-streaming provider call used for tool-calling rounds.
+
+    The historical function name is retained because the subagent/job modules
+    patch it in tests and use it as their provider callback.
+    """
+    if _llm_provider.is_opencode_go_model(req_payload.get("model")):
+        return await _llm_provider.complete(req_payload)
+    valid, model = _llm_provider.validate_model(req_payload.get("model"))
+    if not valid:
+        return {"error": {"code": 400, "message": model}}
+    _, upstream_model, _ = _llm_provider.targets_for(model)
+    req_payload = dict(req_payload)
+    req_payload["model"] = upstream_model
     global _http_client
     resp = await _http_client.post(
         f"{DEEPSEEK_BASE}/chat/completions",
@@ -1686,7 +2044,7 @@ async def call_deepseek(req_payload):
 
 
 def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> dict:
-    """Build the DeepSeek request payload."""
+    """Build the provider-neutral chat-completions payload."""
     payload = {
         "model": body.model,
         "messages": messages,
@@ -1695,7 +2053,7 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
         "stream": stream,
     }
     if body.tools_enabled:
-        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
+        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
         payload["tool_choice"] = "auto"
     if stream:
         # Guarantees a usage chunk (incl. finish_reason + reasoning_tokens) before [DONE]
@@ -1703,7 +2061,7 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
     return payload
 
 
-def _run_tool_thread(fn_name, fn_args, scopes, user_id=""):
+def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat"):
     """Run one read-only chat tool in a worker thread (own DB connection).
 
     Executes off the event loop so concurrent tool calls in a round actually
@@ -1713,16 +2071,22 @@ def _run_tool_thread(fn_name, fn_args, scopes, user_id=""):
     inside the thread. Deterministic tools pass results through the in-memory
     tool cache so repeat lookups skip the DB entirely.
     """
+    if not _mode_allowed(fn_name, mode):
+        return {"error": f"Tool disabled in {mode} mode"}
     if fn_name == "scripture_research_parallel":
         # LLM-orchestrated parallel research — handled here (not in the tool
         # registry) because it drives its own nested planner/worker LLM calls.
-        return _run_research_parallel(fn_args)
+        if mode in ("chat", "knowledge"):
+            # Keep the historical callback signature for integrations/tests
+            # that replace this helper; both modes share the general allowlist.
+            return _run_research_parallel(fn_args)
+        return _run_research_parallel(fn_args, mode=mode)
     if not _scope_allowed(fn_name, scopes):
         return {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
-    # Per-user tools (quiz/hebrew progress, assessment, diagnostic) default to
-    # the chatting user unless the LLM explicitly passed a user_id.
-    if user_id and _tool_accepts_user_id(fn_name) and not fn_args.get("user_id"):
-        fn_args["user_id"] = user_id
+    # Per-user tools always use the server-bound chatting user. Never honor an
+    # LLM/client-supplied user_id, even when it is present in tool arguments.
+    if _tool_accepts_user_id(fn_name):
+        fn_args["user_id"] = user_id or "default"
     cached = tool_cache.get(fn_name, fn_args)
     if cached is not None:
         return cached
@@ -1739,9 +2103,17 @@ def _run_tool_thread(fn_name, fn_args, scopes, user_id=""):
 
 
 async def _research_llm(payload):
-    """Standalone DeepSeek call for the research_parallel tool. Uses its own
+    """Standalone provider call for the research_parallel tool. Uses its own
     HTTP client + event loop — the shared _http_client is bound to the server's
     loop and this runs inside a worker thread's fresh loop."""
+    if _llm_provider.is_opencode_go_model(payload.get("model")):
+        return await _llm_provider.complete(payload)
+    valid, model = _llm_provider.validate_model(payload.get("model"))
+    if not valid:
+        return {"error": {"code": 400, "message": model}}
+    _, upstream_model, _ = _llm_provider.targets_for(model)
+    payload = dict(payload)
+    payload["model"] = upstream_model
     async with httpx.AsyncClient(timeout=300.0) as client:
         resp = await client.post(
             f"{DEEPSEEK_BASE}/chat/completions",
@@ -1751,7 +2123,7 @@ async def _research_llm(payload):
         return resp.json()
 
 
-def _run_research_parallel(args, call_llm=None):
+def _run_research_parallel(args, call_llm=None, mode="chat"):
     """Run the subagent worker pool as a synchronous tool call.
 
     Spawns its own event loop in the calling thread: planner → parallel
@@ -1765,7 +2137,7 @@ def _run_research_parallel(args, call_llm=None):
     llm = call_llm or _research_llm
 
     async def _inner():
-        tool_defs = _filter_tools(TOOL_DEFINITIONS, [], [])
+        tool_defs = _filter_tools(TOOL_DEFINITIONS, [], [], mode)
         plan = await _subagents.plan_research(
             llm, [{"role": "user", "content": query}],
             [t["function"]["name"] for t in tool_defs])
@@ -1777,7 +2149,7 @@ def _run_research_parallel(args, call_llm=None):
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, [])
+            return await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, [], "", mode)
 
         async def _noop(ev):
             pass
@@ -1859,17 +2231,28 @@ async def _stream_final_response(body, msgs, tool_results):
     # (finish_reason="length"), discard the partial and retry with more room.
     while True:
         stream_payload = _build_payload(body, msgs, stream=True)
+        if not _llm_provider.is_opencode_go_model(body.model):
+            valid, model = _llm_provider.validate_model(body.model)
+            if not valid:
+                yield {"type": "error", "message": model}
+                return
+            _, upstream_model, _ = _llm_provider.targets_for(model)
+            stream_payload["model"] = upstream_model
         if budget_retried:
             stream_payload["max_tokens"] = _retry_budget(body.max_tokens)
 
         # Pre-stream heartbeat — the final request can take a moment to open.
         yield {"type": "heartbeat"}
         try:
-            async with _http_client.stream(
-                "POST", f"{DEEPSEEK_BASE}/chat/completions",
-                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
-                json=stream_payload,
-            ) as resp:
+            if _llm_provider.is_opencode_go_model(body.model):
+                stream_context = _llm_provider.stream(stream_payload)
+            else:
+                stream_context = _http_client.stream(
+                    "POST", f"{DEEPSEEK_BASE}/chat/completions",
+                    headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+                    json=stream_payload,
+                )
+            async with stream_context as resp:
                 if not 200 <= resp.status_code < 300:
                     raw_error = await resp.aread()
                     try:
@@ -1971,7 +2354,8 @@ async def _stream_final_response(body, msgs, tool_results):
                 if retry_usage.get(k):
                     usage[k] = usage.get(k, 0) + retry_usage[k]
 
-    cost = _compute_cost(usage)
+    final_content = _sanitize_chat_content(final_content, body.mode)
+    cost = _compute_cost(usage, body.model)
 
     yield {
         "type": "done",
@@ -2009,7 +2393,7 @@ async def _chat_pipeline(body, msgs):
     # planner call, ≤3 concurrent worker tool-loops, then the shared final
     # stream. Wall-clock ≈ 3 sequential LLM calls instead of up to 15.
     if getattr(body, "subagents", True) and body.tools_enabled and _subagents.should_plan(msgs):
-        tool_defs = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools)
+        tool_defs = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
         plan = await _subagents.plan_research(
             call_deepseek, msgs, [t["function"]["name"] for t in tool_defs])
         if plan:
@@ -2021,7 +2405,13 @@ async def _chat_pipeline(body, msgs):
                 except json.JSONDecodeError:
                     fn_args = {}
                 return await asyncio.to_thread(
-                    _run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
+                    _run_tool_thread,
+                    tc["function"]["name"],
+                    fn_args,
+                    body.scopes,
+                    _chat_tool_user_id(body),
+                    body.mode,
+                )
 
             queue = asyncio.Queue()
 
@@ -2098,15 +2488,26 @@ async def _chat_pipeline(body, msgs):
         msgs.append(msg)
         conn = get_db()
 
-        staging_calls = [tc for tc in tool_calls if tc["function"]["name"] in STAGING_TOOLS]
-        ro_calls = [tc for tc in tool_calls if tc["function"]["name"] not in STAGING_TOOLS]
+        staging_calls = [
+            tc for tc in tool_calls
+            if tc["function"]["name"] in STAGING_TOOLS
+            and _mode_allowed(tc["function"]["name"], body.mode)
+        ]
+        ro_calls = [tc for tc in tool_calls if tc not in staging_calls]
 
         async def run_ro(tc):
             try:
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return tc, await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, body.scopes, _normalize_user_id(getattr(body, 'user_id', '')))
+            return tc, await asyncio.to_thread(
+                _run_tool_thread,
+                tc["function"]["name"],
+                fn_args,
+                body.scopes,
+                _chat_tool_user_id(body),
+                body.mode,
+            )
 
         ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
 
@@ -2177,9 +2578,15 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
       - data: {"type":"tool_progress","tools":[...]} (tool calls being executed)
       - data: {"type":"done","usage":{...},"cost":{...},"model":"..."}
     """
-    if not DEEPSEEK_API_KEY:
+    if not _provider_configured(body.model):
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": "DEEPSEEK_API_KEY not configured", "message": "DEEPSEEK_API_KEY not configured"}),
+            _sse_yield({"type": "error", "ok": False, "error": _provider_error(body.model), "message": _provider_error(body.model)}),
+            media_type="text/event-stream",
+        )
+    identity_error = _bind_chat_identity(body, request)
+    if identity_error:
+        return StreamingResponse(
+            _sse_yield({"type": "error", "ok": False, "error": identity_error, "message": identity_error}),
             media_type="text/event-stream",
         )
 
@@ -2192,32 +2599,28 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
             media_type="text/event-stream",
         )
 
+    # Emergency disable switch + rate limiting (SSE error shape)
+    disable_msg = _chat_disabled(body.mode)
+    if disable_msg:
+        return StreamingResponse(
+            _sse_yield({"type": "error", "ok": False, "error": disable_msg, "message": disable_msg}),
+            media_type="text/event-stream",
+        )
+
     # Rate limiting
     client_ip = (
         request.headers.get("cf-connecting-ip")
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")
     )
-    if not _check_rate_limit(client_ip):
+    if not _check_rate_limit(client_ip, _mode_rate_limit(body.mode)):
         return StreamingResponse(
             _sse_yield({"type": "error", "ok": False, "error": "Rate limit exceeded. Try again in a minute.", "message": "Rate limit exceeded. Try again in a minute."}),
             media_type="text/event-stream",
         )
 
-    # Build messages with mode-specific system prompt
-    msgs = list(body.messages)
-    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
-    if prompt:
-        if not any(m.get("role") == "system" for m in msgs):
-            msgs.insert(0, {"role": "system", "content": prompt})
-        else:
-            for i, m in enumerate(msgs):
-                if m.get("role") == "system":
-                    msgs[i] = {"role": "system", "content": prompt}
-                    break
-
-    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
-    msgs = apply_context_budget(msgs)
+    # Build messages with mode-specific system prompt (+ Hebrew hydration)
+    msgs = _prepare_chat_messages(body)
 
     async def stream_generator():
         """Run tool rounds (non-streaming), then stream final response."""
@@ -2238,8 +2641,11 @@ async def llm_chat_job_create(body: ChatRequest, request: Request):
     """Create a background chat job. The DeepSeek run proceeds server-side
     independent of the client connection — it survives phone minimize, network
     drops, and tab switches. Poll GET /api/v1/chat/jobs/{id}?after_seq=N."""
-    if not DEEPSEEK_API_KEY:
-        return {"ok": False, "error": "DEEPSEEK_API_KEY not configured"}
+    if not _provider_configured(body.model):
+        return {"ok": False, "error": _provider_error(body.model)}
+    identity_error = _bind_chat_identity(body, request)
+    if identity_error:
+        return {"ok": False, "error": identity_error}
 
     # Origin check — same gate as the other chat endpoints
     origin = (request.headers.get("origin") or "").lower().rstrip("/")
@@ -2247,30 +2653,24 @@ async def llm_chat_job_create(body: ChatRequest, request: Request):
     if not (_origin_allowed(origin) or _origin_allowed(referer)):
         return {"ok": False, "error": "Chat is only available from scriptureengine.org"}
 
+    disable_msg = _chat_disabled(body.mode)
+    if disable_msg:
+        return {"ok": False, "error": disable_msg}
+
     client_ip = (
         request.headers.get("cf-connecting-ip")
         or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")
     )
-    if not _check_rate_limit(client_ip):
+    if not _check_rate_limit(client_ip, _mode_rate_limit(body.mode)):
         return {"ok": False, "error": "Rate limit exceeded. Try again in a minute."}
 
-    # Prepare messages (same as the stream endpoint)
-    msgs = list(body.messages)
-    prompt = CHAT_PROMPTS.get(body.mode, CHAT_SYSTEM_PROMPT)
-    if prompt:
-        if not any(m.get("role") == "system" for m in msgs):
-            msgs.insert(0, {"role": "system", "content": prompt})
-        else:
-            for i, m in enumerate(msgs):
-                if m.get("role") == "system":
-                    msgs[i] = {"role": "system", "content": prompt}
-                    break
-    body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
-    msgs = apply_context_budget(msgs)
+    # Prepare messages (same as the stream endpoint, incl. Hebrew hydration)
+    msgs = _prepare_chat_messages(body)
 
     try:
-        job_id = _jobs.manager.create(body.model_dump(), msgs, client_ip)
+        job_body = body.model_dump(exclude={"session_token"})
+        job_id = _jobs.manager.create(job_body, msgs, client_ip)
     except _jobs.JobLimitError as e:
         return {"ok": False, "error": str(e)}
     return {"ok": True, "data": {"job_id": job_id, "seq": 0, "status": "queued"}}

@@ -176,18 +176,28 @@ const [showAssessment, setShowAssessment] = useState(false)
     return () => window.removeEventListener('click', handler)
   }, [])
 
-  // Open study from URL query param (e.g., ?study=torah-in-all-scripture)
+  // Open study or shared-conversation from URL query params
+  // (e.g., ?study=torah-in-all-scripture or ?shared=<slug>)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const studySlug = params.get('study')
-    if (studySlug) {
+    const sharedSlug = params.get('shared')
+    if (studySlug || sharedSlug) {
       // Wait a beat for tabs to initialize
       const timer = setTimeout(() => {
-        openTab(studySlug, 1, {
-          label: `Study: ${studySlug}`,
-          view: 'study',
-          viewRef: studySlug,
-        })
+        if (sharedSlug) {
+          openTab(sharedSlug, 1, {
+            label: 'Shared conversation',
+            view: 'shared',
+            viewRef: sharedSlug,
+          })
+        } else {
+          openTab(studySlug, 1, {
+            label: `Study: ${studySlug}`,
+            view: 'study',
+            viewRef: studySlug,
+          })
+        }
       }, 500)
       return () => clearTimeout(timer)
     }

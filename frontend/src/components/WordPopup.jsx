@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { fetchJSON } from '../api'
+import { currentSessionToken, fetchJSON } from '../api'
 
 /**
  * WordPopup — appears when clicking a Hebrew word.
@@ -186,10 +186,15 @@ export default function WordPopup({ data, onClose, readAlongData }) {
                 try {
                   const word = data.word.replace(/[\u0591-\u05AF]/g, '').trim()
                   if (!word) return
-                  const r = await fetchJSON('/hebrew/add-word', {
-                    method: 'POST',
-                    body: JSON.stringify({ word }),
-                    headers: { 'Content-Type': 'application/json' },
+                   const r = await fetchJSON(`/hebrew/add-word?word=${encodeURIComponent(word)}`, {
+                     method: 'POST',
+                     body: JSON.stringify({ word }),
+                     headers: {
+                       'Content-Type': 'application/json',
+                       ...(currentSessionToken()
+                         ? { Authorization: `Bearer ${currentSessionToken()}` }
+                         : {}),
+                     },
                   })
                   if (r.ok) setAdded(true)
                 } catch (_) {}

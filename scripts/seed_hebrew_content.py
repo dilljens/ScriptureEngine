@@ -45,6 +45,24 @@ CREATE TABLE IF NOT EXISTS hebrew_progress (
     last_practiced TEXT,
     PRIMARY KEY (user_id, node_id)
 );
+
+-- Track C2: append-only evidence; derived state must trace back here.
+CREATE TABLE IF NOT EXISTS hebrew_attempt_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    question_id TEXT,
+    mode TEXT DEFAULT 'hebrew',
+    raw_response TEXT DEFAULT '',
+    correct INTEGER NOT NULL,
+    hints INTEGER DEFAULT 0,
+    content_version TEXT DEFAULT '',
+    evaluator_version TEXT DEFAULT '',
+    event_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_attempt_events_user_node
+    ON hebrew_attempt_events(user_id, node_id, id);
 """
 
 # ── Lesson content for each topic ──

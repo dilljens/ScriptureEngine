@@ -203,6 +203,10 @@ TYPE_LR = {
 
 
 def _type_lr(conn_type):
+    # Retired numerical types are neutral: their TYPE_LR entries are ignored
+    # entirely so legacy rows get no type-based boost or penalty.
+    if conn_type in RETIRED_NUMERICAL_TYPES:
+        return 1.0
     return TYPE_LR.get(conn_type, 1.5)
 
 
@@ -355,6 +359,63 @@ QUALITY_LEVELS = {
 TIER_ORDER = ["verified", "strong", "probable", "suggested", "pattern", "speculative", "rejected"]
 
 
+# ── Numerical (gematria) evidence classes ─────────────────────────────
+# Numerical matches are bounded candidate evidence, never proof of doctrine.
+# Two classes:
+#   - retained: exact, reproducible traditional comparisons (standard /
+#     ordinal / reduced exact word-value match, attested divine-name value).
+#     They may be reported as candidates but are capped below the 'probable'
+#     tier so they can never outrank direct textual/linguistic/intertextual
+#     evidence.
+#   - retired: noisy scan types (factors, sum relationships, broad sacred
+#     numbers, verse totals, distribution scans). Neutral in the LR product
+#     and hard-capped into the speculative band so existing rows cannot
+#     influence ranking before the archive/purge migration (Track B3).
+
+RETIRED_NUMERICAL_TYPES = {
+    "gematria_factor",
+    "gematria_sum_relationship",
+    "sacred_number",
+    "verse_gematria_total",
+    "divine_name_distribution",
+}
+
+RETAINED_NUMERICAL_TYPES = {
+    "same_gematria_standard",
+    "same_gematria_ordinal",
+    "same_gematria_reduced",
+    "divine_name_value",
+}
+
+# Retained numerical ceiling: quality 58 keeps exact gematria matches inside
+# the 'suggested' band — one point below 'probable' (60), far below any
+# direct quotation (which reaches 'verified' via text-explicit discovery).
+NUMERICAL_MAX_QUALITY = 58
+
+# Retired numerical ceiling: forced into the 'speculative' band regardless
+# of agreement, feedback, or p-value signals.
+RETIRED_NUMERICAL_MAX_QUALITY = 14
+
+
+def numerical_evidence_class(conn_type):
+    """Classify a connection type's numerical evidence class."""
+    if conn_type in RETIRED_NUMERICAL_TYPES:
+        return "numerical_retired"
+    if conn_type in RETAINED_NUMERICAL_TYPES:
+        return "numerical_candidate"
+    return None
+
+
+def _evidence_ceiling(conn_type):
+    """Return (evidence_class, max_quality) for a connection type, or (None, None)."""
+    cls = numerical_evidence_class(conn_type)
+    if cls == "numerical_retired":
+        return cls, RETIRED_NUMERICAL_MAX_QUALITY
+    if cls == "numerical_candidate":
+        return cls, NUMERICAL_MAX_QUALITY
+    return None, None
+
+
 def probability_to_quality(probability):
     """Convert a probability (0.0-1.0) to a quality score (0-100)."""
     return round(max(0, min(100, probability * 100)))
@@ -450,6 +511,15 @@ def rate_connection(
     quality_score = probability_to_quality(overall)
     tier_info = get_quality_info(quality_score)
 
+    # Evidence-class ceiling: enforced AFTER all multipliers (discovery,
+    # agreement, feedback, p-value, generator precision) so no combination
+    # of bonuses can promote a numerical candidate above its class ceiling.
+    evidence_class, evidence_ceiling = _evidence_ceiling(connection_type)
+    ceiling_applied = False
+    if evidence_ceiling is not None and quality_score > evidence_ceiling:
+        quality_score = evidence_ceiling
+        ceiling_applied = True
+
     # Build explanation of which signals drove the score
     signals_contrib = {
         "discovery_method": discovered_by,
@@ -488,6 +558,13 @@ def rate_connection(
         if signal_effects
         else f"Prior (S{source_tier}) — no strong signals"
     )
+    if ceiling_applied:
+        explanation += (
+            f" — capped at {evidence_ceiling} "
+            f"({'retired' if evidence_class == 'numerical_retired' else 'numerical-candidate'} "
+            f"evidence class; cannot outrank textual evidence)"
+        )
+        tier_info = get_quality_info(quality_score)
 
     return {
         "quality_score": quality_score,
@@ -498,6 +575,9 @@ def rate_connection(
         "tier_color": tier_info["color"],
         "source_tier": source_tier,
         "source_tier_label": TIER_LABELS.get(source_tier, "S4"),
+        "evidence_class": evidence_class,
+        "evidence_ceiling": evidence_ceiling,
+        "ceiling_applied": ceiling_applied,
         "explanation": explanation,
         "signals": signals_contrib,
     }
@@ -553,6 +633,9 @@ def enrich_connection(conn_dict):
     conn_dict["signals"] = signals
     conn_dict["quality_score"] = signals["quality_score"]
     conn_dict["quality_label"] = signals["tier_label"]
+    conn_dict["evidence_class"] = signals["evidence_class"]
+    if signals["ceiling_applied"]:
+        conn_dict["evidence_ceiling"] = signals["evidence_ceiling"]
     return conn_dict
 
 

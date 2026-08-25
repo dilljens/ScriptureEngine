@@ -24,6 +24,7 @@ const WikiArticleViewer = React.lazy(() => import('./WikiArticleViewer'))
 const HebrewPassageReader = React.lazy(() => import('./HebrewPassageReader'))
 const LearnView = React.lazy(() => import('./LearnView'))
 const StudiesListView = React.lazy(() => import('./StudiesListView'))
+const SharedView = React.lazy(() => import('./SharedView'))
 
 /**
  * MainContentView — renders the active tab's view (chapter, book, work,
@@ -124,6 +125,27 @@ export default function MainContentView(props) {
         onClose={() => {}}
       />
     </Suspense>
+    )
+  }
+  // Shared conversation snapshot view (unlisted link: ?shared=<slug>)
+  if (viewLevel === 'shared' && viewRef) {
+    // Asking a follow-up forks the snapshot into a new session owned by the
+    // current user, then hands off to a freshly mounted chat tab (which
+    // restores the session from localStorage and sends the question).
+    const handleSharedAsk = (sessionId, question) => {
+      try {
+        localStorage.setItem('current_chat_session', sessionId)
+        localStorage.setItem('chat_pending_question', JSON.stringify({ text: question, ts: Date.now() }))
+      } catch {}
+      const ws = workspaces?.find(w => w.id === activeWorkspace)
+      const existingChat = ws?.tabs.find(t => t.view === 'chat')
+      if (existingChat) closeTab(existingChat.id)
+      openTab('gen', 1, { label: '💬 Chat', view: 'chat' })
+    }
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-neutral-400">Loading shared conversation...</div>}>
+        <SharedView slug={viewRef} onNavigate={handleChatNavigate} onAsk={handleSharedAsk} />
+      </Suspense>
     )
   }
   // Memorize view

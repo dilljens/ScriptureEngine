@@ -104,6 +104,17 @@ The Latin Vulgate was ingested into the `textual_variants` table (31,077 verses,
 Located in `lib/controls/`:
 
 - **Calibration**: Quality levels from `certain` (green) to `rejected` (red), mapped to emoji
+- **Numerical evidence ceiling (Track B)**: retired generator types
+  (`RETIRED_NUMERICAL_TYPES`) are forced into the speculative band regardless
+  of multipliers; retained exact gematria matches cap at quality 58, below
+  textual/linguistic/intertextual evidence. `evidence_class` is emitted on
+  numerical output so the LLM sees the ceiling, not just a score. Generator
+  stop-list enforced in-module (retired `run()`s return zero rows) with
+  provenance kept in `_run_retired()`. Archive/restore migration:
+  `scripts/archive_retired_numerical.py`; baseline counts in
+  `docs/plans/b3-numerical-premigration-counts.json`.
+- **Claim checker**: `lib/controls/claims.py` — deterministic quotation-vs-
+  verse verification used by chat (Track A3 stage 1)
 - **Null-text validation**: Compares against statistically expected baselines
 - **Pre-registration**: Hypotheses registered before testing to prevent p-hacking
 - **P-values**: Statistical significance on algorithmic connections

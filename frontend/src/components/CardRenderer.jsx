@@ -3,6 +3,12 @@ import { preprocess, openVerseRef, createComponents } from '../lib/scripture-mar
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import {
+  ANSWER_MODES,
+  answerModeForQuestion,
+  getChoiceFeedback,
+  getChoiceIndex,
+} from '../lib/quiz-grading'
 
 /**
  * CardRenderer — renders the front of a learning card based on its type.
@@ -192,9 +198,13 @@ function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
 function DrillCardRenderer({ card, showAnswer, onAnswer, answerState }) {
   const { question, options, correct, explanation, hebrew_word } = card.data || {}
   const opts = Array.isArray(options) ? options : (typeof options === 'string' ? JSON.parse(options || '[]') : [])
+  const answerMode = answerModeForQuestion({ ...card.data, options: opts })
+  const isChoiceQuestion = answerMode === ANSWER_MODES.CHOICE_INDEX && opts.length > 0
+  const hasAnswerKey = correct !== undefined && correct !== null && correct !== ''
   const hasAudio = Boolean(hebrew_word)
   const [answer, setAnswer] = useState('')
   const result = answerState?.[card.id]
+  const gradedCorrect = typeof result?.correct === 'boolean' ? result.correct : null
 
   useEffect(() => setAnswer(''), [card.id])
 
@@ -221,27 +231,60 @@ function DrillCardRenderer({ card, showAnswer, onAnswer, answerState }) {
 
       {showAnswer ? (
         <div className="space-y-2">
-          {opts.length > 0 && opts.map((opt, i) => {
-            const isCorrect = String(opt) === String(correct)
-            const wasSelected = String(opt) === String(result?.answer)
-            return (
-              <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
-                isCorrect
-                  ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                  : wasSelected
+            {isChoiceQuestion ? opts.map((opt, i) => {
+              if (!hasAnswerKey) {
+                const selected = getChoiceIndex(result?.answer, opts) === i
+                return (
+                  <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
+                    selected && gradedCorrect === true
+                      ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
+                      : selected && gradedCorrect === false
+                        ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                        : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-400'
+                  }`}>
+                    <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>{opt}
+                  </div>
+                )
+              }
+              const feedback = getChoiceFeedback({
+                answer: result?.answer,
+                optionIndex: i,
+                correctAnswer: correct,
+                options: opts,
+              })
+              const isContradictoryCorrectSelection = gradedCorrect === false && feedback.isAnswerCorrect
+              const isCorrectOption = feedback.isCorrectOption && !isContradictoryCorrectSelection
+              const isIncorrectSelection = gradedCorrect === true
+                ? false
+                : feedback.isIncorrectSelection || (isContradictoryCorrectSelection && i === feedback.selectedIndex)
+              return (
+                <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
+                  isCorrectOption
+                    ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
+                    : isIncorrectSelection
+                      ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                      : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-400'
+                }`}>
+                  <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>
+                  {opt}
+                </div>
+              )
+            }) : (
+              <div className={`px-3 py-2 rounded-lg text-sm border ${
+                result?.correct === true
+                  ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                  : result?.correct === false
                     ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-400'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-300'
               }`}>
-                <span className="font-medium mr-2 text-xs">{String.fromCharCode(65 + i)}.</span>
-                {opt}
+                <p>{hasAnswerKey ? 'Correct answer:' : 'Server grading:'} <span className="font-medium">
+                  {hasAnswerKey ? correct : result?.correct === true ? 'Correct' : result?.correct === false ? 'Needs review' : 'Pending'}
+                </span></p>
+                {result?.answer !== undefined && result?.answer !== null && String(result.answer).trim() && (
+                  <p className="text-xs mt-1 opacity-80">Your answer: {String(result.answer)}</p>
+                )}
               </div>
-            )
-          })}
-          {!opts.length && correct && (
-            <div className="px-3 py-2 rounded-lg text-sm border border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium">
-              {correct}
-            </div>
-          )}
+            )}
           {explanation && (
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 p-2 rounded bg-neutral-50 dark:bg-neutral-800/50">
               {explanation}
@@ -250,11 +293,11 @@ function DrillCardRenderer({ card, showAnswer, onAnswer, answerState }) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {opts.length > 0 && opts.map((opt, i) => (
+          {isChoiceQuestion && opts.map((opt, i) => (
             <button type="button" key={i}
-              onClick={(event) => { event.stopPropagation(); setAnswer(String(opt)) }}
+              onClick={(event) => { event.stopPropagation(); setAnswer(i) }}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors ${
-                answer === String(opt)
+                getChoiceIndex(answer, opts) === i
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                   : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:border-indigo-300'
               }`}>
@@ -262,14 +305,15 @@ function DrillCardRenderer({ card, showAnswer, onAnswer, answerState }) {
               {opt}
             </button>
           ))}
-          {!opts.length && (
+          {!isChoiceQuestion && (
             <input value={answer} onChange={(event) => setAnswer(event.target.value)}
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
               dir="auto" placeholder="Type your answer"
               className="w-full px-3 py-2 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400" />
           )}
-          <button type="button" disabled={!answer.trim()}
+          <button type="button"
+            disabled={isChoiceQuestion ? getChoiceIndex(answer, opts) === null : !String(answer ?? '').trim()}
             onClick={(event) => { event.stopPropagation(); onAnswer?.(answer) }}
             className="w-full mt-3 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">
             Check answer
@@ -329,10 +373,13 @@ function StudyStepCardRenderer({ card, showAnswer }) {
 // Back: shows correct answer + explanation + LLM grade
 // Adaptive MC (TMAW Ch 20): options hidden for pure recall if user has been correct before
 function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
-  const { question, options, correct_answer, explanation, tier, bloom_level, is_open, show_options } = card.data || {}
+  const { question, options, explanation, tier, bloom_level, is_open, show_options } = card.data || {}
   const [selected, setSelected] = useState(null)
   const [openInput, setOpenInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const result = answerState?.[card.id]
+  const serverCorrect = typeof result?.correct === 'boolean' ? result.correct : null
+  const submittedAnswer = result?.answer?.selected ?? result?.answer?.openInput ?? result?.answer
 
   // Front (not yet revealed): show question + adaptive MC options or pure recall prompt
   if (!showAnswer) {
@@ -394,7 +441,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
     )
   }
 
-  // Back (answer revealed): show correct answer + explanation + LLM grade
+  // Back (answer revealed): show server grading + explanation + LLM grade
   return (
     <div className="space-y-3">
       <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
@@ -402,12 +449,17 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
           {preprocess(question || '')}
         </ReactMarkdown>
       </div>
-      {is_open && answerState?.llmGrade && (
+      {serverCorrect !== null && (
+        <p className={`text-sm font-medium ${serverCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {serverCorrect ? '✓ Correct' : '✗ Needs review'}
+        </p>
+      )}
+      {is_open && result?.llmGrade && (
         <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/30 border border-neutral-200 dark:border-neutral-700">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">AI Evaluation</p>
           <div className="grid grid-cols-2 gap-2 mb-2">
             {['text_engagement', 'reasoning', 'depth', 'context'].map(k => {
-              const score = answerState.llmGrade?.scores?.[k] || answerState.llmGrade?.[k]
+              const score = result.llmGrade?.scores?.[k] || result.llmGrade?.[k]
               if (score === undefined) return null
               return (
                 <div key={k}>
@@ -420,18 +472,20 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
               )
             })}
           </div>
-          {answerState.llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{answerState.llmGrade.feedback}</p>}
+          {result.llmGrade.feedback && <p className="text-xs text-neutral-600 dark:text-neutral-400">{result.llmGrade.feedback}</p>}
         </div>
       )}
       {!is_open && (
         <div className="space-y-1.5">
           {(options || []).map((opt, i) => {
-            const isCorrect = String(opt) === String(correct_answer)
+            const isSelected = String(opt) === String(submittedAnswer)
             return (
               <div key={i} className={`px-3 py-2 rounded-lg text-sm border ${
-                isCorrect
+                isSelected && serverCorrect === true
                   ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                  : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
+                  : isSelected && serverCorrect === false
+                    ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
               }`}>
                 <span className="font-medium mr-2 text-xs text-neutral-400">{String.fromCharCode(65 + i)}.</span>
                 {opt}
@@ -446,17 +500,17 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
             {preprocess(explanation)}
           </ReactMarkdown>
         </div>
-    )}
-  </div>
+        )}
+    </div>
   )
 }
 
 // ── Assessment Question Card ──
 // Front: passage + question (adaptive: shows MC options if user previously struggled)
-// Back: correct answer + explanation + tier/type badges
+// Back: rating confirmation + explanation + tier/type badges
 // Follows The Math Academy Way Ch 20: retrieval before reveal
 function AssessmentQuestionRenderer({ card, showAnswer, onAnswer }) {
-  const { question, answer, explanation, options, tier, bloom_level, layer, show_options } = card.data || {}
+  const { question, explanation, options, tier, bloom_level, layer, show_options } = card.data || {}
   const [selected, setSelected] = useState(null)
 
   const handleSelect = (opt) => {
@@ -516,18 +570,16 @@ function AssessmentQuestionRenderer({ card, showAnswer, onAnswer }) {
         </p>
       )}
 
-      {/* Back: answer + explanation */}
+      {/* Back: rating confirmation + explanation */}
       {showAnswer && (
         <div className="space-y-3 mt-2 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 mb-1">
-              {selected ? (selected === answer ? '✅ Correct' : '❌ Incorrect') : 'Answer'}
+              {selected ? 'Response recorded' : 'Recall check'}
             </p>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                {answer || ''}
-              </ReactMarkdown>
-            </div>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400">
+              Use the rating below to schedule your next review.
+            </p>
           </div>
           {explanation && (
             <div className="p-3 rounded-lg bg-white dark:bg-neutral-800 border border-indigo-100 dark:border-neutral-700">

@@ -27,14 +27,14 @@ describe('assessmentToCards', () => {
     expect(cards[0].type).toBe('assessment_question')
     expect(cards[0].id).toBe('assessment-1')
     expect(cards[0].data.question).toContain('Genesis 1:1')
-    expect(cards[0].data.answer).toBe('God created the heavens and the earth')
+    expect(cards[0].data.answer).toBeUndefined()
     expect(cards[0].data.tier).toBe('text')
   })
 
-  it('hides options when user has been correct before', () => {
+  it('keeps assessment options answer-key free', () => {
     const progress = { 1: { correct: 3, attempts: 3 } }
     const cards = assessmentToCards(sampleItems, progress)
-    expect(cards[0].data.show_options).toBe(false)
+    expect(cards[0].data.show_options).toBe(true)
   })
 
   it('shows options when user has struggled', () => {
@@ -43,10 +43,10 @@ describe('assessmentToCards', () => {
     expect(cards[0].data.show_options).toBe(true)
   })
 
-  it('hides options when user has never seen the question', () => {
+  it('shows answerable options for unseen questions', () => {
     const progress = {}
     const cards = assessmentToCards(sampleItems, progress)
-    expect(cards[0].data.show_options).toBe(false)
+    expect(cards[0].data.show_options).toBe(true)
   })
 
   it('passes through all data fields', () => {
@@ -91,7 +91,7 @@ describe('lessonToCards', () => {
     expect(cardsWithProgress[0].data.show_options).toBe(true)
 
     const cardsWithoutProgress = lessonToCards(sampleModule, { 10: { correct: 3, attempts: 3 } })
-    expect(cardsWithoutProgress[0].data.show_options).toBe(false)
+    expect(cardsWithoutProgress[0].data.show_options).toBe(true)
   })
 })
 

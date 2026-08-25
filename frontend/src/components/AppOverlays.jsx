@@ -9,6 +9,7 @@ import HotkeyCheatsheet from './HotkeyCheatsheet'
 import CommandInput from './CommandInput'
 import MobileBottomNav from './MobileBottomNav'
 import MobileMenuDrawer from './MobileMenuDrawer'
+import { resetHebrewSessionUser } from '../api'
 const ChatPanel = React.lazy(() => import('./ChatPanel'))
 const AssessmentView = React.lazy(() => import('./AssessmentView'))
 
@@ -46,6 +47,20 @@ export default function AppOverlays(props) {
     hebrewOnly, persist, sessionToken, setSessionToken, syncStatus,
   } = useSettings()
   const { dispatch } = useToggles()
+
+  const handleSignOut = () => {
+    // Keep the anonymous device identity, but drop all account-scoped state.
+    try {
+      localStorage.removeItem('scripture_session_token')
+      localStorage.removeItem('scripture_user_name')
+      localStorage.removeItem('scripture_user_avatar')
+      localStorage.removeItem('scripture_auth_user_id')
+    } catch {}
+    setSessionToken('')
+    resetHebrewSessionUser()
+    setUserName('')
+    setUserAvatar('')
+  }
 
   return (
     <>
@@ -248,7 +263,7 @@ export default function AppOverlays(props) {
         authUser={userName || null}
         authAvatar={userAvatar || null}
         onSignIn={() => { setShowMobileMenu(false); document.querySelector('#google-signin-btn')?.click() }}
-        onSignOut={() => { localStorage.removeItem('scripture_user_name'); localStorage.removeItem('scripture_user_avatar'); localStorage.removeItem('scripture_auth_user_id'); setUserName(''); setUserAvatar('') }}
+        onSignOut={handleSignOut}
       />
 
       {/* Spacer to prevent content from being hidden behind bottom nav — hidden when UI is hidden */}

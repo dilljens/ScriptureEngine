@@ -8,8 +8,24 @@ Verifies the ability/difficulty model in web/routes/hebrew.py:
   - the `learning_speed < 0.5 → no FIRe credit` rule is preserved
 """
 import sqlite3
+import hashlib
+import secrets
 
 import pytest
+
+from lib.db import get_db as get_scripture_db
+
+
+def _session_token(user_id):
+    token = hashlib.sha256(f"{user_id}:{secrets.token_hex(16)}".encode()).hexdigest()
+    conn = get_scripture_db()
+    conn.execute(
+        "INSERT OR REPLACE INTO sessions (id, user_id, token_hash) VALUES (?,?,?)",
+        (token[:16], user_id, token),
+    )
+    conn.commit()
+    conn.close()
+    return token
 
 
 def _seed_progress(client, user_id, rows):
@@ -140,7 +156,8 @@ def test_review_endpoint_returns_speed_fields(client, node_id):
     import web.routes.hebrew as hebrew_routes
     _seed_progress(client, "tester", [(node_id, 3, 2)])
     r = client.post("/api/v1/hebrew/fsrs/review", json={
-        "node_id": node_id, "rating": 3, "user_id": "tester"})
+        "node_id": node_id, "rating": 3, "user_id": "tester",
+        "session_token": _session_token("tester")})
     assert r.status_code == 200
     data = r.json()["data"]
     assert "learning_speed" in data

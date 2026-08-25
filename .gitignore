@@ -77,3 +77,6 @@ frontend/playwright-report/
 # Vite cache + root-level node_modules (playwright for E2E tests)
 node_modules/
 node_modules/.vite/
+
+# Codebase-memory tool cache
+.codegraph/

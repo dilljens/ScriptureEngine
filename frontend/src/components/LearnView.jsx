@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import { preprocess, openVerseRef, createComponents } from '../lib/scripture-markdown'
 import CardQueue from './CardQueue'
 import { lessonToCards } from '../lib/card-factory'
+import { currentSessionToken } from '../api'
 
 /**
  * LearnView — structured learning modules following The Math Academy Way.
@@ -47,14 +48,35 @@ export default function LearnView({ userId = 'default', onBack }) {
   const [answerState, setAnswerState] = useState({})
   const [dueCount, setDueCount] = useState(0)
   const [reviewCards, setReviewCards] = useState([])
+  const [reviewAnswerState, setReviewAnswerState] = useState({})
   const [gamification, setGamification] = useState(null)
+  const pendingAnswers = useRef({})
+  const submittedAnswers = useRef({})
+  const attemptIds = useRef({})
+
+  const sessionToken = () => currentSessionToken()
+  const sessionHeaders = () => {
+    const token = sessionToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+  const learningUser = () => sessionToken() ? userId : 'default'
+  const attemptIdFor = (key) => {
+    if (!attemptIds.current[key]) {
+      const random = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      attemptIds.current[key] = `${key}-${random}`
+    }
+    return attemptIds.current[key]
+  }
 
   const loadModules = async () => {
     setLoading(true)
     try {
+      const owner = learningUser()
       const [modRes, gamRes] = await Promise.all([
-        fetch(`/api/v1/learn/modules?user_id=${userId}`),
-        fetch(`/api/v1/learn/gamification?user_id=${userId}`),
+        fetch(`/api/v1/learn/modules?user_id=${owner}`, { headers: sessionHeaders() }),
+        fetch(`/api/v1/learn/gamification?user_id=${owner}`, { headers: sessionHeaders() }),
       ])
       const modData = await modRes.json()
       const gamData = await gamRes.json()
@@ -70,7 +92,8 @@ export default function LearnView({ userId = 'default', onBack }) {
   const startReview = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/v1/learn/review?user_id=${userId}&limit=6`)
+      const owner = learningUser()
+      const r = await fetch(`/api/v1/learn/review?user_id=${owner}&limit=6`, { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok && d.data.reviews.length > 0) {
         // Flatten all questions from all due modules into interleaved cards
@@ -79,15 +102,16 @@ export default function LearnView({ userId = 'default', onBack }) {
           rev.questions.forEach(q => {
             allQuestions.push({
               id: q.id,
-              type: q.type === 'multiple_choice' ? 'learn_question' : 'knowledge',
+              type: 'learn_question',
               data: {
                 question_id: q.id,
                 module_id: rev.module_id,
                 question: q.question,
                 options: q.options,
-                correct_answer: q.correct_answer,
                 explanation: q.explanation,
                 tier: q.tier,
+                is_open: q.answer_mode !== 'choice_index' && q.type !== 'multiple_choice',
+                answer_mode: q.answer_mode || (q.options?.length ? 'choice_index' : 'free_text'),
               },
             })
           })
@@ -98,6 +122,8 @@ export default function LearnView({ userId = 'default', onBack }) {
           [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]]
         }
         setReviewCards(allQuestions)
+        attemptIds.current = {}
+        setReviewAnswerState({})
         setPhase('review')
       } else {
         // No due reviews
@@ -110,12 +136,49 @@ export default function LearnView({ userId = 'default', onBack }) {
   const loadModule = async (id) => {
     setLoading(true); setQIdx(0); setSelected(null); setSubmitted(false); setShowNext(false); setShowLesson(true); setOpenInput(''); setLlmGrade(null)
     try {
-      const r = await fetch(`/api/v1/learn/modules/${id}?user_id=${userId}`)
+      const r = await fetch(`/api/v1/learn/modules/${id}?user_id=${learningUser()}`, { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) { setCurrentModule(d.data); setPhase('lesson') }
       else setError(d.detail)
     } catch (e) { setError(e.message) }
     setLoading(false)
+  }
+
+  const recordPracticeAnswer = async ({ moduleId, questionId, answer, answerMode, cardId, rating = 3 }) => {
+    const key = cardId || `question-${questionId}`
+    if (pendingAnswers.current[key]) return pendingAnswers.current[key]
+    const owner = learningUser()
+    const request = (async () => {
+      const response = await fetch(`/api/v1/learn/modules/${moduleId}/practice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({
+          user_id: owner,
+          session_token: sessionToken(),
+          question_id: questionId,
+          attempt_id: attemptIdFor(key),
+          answer,
+          answer_mode: answerMode || 'free_text',
+          rating,
+        }),
+      })
+      if (!response.ok) throw new Error(`Practice submission failed (${response.status})`)
+      const payload = await response.json()
+      const correct = typeof payload.data?.is_correct === 'boolean' ? payload.data.is_correct : null
+      const update = previous => ({
+        ...previous,
+        [key]: { ...previous[key], submitted: true, answer, recorded: true, correct },
+      })
+      setAnswerState(update)
+      setReviewAnswerState(update)
+      return correct
+    })()
+    pendingAnswers.current[key] = request
+    try {
+      return await request
+    } finally {
+      delete pendingAnswers.current[key]
+    }
   }
 
   const advanceToNext = () => {
@@ -126,15 +189,16 @@ export default function LearnView({ userId = 'default', onBack }) {
     }
   }
 
-  const submitAnswer = async (correct) => {
+  const submitAnswer = async (answer) => {
     if (!currentModule) return
     const q = currentModule.questions[qIdx]
     setSubmitted(true)
-    // Record answer
-    await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, question_id: q.id, correct }),
+    await recordPracticeAnswer({
+      moduleId: currentModule.id,
+      questionId: q.id,
+      answer,
+      answerMode: q.answer_mode || (q.options?.length ? 'choice_index' : 'free_text'),
+      cardId: `question-${q.id}`,
     })
     setShowNext(true)
   }
@@ -142,23 +206,26 @@ export default function LearnView({ userId = 'default', onBack }) {
   const submitOpenAnswer = async () => {
     if (!openInput.trim() || !currentModule) return
     const q = currentModule.questions[qIdx]
+    const owner = learningUser()
     setSubmitted(true); setLlmGrade(null)
-    // Record as neutral for now (LLM will evaluate)
-    await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, question_id: q.id, correct: true }),
+    await recordPracticeAnswer({
+      moduleId: currentModule.id,
+      questionId: q.id,
+      answer: openInput,
+      answerMode: 'free_text',
+      cardId: `question-${q.id}`,
     })
     // Call LLM grading
     try {
       const r = await fetch('/api/v1/assess/grade', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
         body: JSON.stringify({
           question: q.question,
           user_answer: openInput,
           tier: q.tier || 'analysis',
-          user_id: userId,
+          user_id: owner,
+          session_token: sessionToken(),
         }),
       })
       const d = await r.json()
@@ -347,6 +414,7 @@ export default function LearnView({ userId = 'default', onBack }) {
         {currentModule.questions?.length > 0 && (
           <button onClick={() => {
             setPracticeCards(lessonToCards(currentModule))
+            attemptIds.current = {}
             setAnswerState({})
             setPhase('practice')
           }}
@@ -361,20 +429,28 @@ export default function LearnView({ userId = 'default', onBack }) {
   // ── Review mode — interleaved due questions ──
   if (phase === 'review') {
     const handleRate = async (card, rating) => {
-      const isCorrect = rating >= 3
-      const moduleId = card.data?.module_id
-      if (moduleId) {
-        await fetch(`/api/v1/learn/modules/${moduleId}/practice`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            question_id: card.data?.question_id || card.id,
-            correct: isCorrect,
-            rating,
-          }),
+      const state = reviewAnswerState[card.id] || {}
+      try {
+        return await recordPracticeAnswer({
+          moduleId: card.data?.module_id,
+          questionId: card.data?.question_id || card.id,
+          answer: state.answer ?? submittedAnswers.current[card.id] ?? '',
+          answerMode: card.data?.answer_mode,
+          cardId: card.id,
+          rating,
         })
+      } catch {
+        return null
       }
+    }
+
+    const handleAnswer = (card, answer) => {
+      const submittedAnswer = answer?.selected ?? answer?.openInput ?? answer ?? ''
+      submittedAnswers.current[card.id] = submittedAnswer
+      setReviewAnswerState(previous => ({
+        ...previous,
+        [card.id]: { ...previous[card.id], submitted: true, answer: submittedAnswer, recorded: false, correct: null },
+      }))
     }
 
     if (reviewCards.length === 0) {
@@ -395,7 +471,9 @@ export default function LearnView({ userId = 'default', onBack }) {
       <CardQueue
         cards={reviewCards}
         onRate={handleRate}
-        onComplete={() => setReviewCards([])}
+        onAnswer={handleAnswer}
+        answerState={reviewAnswerState}
+        onComplete={() => { setReviewCards([]); setReviewAnswerState({}) }}
         title="Due Reviews"
         emptyMessage="No reviews due."
       />
@@ -405,43 +483,50 @@ export default function LearnView({ userId = 'default', onBack }) {
   // ── Practice mode — flashcard via CardQueue ──
   if (phase === 'practice' && currentModule) {
     const handleRate = async (card, rating) => {
-      const isCorrect = rating >= 3
-      await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          question_id: card.data?.question_id || card.id,
-          correct: isCorrect,
+      const state = answerState[card.id] || {}
+      try {
+        return await recordPracticeAnswer({
+          moduleId: currentModule.id,
+          questionId: card.data?.question_id || card.id,
+          answer: state.answer ?? submittedAnswers.current[card.id] ?? '',
+          answerMode: card.data?.answer_mode,
+          cardId: card.id,
           rating,
-        }),
-      })
+        })
+      } catch {
+        return null
+      }
     }
 
     const handleAnswer = async (card, answer) => {
       const q = currentModule.questions.find(q => q.id === card.data?.question_id)
-      if (!q?.is_open || !answer?.openInput?.trim()) return
+      const submittedAnswer = answer?.selected ?? answer?.openInput ?? answer ?? ''
+      if (!q || (q.is_open && !String(submittedAnswer).trim())) return
 
-      // For open-ended: record + call LLM grading
-      await fetch(`/api/v1/learn/modules/${currentModule.id}/practice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, question_id: q.id, correct: true }),
-      })
+      submittedAnswers.current[card.id] = submittedAnswer
+      setAnswerState(previous => ({
+        ...previous,
+        [card.id]: { ...previous[card.id], submitted: true, answer: submittedAnswer, recorded: false, correct: null },
+      }))
+      const owner = learningUser()
 
-      try {
+      if (q.is_open) try {
         const r = await fetch('/api/v1/assess/grade', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
           body: JSON.stringify({
             question: q.question,
-            user_answer: answer.openInput,
+            user_answer: submittedAnswer,
             tier: q.tier || 'analysis',
-            user_id: userId,
+            user_id: owner,
+            session_token: sessionToken(),
           }),
         })
         const d = await r.json()
-        if (d.ok) setAnswerState(prev => ({ ...prev, [card.id]: { llmGrade: d.data?.grading } }))
+        if (d.ok) setAnswerState(prev => ({
+          ...prev,
+          [card.id]: { ...prev[card.id], llmGrade: d.data?.grading },
+        }))
       } catch {}
     }
 
@@ -461,6 +546,7 @@ export default function LearnView({ userId = 'default', onBack }) {
             </button>
             <button onClick={() => {
               setPracticeCards(lessonToCards(currentModule))
+              attemptIds.current = {}
               setAnswerState({})
             }}
               className="px-4 py-2 rounded-lg bg-neutral-200 dark:bg-neutral-700 text-sm font-medium cursor-pointer hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">

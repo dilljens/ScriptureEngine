@@ -1,0 +1,31 @@
+{
+  "captured_at": "2026-08-25T06:36:39.068243Z",
+  "database": "/home/dillon/_code/scriptureengine/data/processed/scripture.db",
+  "retired_types": [
+    "divine_name_distribution",
+    "gematria_factor",
+    "gematria_sum_relationship",
+    "sacred_number",
+    "verse_gematria_total"
+  ],
+  "retained_types": [
+    "divine_name_value",
+    "same_gematria_ordinal",
+    "same_gematria_reduced",
+    "same_gematria_standard"
+  ],
+  "counts_by_type": {
+    "divine_name_distribution": 1285,
+    "divine_name_value": 167,
+    "gematria_factor": 194966,
+    "gematria_sum_relationship": 10600,
+    "sacred_number": 1013,
+    "same_gematria_ordinal": 247,
+    "same_gematria_reduced": 89367,
+    "same_gematria_standard": 10995,
+    "verse_gematria_total": 68545
+  },
+  "retired_total": 276409,
+  "numerical_layer_total": 375900,
+  "other_numerical_types": {}
+}

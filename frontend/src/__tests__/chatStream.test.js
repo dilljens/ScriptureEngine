@@ -1,35 +1,35 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { chatStream } from '../api'
 
-// Build a Response whose body streams SSE events (undici Response works in node).
-function sseResponse(events) {
-  const body = events.map(e => `data: ${JSON.stringify(e)}\n\n`).join('')
-  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+function jsonResponse(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
-function installFetch(mockResponse) {
-  const spy = vi.fn().mockResolvedValue(mockResponse)
+function installJobFetch(events, { status = 'done', error, done } = {}) {
+  const responses = [
+    jsonResponse({ ok: true, data: { job_id: 'job-1', seq: 0 } }),
+    jsonResponse({ ok: true, data: { status, events, error, done } }),
+  ]
+  const spy = vi.fn().mockImplementation(() => Promise.resolve(responses.shift()))
   globalThis.fetch = spy
   return spy
-}
-
-function sseResponseWithoutTrailingNewline(events) {
-  const body = events.map(e => `data: ${JSON.stringify(e)}`).join('\n')
-  return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
 }
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('chatStream SSE parsing', () => {
+describe('chatStream background jobs', () => {
   it('dispatches thinking/text chunks and resolves on done', async () => {
-    installFetch(sseResponse([
+    installJobFetch([
       { type: 'thinking', content: 'think' },
       { type: 'text', content: 'Hello' },
       { type: 'text', content: ' world' },
-      { type: 'done', usage: { total_tokens: 5 }, cost: { total: 0.001 }, model: 'deepseek-v4-flash', tool_results: [] },
-    ]))
+      { type: 'done', usage: { total_tokens: 5 }, cost: { total: 0.001 }, model: 'm', tool_results: [] },
+    ])
     const onThinking = vi.fn()
     const onText = vi.fn()
     const onDone = vi.fn()
@@ -40,78 +40,68 @@ describe('chatStream SSE parsing', () => {
     expect(onThinking).toHaveBeenCalledWith('think')
     expect(onText.mock.calls.map(c => c[0]).join('')).toBe('Hello world')
     expect(onDone).toHaveBeenCalledTimes(1)
-    expect(onDone.mock.calls[0][0].final_content).toBeUndefined() // absent unless backend sends it
     expect(onError).not.toHaveBeenCalled()
     expect(event.type).toBe('done')
   })
 
   it('passes through final_content/final_reasoning from done event', async () => {
-    installFetch(sseResponse([
+    installJobFetch([
       { type: 'done', final_content: 'Full text', final_reasoning: 'thought', tool_results: [], usage: {}, cost: {}, model: 'm' },
-    ]))
+    ])
     const onDone = vi.fn()
     await chatStream([], { onDone })
     expect(onDone.mock.calls[0][0].final_content).toBe('Full text')
     expect(onDone.mock.calls[0][0].final_reasoning).toBe('thought')
   })
 
-  it('calls onError and rejects on an SSE error event', async () => {
-    installFetch(sseResponse([
-      { type: 'error', message: 'Rate limit exceeded. Try again in a minute.' },
-    ]))
+  it('calls onError and rejects on a job error event', async () => {
+    installJobFetch([{ type: 'error', message: 'Rate limit exceeded. Try again in a minute.' }])
     const onError = vi.fn()
     await expect(chatStream([], { onError })).rejects.toThrow(/Rate limit/)
     expect(onError).toHaveBeenCalledWith('Rate limit exceeded. Try again in a minute.')
   })
 
   it('handles legacy ok:false error envelopes', async () => {
-    installFetch(sseResponse([
-      { ok: false, error: 'DEEPSEEK_API_KEY not configured' },
-    ]))
+    installJobFetch([{ ok: false, error: 'DEEPSEEK_API_KEY not configured' }])
     const onError = vi.fn()
     await expect(chatStream([], { onError })).rejects.toThrow(/DEEPSEEK_API_KEY/)
     expect(onError).toHaveBeenCalledWith('DEEPSEEK_API_KEY not configured')
   })
 
-  it('flushes a final done event without a trailing newline', async () => {
-    installFetch(sseResponseWithoutTrailingNewline([
-      { type: 'done', final_content: 'tail', tool_results: [], usage: {}, cost: {}, model: 'm' },
-    ]))
-    const onDone = vi.fn()
-    await chatStream([], { onDone })
-    expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ final_content: 'tail' }))
-  })
-
-  it('rejects on EOF without a terminal event instead of hanging', async () => {
-    installFetch(sseResponse([
-      { type: 'text', content: 'partial' },
-    ]))
+  it('rejects when a job terminates without a terminal event', async () => {
+    installJobFetch([], { status: 'failed', error: 'connection closed' })
     const onError = vi.fn()
     await expect(chatStream([], { onError })).rejects.toThrow(/connection closed/)
-    expect(onError).toHaveBeenCalledWith(expect.stringContaining('connection closed'))
+    expect(onError).toHaveBeenCalledWith('connection closed')
   })
 
   it('rejects with AbortError when the signal aborts', async () => {
     const controller = new AbortController()
-    const abortError = new DOMException('The operation was aborted.', 'AbortError')
-    const spy = vi.fn().mockImplementation((_url, opts) => Promise.reject(abortError))
+    const spy = vi.fn().mockImplementation((url) => {
+      if (url.endsWith('/chat/jobs')) return Promise.resolve(jsonResponse({ ok: true, data: { job_id: 'job-1', seq: 0 } }))
+      return new Promise(() => {})
+    })
     globalThis.fetch = spy
-    await expect(chatStream([], { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    const promise = chatStream([], { signal: controller.signal })
+    await Promise.resolve()
+    controller.abort()
+    await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('calls onError and rejects on non-2xx response', async () => {
-    installFetch(new Response('oops', { status: 500 }))
+    const spy = vi.fn().mockResolvedValue(new Response('oops', { status: 400 }))
+    globalThis.fetch = spy
     const onError = vi.fn()
-    await expect(chatStream([], { onError })).rejects.toThrow()
-    expect(onError).toHaveBeenCalledWith('The server encountered an error. Please try again.')
+    await expect(chatStream([], { onError })).rejects.toThrow(/API 400/)
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('API 400'))
   })
 
-  it('ignores unknown event types (e.g. heartbeat)', async () => {
-    installFetch(sseResponse([
+  it('ignores unknown event types such as heartbeat', async () => {
+    installJobFetch([
       { type: 'heartbeat' },
       { type: 'text', content: 'ok' },
       { type: 'done', tool_results: [], usage: {}, cost: {}, model: 'm' },
-    ]))
+    ])
     const onText = vi.fn()
     const onError = vi.fn()
     await chatStream([], { onText, onError })

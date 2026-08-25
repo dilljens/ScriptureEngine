@@ -48,14 +48,21 @@ def _batch_insert(conn, batch):
 
 
 def run(conn, book_ids=None):
-    """Connect verses through gematria factor relationships.
+    """RETIRED (Track B1 stop-list) — no longer generates connections.
 
-    For each word, checks if its value_standard is a multiple of any
-    sacred number or divine name value. Groups verses by the factor
-    relationship and connects them.
+    gematria_factor (value divisible by a sacred number) is a
+    nine-bucket-style coincidence, not a reproducible traditional
+    comparison. This module is kept only as archived provenance for
+    existing rows; existing rows are neutralized in calibration until
+    the archive/purge migration.
 
-    Returns count of connections created.
+    Returns 0 always.
     """
+    return 0
+
+
+def _run_retired(conn, book_ids=None):
+    """Original implementation, kept for provenance reference."""
     count = 0
     batch = []
 

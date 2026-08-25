@@ -13,7 +13,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   conversationList, conversationGet, conversationUpdate,
-  conversationDelete, conversationConnections, conversationPromoteConnection
+  conversationDelete, conversationConnections, conversationPromoteConnection,
+  conversationShare
 } from '../api'
 
 const PER_PAGE = 20
@@ -127,6 +128,23 @@ export default function ConversationHistory({ onNavigate, onClose }) {
     } catch {}
   }
 
+  // Share — snapshot the conversation to an unlisted link and copy it
+  const [sharedSid, setSharedSid] = useState(null)
+  const handleShare = async (sid) => {
+    try {
+      const res = await conversationShare(sid)
+      if (res.ok && res.data?.url) {
+        try { await navigator.clipboard.writeText(`${window.location.origin}${res.data.url}`) } catch {}
+        setSharedSid(sid)
+        setTimeout(() => setSharedSid(null), 1500)
+      } else {
+        alert(res.error || 'Share failed')
+      }
+    } catch (e) {
+      alert('Share failed: ' + e.message)
+    }
+  }
+
   // Promote
   const handlePromote = async (connId) => {
     setPromoting(connId)
@@ -229,6 +247,11 @@ export default function ConversationHistory({ onNavigate, onClose }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => handleShare(s.id)}
+                        className="text-xs text-neutral-400 hover:text-indigo-500 cursor-pointer px-1"
+                        title={sharedSid === s.id ? 'Link copied!' : 'Share — copies an unlisted link'}>
+                        {sharedSid === s.id ? '✓' : '🔗'}
+                      </button>
                       <button onClick={() => toggleStar(s.id, s.is_starred)}
                         className="text-sm cursor-pointer hover:scale-110 transition-transform"
                         title={s.is_starred ? 'Unstar' : 'Star'}>

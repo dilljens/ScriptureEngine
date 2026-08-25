@@ -1,4 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import {
+  ANSWER_MODES,
+  getChoiceFeedback,
+  gradeQuizAnswer,
+} from '../lib/quiz-grading'
 
 /**
  * HebrewQuizCard — interactive Hebrew knowledge quiz.
@@ -19,17 +24,22 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
   const [selected, setSelected] = useState(null)
   const [textInput, setTextInput] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [authoritativeCorrect, setAuthoritativeCorrect] = useState(null)
+  const [verificationFailed, setVerificationFailed] = useState(false)
   const [showExplanation, setShowExplanation] = useState(false)
   const [audioPlaying, setAudioPlaying] = useState(false)
   const [selfAssessed, setSelfAssessed] = useState(null) // null | true | false
   const inputRef = useRef(null)
 
   const { question, options, correctAnswer, explanation, category, nodeTitle, questionType, hebrewGlyph } = quizData || {}
+  const serverIssued = quizData?.question_id != null && quizData?.node_id != null
 
   const isProductionType = ['typing', 'transliteration', 'recall', 'cloze', 'contrast'].includes(questionType)
   const isChoiceType = ['multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification'].includes(questionType)
   const isAudioType = questionType === 'recitation'
   const hasHebrewText = hebrewGlyph || (question && /[\u0590-\u05FF]/.test(question))
+  const choiceAnswerMode = isChoiceType ? ANSWER_MODES.CHOICE_INDEX : ANSWER_MODES.FREE_TEXT
 
   // Focus input on mount for production types
   useEffect(() => {
@@ -44,46 +54,72 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
   }
 
   const handleTextSubmit = () => {
-    if (!textInput.trim()) return
-    setSubmitted(true)
-    setShowExplanation(true)
-    if (onComplete) {
-      // Normalize both inputs for comparison
-      const normalize = (s) => s.trim().replace(/\s+/g, ' ').replace(/[\u0591-\u05AF]/g, '').toLowerCase()
-      const userAns = normalize(textInput)
-      const correctAns = normalize(String(correctAnswer || ''))
-      // Also check if correct answer is one of multiple acceptable answers (separated by | or /)
-      const acceptable = correctAns.split(/[|/]/).map(s => s.trim())
-      const isCorrect = acceptable.some(a => userAns === a) || userAns === correctAns
-      onComplete(isCorrect)
-    }
+    if (!textInput.trim() || submitted || submitting) return
+    const isCorrect = gradeQuizAnswer({
+      answer: textInput,
+      correctAnswer,
+      mode: ANSWER_MODES.FREE_TEXT,
+    })
+    void finishAnswer(isCorrect, textInput, ANSWER_MODES.FREE_TEXT)
   }
 
   const handleChoiceSubmit = () => {
-    if (selected === null) return
-    setSubmitted(true)
-    setShowExplanation(true)
-    if (onComplete) onComplete(selected === correctAnswer)
+    if (selected === null || submitted || submitting) return
+    const isCorrect = gradeQuizAnswer({
+      answer: selected,
+      correctAnswer,
+      options,
+      mode: choiceAnswerMode,
+    })
+    void finishAnswer(isCorrect, selected, choiceAnswerMode)
+  }
+
+  const finishAnswer = async (localCorrect, answer, answerMode) => {
+    setSubmitting(true)
+    let finalCorrect = localCorrect
+    let serverCorrect = null
+    try {
+      serverCorrect = await onComplete?.(localCorrect, answer, answerMode)
+      if (typeof serverCorrect === 'boolean') {
+        finalCorrect = serverCorrect
+      } else if (serverIssued) {
+        setVerificationFailed(true)
+      }
+    } catch {
+      // A recording failure must not prevent the learner from seeing feedback.
+      if (serverIssued) setVerificationFailed(true)
+    } finally {
+      setAuthoritativeCorrect(
+        serverIssued
+          ? (typeof serverCorrect === 'boolean' ? serverCorrect : null)
+          : finalCorrect,
+      )
+      setSubmitted(true)
+      setShowExplanation(true)
+      setSubmitting(false)
+    }
   }
 
   const handleRecitationAssessment = (correct) => {
+    if (submitted || submitting) return
     setSelfAssessed(correct)
-    setSubmitted(true)
-    if (onComplete) onComplete(correct)
+    void finishAnswer(correct, null, ANSWER_MODES.FREE_TEXT)
   }
 
-  const isCorrect = submitted && !isProductionType && !isAudioType
-    ? selected === correctAnswer
-    : submitted && isProductionType
-    ? (() => {
-        const normalize = (s) => s.trim().replace(/\s+/g, ' ').replace(/[\u0591-\u05AF]/g, '').toLowerCase()
-        const userAns = normalize(textInput)
-        const correctAns = normalize(String(correctAnswer || ''))
-        const acceptable = correctAns.split(/[|/]/).map(s => s.trim())
-        return acceptable.some(a => userAns === a) || userAns === correctAns
-      })()
-    : submitted && isAudioType
+  const locallyCorrect = isAudioType
     ? selfAssessed === true
+    : gradeQuizAnswer({
+        answer: isChoiceType ? selected : textInput,
+        correctAnswer,
+        options,
+        mode: choiceAnswerMode,
+      })
+  const isCorrect = submitted
+    ? isAudioType
+      ? authoritativeCorrect ?? (selfAssessed === true)
+      : serverIssued
+        ? authoritativeCorrect === true
+        : authoritativeCorrect ?? locallyCorrect
     : false
 
   // Render Hebrew letter large
@@ -143,10 +179,24 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
               cls += selected === i
                 ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
                 : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
-            } else {
-              if (i === correctAnswer) {
+              } else if (serverIssued) {
+                if (authoritativeCorrect === true && selected === i) {
+                  cls += 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
+                } else if (authoritativeCorrect === false && selected === i) {
+                  cls += 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                } else {
+                  cls += 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400'
+                }
+              } else {
+                const feedback = getChoiceFeedback({
+                  answer: selected,
+                  optionIndex: i,
+                  correctAnswer,
+                  options,
+                })
+                if (feedback.isCorrectOption) {
                 cls += 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-              } else if (i === selected && selected !== correctAnswer) {
+              } else if (feedback.isIncorrectSelection) {
                 cls += 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
               } else {
                 cls += 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 dark:text-neutral-400'
@@ -275,18 +325,20 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
       )}
 
       {/* Result feedback */}
-      {submitted && (
+       {submitted && (
         <div className={`mt-3 p-3 rounded-lg text-sm ${
-          isCorrect
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-            : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+          verificationFailed
+            ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+            : isCorrect
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
         }`}>
-          <p className="font-medium">{isCorrect ? '✓ Correct!' : '✗ Not quite'}</p>
-          {isProductionType && !isCorrect && (
+          <p className="font-medium">{verificationFailed ? 'Answer could not be verified' : isCorrect ? '✓ Correct!' : '✗ Not quite'}</p>
+          {isProductionType && !isCorrect && !serverIssued && (
             <p className="mt-1 text-xs opacity-80">
-              Correct answer:               <span className={`font-medium ${/[\u0590-\u05FF]/.test(correctAnswer) ? 'font-hebrew-biblical text-lg' : ''}`}
-                dir={/[\u0590-\u05FF]/.test(correctAnswer) ? 'rtl' : 'ltr'}>
-                {correctAnswer}
+              Correct answer:               <span className={`font-medium ${/[\u0590-\u05FF]/.test(String(correctAnswer ?? '')) ? 'font-hebrew-biblical text-lg' : ''}`}
+                dir={/[\u0590-\u05FF]/.test(String(correctAnswer ?? '')) ? 'rtl' : 'ltr'}>
+                {correctAnswer ?? ''}
               </span>
             </p>
           )}

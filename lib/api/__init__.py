@@ -58,7 +58,7 @@ from lib.api.graph import (
 )
 from lib.api.info import get_stats
 from lib.api.interlinear import get_interlinear
-from lib.api.search import search_text, search_xlingual, semantic_search_text
+from lib.api.search import search_text, search_xlingual, semantic_search_text, search_sections
 from lib.api.sod import hidden_patterns
 from lib.api.sources import get_sources_by_scholar, get_sources_for_verse, list_scholars
 from lib.api.strongs import strongs_lookup
@@ -206,6 +206,28 @@ register(
         "required": ["query"],
     },
     "Search for verses by keyword in English text",
+)
+
+register(
+    "scripture_search_sections",
+    search_sections,
+    {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search term"},
+            "book": {"type": "string", "description": "Optional book filter"},
+            "works": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional work ID filters (ot, nt, bom, dc, pgp, dss, apoc, pseu, expanded)",
+            },
+            "limit": {"type": "integer", "default": 10, "description": "Max sections returned"},
+            "min_hits": {"type": "integer", "default": 2, "description": "Verses a section must contain"},
+            "gap": {"type": "integer", "default": 3, "description": "Max verse distance between hits in one section"},
+        },
+        "required": ["query"],
+    },
+    "Search for topical SECTIONS instead of single verses. Two passes: (1) clusters nearby verse hits into contiguous passages (e.g. isa.52.13-53.12), then (2) bridges scattered hits into thematic arcs via intertextual/linguistic graph connections — surfacing passages that treat a topic at length even when the word itself is not repeated.",
 )
 
 register(
@@ -878,9 +900,9 @@ register(
         "type": "object",
         "properties": {
             "user_id": {"type": "string", "default": "default"},
-            "correct": {"type": "boolean"},
+            "answer": {"description": "Submitted option, index, or free-text answer"},
         },
-        "required": ["correct"],
+        "required": ["answer"],
     },
     "Submit an answer and get the next question",
 )
@@ -919,10 +941,9 @@ register(
         "type": "object",
         "properties": {
             "user_id": {"type": "string", "default": "default"},
-            "correct": {"type": "boolean"},
-            "correctness": {"type": "number", "description": "Optional partial credit 0.0-1.0"},
+            "answer": {"description": "Submitted option, index, or free-text answer"},
         },
-        "required": ["correct"],
+        "required": ["answer"],
     },
     "Submit a diagnostic answer with conditional completion; returns the diagnostic report when complete.",
 )
@@ -1085,6 +1106,15 @@ register(
 
 # ─── Hebrew Learning Tools ───
 
+def _public_hebrew_options(raw_options):
+    """Keep quiz options display-only; discard correctness metadata."""
+    import json
+    try:
+        options = json.loads(raw_options) if isinstance(raw_options, str) else raw_options or []
+    except (TypeError, json.JSONDecodeError):
+        options = []
+    return [option.get("label", "") if isinstance(option, dict) else option for option in options]
+
 def _hebrew_lessons(conn=None, category=""):
     """List available Hebrew lesson nodes from the Go backend's memorize.db."""
     import sqlite3
@@ -1121,11 +1151,17 @@ def _hebrew_lesson(conn=None, node_id=""):
     c.close()
     result = dict(node)
     if lesson:
+        content = lesson["content_json"] or ""
         try:
-            result["content"] = json.loads(lesson["content"]) if lesson["content"].startswith("{") else lesson["content"]
+            result["content"] = json.loads(content) if content.startswith("{") else content
         except (json.JSONDecodeError, ValueError):
-            result["content"] = lesson["content"]
-    result["practice_items"] = [dict(p) for p in practices]
+            result["content"] = content
+    result["practice_items"] = []
+    for practice in practices:
+        public = {key: value for key, value in dict(practice).items() if key != "correct_answer"}
+        if "options_json" in public:
+            public["options_json"] = json.dumps(_public_hebrew_options(public["options_json"]), ensure_ascii=False)
+        result["practice_items"].append(public)
     result["prerequisites"] = [dict(p) for p in prereqs]
     return result
 
@@ -1226,29 +1262,20 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             continue
         seen_nodes.add(nid)
 
-        options = json.loads(n['options_json']) if n['options_json'] else []
-        correct = n['correct_answer']
-
-        # Determine the correct answer (index for choice types, text for production types)
-        correct_answer_val = correct
-        if n['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification'):
-            correct_idx = 0
-            for i, opt in enumerate(options):
-                if opt == correct or opt.strip() == correct.strip():
-                    correct_idx = i
-                    break
-            correct_answer_val = correct_idx
-
+        options = _public_hebrew_options(n['options_json'])
         questions.append({
             "node_id": nid,
+            "question_id": n['practice_id'],
             "question": n['question_text'],
             "options": options,
-            "correctAnswer": correct_answer_val,
             "hebrewGlyph": _glyph_from_title(n['title']),
             "explanation": n['explanation'] or '',
             "category": n['category'],
             "nodeTitle": n['title'],
             "questionType": n['question_type'],
+            "answer_mode": "choice_index"
+            if n['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification') and options
+            else "free_text",
         })
 
     # If we still have fewer than count, pull real practice items from other
@@ -1263,7 +1290,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             params = (category,) + tuple(used) + (count - len(questions),)
             sql = f"""
                 SELECT n.id, n.title, n.description, n.category,
-                       p.question_type, p.question_text, p.options_json,
+                       p.id as question_id, p.question_type, p.question_text, p.options_json,
                        p.correct_answer, p.explanation
                 FROM hebrew_nodes n
                 JOIN hebrew_practice_items p ON p.node_id = n.id
@@ -1277,7 +1304,7 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             params = (category, count - len(questions))
             sql = """
                 SELECT n.id, n.title, n.description, n.category,
-                       p.question_type, p.question_text, p.options_json,
+                        p.id as question_id, p.question_type, p.question_text, p.options_json,
                        p.correct_answer, p.explanation
                 FROM hebrew_nodes n
                 JOIN hebrew_practice_items p ON p.node_id = n.id
@@ -1296,26 +1323,20 @@ def _hebrew_quiz(conn=None, category="consonant", count=5):
             if nid in seen_nodes:
                 continue
             seen_nodes.add(nid)
-            options = json.loads(r['options_json']) if r['options_json'] else []
-            correct = r['correct_answer']
-            correct_answer_val = correct
-            if r['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification'):
-                correct_idx = 0
-                for i, opt in enumerate(options):
-                    if opt == correct or opt.strip() == correct.strip():
-                        correct_idx = i
-                        break
-                correct_answer_val = correct_idx
+            options = _public_hebrew_options(r['options_json'])
             questions.append({
                 "node_id": nid,
+                "question_id": r['question_id'],
                 "question": r['question_text'],
                 "options": options,
-                "correctAnswer": correct_answer_val,
                 "hebrewGlyph": _glyph_from_title(r['title']),
                 "explanation": r['explanation'] or '',
                 "category": r['category'],
                 "nodeTitle": r['title'],
                 "questionType": r['question_type'],
+                "answer_mode": "choice_index"
+                if r['question_type'] in ('multiple_choice', 'letter_name', 'letter_recognition', 'classification') and options
+                else "free_text",
             })
 
     random.shuffle(questions)

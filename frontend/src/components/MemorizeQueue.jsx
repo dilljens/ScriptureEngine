@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { parseStandardRef, resolveBook } from '../refParser'
 import CardQueue from './CardQueue'
+import { currentSessionToken } from '../api'
 
 const LANGUAGES = [
   { id: 'english', label: 'English', field: 'text_english' },
@@ -24,10 +25,16 @@ export default function MemorizeQueue({ onStartReview }) {
   const [reviewVerse, setReviewVerse] = useState(null) // single-verse quick review
   const [reviewLang, setReviewLang] = useState('hebrew') // Anki-style: show target language first
 
+  const sessionToken = () => currentSessionToken()
+  const sessionHeaders = () => {
+    const token = sessionToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
   const loadQueue = async () => {
     setLoading(true)
     try {
-      const r = await fetch('/api/v1/memorize/queue')
+      const r = await fetch('/api/v1/memorize/queue', { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) setVerses(d.data.verses)
     } catch {}
@@ -99,8 +106,8 @@ export default function MemorizeQueue({ onStartReview }) {
     try {
       await fetch('/api/v1/memorize/queue', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verse_id: verseId }),
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ verse_id: verseId, session_token: sessionToken() }),
       })
       loadQueue()
     } catch {}
@@ -111,12 +118,13 @@ export default function MemorizeQueue({ onStartReview }) {
     try {
       await fetch('/api/v1/memorize/queue/batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
         body: JSON.stringify({
           book: ref.book,
           chapter: ref.chapter,
           verse_start: ref.verseStart,
           verse_end: ref.verseEnd,
+          session_token: sessionToken(),
         }),
       })
       loadQueue()
@@ -125,7 +133,9 @@ export default function MemorizeQueue({ onStartReview }) {
 
   const removeVerse = async (id) => {
     try {
-      await fetch(`/api/v1/memorize/queue/${id}`, { method: 'DELETE' })
+      await fetch(`/api/v1/memorize/queue/${id}?session_token=${encodeURIComponent(sessionToken())}`, {
+        method: 'DELETE', headers: sessionHeaders(),
+      })
       loadQueue()
     } catch {}
   }
@@ -160,8 +170,8 @@ export default function MemorizeQueue({ onStartReview }) {
     if (card.queue_id) {
       await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating }),
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ rating, session_token: sessionToken() }),
       })
     }
     setReviewVerse(null)

@@ -15,6 +15,7 @@ python3 tools/verse.py '{"book": "gen", "chapter": 1, "verse": 1}'
 python3 tools/gematria.py '{"word": "יהוה"}'
 python3 tools/gematria.py '{"verse": "gen.1.1"}'
 python3 tools/search.py '{"query": "covenant"}'
+python3 tools/sections.py '{"query": "passover", "min_hits": 3}'
 python3 tools/compare.py '{"verse_a": "gen.1.1", "verse_b": "john.1.1"}'
 
 # Patterns

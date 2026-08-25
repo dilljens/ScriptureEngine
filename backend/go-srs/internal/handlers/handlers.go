@@ -18,15 +18,13 @@ import (
 	"github.com/dillon/scriptureengine/go-srs/internal/fsrs"
 )
 
-
-
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
-	DB            *db.DB
-	Params        fsrs.FSRSParams
-	Openverse     *ai.OpenverseClient
-	ComfyUI       *ai.ComfyUIClient
-	Fire          *fire.Engine
+	DB        *db.DB
+	Params    fsrs.FSRSParams
+	Openverse *ai.OpenverseClient
+	ComfyUI   *ai.ComfyUIClient
+	Fire      *fire.Engine
 }
 
 // New creates a new Handler.
@@ -58,9 +56,9 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	count, _ := h.DB.VerseCount()
 	dueCount, _ := h.DB.GetDueCount()
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"status":     "ok",
-		"verses":     count,
-		"due_cards":  dueCount,
+		"status":    "ok",
+		"verses":    count,
+		"due_cards": dueCount,
 	})
 }
 
@@ -160,9 +158,9 @@ func (h *Handler) GetQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":    true,
-		"count": len(items),
-		"cards": items,
+		"ok":     true,
+		"count":  len(items),
+		"cards":  items,
 		"hidden": hidden,
 	})
 }
@@ -328,10 +326,10 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 						).Scan(&stability, &verseText)
 						if stability > 0 {
 							remediation = append(remediation, map[string]interface{}{
-								"verse_id":   c.TargetVerse,
-								"conn_type":  c.Type,
+								"verse_id":    c.TargetVerse,
+								"conn_type":   c.Type,
 								"conn_weight": fire.ConnectionWeight(c.Type),
-								"text":       truncateText(verseText, 80),
+								"text":        truncateText(verseText, 80),
 							})
 						}
 					}
@@ -341,14 +339,14 @@ func (h *Handler) ReviewCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":              true,
-		"next_state":      nextCard,
-		"xp_awarded":      xp,
-		"streak_days":     streak,
-		"fire_boosts":     fireApplied,
-		"fire_verses":     len(fireBoosts),
-		"fire_penalties":  firePenalties,
-		"remediation":     remediation,
+		"ok":             true,
+		"next_state":     nextCard,
+		"xp_awarded":     xp,
+		"streak_days":    streak,
+		"fire_boosts":    fireApplied,
+		"fire_verses":    len(fireBoosts),
+		"fire_penalties": firePenalties,
+		"remediation":    remediation,
 	})
 }
 
@@ -386,8 +384,8 @@ func (h *Handler) ReviewBatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":          true,
-		"total_xp":    totalXP,
+		"ok":           true,
+		"total_xp":     totalXP,
 		"reviews_done": reviewsDone,
 	})
 }
@@ -488,7 +486,7 @@ func (h *Handler) SyncConnections(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":    true,
+		"ok":     true,
 		"synced": len(rows),
 	})
 }
@@ -496,10 +494,11 @@ func (h *Handler) SyncConnections(w http.ResponseWriter, r *http.Request) {
 // ── Palace Operations ──
 
 // HandlePalaces dispatches based on path and method.
-//   GET  /api/memorize/palaces         — list
-//   POST /api/memorize/palaces         — create
-//   GET  /api/memorize/palaces/:id     — get with loci
-//   POST /api/memorize/palaces/:id/loci — add locus
+//
+//	GET  /api/memorize/palaces         — list
+//	POST /api/memorize/palaces         — create
+//	GET  /api/memorize/palaces/:id     — get with loci
+//	POST /api/memorize/palaces/:id/loci — add locus
 func (h *Handler) HandlePalaces(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// parts[0]=api, parts[1]=memorize, parts[2]=palaces, parts[3]=id (optional), parts[4]=loci (optional)
@@ -788,9 +787,9 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) PushSubscribe(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Endpoint       string `json:"endpoint"`
-		P256DHKey      string `json:"p256dh_key"`
-		AuthKey        string `json:"auth_key"`
+		Endpoint  string `json:"endpoint"`
+		P256DHKey string `json:"p256dh_key"`
+		AuthKey   string `json:"auth_key"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		errorResponse(w, http.StatusBadRequest, "invalid JSON")
@@ -867,9 +866,9 @@ func (h *Handler) FireCredit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":            true,
-		"verse_id":      input.VerseID,
-		"fire_boosts":   fireApplied,
+		"ok":             true,
+		"verse_id":       input.VerseID,
+		"fire_boosts":    fireApplied,
 		"fire_penalties": firePenalties,
 	})
 }
@@ -965,6 +964,26 @@ func (h *Handler) HebrewLesson(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func publicOptionJSON(raw string) string {
+	var options []interface{}
+	if err := json.Unmarshal([]byte(raw), &options); err != nil {
+		return "[]"
+	}
+	public := make([]interface{}, 0, len(options))
+	for _, option := range options {
+		if object, ok := option.(map[string]interface{}); ok {
+			public = append(public, object["label"])
+		} else {
+			public = append(public, option)
+		}
+	}
+	encoded, err := json.Marshal(public)
+	if err != nil {
+		return "[]"
+	}
+	return string(encoded)
+}
+
 // HebrewPractice returns practice items for a node.
 func (h *Handler) HebrewPractice(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -978,10 +997,21 @@ func (h *Handler) HebrewPractice(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, http.StatusNotFound, "no practice items")
 		return
 	}
+	publicItems := make([]map[string]interface{}, 0, len(items))
+	for _, item := range items {
+		publicItems = append(publicItems, map[string]interface{}{
+			"id":            item.ID,
+			"question_type": item.QuestionType,
+			"question_text": item.QuestionText,
+			"options_json":  publicOptionJSON(item.OptionsJSON),
+			"difficulty":    item.Difficulty,
+			"explanation":   item.Explanation,
+		})
+	}
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
-		"ok":    true,
+		"ok":      true,
 		"node_id": nodeID,
-		"items": items,
+		"items":   publicItems,
 	})
 }
 
@@ -1008,8 +1038,8 @@ func (h *Handler) HebrewProgress(w http.ResponseWriter, r *http.Request) {
 		})
 	case "POST":
 		var input struct {
-			NodeID string `json:"node_id"`
-			Correct bool  `json:"correct"`
+			NodeID  string `json:"node_id"`
+			Correct bool   `json:"correct"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			errorResponse(w, http.StatusBadRequest, "invalid JSON")
@@ -1030,11 +1060,11 @@ func (h *Handler) HebrewProgress(w http.ResponseWriter, r *http.Request) {
 		}
 		credits, penalties, _ := h.Fire.ComputeCredits(input.NodeID, rating, graph)
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
-			"ok":            true,
-			"node_id":       input.NodeID,
-			"correct":       input.Correct,
-			"credits":       len(credits),
-			"penalties":     len(penalties),
+			"ok":        true,
+			"node_id":   input.NodeID,
+			"correct":   input.Correct,
+			"credits":   len(credits),
+			"penalties": len(penalties),
 		})
 	default:
 		errorResponse(w, http.StatusMethodNotAllowed, "use GET or POST")
@@ -1073,8 +1103,25 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // ── CORS Middleware ──
 
 func CORSMiddleware(next http.Handler) http.Handler {
+	allowed := map[string]bool{
+		"http://localhost:8000":       true,
+		"http://localhost:8002":       true,
+		"https://scriptureengine.org": true,
+	}
+	if configured := os.Getenv("MEMORIZE_ALLOWED_ORIGINS"); configured != "" {
+		allowed = make(map[string]bool)
+		for _, origin := range strings.Split(configured, ",") {
+			if origin = strings.TrimSpace(origin); origin != "" {
+				allowed[origin] = true
+			}
+		}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if allowed[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

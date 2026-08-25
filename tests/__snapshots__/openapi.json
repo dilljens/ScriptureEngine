@@ -85,17 +85,29 @@
       "post": {
         "summary": "Post Hebrew Review",
         "operationId": "post_hebrew_review_api_v1_hebrew_fsrs_review_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -133,6 +145,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -279,6 +311,26 @@
               "default": 2,
               "title": "Count Per Category"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -317,6 +369,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -358,17 +430,29 @@
         "summary": "Answer Adaptive Diagnostic",
         "description": "Submit an answer to the adaptive placement test.\n\nBody: {session_id, question_id, node_id, answer}\nReturns the next question, or {done: true, results} when all skills finish.",
         "operationId": "answer_adaptive_diagnostic_api_v1_hebrew_diagnostic_adaptive_answer_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -397,17 +481,29 @@
         "summary": "Apply Diagnostic Results",
         "description": "Grade diagnostic answers server-side and credit only tested skills.\n\nBody: {\n    \"user_id\": \"default\",\n    \"answers\": [{\"question_id\": 1, \"node_id\": \"aleph\", \"answer\": \"\u05d0\"}]\n}",
         "operationId": "apply_diagnostic_results_api_v1_hebrew_diagnostic_apply_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -445,6 +541,95 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/attempts": {
+      "get": {
+        "summary": "List Hebrew Attempts",
+        "description": "Immutable attempt evidence behind the learner's level (Track C2).\n\nScoped to the resolved user \u2014 one user can never read another's events.\nBounded and newest-first so a UI can answer \"why this is my level\".",
+        "operationId": "list_hebrew_attempts_api_v1_hebrew_attempts_get",
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -473,17 +658,29 @@
       "post": {
         "summary": "Update Hebrew Progress",
         "operationId": "update_hebrew_progress_api_v1_hebrew_progress_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -760,6 +957,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -827,6 +1044,26 @@
               "type": "boolean",
               "default": true,
               "title": "Include New"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -935,6 +1172,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -1011,6 +1268,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -1058,6 +1335,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -1999,14 +2296,36 @@
     "/api/v1/chat/instructions": {
       "get": {
         "summary": "Chat Instructions",
-        "description": "Return the AGENTS-style system prompt and tool definitions for the chat LLM.",
+        "description": "Return mode-scoped instructions and tools without learner leakage.",
         "operationId": "chat_instructions_api_v1_chat_instructions_get",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "chat",
+              "title": "Mode"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -3971,6 +4290,190 @@
         }
       }
     },
+    "/api/v1/conversations/{session_id}/share": {
+      "post": {
+        "summary": "Share Conversation Route",
+        "description": "Snapshot a conversation (or one response) into an unlisted share link.",
+        "operationId": "share_conversation_route_api_v1_conversations__session_id__share_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shared/{slug}": {
+      "get": {
+        "summary": "Get Shared Route",
+        "description": "Read a shared snapshot. Public by design \u2014 access is via unlisted link.",
+        "operationId": "get_shared_route_api_v1_shared__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shared/{slug}/fork": {
+      "post": {
+        "summary": "Fork Shared Route",
+        "description": "Fork a shared snapshot into a new conversation owned by the caller.",
+        "operationId": "fork_shared_route_api_v1_shared__slug__fork_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/quiz": {
       "get": {
         "summary": "Get Quiz Questions",
@@ -4024,6 +4527,26 @@
               "title": "User Id"
             },
             "description": "User ID for adaptive progress"
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -4053,17 +4576,29 @@
         "summary": "Quiz Answer",
         "description": "Record a quiz answer with FSRS 4-point rating (1=Again, 2=Hard, 3=Good, 4=Easy).\n\nBody: { \"user_id\": \"...\", \"question_id\": N, \"rating\": 1|2|3|4 }\nReplaces old binary correct/incorrect with full FSRS scheduling.",
         "operationId": "quiz_answer_api_v1_quiz_answer_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -4101,6 +4636,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -4151,6 +4706,26 @@
               "default": 20,
               "title": "Limit"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -4189,6 +4764,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -4249,6 +4844,26 @@
               "default": 20,
               "title": "Max Items"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -4290,13 +4905,33 @@
             }
           },
           {
-            "name": "correct",
+            "name": "answer",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Correct"
+              "type": "string",
+              "default": "",
+              "title": "Answer"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -4337,6 +4972,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -4366,17 +5021,29 @@
         "summary": "Record Chat Quiz",
         "description": "Record MC answers the user submitted in chat (from %%%QUIZ cards).\n\nBody: { \"user_id\": \"...\", \"answers\": [{\"question\": \"...\", \"user_answer\": \"...\",\n       \"correct\": bool, \"correct_answer\": \"...\"}], \"source\": \"chat\" }\nReturns how many were recorded.",
         "operationId": "record_chat_quiz_api_v1_quiz_record_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
+                "additionalProperties": true,
                 "title": "Body"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -4684,6 +5351,26 @@
             "schema": {
               "type": "string",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -5949,6 +6636,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -5996,6 +6703,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6053,6 +6780,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6119,7 +6866,6 @@
     "/api/v1/assess/grade": {
       "post": {
         "summary": "Grade Answer",
-        "description": "Grade an open-ended answer using the LLM with a transparent rubric.\n\nEvaluates the QUALITY OF REASONING, not whether the answer is \"right\" or \"wrong.\"\nReturns scores for: engagement with text, internal consistency,\nawareness of alternatives, context.\nIf user_id is provided, injects their learning progress for personalized feedback.",
         "operationId": "grade_answer_api_v1_assess_grade_post",
         "requestBody": {
           "content": {
@@ -6310,6 +7056,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -6394,6 +7160,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6502,6 +7288,26 @@
               "type": "boolean",
               "default": false,
               "title": "Palace Order"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6651,6 +7457,26 @@
               "default": 15,
               "title": "Limit"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -6699,6 +7525,26 @@
               "type": "string",
               "default": "",
               "title": "Last Verse"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6749,6 +7595,26 @@
               "default": 5,
               "title": "Limit"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -6773,6 +7639,23 @@
         }
       }
     },
+    "/api/v1/memorize/modes": {
+      "get": {
+        "summary": "List Memorize Modes",
+        "description": "Capability matrix for every memorization mode (plan Track E1).",
+        "operationId": "list_memorize_modes_api_v1_memorize_modes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/learn/modules": {
       "get": {
         "summary": "List Modules",
@@ -6787,6 +7670,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6836,6 +7739,26 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -6873,6 +7796,16 @@
             "schema": {
               "type": "string",
               "title": "Module Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -6935,6 +7868,26 @@
               "default": 10,
               "title": "Limit"
             }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -6973,6 +7926,26 @@
               "type": "string",
               "default": "default",
               "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
             }
           }
         ],
@@ -8566,6 +9539,16 @@
             "type": "string",
             "title": "User Id",
             "default": ""
+          },
+          "session_token": {
+            "type": "string",
+            "title": "Session Token",
+            "default": ""
+          },
+          "tool_user_id": {
+            "type": "string",
+            "title": "Tool User Id",
+            "default": ""
           }
         },
         "type": "object",
@@ -8802,6 +9785,17 @@
               }
             ],
             "title": "User Id"
+          },
+          "session_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Token"
           }
         },
         "type": "object",
@@ -8958,6 +9952,23 @@
         },
         "type": "object",
         "title": "SessionUpdate"
+      },
+      "ShareCreate": {
+        "properties": {
+          "message_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          }
+        },
+        "type": "object",
+        "title": "ShareCreate"
       },
       "TabCreate": {
         "properties": {

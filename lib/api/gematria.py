@@ -9,6 +9,17 @@ and CLI (tools/gematria.py).
 from lib.gematria import compute_all, find_divine_name_matches
 from lib.hebrew_util import rtl_mark, transliterate
 
+# Evidence-class note attached to every gematria result (Track B2): a
+# numerical match is bounded candidate evidence — never textual proof.
+GEMATRIA_EVIDENCE_NOTE = {
+    "evidence_class": "numerical_candidate",
+    "limitation": (
+        "A gematria match is a candidate numerical association only. "
+        "It cannot outrank direct textual, linguistic, or intertextual "
+        "evidence and is never proof of doctrine, authorship, or prophecy."
+    ),
+}
+
 
 def gematria_lookup(conn, word=None, value=None, system="standard"):
     """Compute gematria for a Hebrew word or look up verses by value.
@@ -31,6 +42,7 @@ def gematria_lookup(conn, word=None, value=None, system="standard"):
             },
             "gematria": vals,
             "divine_name_matches": matches,
+            "evidence": GEMATRIA_EVIDENCE_NOTE,
         }
 
     if value is not None:
@@ -58,6 +70,7 @@ def gematria_lookup(conn, word=None, value=None, system="standard"):
             "system": system,
             "total": len(rows),
             "divine_name_matches": matches,
+            "evidence": GEMATRIA_EVIDENCE_NOTE,
             "results": [
                 {
                     "verse": r["verse_id"],

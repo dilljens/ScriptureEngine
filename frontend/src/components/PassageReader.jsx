@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
 import { lessonToCards } from '../lib/card-factory'
+import { currentSessionToken } from '../api'
 
 /**
  * PassageReader — LingQ-style passage study mode.
@@ -109,7 +110,11 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
   // Load known words from user's learning progress
   useEffect(() => {
     if (!userId) return
-    fetch(`/api/v1/learn/modules?user_id=${userId}`)
+    const token = currentSessionToken()
+    const owner = token ? userId : 'default'
+    fetch(`/api/v1/learn/modules?user_id=${encodeURIComponent(owner)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(r => r.json())
       .then(d => {
         if (d.ok) {

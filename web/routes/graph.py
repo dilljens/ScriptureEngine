@@ -14,7 +14,9 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+
+from web.routes.auth import _resolve_request_user
 
 router = APIRouter()
 
@@ -766,8 +768,11 @@ def get_bd_entry(slug: str):
 # ── Hub Notes API ──
 
 @router.get("/api/v1/hub-notes")
-def list_hub_notes(user_id: str = "default"):
+def list_hub_notes(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """List all hub notes with user progress summary."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -813,8 +818,12 @@ def list_hub_notes(user_id: str = "default"):
 
 
 @router.get("/api/v1/hub-notes/{hub_id}")
-def get_hub_note(hub_id: str, user_id: str = "default"):
+def get_hub_note(
+    hub_id: str, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Get a full hub note with all steps, verse text, and TG topics."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -883,8 +892,12 @@ def get_hub_note(hub_id: str, user_id: str = "default"):
 
 
 @router.post("/api/v1/hub-notes/{hub_id}/step/{step_number}/complete")
-def complete_hub_step(hub_id: str, step_number: int, user_id: str = "default"):
+def complete_hub_step(
+    hub_id: str, step_number: int, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Mark a hub note step as complete."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -951,10 +964,15 @@ class GradingRequest(BaseModel):
     tier: str | None = "text"
     passage_context: str | None = None
     user_id: str | None = None  # If provided, inject user's progress context
+    session_token: str | None = None
 
 
 @router.post("/api/v1/assess/grade")
-def grade_answer(body: GradingRequest):
+def grade_answer(body: GradingRequest, request: Request):
+    return _grade_answer_impl(body, request.headers.get("authorization", ""))
+
+
+def _grade_answer_impl(body: GradingRequest, authorization: str = ""):
     """Grade an open-ended answer using the LLM with a transparent rubric.
 
     Evaluates the QUALITY OF REASONING, not whether the answer is "right" or "wrong."
@@ -978,15 +996,22 @@ def grade_answer(body: GradingRequest):
         else:
             rubric = "Does the answer engage with the text and show reasoned thinking?"
 
+    progress_user = None
+    if body.user_id:
+        progress_user = _resolve_request_user(
+            body.user_id, body.session_token or "", authorization
+        )
+
     # Fetch user progress context if user_id provided
     user_context = ""
     _api_base = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
-    if body.user_id:
+    if progress_user:
         try:
             import requests as _req
+            headers = {"Authorization": authorization} if authorization else {}
             prog = _req.get(
-                f"{_api_base}/api/v1/user/progress/{body.user_id}",
-                timeout=5
+                f"{_api_base}/api/v1/user/progress/{progress_user}",
+                headers=headers, timeout=5
             ).json()
             if prog.get("ok"):
                 data = prog["data"]
@@ -1184,7 +1209,7 @@ def submit_open_question(body: dict):
         tier=tier,
         passage_context=passage_context,
     )
-    return grade_answer(grading_req)
+    return _grade_answer_impl(grading_req)
 
 
 @router.get("/api/v1/entities/{entity_id:path}")

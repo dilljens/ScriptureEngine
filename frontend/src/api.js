@@ -159,17 +159,36 @@ export function currentSessionToken() {
  * token. Mirrors the getSessionToken() no-op-when-absent fallback.
  */
 let _hebrewUserCache = null
-export function resetHebrewSessionUser() { _hebrewUserCache = null }
+let _hebrewUserCacheToken = null
+export function resetHebrewSessionUser() {
+  _hebrewUserCache = null
+  _hebrewUserCacheToken = null
+}
 
 export async function hebrewSessionUser() {
-  if (_hebrewUserCache) return _hebrewUserCache
   const token = currentSessionToken()
-  if (!token) { _hebrewUserCache = 'default'; return _hebrewUserCache }
+  if (!token) {
+    resetHebrewSessionUser()
+    return 'default'
+  }
+  if (_hebrewUserCache !== null && _hebrewUserCacheToken === token) return _hebrewUserCache
   try {
     const r = await fetchJSON(`/auth/me?session_token=${encodeURIComponent(token)}`)
+    // Do not let an in-flight request from a signed-out session repopulate
+    // the cache after the token has changed.
+    if (currentSessionToken() !== token) return hebrewSessionUser()
     _hebrewUserCache = r?.data?.user_id || 'default'
-  } catch {
+    _hebrewUserCacheToken = token
+  } catch (error) {
+    if (currentSessionToken() !== token) return hebrewSessionUser()
+    // An expired session must not remain in localStorage: callers use the
+    // token for bearer headers after this fallback and would turn anonymous
+    // reads into avoidable 401s. Network failures retain the token.
+    if (String(error?.message || '').includes('API 401')) {
+      try { localStorage.removeItem('scripture_session_token') } catch {}
+    }
     _hebrewUserCache = 'default' // 401 invalid/expired or offline → anonymous
+    _hebrewUserCacheToken = token
   }
   return _hebrewUserCache
 }
@@ -186,7 +205,7 @@ const ownerHeaders = () => {
 export function conversationCreate(data = {}) {
   return fetchJSON(`/conversations?${userQuery()}`, {
     method: 'POST',
-    body: JSON.stringify({ title: data.title || '', theme: data.theme || '', created_by: data.created_by || currentUserId() }),
+    body: JSON.stringify({ title: data.title || '', theme: data.theme || '', created_by: currentUserId() }),
     headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
   })
 }
@@ -228,6 +247,28 @@ export function conversationPromoteConnection(sessionId, connectionId, data) {
   return fetchJSON(`/conversations/${sessionId}/connections/${connectionId}/promote?${userQuery()}`, {
     method: 'POST',
     body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
+  })
+}
+
+// ─── Shared conversation snapshots ───
+
+export function conversationShare(sessionId, messageId = null) {
+  return fetchJSON(`/conversations/${sessionId}/share?${userQuery()}`, {
+    method: 'POST',
+    body: JSON.stringify({ message_id: messageId }),
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
+  })
+}
+
+export function sharedGet(slug) {
+  return fetchJSON(`/shared/${slug}`)
+}
+
+export function sharedFork(slug) {
+  return fetchJSON(`/shared/${slug}/fork?${userQuery()}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
     headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
   })
 }
@@ -320,15 +361,28 @@ export function getWikiSearch(query) {
   return fetchJSON(`/wiki/search?q=${encodeURIComponent(query)}`)
 }
 
+export function getChatInstructions(mode = 'chat') {
+  return fetchJSON(`/chat/instructions?mode=${encodeURIComponent(mode)}`)
+}
+
 export function chat(messages, opts = {}) {
-  const { model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7, signal } = opts
-  // LLM calls need longer timeout — DeepSeek thinking mode can take 8+ min
+  const { model, max_tokens = 128000, temperature = 0.7, mode = 'chat', signal } = opts
+  // LLM calls need longer timeout — provider-side reasoning can take 8+ min
   const controller = signal ? null : new AbortController()
   const timer = controller ? setTimeout(() => controller.abort(), 600_000) : null
   return fetchJSON('/chat', {
     method: 'POST',
-    body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools: opts.disabled_tools || [], user_id: opts.user_id || '' }),
-    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      ...(model ? { model } : {}),
+      max_tokens,
+      temperature,
+      mode,
+      session_token: currentSessionToken(),
+      disabled_tools: opts.disabled_tools || [],
+      user_id: currentUserId(),
+    }),
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
     signal: controller ? controller.signal : signal,
   }).finally(() => { if (timer) clearTimeout(timer) })
 }
@@ -337,7 +391,7 @@ export function chat(messages, opts = {}) {
  * Streaming chat — background job + polling (survives phone minimize).
  *
  * Creates a server-side chat job (POST /api/v1/chat/jobs) and polls it
- * (GET /api/v1/chat/jobs/{id}?after_seq=N). The DeepSeek run proceeds on the
+ * (GET /api/v1/chat/jobs/{id}?after_seq=N). The provider run proceeds on the
  * server independent of this connection, so minimizing the app / network
  * drops no longer cancel it — the next poll picks up where it left off.
  *
@@ -356,9 +410,9 @@ export function chat(messages, opts = {}) {
  */
 export function chatStream(messages, opts = {}) {
   const {
-    model = 'deepseek-v4-flash', max_tokens = 128000, temperature = 0.7,
+    model, max_tokens = 128000, temperature = 0.7,
     disabled_tools = [], scopes = [], mode = 'chat',
-    session_id = '', client_message_id = '', user_id = '', signal,
+    session_id = '', client_message_id = '', signal,
   } = opts
   const { onThinking, onText, onToolProgress, onTruncated, onDone, onError } = opts
   const POLL_MS = 2000
@@ -489,8 +543,20 @@ export function chatStream(messages, opts = {}) {
     // Create the background job, then start polling
     fetchJSON('/chat/jobs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, model, max_tokens, temperature, disabled_tools, scopes, mode, session_id, client_message_id, user_id }),
+      headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
+      body: JSON.stringify({
+        messages,
+        ...(model ? { model } : {}),
+        max_tokens,
+        temperature,
+        disabled_tools,
+        scopes,
+        mode,
+        session_id,
+        client_message_id,
+        session_token: currentSessionToken(),
+        user_id: currentUserId(),
+      }),
     }).then((res) => {
       if (cancelled) return
       const d = res?.data || {}

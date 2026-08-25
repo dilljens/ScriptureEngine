@@ -56,8 +56,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
   const handleSubmit = () => {
     if (selected === null) return
     setSubmitted(true)
-    const isCorrect = String(selected) === String(current?.correct)
-    setScore(prev => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }))
+    setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }))
   }
 
   const handleNext = () => {
@@ -71,16 +70,16 @@ export default function HebrewVerbDrill({ onNavigate }) {
   }
 
   const isOpen = current?.type === 'open' || !current?.options
+  const pct = drills.length ? Math.round((score.total / drills.length) * 100) : 0
 
   // Score display
   if (done) {
-    const pct = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 text-center">
-        <span className="text-4xl block mb-4">{pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '📚'}</span>
+        <span className="text-4xl block mb-4">📚</span>
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Drill Complete</h2>
-        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{score.correct}/{score.total}</div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">{pct}% correct</p>
+        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{score.total}</div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">questions recorded for review</p>
         <div className="w-48 h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 mx-auto overflow-hidden mb-6">
           <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
         </div>
@@ -157,7 +156,6 @@ export default function HebrewVerbDrill({ onNavigate }) {
           {!isOpen && (
             <div className="space-y-1.5">
               {(JSON.parse(current.options || '[]')).map((opt, i) => {
-                const isCorrect = String(opt) === String(current.correct)
                 const isSelected = selected === opt || selected === i
                 let cls = 'w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer '
                 if (!submitted) {
@@ -165,11 +163,9 @@ export default function HebrewVerbDrill({ onNavigate }) {
                     ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
                     : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
                 } else {
-                  cls += isCorrect
-                    ? 'border-green-500 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 font-medium'
-                    : isSelected
-                      ? 'border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                      : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
+                  cls += isSelected
+                    ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500'
                 }
                 return (
                   <button key={i} onClick={() => handleSelect(opt)} className={cls}>
@@ -192,8 +188,8 @@ export default function HebrewVerbDrill({ onNavigate }) {
           {/* After submission */}
           {submitted && (
             <div className="mt-3">
-              <p className={`text-xs text-center font-medium mb-2 ${String(selected) === String(current?.correct) ? 'text-green-600' : 'text-red-600'}`}>
-                {String(selected) === String(current?.correct) ? '✓ Correct!' : `✗ Incorrect — ${current.correct}`}
+              <p className="text-xs text-center font-medium mb-2 text-neutral-600 dark:text-neutral-300">
+                Answer recorded — review the explanation below.
               </p>
               {current.explanation && (
                 <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">

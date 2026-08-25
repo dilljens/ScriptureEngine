@@ -11,6 +11,7 @@
  * persisted to localStorage.
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { currentSessionToken } from '../api'
 
 const API = window.__API_URL__ || ''
 
@@ -163,7 +164,10 @@ export default function HebrewPassageReader({ verseRef, onClose, readingLessonId
     }).catch(() => {})
 
     // Fetch vocabulary mastery to highlight known words
-    fetch(`${API}/api/v1/hebrew/curriculum`).then(r => r.json()).then(d => {
+    const token = currentSessionToken()
+    fetch(`${API}/api/v1/hebrew/curriculum`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(r => r.json()).then(d => {
       if (d.ok && d.data?.nodes) {
         const studied = new Set()
         const mastery = {}

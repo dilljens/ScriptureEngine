@@ -1,5 +1,6 @@
 """Hebrew learning + grammar reference routes."""
 import datetime
+import hashlib
 import json
 import logging
 import os
@@ -11,10 +12,27 @@ import sqlite3
 import urllib.parse
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+
+HEBREW_CHOICE_TYPES = frozenset({
+    "multiple_choice", "true_false", "letter_name", "letter_recognition", "classification",
+})
+ANSWER_MODE_CHOICE_INDEX = "choice_index"
+ANSWER_MODE_FREE_TEXT = "free_text"
+
+
+def _public_options(options):
+    return [option.get("label", "") if isinstance(option, dict) else option for option in (options or [])]
+
+
+def _public_options_json(raw_options):
+    try:
+        return json.dumps(_public_options(json.loads(raw_options) if raw_options else []), ensure_ascii=False)
+    except (TypeError, json.JSONDecodeError):
+        return "[]"
 
 # ── Persisted adaptive review scheduler ──
 # Legacy helper/route names remain for compatibility. This is project-specific,
@@ -225,6 +243,66 @@ def fire_process(graph, node_id, correct, weight=0.3):
 
 BASE_DIR = Path(__file__).parent.parent.parent
 MEM_DB = Path(os.environ["MEMORIZE_DB_PATH"]) if os.environ.get("MEMORIZE_DB_PATH") else BASE_DIR / "data" / "memorize.db"
+
+# ── Track C2: append-only attempt evidence ──────────────────────────────────
+# Derived learner state (hebrew_progress, FSRS) must stay traceable to
+# immutable events. Every graded answer appends one row BEFORE the derived
+# upsert, in the same transaction.
+
+HEBREW_GRADER_VERSION = "hebrew-grader-v1"
+
+_ATTEMPT_EVENTS_DDL = """
+CREATE TABLE IF NOT EXISTS hebrew_attempt_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    question_id TEXT,
+    mode TEXT DEFAULT 'hebrew',
+    raw_response TEXT DEFAULT '',
+    correct INTEGER NOT NULL,
+    hints INTEGER DEFAULT 0,
+    content_version TEXT DEFAULT '',
+    evaluator_version TEXT DEFAULT '',
+    event_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_attempt_events_user_node
+    ON hebrew_attempt_events(user_id, node_id, id);
+"""
+
+
+def _ensure_attempt_events_schema(conn):
+    conn.executescript(_ATTEMPT_EVENTS_DDL)
+
+
+def _record_attempt_event(conn, user_id, node_id, question_id, raw_response,
+                          correct, mode="hebrew", hints=0, content_version="",
+                          evaluator_version=HEBREW_GRADER_VERSION) -> bool:
+    """Append one immutable attempt event; True if newly recorded.
+
+    Idempotent against duplicate submissions of the SAME attempt: an
+    identical (user, node, question, normalized answer) inside the same UTC
+    minute collapses via event_hash UNIQUE + INSERT OR IGNORE. A retry after
+    that is legitimately a new attempt and is appended.
+    """
+    _ensure_attempt_events_schema(conn)
+    raw = "" if raw_response is None else str(raw_response)
+    minute = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d%H%M")
+    basis = "|".join([
+        user_id or "", node_id or "", str(question_id or ""),
+        " ".join(raw.strip().casefold().split()), minute,
+    ])
+    event_hash = hashlib.sha256(basis.encode("utf-8")).hexdigest()
+    cur = conn.execute(
+        """INSERT OR IGNORE INTO hebrew_attempt_events
+           (user_id, node_id, question_id, mode, raw_response, correct,
+            hints, content_version, evaluator_version, event_hash)
+           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+        (user_id, node_id, str(question_id) if question_id is not None else None,
+         mode, raw[:2000], 1 if correct else 0, hints, content_version,
+         evaluator_version, event_hash),
+    )
+    return cur.rowcount > 0
 SCRIPTURE_DB = Path(os.environ.get("SCRIPTURE_DB_PATH", "")) if os.environ.get("SCRIPTURE_DB_PATH") else BASE_DIR / "data" / "processed" / "scripture.db"
 
 
@@ -368,9 +446,8 @@ def _ensure_hebrew_review_state(conn):
 def _resolve_hebrew_user(user_id: str, session_token: str = "") -> str:
     """Return the authenticated user when a session token is provided.
 
-    The learner frontend has no session yet and sends no token, so it keeps the
-    caller-supplied user_id (default 'default'). Any caller presenting a valid
-    session token is bound to the token's real user, closing the forgery hole.
+    Internal callers may still pass an explicit user id for isolated calculations;
+    HTTP entry points use ``_require_hebrew_user`` for authorization.
     """
     if session_token:
         try:
@@ -381,18 +458,56 @@ def _resolve_hebrew_user(user_id: str, session_token: str = "") -> str:
             raise HTTPException(401, "Invalid or expired session token")
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
             log.warning("silent_exception", exc_info=True)
-            raise HTTPException(401, "Invalid or expired session token")
+            raise HTTPException(401, "Invalid or expired session token") from exc
     return user_id or "default"
 
 
+def _require_hebrew_user(user_id: str = "default", session_token: str = "") -> str:
+    """Bind an HTTP operation to a session or the shared anonymous profile."""
+    if session_token:
+        return _resolve_hebrew_user(user_id, session_token)
+    if user_id and user_id not in ("default", "anonymous"):
+        raise HTTPException(401, "session_token required for a user-scoped operation")
+    return "default"
+
+
+def _session_token_from_header(authorization: str = "") -> str:
+    if not authorization:
+        return ""
+    scheme, _, value = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not value.strip():
+        raise HTTPException(401, "Invalid authorization header")
+    return value.strip()
+
+
+def _resolve_hebrew_read_user(
+    user_id: str = "default",
+    session_token: str = "",
+    authorization: str = "",
+) -> str:
+    """Resolve user-scoped GETs without accepting arbitrary victim ids.
+
+    Authenticated reads use the bearer/session token. Anonymous reads are
+    intentionally limited to the shared default profile; a custom user id must
+    prove ownership instead of arriving as an unauthenticated query parameter.
+    """
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    return _require_hebrew_user(user_id, session_token)
+
+
 @router.post("/api/v1/hebrew/fsrs/review")
-def post_hebrew_review(body: dict):
+def post_hebrew_review(body: dict, authorization: str = Header("")):
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
     return process_hebrew_review(
         node_id=body.get("node_id", ""), rating=int(body.get("rating", 3)),
-        user_id=body.get("user_id", "default"),
-        session_token=body.get("session_token", ""),
+        user_id=user_id,
         hint_level=int(body.get("hint_level", 0)),
         failure_location=body.get("failure_location", ""),
     )
@@ -553,12 +668,15 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
 
 
 @router.get("/api/v1/hebrew/learning-speeds")
-def get_hebrew_learning_speeds(user_id: str = "default"):
+def get_hebrew_learning_speeds(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get student-topic learning speeds for all practiced nodes.
 
     Returns ability, difficulty per topic, and the ratio (learning speed).
     Higher speed = learner is faster on this topic → longer intervals.
     """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     speeds, ability, diffs = compute_learning_speed(user_id)
     # Sort by speed ascending (slowest first — needs most review)
     sorted_speeds = sorted(speeds.items(), key=lambda x: x[1])
@@ -647,12 +765,16 @@ def list_hebrew_lessons(category: str = ""):
 
 
 @router.get("/api/v1/hebrew/diagnostic")
-def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2):
+def get_hebrew_diagnostic(
+    user_id: str = "default", count_per_category: int = 2,
+    session_token: str = "", authorization: str = Header("")
+):
     """Generate a diagnostic pre-assessment covering all categories.
 
     Returns 2-3 sample questions per category to determine what
     the learner already knows. Results can skip mastered categories.
     """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
         return {"ok": True, "data": {"questions": [], "categories": []}}
 
@@ -690,7 +812,7 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
             if not item:
                 continue
 
-            opts = json.loads(item['options_json']) if item['options_json'] else []
+            opts = _public_options(json.loads(item['options_json']) if item['options_json'] else [])
             cat_questions.append({
                 "question_id": item['id'],
                 "node_id": n['id'],
@@ -738,15 +860,61 @@ def get_hebrew_diagnostic(user_id: str = "default", count_per_category: int = 2)
     }}
 
 
-def _diagnostic_answer_matches(answer, expected):
-    def normalize(value):
-        text = re.sub(r"\s+", " ", str(value or "").strip().casefold())
-        if re.search(r"[\u0590-\u05ff]", text):
-            text = re.sub(r"[\u0591-\u05af]", "", text)
-            text = text.replace("/", "")
-        return text
+def _normalize_hebrew_answer(value):
+    text = re.sub(r"\s+", " ", str(value if value is not None else "").strip().casefold())
+    if re.search(r"[\u0590-\u05ff]", text):
+        text = re.sub(r"[\u0591-\u05af]", "", text)
+        text = text.replace("/", "")
+    return text
 
-    return bool(normalize(answer)) and normalize(answer) == normalize(expected)
+
+def _diagnostic_answer_matches(answer, expected):
+    actual = _normalize_hebrew_answer(answer)
+    return bool(actual) and actual == _normalize_hebrew_answer(expected)
+
+
+def _hebrew_free_text_matches(answer, expected):
+    actual = _normalize_hebrew_answer(answer)
+    if not actual:
+        return False
+    expected_text = str(expected if expected is not None else "")
+    candidates = [expected_text, *re.split(r"\s+or\s+|[|/]", expected_text, flags=re.IGNORECASE)]
+    return any(actual == _normalize_hebrew_answer(candidate) for candidate in candidates)
+
+
+def _choice_index(value, options):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        index = value
+    elif isinstance(value, str) and re.fullmatch(r"\d+", value.strip()):
+        index = int(value.strip())
+    else:
+        index = None
+    if index is not None:
+        return index if 0 <= index < len(options) else None
+
+    normalized = _normalize_hebrew_answer(value)
+    if not normalized:
+        return None
+    for index, option in enumerate(options):
+        if _normalize_hebrew_answer(option) == normalized:
+            return index
+    return None
+
+
+def _hebrew_quiz_answer_matches(answer, expected, question_type, options=None, answer_mode=None):
+    options = options or []
+    mode = answer_mode or (
+        ANSWER_MODE_CHOICE_INDEX
+        if question_type in HEBREW_CHOICE_TYPES and options
+        else ANSWER_MODE_FREE_TEXT
+    )
+    if mode == ANSWER_MODE_CHOICE_INDEX and options:
+        answer_index = _choice_index(answer, options)
+        expected_index = _choice_index(expected, options)
+        return answer_index is not None and answer_index == expected_index
+    return _hebrew_free_text_matches(answer, expected)
 
 
 # ── Adaptive placement test (P4) ──
@@ -781,9 +949,19 @@ def _placement_session_table(conn):
             state_json TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             expires_at TEXT NOT NULL,
-            used_at TEXT
+            used_at TEXT,
+            issued_question_id INTEGER,
+            issued_node_id TEXT,
+            issued_nonce TEXT
         )
     """)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(hebrew_placement_sessions)")}
+    if "issued_question_id" not in columns:
+        conn.execute("ALTER TABLE hebrew_placement_sessions ADD COLUMN issued_question_id INTEGER")
+    if "issued_node_id" not in columns:
+        conn.execute("ALTER TABLE hebrew_placement_sessions ADD COLUMN issued_node_id TEXT")
+    if "issued_nonce" not in columns:
+        conn.execute("ALTER TABLE hebrew_placement_sessions ADD COLUMN issued_nonce TEXT")
 
 
 def _placement_pick_question(conn, skill_idx, level):
@@ -820,7 +998,7 @@ def _placement_pick_question(conn, skill_idx, level):
     if not rows:
         return None
     try:
-        opts = json.loads(rows["options_json"]) if rows["options_json"] else []
+        opts = _public_options(json.loads(rows["options_json"]) if rows["options_json"] else [])
     except (TypeError, json.JSONDecodeError):
         opts = []
     return {
@@ -828,8 +1006,15 @@ def _placement_pick_question(conn, skill_idx, level):
         "level": rows["level"], "category": rows["category"],
         "question_id": rows["qid"], "type": rows["question_type"],
         "question": rows["question_text"], "options": opts,
-        "correct_answer": rows["correct_answer"],
     }
+
+
+def _placement_public_question(question, nonce):
+    """Return an adaptive item without answer or curriculum lookup handles."""
+    return {
+        key: value for key, value in question.items()
+        if key not in {"node_id", "correct_answer"}
+    } | {"question_nonce": nonce}
 
 
 def _placement_initial_state():
@@ -959,14 +1144,24 @@ def _placement_apply_results(conn, user_id, results):
 
 
 @router.post("/api/v1/hebrew/diagnostic/adaptive/start")
-def start_adaptive_diagnostic(body: dict = None, user_id: str = "default"):
+def start_adaptive_diagnostic(
+    body: dict = None, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Start an adaptive placement test: per-skill 1-up-3-down staircase.
 
     Returns the first question plus a session_id. Each answer is submitted to
     /answer which returns the next question (or results when done).
     """
     body = body or {}
-    user_id = body.get("user_id", user_id)
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    user_id = _require_hebrew_user(
+        body.get("user_id", user_id), body.get("session_token", session_token)
+    )
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
     conn = sqlite3.connect(str(MEM_DB))
@@ -978,9 +1173,12 @@ def start_adaptive_diagnostic(body: dict = None, user_id: str = "default"):
     if not q:
         conn.close()
         raise HTTPException(404, "No practice items available for placement")
+    question_nonce = secrets.token_urlsafe(16)
     conn.execute(
-        "INSERT INTO hebrew_placement_sessions (session_id,user_id,skill_idx,state_json,expires_at) VALUES (?,?,0,?,datetime('now','+1 hour'))",
-        (session_id, user_id, json.dumps(state)))
+        "INSERT INTO hebrew_placement_sessions "
+        "(session_id,user_id,skill_idx,state_json,expires_at,issued_question_id,issued_node_id,issued_nonce) "
+        "VALUES (?,?,0,?,datetime('now','+1 hour'),?,?,?)",
+        (session_id, user_id, json.dumps(state), q["question_id"], q["node_id"], question_nonce))
     conn.commit()
     conn.close()
     return {"ok": True, "data": {
@@ -988,26 +1186,28 @@ def start_adaptive_diagnostic(body: dict = None, user_id: str = "default"):
         "skill": PLACEMENT_SKILLS[0][0],
         "skill_index": 0,
         "total_skills": len(PLACEMENT_SKILLS),
-        "question": q,
+        "question": _placement_public_question(q, question_nonce),
         "skill_progress": {"current": 1, "total": len(PLACEMENT_SKILLS)},
     }}
 
 
 @router.post("/api/v1/hebrew/diagnostic/adaptive/answer")
-def answer_adaptive_diagnostic(body: dict):
+def answer_adaptive_diagnostic(body: dict, authorization: str = Header("")):
     """Submit an answer to the adaptive placement test.
 
     Body: {session_id, question_id, node_id, answer}
     Returns the next question, or {done: true, results} when all skills finish.
     """
+    body = body or {}
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
     session_id = body.get("session_id", "")
     answer = body.get("answer", "")
     qid = body.get("question_id")
+    question_nonce = body.get("question_nonce", "")
     node_id = body.get("node_id", "")
-    if not session_id or not qid or not node_id:
-        raise HTTPException(400, "session_id, question_id, node_id required")
+    if not session_id or not qid or not question_nonce:
+        raise HTTPException(400, "session_id, question_id, and question_nonce required")
 
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
@@ -1020,6 +1220,32 @@ def answer_adaptive_diagnostic(body: dict):
     if not sess:
         conn.rollback(); conn.close()
         raise HTTPException(400, "Invalid or expired placement session")
+    session_token = body.get("session_token", "")
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            conn.rollback(); conn.close()
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    try:
+        request_user = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    except HTTPException:
+        conn.rollback(); conn.close()
+        raise
+    if request_user != sess["user_id"]:
+        conn.rollback(); conn.close()
+        raise HTTPException(403, "Placement session belongs to another user")
+    if str(sess["issued_question_id"]) != str(qid):
+        conn.rollback(); conn.close()
+        raise HTTPException(400, "Question was not issued for this placement session")
+    if sess["issued_nonce"] != question_nonce:
+        conn.rollback(); conn.close()
+        raise HTTPException(400, "Question was already answered or is no longer current")
+    issued_node_id = sess["issued_node_id"]
+    if node_id and node_id != issued_node_id:
+        conn.rollback(); conn.close()
+        raise HTTPException(400, "Question was not issued for this placement session")
+    node_id = issued_node_id
     state = json.loads(sess["state_json"])
     skill_idx = sess["skill_idx"]
     skill_name = PLACEMENT_SKILLS[skill_idx][0]
@@ -1056,13 +1282,15 @@ def answer_adaptive_diagnostic(body: dict):
             q = None
 
     if q:
+        question_nonce = secrets.token_urlsafe(16)
         conn.execute(
-            "UPDATE hebrew_placement_sessions SET skill_idx=?, state_json=? WHERE session_id=?",
-            (skill_idx, json.dumps(state), session_id))
+            "UPDATE hebrew_placement_sessions SET skill_idx=?, state_json=?, "
+            "issued_question_id=?, issued_node_id=?, issued_nonce=? WHERE session_id=?",
+            (skill_idx, json.dumps(state), q["question_id"], q["node_id"], question_nonce, session_id))
         conn.commit(); conn.close()
         return {"ok": True, "data": {
             "correct": correct,
-            "question": q,
+            "question": _placement_public_question(q, question_nonce),
             "skill": PLACEMENT_SKILLS[skill_idx][0],
             "skill_index": skill_idx,
             "total_skills": len(PLACEMENT_SKILLS),
@@ -1088,7 +1316,7 @@ def answer_adaptive_diagnostic(body: dict):
 
 
 @router.post("/api/v1/hebrew/diagnostic/apply")
-def apply_diagnostic_results(body: dict):
+def apply_diagnostic_results(body: dict, authorization: str = Header("")):
     """Grade diagnostic answers server-side and credit only tested skills.
 
     Body: {
@@ -1099,7 +1327,8 @@ def apply_diagnostic_results(body: dict):
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
 
-    user_id = _resolve_hebrew_user(body.get("user_id", "default"), body.get("session_token", ""))
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
     answers = body.get("answers", [])
     batch_id = body.get("batch_id")
     if not isinstance(answers, list):
@@ -1175,7 +1404,10 @@ def apply_diagnostic_results(body: dict):
 
 
 @router.get("/api/v1/hebrew/curriculum")
-def get_hebrew_curriculum(user_id: str = "default"):
+def get_hebrew_curriculum(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
         return {"ok": True, "data": {"nodes": [], "total": 0}}
     conn = sqlite3.connect(str(MEM_DB))
@@ -1290,16 +1522,88 @@ def get_hebrew_curriculum(user_id: str = "default"):
     }}
 
 
-@router.post("/api/v1/hebrew/progress")
-def update_hebrew_progress(body: dict):
+@router.get("/api/v1/hebrew/attempts")
+def list_hebrew_attempts(node_id: str = "", user_id: str = "default",
+                         limit: int = 50, authorization: str = Header("")):
+    """Immutable attempt evidence behind the learner's level (Track C2).
+
+    Scoped to the resolved user — one user can never read another's events.
+    Bounded and newest-first so a UI can answer "why this is my level".
+    """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    user_id = _resolve_hebrew_user(body.get("user_id", "default"), body.get("session_token", ""))
+    session_token = _session_token_from_header(authorization)
+    resolved = _resolve_hebrew_read_user(user_id, session_token)
+    limit = max(1, min(int(limit), 200))
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        _ensure_attempt_events_schema(conn)
+        if node_id:
+            rows = conn.execute(
+                "SELECT id, node_id, question_id, correct, hints, created_at, "
+                "evaluator_version FROM hebrew_attempt_events "
+                "WHERE user_id=? AND node_id=? ORDER BY id DESC LIMIT ?",
+                (resolved, node_id, limit)).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id, node_id, question_id, correct, hints, created_at, "
+                "evaluator_version FROM hebrew_attempt_events "
+                "WHERE user_id=? ORDER BY id DESC LIMIT ?",
+                (resolved, limit)).fetchall()
+        return {"ok": True, "data": {"attempts": [dict(r) for r in rows]}}
+    finally:
+        conn.close()
+
+
+@router.post("/api/v1/hebrew/progress")
+def update_hebrew_progress(body: dict, authorization: str = Header("")):
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
     node_id = body.get("node_id", "")
-    correct = body.get("correct", False)
     if not node_id:
         raise HTTPException(400, "node_id required")
     conn = sqlite3.connect(str(MEM_DB))
+
+    # A question id plus the submitted answer is authoritative. A client-side
+    # boolean cannot be verified and therefore must not mutate learner state.
+    question_id = body.get("question_id")
+    if question_id is not None:
+        item = conn.execute("""
+            SELECT question_type, options_json, correct_answer
+            FROM hebrew_practice_items
+            WHERE id=? AND node_id=?
+        """, (question_id, node_id)).fetchone()
+        if not item:
+            conn.close()
+            raise HTTPException(400, "question_id does not match node_id")
+        try:
+            options = json.loads(item[1]) if item[1] else []
+        except (TypeError, json.JSONDecodeError):
+            options = []
+        if "answer" not in body:
+            conn.close()
+            raise HTTPException(400, "answer required when question_id is provided")
+        correct = _hebrew_quiz_answer_matches(
+            body.get("answer"), item[2], item[0], options, None
+        )
+    elif "correct" in body:
+        conn.close()
+        raise HTTPException(
+            400,
+            "question_id and answer are required; client correctness is not accepted",
+        )
+    else:
+        conn.close()
+        raise HTTPException(400, "correct or question_id and answer required")
+
+    # Track C2: immutable evidence lands before derived state mutates; both
+    # share this transaction, so no progress delta exists without its event.
+    _record_attempt_event(conn, user_id, node_id, question_id,
+                          body.get("answer"), correct)
+
     row = conn.execute(
         "SELECT mastery, attempts, correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
         (user_id, node_id)).fetchone()
@@ -1378,7 +1682,8 @@ def update_hebrew_progress(body: dict):
 
     conn.close()
     return {"ok": True, "data": {"node_id": node_id, "mastery": round(mastery, 3),
-                                  "attempts": attempts, "correct": correct_count}}
+                                  "attempts": attempts, "correct": correct_count,
+                                  "is_correct": bool(correct)}}
 
 
 @router.get("/api/v1/hebrew/practice/{node_id}")
@@ -1402,11 +1707,18 @@ def get_hebrew_practice(node_id: str):
             heb_word = ""
     result = []
     for item in items:
+        try:
+            item_options = json.loads(item['options_json']) if item['options_json'] else []
+        except (TypeError, json.JSONDecodeError):
+            item_options = []
         result.append({
             "id": item['id'], "question_type": item['question_type'],
-            "question_text": item['question_text'], "options_json": item['options_json'],
-            "correct_answer": item['correct_answer'], "explanation": item['explanation'] or '',
+            "question_text": item['question_text'], "options_json": _public_options_json(item['options_json']),
+            "explanation": item['explanation'] or '',
             "difficulty": item['difficulty'],
+            "answer_mode": ANSWER_MODE_CHOICE_INDEX
+            if item['question_type'] in HEBREW_CHOICE_TYPES and item_options
+            else ANSWER_MODE_FREE_TEXT,
             # Pre-built word audio URL (nil if none available) so the frontend
             # doesn't need to look it up per word.
             "audio_url": f"/api/v1/hebrew/audio/{urllib.parse.quote(heb_word)}" if heb_word else None,
@@ -1419,7 +1731,7 @@ def get_hebrew_practice(node_id: str):
 def _practice_to_quiz_question(item, node):
     """Convert a hebrew_practice_items row to the /hebrew/quiz question shape."""
     try:
-        opts = json.loads(item["options_json"]) if item["options_json"] else []
+        opts = _public_options(json.loads(item["options_json"]) if item["options_json"] else [])
     except (TypeError, json.JSONDecodeError):
         opts = []
     return {
@@ -1428,7 +1740,9 @@ def _practice_to_quiz_question(item, node):
         "type": item["question_type"],
         "question": item["question_text"],
         "options": opts,
-        "correct": item["correct_answer"],
+        "answer_mode": ANSWER_MODE_CHOICE_INDEX
+        if item["question_type"] in HEBREW_CHOICE_TYPES and opts
+        else ANSWER_MODE_FREE_TEXT,
         "category": node["category"],
         "difficulty": item["difficulty"] or 0.5,
         "node_title": node["title"],
@@ -1655,12 +1969,21 @@ def get_hebrew_images(limit: int = 50, offset: int = 0, source: str = ""):
 
 
 @router.post("/api/v1/hebrew/add-word")
-def add_hebrew_word_to_learning(word: str, user_id: str = "default"):
+def add_hebrew_word_to_learning(
+    word: str, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Add any Hebrew word to the user's FSRS learning queue.
 
     Creates a dynamic vocabulary node if no existing lesson exists.
     Returns the node_id for tracking.
     """
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not value.strip():
+            raise HTTPException(401, "Invalid authorization header")
+        session_token = value.strip()
+    user_id = _require_hebrew_user(user_id, session_token)
     word_clean = word.strip()
     if not word_clean:
         raise HTTPException(400, "Word required")
@@ -1885,7 +2208,9 @@ def _interleave_due_items(by_cat, confusable_pairs):
 
 @router.get("/api/v1/hebrew/review-queue")
 def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
-                            new_cards_per_day: int = 10, include_new: bool = True):
+                            new_cards_per_day: int = 10, include_new: bool = True,
+                            session_token: str = "", authorization: str = Header("")):
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
         return {"ok": True, "data": {"reviews": [], "due_count": 0}}
     conn = sqlite3.connect(str(MEM_DB))
@@ -2168,16 +2493,23 @@ def get_hebrew_verb_drill(count: int = 5, category: str = "", user_id: str = "de
             "explanation":"Qal is the simple active stem, the most common binyan."})
     random.shuffle(drills)
     conn.close()
-    return {"ok": True, "data": {"drills": drills[:count], "total": len(drills)}}
+    public_drills = []
+    for drill in drills[:count]:
+        public_drills.append({key: value for key, value in drill.items() if key != "correct"})
+    return {"ok": True, "data": {"drills": public_drills, "total": len(drills)}}
 
 
 @router.get("/api/v1/hebrew/quiz")
-def get_hebrew_quiz(count: int = 8, user_id: str = "default"):
+def get_hebrew_quiz(
+    count: int = 8, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Generate a cumulative interleaved quiz from recently studied material.
 
     Selects practice items from the most recently studied nodes across
     multiple categories, no two consecutive questions from the same category.
     """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
         return {"ok": True, "data": {"questions": []}}
 
@@ -2228,13 +2560,16 @@ def get_hebrew_quiz(count: int = 8, user_id: str = "default"):
         """, (nid,)).fetchall()
 
         for item in items:
+            options = _public_options(json.loads(item['options_json']) if item['options_json'] else [])
             all_questions.append({
                 "node_id": nid,
                 "question_id": item['id'],
                 "type": item['question_type'],
                 "question": item['question_text'],
-                "options": json.loads(item['options_json']) if item['options_json'] else [],
-                "correct": item['correct_answer'],
+                "options": options,
+                "answer_mode": ANSWER_MODE_CHOICE_INDEX
+                if item['question_type'] in HEBREW_CHOICE_TYPES and options
+                else ANSWER_MODE_FREE_TEXT,
                 "category": cat['category'],
                 "difficulty": item['difficulty'],
             })
@@ -2373,8 +2708,13 @@ def get_hebrew_lesson(node_id: str):
     result["hebrew"] = _l.get("hebrew") or _l.get("glyph") or ""
     result["gloss"] = _l.get("gloss") or ""
     result["transliteration"] = _l.get("transliteration") or ""
-    practice_items = [dict(p) for p in practices]
+    practice_items = [
+        {key: value for key, value in dict(p).items() if key != "correct_answer"}
+        for p in practices
+    ]
     for it in practice_items:
+        if "options_json" in it:
+            it["options_json"] = _public_options_json(it["options_json"])
         it["kp_stage"] = practice_stage(it.get("question_type"))
     result["practice_items"] = practice_items
     # Deterministic micro-scaffolding stage map: recognition → recall → production.
@@ -2632,8 +2972,11 @@ def _award_insight_xp(user_id, node_id, amount=5):
 
 
 @router.get("/api/v1/hebrew/gamification")
-def get_hebrew_gamification(user_id: str = "default"):
+def get_hebrew_gamification(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get gamification state: XP, streak, badges, and next achievements."""
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     _ensure_gamification_table()
     gam = _get_gamification(user_id)
 
@@ -2679,8 +3022,12 @@ def get_hebrew_gamification(user_id: str = "default"):
 
 
 @router.get("/api/v1/hebrew/insight/{node_id}")
-def get_hebrew_insight(node_id: str, user_id: str = "default"):
+def get_hebrew_insight(
+    node_id: str, user_id: str = "default", session_token: str = "",
+    authorization: str = Header("")
+):
     """Discover connections for a node through the scripture graph and earn Insight XP."""
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     result = _award_insight_xp(user_id, node_id)
     amount, new_badges, new_connections = result if len(result) == 3 else (result[0], result[1], 0)
 

@@ -7,11 +7,17 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
+
+from web.routes.auth import _resolve_request_user
 
 router = APIRouter()
 BASE_DIR = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
+
+
+def _public_options(options):
+    return [option.get("label", "") if isinstance(option, dict) else option for option in (options or [])]
 
 
 def get_db():
@@ -27,12 +33,15 @@ def get_quiz_questions(
     count: int = Query(default=10, ge=1, le=50),
     bloom_level: str = Query(default="", description="Filter by bloom_level"),
     user_id: str = Query(default="default", description="User ID for adaptive progress"),
+    session_token: str = Query(default=""),
+    authorization: str = Header(default=""),
 ):
     """Get deep scripture understanding questions from the assessment_items table.
 
     Questions show passage text, test analysis/understanding, and are tier-labeled.
     Replaces the old BLIM-based assessment engine for self-testing.
     """
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_db()
     cursor = conn.cursor()
 
@@ -93,13 +102,12 @@ def get_quiz_questions(
     for r in rows:
         opts = []
         with contextlib.suppress(json.JSONDecodeError, ValueError):
-            opts = json.loads(r[2]) if r[2] else []
+            opts = _public_options(json.loads(r[2]) if r[2] else [])
 
         questions.append({
             "type": r[0],
             "question": r[1],
             "options": opts,
-            "correct_answer": r[3],
             "bloom_level": r[4] or "",
             "tier": r[5] or "text",
             "question_id": r[6],
@@ -151,12 +159,15 @@ def _fsrs_stability_after_failure(stability, rating):
 # ── Quiz answer endpoint (FSRS 4-point rating) ─────────────────────────
 
 @router.post("/api/v1/quiz/answer")
-def quiz_answer(body: dict):
+def quiz_answer(body: dict, authorization: str = Header("")):
     """Record a quiz answer with FSRS 4-point rating (1=Again, 2=Hard, 3=Good, 4=Easy).
 
     Body: { "user_id": "...", "question_id": N, "rating": 1|2|3|4 }
     Replaces old binary correct/incorrect with full FSRS scheduling.
     """
+    user_id = _resolve_request_user(
+        body.get("user_id", "default"), body.get("session_token", ""), authorization
+    )
     conn = get_db()
     cursor = conn.cursor()
 
@@ -174,7 +185,6 @@ def quiz_answer(body: dict):
         )
     """)
 
-    user_id = body.get("user_id", "default")
     question_id = body.get("question_id", 0)
     rating = body.get("rating", 0)
 
@@ -259,8 +269,11 @@ def quiz_answer(body: dict):
 
 
 @router.get("/api/v1/quiz/progress")
-def quiz_progress_summary(user_id: str = "default"):
+def quiz_progress_summary(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get user's quiz progress summary with IRT ability estimate."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.assessment.irt import get_mastery_summary
     conn = get_db()
     result = get_mastery_summary(conn, user_id=user_id)
@@ -269,8 +282,12 @@ def quiz_progress_summary(user_id: str = "default"):
 
 
 @router.get("/api/v1/quiz/due")
-def quiz_due_reviews(user_id: str = "default", limit: int = 20):
+def quiz_due_reviews(
+    user_id: str = "default", limit: int = 20, session_token: str = "",
+    authorization: str = Header("")
+):
     """Get assessment items due for review based on FSRS spacing."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_db()
     cursor = conn.cursor()
 
@@ -307,13 +324,12 @@ def quiz_due_reviews(user_id: str = "default", limit: int = 20):
     for r in due:
         opts = []
         with contextlib.suppress(json.JSONDecodeError, ValueError):
-            opts = json.loads(r[3]) if r[3] else []
+            opts = _public_options(json.loads(r[3]) if r[3] else [])
         questions.append({
             "id": r[0],
             "type": r[1],
             "question": r[2],
             "options": opts,
-            "correct_answer": r[4],
             "layer": r[5],
             "tier": r[6],
             "explanation": r[7] or "",
@@ -330,8 +346,11 @@ def quiz_due_reviews(user_id: str = "default", limit: int = 20):
 
 
 @router.get("/api/v1/quiz/recommendations")
-def quiz_recommendations(user_id: str = "default"):
+def quiz_recommendations(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get study recommendations based on assessment weak areas."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.assessment.irt import get_mastery_summary
     conn = get_db()
 
@@ -404,8 +423,12 @@ def quiz_recommendations(user_id: str = "default"):
 # ── Old BLIM assessment (kept for backward compatibility) ──
 
 @router.post("/api/v1/assessment/start")
-def assessment_start(user_id: str = "default", target_layer: str = "", max_items: int = 20):
+def assessment_start(
+    user_id: str = "default", target_layer: str = "", max_items: int = 20,
+    session_token: str = "", authorization: str = Header("")
+):
     """Start an adaptive assessment session. Returns first question."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.api.assessment import start_assessment
     from lib.db import get_db
     conn = get_db()
@@ -421,12 +444,16 @@ def assessment_start(user_id: str = "default", target_layer: str = "", max_items
 
 
 @router.post("/api/v1/assessment/answer")
-def assessment_answer(user_id: str = "default", correct: bool = False):
+def assessment_answer(
+    user_id: str = "default", answer: str = "", session_token: str = "",
+    authorization: str = Header("")
+):
     """Submit an answer, get next question."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.api.assessment import submit_answer
     from lib.db import get_db
     conn = get_db()
-    result = submit_answer(conn, user_id=user_id, correct=correct)
+    result = submit_answer(conn, user_id=user_id, answer=answer)
     conn.close()
     if not result.get("ok"):
         raise HTTPException(500, result.get("error", "Answer failed"))
@@ -434,8 +461,11 @@ def assessment_answer(user_id: str = "default", correct: bool = False):
 
 
 @router.get("/api/v1/assessment/progress")
-def assessment_progress(user_id: str = "default"):
+def assessment_progress(
+    user_id: str = "default", session_token: str = "", authorization: str = Header("")
+):
     """Get current assessment progress."""
+    user_id = _resolve_request_user(user_id, session_token, authorization)
     from lib.api.assessment import get_progress
     from lib.db import get_db
     conn = get_db()
@@ -452,13 +482,16 @@ def assessment_progress(user_id: str = "default"):
 # assessment_items).
 
 @router.post("/api/v1/quiz/record")
-def record_chat_quiz(body: dict):
+def record_chat_quiz(body: dict, authorization: str = Header("")):
     """Record MC answers the user submitted in chat (from %%%QUIZ cards).
 
     Body: { "user_id": "...", "answers": [{"question": "...", "user_answer": "...",
            "correct": bool, "correct_answer": "..."}], "source": "chat" }
     Returns how many were recorded.
     """
+    user_id = _resolve_request_user(
+        body.get("user_id", "default"), body.get("session_token", ""), authorization
+    )
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -474,7 +507,6 @@ def record_chat_quiz(body: dict):
         )
     """)
     answers = body.get("answers") or []
-    user_id = body.get("user_id") or "default"
     source = body.get("source") or "chat"
     recorded = 0
     for a in answers:

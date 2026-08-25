@@ -114,7 +114,7 @@ def _no_tools_response(content, finish_reason="stop"):
 
 def test_non_stream_retries_once_on_length(client, monkeypatch):
     monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
-    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip: True)
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
     calls = []
 
     async def fake_call(payload):
@@ -138,7 +138,7 @@ def test_non_stream_retries_once_on_length(client, monkeypatch):
 
 def test_non_stream_no_retry_on_stop(client, monkeypatch):
     monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
-    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip: True)
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
     calls = []
 
     async def fake_call(payload):
@@ -203,7 +203,7 @@ def _sse_chunk(payload: dict) -> str:
 
 def test_stream_truncated_regenerates_with_more_budget(client, monkeypatch):
     monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
-    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip: True)
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
 
     async def fake_call(payload):
         return {"choices": [{"message": {"role": "assistant", "content": "ok"}}], "usage": {}}
@@ -243,7 +243,7 @@ def test_stream_truncated_regenerates_with_more_budget(client, monkeypatch):
 
 def test_stream_happy_path_emits_done_with_finish_reason(client, monkeypatch):
     monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
-    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip: True)
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
 
     async def fake_call(payload):
         return {"choices": [{"message": {"role": "assistant", "content": "ok"}}], "usage": {}}

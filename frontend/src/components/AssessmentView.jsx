@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import CardQueue from './CardQueue'
 import { assessmentToCards, interleaveCards } from '../lib/card-factory'
+import { currentSessionToken } from '../api'
 
 /**
  * AssessmentView — flashcard-style scripture knowledge assessment.
@@ -32,10 +33,13 @@ export default function AssessmentView({ user_id = 'default', onBack }) {
     setLoading(true); setError(null)
     try {
       // Fetch from 3 sources in parallel
+      const token = currentSessionToken()
+      const owner = token ? user_id : 'default'
+      const ownerHeaders = token ? { Authorization: `Bearer ${token}` } : {}
       const [quizRes, verseRes, hebRes] = await Promise.all([
-        fetch(`/api/v1/quiz?tier=&count=5&user_id=${user_id}`),
-        fetch(`/api/v1/memorize/review?limit=5&user_id=${user_id}`).catch(() => ({ json: () => Promise.resolve({ ok: false }) })),
-        fetch(`/api/v1/hebrew/review-queue?limit=5&user_id=${user_id}`).catch(() => ({ json: () => Promise.resolve({ ok: false }) })),
+        fetch(`/api/v1/quiz?tier=&count=5&user_id=${encodeURIComponent(owner)}`, { headers: ownerHeaders }),
+        fetch(`/api/v1/memorize/review?limit=5&user_id=${encodeURIComponent(owner)}`, { headers: ownerHeaders }).catch(() => ({ json: () => Promise.resolve({ ok: false }) })),
+        fetch(`/api/v1/hebrew/review-queue?limit=5&user_id=${encodeURIComponent(owner)}`, { headers: ownerHeaders }).catch(() => ({ json: () => Promise.resolve({ ok: false }) })),
       ])
       const quizData = await quizRes.json()
       const verseData = await verseRes.json()
@@ -64,7 +68,11 @@ export default function AssessmentView({ user_id = 'default', onBack }) {
   const startQuiz = useCallback(async (t = '') => {
     setLoading(true); setError(null)
     try {
-      const r = await fetch(`/api/v1/quiz?tier=${t}&count=10&user_id=${user_id}`)
+      const token = currentSessionToken()
+      const owner = token ? user_id : 'default'
+      const r = await fetch(`/api/v1/quiz?tier=${encodeURIComponent(t)}&count=10&user_id=${encodeURIComponent(owner)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       const d = await r.json()
       if (!d.ok) throw new Error(d.detail || d.error || 'Failed to load')
       if (!d.data?.questions?.length) throw new Error('No questions available for this tier')
@@ -79,17 +87,24 @@ export default function AssessmentView({ user_id = 'default', onBack }) {
     try {
       if (card.type === 'assessment_question') {
         const qid = parseInt(card.id?.replace('assessment-', '') || '0')
+        const token = currentSessionToken()
+        const owner = token ? user_id : 'default'
         if (qid) await fetch('/api/v1/quiz/answer', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, question_id: qid, rating }),
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ user_id: owner, session_token: token, question_id: qid, rating }),
         })
       } else if (card.type === 'verse') {
         // POST to memorize review endpoint
+        const token = currentSessionToken()
+        const owner = token ? user_id : 'default'
         await fetch('/api/v1/memorize/review/0', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, verse_id: card.data?.reference, rating }),
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ user_id: owner, verse_id: card.data?.reference, rating, session_token: token }),
         }).catch(() => {})
       }
     } catch {}

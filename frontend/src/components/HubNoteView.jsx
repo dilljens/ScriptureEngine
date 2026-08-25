@@ -6,6 +6,7 @@
  * Tracks progress via API.
  */
 import React, { useState, useEffect } from 'react'
+import { currentSessionToken } from '../api'
 
 function fmtRef(ref) {
   if (!ref) return ''
@@ -55,12 +56,17 @@ export default function HubNoteView({ hubId, onNavigate, onGraph }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeStep, setActiveStep] = useState(null)
+  const sessionToken = () => currentSessionToken()
+  const sessionHeaders = () => {
+    const token = sessionToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
 
   // Load hubs on mount or when hubId changes
   const loadHubs = async () => {
     setLoading(true)
     try {
-      const r = await fetch('/api/v1/hub-notes')
+      const r = await fetch('/api/v1/hub-notes', { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) setNotes(d.data.notes)
       else setError(d.error || 'Failed to load')
@@ -71,7 +77,7 @@ export default function HubNoteView({ hubId, onNavigate, onGraph }) {
   const loadHub = async (id) => {
     setLoading(true)
     try {
-      const r = await fetch(`/api/v1/hub-notes/${id}`)
+      const r = await fetch(`/api/v1/hub-notes/${id}`, { headers: sessionHeaders() })
       const d = await r.json()
       if (d.ok) setCurrentHub(d.data)
       else setError(d.error || 'Failed')
@@ -83,8 +89,8 @@ export default function HubNoteView({ hubId, onNavigate, onGraph }) {
     try {
       await fetch(`/api/v1/hub-notes/${hubId}/step/${stepNumber}/complete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: 'default' }),
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ user_id: 'default', session_token: sessionToken() }),
       })
       // Reload hub to reflect progress
       loadHub(hubId)

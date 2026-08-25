@@ -4,7 +4,7 @@ test.describe('Command palette', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
-    await expect(page.locator('h1')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('body')).toContainText('Isaiah', { timeout: 15000 })
   })
 
   test('pressing / opens the command palette', async ({ page }) => {
@@ -29,7 +29,7 @@ test.describe('Command palette', () => {
     const suggestions = page.locator('div.fixed.inset-0').last().locator('button')
     await expect(suggestions.first()).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Enter')
-    await expect(page.locator('h1')).toContainText('ch. 55', { timeout: 10000 })
+    await expect(page.locator('body')).toContainText('ch. 55', { timeout: 10000 })
   })
 
   test('pressing Escape closes the palette', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('Command palette', () => {
     const suggestions = page.locator('div.fixed.inset-0').last().locator('button')
     await expect(suggestions.first()).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Enter')
-    await expect(page.locator('h1')).toContainText('ch. 34', { timeout: 10000 })
+    await expect(page.locator('body')).toContainText('ch. 34', { timeout: 10000 })
   })
 
   test('/chat command shows chat result', async ({ page }) => {

@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import {
+  ANSWER_MODES,
+  answerModeForQuestion,
+} from '../lib/quiz-grading'
+import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /**
  * HebrewQuiz — cumulative interleaved quiz from recently studied material.
@@ -18,9 +23,6 @@ const TYPE_COLORS = {
   contrast: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20',
 }
 
-// Question types answered via text input (vs. tapping an option)
-const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name'])
-
 const CATEGORY_BADGES = {
   word: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Vocab' },
   grammar: { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', label: 'Grammar' },
@@ -36,6 +38,55 @@ function getTimeLimit(q) {
   return Math.round(base + wordBonus)
 }
 
+/**
+ * Read only a per-answer boolean from the progress response. The progress
+ * endpoint also returns cumulative counters, so numeric `correct` values are
+ * deliberately ignored here.
+ */
+export function getAuthoritativeCorrect(payload) {
+  const envelope = payload && typeof payload === 'object' ? payload : {}
+  const data = envelope.data && typeof envelope.data === 'object' ? envelope.data : envelope
+  const candidates = [
+    data.is_correct,
+    data.isCorrect,
+    data.correct,
+    data.grading,
+    data.grading?.is_correct,
+    data.grading?.isCorrect,
+    data.grading?.correct,
+    data.grading?.result?.is_correct,
+    data.grading?.result?.isCorrect,
+    data.grading?.result?.correct,
+    data.result?.is_correct,
+    data.result?.isCorrect,
+    data.result?.correct,
+    envelope.is_correct,
+    envelope.isCorrect,
+    envelope.grading?.is_correct,
+    envelope.grading?.isCorrect,
+    envelope.grading?.correct,
+  ]
+  return candidates.find(value => typeof value === 'boolean') ?? null
+}
+
+/** Submit an issued answer and return a server result when one is provided. */
+export async function submitHebrewProgress(progress) {
+  try {
+    const response = await fetch('/api/v1/hebrew/progress', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(currentSessionToken() ? { Authorization: `Bearer ${currentSessionToken()}` } : {}),
+      },
+      body: JSON.stringify(progress),
+    })
+    if (response?.ok === false) return null
+    return getAuthoritativeCorrect(await response.json())
+  } catch {
+    return null
+  }
+}
+
 export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId }) {
   const [questions, setQuestions] = useState([])
   const [idx, setIdx] = useState(0)
@@ -48,6 +99,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   const [showKeyboard, setShowKeyboard] = useState(false)
   const [timeLeft, setTimeLeft] = useState(null)
   const [missedItems, setMissedItems] = useState([])
+  const [submissionError, setSubmissionError] = useState('')
   const timerRef = useRef(null)
   const startRef = useRef(null)
   const answersRef = useRef(answers)
@@ -61,49 +113,77 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     : `/api/v1/hebrew/quiz?count=${count}`
 
   useEffect(() => {
-    fetch(quizUrl)
-      .then(r => r.json())
-      .then(d => {
+    let cancelled = false
+    const loadQuiz = async () => {
+      await hebrewSessionUser()
+      if (cancelled) return
+      try {
+        const token = currentSessionToken()
+        const response = await fetch(quizUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const d = await response.json()
+        if (cancelled) return
         if (d.ok && d.data?.questions?.length > 0) {
           setQuestions(d.data.questions)
           startRef.current = Date.now()
         } else {
           setError('No questions available. Study some lessons first!')
         }
-      })
-      .catch(() => setError('Failed to load quiz'))
-      .finally(() => setLoading(false))
+      } catch {
+        if (!cancelled) setError('Failed to load quiz')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    loadQuiz()
+    return () => { cancelled = true }
   }, [quizUrl])
 
   const current = questions[idx]
 
-  // Strip niqqud + case for Hebrew answers so typing אבא vs אָב counts the same
-  const normalizeAnswer = (value) => {
-    const text = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
-    return /[\u0590-\u05ff]/.test(text)
-      ? text.replace(/[\u0591-\u05af]/g, '').replace(/\//g, '')
-      : text
-  }
-
-  const submitAnswer = useCallback((timedOut = false) => {
+  const submitAnswer = useCallback(async (timedOut = false) => {
     if (submittedRef.current[idx] !== undefined) return
-    const ans = answersRef.current[idx]
-    const correct = !timedOut && ans !== undefined && ans !== null && ans !== ''
-      && normalizeAnswer(ans) === normalizeAnswer(current.correct)
-    setSubmitted(prev => ({ ...prev, [idx]: correct }))
-    setResults(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
-    if (!correct) {
-      setMissedItems(prev => [...prev, { ...current, yourAnswer: ans || '(timed out)' }])
-    }
+    const questionIndex = idx
+    const question = current
+    const ans = answersRef.current[questionIndex]
+    const answerMode = answerModeForQuestion(question || {})
+    setSubmissionError('')
+    submittedRef.current = { ...submittedRef.current, [questionIndex]: null }
     // Report progress — /hebrew/progress feeds the FSRS review state, so every
     // quiz answer is retrieval practice that schedules the next review.
-    try {
-      fetch('/api/v1/hebrew/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id: current.node_id, correct, user_id: 'default' }),
+    let authoritativeCorrect = null
+    if (question?.node_id && question.question_id !== undefined && question.question_id !== null) {
+      const token = currentSessionToken()
+      const progress = {
+        node_id: question.node_id,
+        user_id: 'default',
+        session_token: token,
+        question_id: question.question_id,
+        answer: ans ?? '',
+        answer_mode: answerMode,
+      }
+      authoritativeCorrect = await submitHebrewProgress(progress)
+    }
+    if (authoritativeCorrect === null) {
+      const pending = { ...submittedRef.current }
+      delete pending[questionIndex]
+      submittedRef.current = pending
+      setSubmitted(previous => {
+        const next = { ...previous }
+        delete next[questionIndex]
+        return next
       })
-    } catch {}
+      setSubmissionError('Could not verify this answer. Please try again.')
+      return
+    }
+    const correct = typeof authoritativeCorrect === 'boolean' ? authoritativeCorrect : null
+    submittedRef.current = { ...submittedRef.current, [questionIndex]: correct }
+    setSubmitted(prev => ({ ...prev, [questionIndex]: correct }))
+    setResults(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
+    if (correct !== true) {
+      setMissedItems(prev => [...prev, { ...question, quizIndex: questionIndex, yourAnswer: ans || '(timed out)' }])
+    }
   }, [idx, current])
 
   // Per-question timer. A timeout is an assessed retrieval attempt, not just a UI state.
@@ -126,6 +206,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   }, [idx, done, current, submitted, submitAnswer])
 
   const nextQuestion = () => {
+    if (submitted[idx] === null) return
     if (idx < questions.length - 1) {
       setIdx(prev => prev + 1)
       setTimeLeft(null)
@@ -193,7 +274,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
                       </div>
                     </div>
                     <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
-                      Correct answer: <span className="text-green-600 dark:text-green-400 font-medium">{m.correct}</span>
+                       Server grading marked this answer incorrect.
                       {m.yourAnswer && <span> · Your answer: <span className="text-red-500">{m.yourAnswer}</span></span>}
                     </div>
                   </div>
@@ -207,7 +288,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
               className="px-6 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-sm font-medium cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors">
               {nodeId ? '← Back to Lesson' : '← Back to Lessons'}
             </button>
-            <button onClick={() => { setDone(false); setIdx(0); setAnswers({}); setSubmitted({}); setResults({ correct: 0, total: 0 }); setMissedItems([]); setLoading(true); setError(null); fetch(quizUrl).then(r => r.json()).then(d => { if (d.ok) setQuestions(d.data.questions); setLoading(false) }).catch(() => setError('Failed')) }}
+             <button onClick={() => { setDone(false); setIdx(0); setAnswers({}); answersRef.current = {}; setSubmitted({}); submittedRef.current = {}; setResults({ correct: 0, total: 0 }); setMissedItems([]); setSubmissionError(''); setLoading(true); setError(null); fetch(quizUrl, { headers: currentSessionToken() ? { Authorization: `Bearer ${currentSessionToken()}` } : {} }).then(r => r.json()).then(d => { if (d.ok) setQuestions(d.data.questions); setLoading(false) }).catch(() => setError('Failed')) }}
               className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
               🔄 New Quiz
             </button>
@@ -219,8 +300,15 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
 
   if (!current) return null
 
-  const answered = answers[idx] !== undefined && answers[idx] !== null && answers[idx] !== ''
+  const currentAnswerMode = answerModeForQuestion(current)
+  const currentIsTextInput = currentAnswerMode === ANSWER_MODES.FREE_TEXT
+  const answered = typeof answers[idx] === 'string'
+    ? answers[idx].trim().length > 0
+    : answers[idx] !== undefined && answers[idx] !== null
   const showResult = submitted[idx] !== undefined
+  const displayedAnswer = currentAnswerMode === ANSWER_MODES.CHOICE_INDEX
+    ? current.options?.[answers[idx]]
+    : answers[idx]
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
@@ -259,12 +347,12 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         {/* Answer area */}
         {!showResult ? (
           <>
-            {current.type !== 'true_false' && current.options?.length > 0 && (
-              <div className="space-y-2">
+            {currentAnswerMode === ANSWER_MODES.CHOICE_INDEX && current.options?.length > 0 && (
+              <div className={current.type === 'true_false' ? 'flex gap-3' : 'space-y-2'}>
                 {current.options.map((opt, i) => (
-                  <button key={i} onClick={() => setAnswer(opt)}
-                    className={`w-full text-left px-4 py-3 rounded-lg text-sm border transition-all cursor-pointer ${
-                      answers[idx] === opt
+                  <button key={i} onClick={() => setAnswer(i)}
+                    className={`${current.type === 'true_false' ? 'flex-1' : 'w-full text-left'} px-4 py-3 rounded-lg text-sm border transition-all cursor-pointer ${
+                      answers[idx] === i
                         ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
                         : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
                     }`}>
@@ -273,21 +361,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
                 ))}
               </div>
             )}
-            {current.type === 'true_false' && current.options?.length > 0 && (
-              <div className="flex gap-3">
-                {current.options.map((opt, i) => (
-                  <button key={i} onClick={() => setAnswer(opt)}
-                    className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium border transition-all cursor-pointer ${
-                      answers[idx] === opt
-                        ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700'
-                        : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
-                    }`}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-            {TEXT_INPUT_TYPES.has(current.type) && (
+            {currentIsTextInput && (
               <div>
                 <input type="text" value={answers[idx] || ''}
                   onChange={e => setAnswer(e.target.value)}
@@ -304,16 +378,17 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
           </>
         ) : (
           /* Result display */
-          <div className={`p-4 rounded-lg ${showResult ? (submitted[idx] ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800') : ''}`}>
-            <p className="text-sm font-medium mb-1">
-              {submitted[idx] ? '✓ Correct!' : '✗ Incorrect'}
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Correct answer: <span className="text-green-600 dark:text-green-400 font-medium">{current.correct}</span>
-            </p>
-            {!submitted[idx] && answers[idx] && (
+           <div className={`p-4 rounded-lg ${submitted[idx] === true
+             ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+             : submitted[idx] === false
+               ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+               : 'bg-neutral-50 dark:bg-neutral-900/20 border border-neutral-200 dark:border-neutral-800'}`}>
+             <p className="text-sm font-medium mb-1">
+               {submitted[idx] === true ? '✓ Correct!' : submitted[idx] === false ? '✗ Incorrect' : 'Unable to verify'}
+             </p>
+             {submitted[idx] === false && displayedAnswer && (
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Your answer: <span className="text-red-500">{answers[idx]}</span>
+                Your answer: <span className="text-red-500">{displayedAnswer}</span>
               </p>
             )}
           </div>
@@ -321,6 +396,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       </div>
 
       {/* Action buttons */}
+      {submissionError && <p className="text-center text-sm text-red-600 dark:text-red-400 mt-4">{submissionError}</p>}
       <div className="flex gap-3 mt-4">
         {!showResult ? (
           <button onClick={submitAnswer} disabled={!answered}
@@ -332,15 +408,15 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
             Submit Answer
           </button>
         ) : (
-          <button onClick={nextQuestion}
-            className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">
-            {idx < questions.length - 1 ? 'Next Question →' : 'See Results'}
+          <button onClick={nextQuestion} disabled={submitted[idx] === null}
+            className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
+            {submitted[idx] === null ? 'Checking…' : idx < questions.length - 1 ? 'Next Question →' : 'See Results'}
           </button>
         )}
       </div>
 
       {/* Hebrew keyboard */}
-      {showKeyboard && TEXT_INPUT_TYPES.has(current.type) && (
+      {showKeyboard && currentIsTextInput && (
         <div className="mt-4">
           <HebrewKeyboard onCharClick={(c) => setAnswer((answers[idx] || '') + c)} />
           <button onClick={() => setShowKeyboard(false)}
