@@ -42,6 +42,14 @@ echo "[1/5] Python test suite..."
 #   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
 #   - test_graph_tg_topic, test_graph_explore: 60-80s graph traversals (redundant with step 2/5 regression check)
 PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
+
+echo "[0/5] Frontend build (first — a failed build must not leave the pytest"
+#      gate without a dist/, and an OOM here must not cost a full test run)
+# Vite builds have died with "Ineffective mark-compacts near heap limit"
+# under the default V8 old-space cap while the same build passed standalone.
+NODE_OPTIONS="--max-old-space-size=8192${NODE_OPTIONS:+ $NODE_OPTIONS}" \
+    npm run build
+
 # Database-backed tests share SQLite files; run serially to avoid xdist workers
 # racing PRAGMA journal_mode/WAL initialization during the deploy gate.
 $PYTHON -m pytest tests/ -q --tb=short \
@@ -84,11 +92,13 @@ echo "[5/5] Frontend E2E tests..."
 cd frontend
 # Playwright's webServer handles both API and Vite startup
 # Run the core desktop suite, including the deterministic SSE regression.
-./node_modules/.bin/playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts chat-streaming.spec.ts wiki.spec.ts --workers=2 --timeout=60000 || {
+# Serial workers + explicit retries: the API is cold-loading its RAM cache
+# while early specs run; parallel workers turned first-paint timing into a
+# coin-flip gate (three aborted deploys). Real breakage still fails 3x.
+./node_modules/.bin/playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts chat-streaming.spec.ts wiki.spec.ts --workers=1 --retries=2 --timeout=60000 || {
     echo "✗ Frontend E2E tests failed — aborting deploy"
     exit 1
 }
-npm run build
 cd ..
 
 # 2. Rsync frontend dist + API code
