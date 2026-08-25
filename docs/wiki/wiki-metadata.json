@@ -1,138 +1,138 @@
 {
   "wiki": {
     "lastUpdated": "2026-08-09",
-    "lastCheck": "2026-08-19",
+    "lastCheck": "2026-08-25",
     "version": "3",
     "domains": [
       {
         "name": "Index",
         "path": "_index.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Standards",
         "path": "_standards.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Glossary",
         "path": "_glossary.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Web API",
         "path": "features/web-api.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Core Library",
         "path": "features/lib-core.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Connection Generators",
         "path": "features/generators.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "MCP Server",
         "path": "features/mcp-server.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Sources & Attribution",
         "path": "features/sources.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Hebrew Audio",
         "path": "features/hebrew-audio.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Literary Patterns",
         "path": "features/literary-patterns.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "JS Discourses + JST",
         "path": "features/js-discourses-jst.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Truth-Seeking Framework",
         "path": "features/truth-seeking.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "MEMORY.md",
         "path": "MEMORY.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Memorization System",
         "path": "features/memorization.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Assessment Engine",
         "path": "features/assessment.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Learn System",
         "path": "features/learn.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Truth Alignment v2",
         "path": "plans/truth-alignment-plan.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       },
       {
         "name": "Generators",
         "path": "features/generators.md",
         "lastUpdated": "2026-08-09",
-        "staleness": 10,
+        "staleness": 16,
         "status": "AGING"
       }
     ],
     "health": {
-      "avgStaleness": 10,
+      "avgStaleness": 16,
       "freshest": "FRESH (all 17 pages updated today)",
       "freshCount": 17,
       "agingCount": 0,

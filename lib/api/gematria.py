@@ -38,7 +38,7 @@ def gematria_lookup(conn, word=None, value=None, system="standard"):
             "word": word,
             "hebrew_display": {
                 "text": rtl_mark(word),
-                "transliteration": transliterate(word, strip_accents=False),
+                "transliteration": transliterate(word),
             },
             "gematria": vals,
             "divine_name_matches": matches,

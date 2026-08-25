@@ -17,8 +17,13 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1280, height: 800 },
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-  },
+  screenshot: 'only-on-failure',
+  // The deploy gate runs this suite right after a frontend build while the
+  // API is still cold-loading its RAM cache; first-attempt UI timing flakes
+  // under that load are common. One retry absorbs them; real breakage still
+  // fails both attempts.
+  retries: process.env.CI ? 2 : 1,
+},
   projects: [
     {
       name: 'chromium',

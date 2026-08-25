@@ -85,7 +85,14 @@ async def lifespan(app):
 
 app = FastAPI(
     title="Scripture Knowledge Engine",
-    description="API for the scripture connection graph — 1,356,667 connections across 124 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
+    description=(
+        "API for the scripture connection graph — 1,356,667 connections across "
+        "124 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden "
+        "patterns, lexicon. "
+        "NEW CLIENTS: call GET /api/v1/orient first — it is a short briefing "
+        "(conventions, capability map, topic index) that prevents the common "
+        "first-hour errors; depth topics live at /api/v1/orient/{topic}."
+    ),
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -315,6 +322,7 @@ from web.routes.conversations import router as conversations_router
 from web.routes.forum import router as forum_router
 from web.routes.graph import router as graph_router
 from web.routes.hebrew import router as hebrew_router
+from web.routes.orient import router as orient_router
 from web.routes.js import router as js_router
 from web.routes.lexicon import router as lexicon_router
 from web.routes.learn import router as learn_router
@@ -326,6 +334,7 @@ from web.routes.tabs import router as tabs_router
 from web.routes.wiki import router as wiki_router
 
 app.include_router(hebrew_router)
+app.include_router(orient_router)
 app.include_router(sefirot_router)
 app.include_router(forum_router)
 app.include_router(passage_router)
@@ -513,9 +522,46 @@ CONNECTION_TYPE_MAP = {
 
 # ─── Verse & Passage Guide ───
 
+def _teaching_404(message: str, hint: str | None = None,
+                  see: str | None = "/api/v1/orient") -> JSONResponse:
+    """A 404 that teaches (inbox proposal, item 3).
+
+    A caller who mis-forms a reference is by definition a caller who has not
+    read the docs — so the error is the only place the instruction is
+    guaranteed to be seen. Shape is additive over FastAPI's {detail}: adds
+    ok/error/hint/see, keeps detail for existing clients.
+    """
+    body: dict = {"ok": False, "error": message, "detail": message}
+    if hint:
+        body["hint"] = hint
+    if see:
+        body["see"] = see
+    return JSONResponse(status_code=404, content=body)
+
+
+_REF_SHAPE_RE = re.compile(r"^[a-z0-9_]+\.\d+(\.\d+)?$", re.IGNORECASE)
+
+
+def _ref_hint(ref: str) -> str:
+    """The one sentence that unblocks the most common first-call failure."""
+    if ":" in ref or " " in ref:
+        fixed = ref.replace(":", ".").replace(" ", ".")
+        return (f"Use dots between parts — try '{fixed}'. Book IDs are short "
+                f"(gen, matt, psa), not full names — list: /api/v1/books")
+    if "." not in ref:
+        return ("Verse refs are dotted book IDs — try 'gen.1.1'. "
+                "Book ids: /api/v1/books")
+    if not _REF_SHAPE_RE.match(ref.strip()):
+        return ("Expected book.chapter[.verse] — e.g. 'gen.1.1', 'psa.69.14'. "
+                "Book ids: /api/v1/books")
+    return ("No such book/chapter/verse in this corpus. "
+            "Book ids: /api/v1/books")
+
+
 @app.get("/api/v1/verses/{ref}")
 def get_verse(ref: str, show_signals: bool | None = Query(False, description="Enrich connections with quality signal breakdown"), context: int | None = Query(0, description="Number of surrounding verses to include for context window (e.g. context=3 gives ±3 verses)")):
     """Get verse text with connections — served from RAM cache or SQLite."""
+    original_ref = ref  # keep the caller's form — the hint should echo it
     ref = ref.replace(":", ".").replace(" ", ".")
     import re
 
@@ -550,7 +596,7 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
         if row:
             r = dict(row)  # Convert Row to dict for consistent access
     if not r:
-        raise HTTPException(status_code=404, detail=f"Verse not found: {ref}")
+        return _teaching_404(f"Verse not found: {original_ref}", hint=_ref_hint(original_ref))
 
     vid = r["id"]
 
@@ -690,6 +736,19 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
             _conn_dis.close()
         except Exception:
             resp["disagreements"] = {"verse": vid, "count": 0, "disagreements": []}
+
+    # Psalms versification note (field note #4): English payloads are
+    # KJV-numbered; the interlinear indexes MT text where a superscription
+    # counts as verse 1. The corpus has no per-verse MT mapping table, so we
+    # disclose the convention instead of fabricating one.
+    if vid.startswith("psa."):
+        resp["versification"] = {
+            "english_scheme": "kjv",
+            "interlinear_scheme": "mt",
+            "note": ("For superscripted psalms the interlinear index is "
+                     "KJV + 1 (e.g. KJV psa.69.14 = interlinear 69:15)."),
+            "see": "/api/v1/orient/refs",
+        }
 
     # Context window — surrounding verses for inline preview
     if context > 0:
@@ -1027,7 +1086,7 @@ def get_passage_guide(ref: str):
             vid = f"{m.group(1)}.{int(m.group(2))}.{int(m.group(3))}"
             r = VERSE_CACHE.get(vid)
     if not r:
-        raise HTTPException(status_code=404, detail=f"Verse not found: {ref}")
+        return _teaching_404(f"Verse not found: {ref}", hint=_ref_hint(ref))
     guide = GUIDE_CACHE.get(r["id"])
     if not guide:
         return {"ok": True, "data": {"verse": r["id"], "note": "No connections"}}
@@ -2168,7 +2227,11 @@ def call_tool_get(tool_name: str, request: Request):
     # Strip leading/trailing slashes
     tool_name = tool_name.strip("/")
     if tool_name not in TOOL_REGISTRY:
-        raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
+        return _teaching_404(
+            f"Unknown tool: {tool_name}",
+            hint="List every callable tool and its schema at GET /api/v1/tools",
+            see="/api/v1/tools",
+        )
 
     fn, schema, desc = TOOL_REGISTRY[tool_name]
     args = dict(request.query_params)
@@ -2217,7 +2280,11 @@ def call_tool_post(tool_name: str, body: dict, request: Request):
     """Call any registered tool by name with JSON body arguments."""
     tool_name = tool_name.strip("/")
     if tool_name not in TOOL_REGISTRY:
-        raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name}")
+        return _teaching_404(
+            f"Unknown tool: {tool_name}",
+            hint="List every callable tool and its schema at GET /api/v1/tools",
+            see="/api/v1/tools",
+        )
 
     args = dict(body or {})
     session_token = args.pop("session_token", "")
@@ -3201,6 +3268,27 @@ def health_check():
     all_ok = quick_ok and fts_ok
     status = "ok" if all_ok else "degraded"
 
+    # Degraded capabilities with consequences (field note #6): a flag being
+    # false is meaningless to a client; what it breaks is not.
+    _CONSEQUENCES = {
+        "database": "all verse/connection lookups unavailable",
+        "fts_index": "text search returns nothing",
+        "vector_search": "semantic search falls back to keyword-only",
+        "go_srs": "/memorize/* scheduling may fail; Python review paths unaffected",
+        "generator_meta": "generator provenance metadata missing",
+    }
+    degraded = [
+        {"subsystem": name, "consequence": _CONSEQUENCES[name]}
+        for name, ok in (
+            ("database", quick_ok),
+            ("fts_index", fts_ok),
+            ("vector_search", vec_ok),
+            ("go_srs", go_srs_ok),
+            ("generator_meta", gen_meta_ok),
+        )
+        if not ok
+    ]
+
     # Fire ntfy alert on degradation
     if not all_ok:
         _send_ntfy_alert(
@@ -3221,6 +3309,7 @@ def health_check():
             "go_srs": go_srs_ok,
             "generator_meta": gen_meta_ok,
         },
+        "degraded": degraded,
         "verses": verse_count,
         "connections": conn_count,
         "audio_alignments": audio_count,
@@ -3309,7 +3398,14 @@ if FRONTEND_DIR.is_dir():
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
-        """Serve frontend SPA — try exact file, then index.html fallback."""
+        """Serve frontend SPA — try exact file, then index.html fallback.
+
+        API paths are excluded (field note #2): an unknown /api/* route must
+        return a real JSON 404, not the SPA shell — status-based probing used
+        to silently lie, and JSON clients got parse errors instead of 404s.
+        """
+        if full_path.startswith("api/") or full_path == "api":
+            return _teaching_404(f"Unknown API endpoint: /{full_path}")
         target = FRONTEND_DIR / full_path
         if target.is_file():
             return FileResponse(str(target))

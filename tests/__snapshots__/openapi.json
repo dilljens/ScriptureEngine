@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Scripture Knowledge Engine",
-    "description": "API for the scripture connection graph \u2014 1,356,667 connections across 124 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon",
+    "description": "API for the scripture connection graph \u2014 1,356,667 connections across 124 types in 11 layers, Hebrew + Greek + Vulgate, PaRDeS levels, hidden patterns, lexicon. NEW CLIENTS: call GET /api/v1/orient first \u2014 it is a short briefing (conventions, capability map, topic index) that prevents the common first-hour errors; depth topics live at /api/v1/orient/{topic}.",
     "version": "1.0.0"
   },
   "paths": {
@@ -1423,6 +1423,60 @@
               "type": "integer",
               "default": 10,
               "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orient": {
+      "get": {
+        "summary": "Orient",
+        "description": "First-call briefing for machine clients. Read topics before acting.",
+        "operationId": "orient_api_v1_orient_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orient/{topic}": {
+      "get": {
+        "summary": "Orient Topic",
+        "operationId": "orient_topic_api_v1_orient__topic__get",
+        "parameters": [
+          {
+            "name": "topic",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic"
             }
           }
         ],

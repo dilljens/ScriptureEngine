@@ -97,6 +97,25 @@ plus queue totals. The dashboard should read this rather than hardcoding.
 Hebrew attempt evidence: `GET /api/v1/hebrew/attempts` exposes the append-only
 `hebrew_attempt_events` log behind learner level (Track C2).
 
+## Orient + honest errors (Aug 2026)
+
+From the external field report (`docs/inbox/proposal-api-orient.md`):
+
+- `GET /api/v1/orient` — machine first-call briefing: what_this_is, live
+  health incl. `degraded[]` with consequences, conventions, capability map,
+  when-to-use topic index. Depth topics at `/api/v1/orient/{topic}`
+  (refs / quality / layers / limits / research).
+- **Errors that teach**: API 404s carry additive `hint`/`see` fields
+  (`web/server.py::_teaching_404`); verse-ref misses get a dotted-ID hint via
+  `_ref_hint`. Unknown `/api/*` paths return JSON 404 — the SPA catch-all
+  explicitly excludes them.
+- Psalms payloads carry a `versification` note (KJV vs MT interlinear offset).
+- The `scripture_gematria` tool wrapper's transliterate kwarg drift is fixed;
+  regression coverage in `tests/test_api_orient.py`, orient behavior in
+  `tests/test_orient.py`.
+- `/metrics` was already implemented in code; the SPA-HTML response seen in
+  the field report was stale deployment, not a missing route.
+
 ## RAM Cache
 On startup, everything loads into memory:
 - 42K verses → `VERSE_CACHE` dict

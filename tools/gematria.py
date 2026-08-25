@@ -34,7 +34,7 @@ def word_lookup(word):
         "word": word,
         "hebrew_display": {
             "text": rtl_mark(word),
-            "transliteration": transliterate(word, strip_accents=False),
+            "transliteration": transliterate(word),
         },
         "gematria": values,
         "divine_name_matches": divine_matches,
