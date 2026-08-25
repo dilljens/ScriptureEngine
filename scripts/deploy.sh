@@ -48,7 +48,7 @@ echo "[0/5] Frontend build (first — a failed build must not leave the pytest"
 # Vite builds have died with "Ineffective mark-compacts near heap limit"
 # under the default V8 old-space cap while the same build passed standalone.
 NODE_OPTIONS="--max-old-space-size=8192${NODE_OPTIONS:+ $NODE_OPTIONS}" \
-    npm run build
+    npm run build --prefix frontend
 
 # Database-backed tests share SQLite files; run serially to avoid xdist workers
 # racing PRAGMA journal_mode/WAL initialization during the deploy gate.
