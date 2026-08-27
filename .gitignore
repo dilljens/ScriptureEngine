@@ -80,3 +80,15 @@ node_modules/.vite/
 
 # Codebase-memory tool cache
 .codegraph/
+
+# Local-only indexes, secrets, and caches
+.codebase-memory/
+.env.*
+!.env.example
+*.py[cod]
+venv/
+/bin/
+/dist/
+.venv*/
+.coverage
+.coverage.*
