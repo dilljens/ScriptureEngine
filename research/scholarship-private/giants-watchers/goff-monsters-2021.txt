@@ -1,0 +1,1025 @@
+                                                                                                                    39
+
+  When Monsters Walked the Earth: Giants, Monster Theory,
+  and the Reformulation of Textual Traditions in the Enochic
+                   Book of the Watchers
+
+                                             Matthew Goff
+                                        Florida State University
+
+Abstract: This article examines an Early Jewish text entitled the Book of the Watchers that is part of
+a larger work known as 1 Enoch. The Book of the Watchers offers a vivid and disturbing portrait of
+the excessive violence on earth that led to the flood, attributing the situation to destructive giants.
+Watchers expands and interprets the account of the crisis that precipitated the flood in Gen 6:1-4.
+Comparison of the two texts demonstrates that Watchers in particular expands the description in
+Genesis 6 of the giants (sons of the angels) and the violence they perpetrate. Exegesis, however,
+alone cannot explain this phenomenon. Appeal to monster studies can help us better understand the
+issue. This article argues that the retelling of the flood story in the Book of the Watchers was popular
+in ancient Judaism because it offers a compelling construction of the known world, and social customs
+that are normative within it—including a prohibition against murder and the delineation of norms
+regarding of food—by offering a shocking description of the antediluvian world, before divine
+regulations regarding such behavior were promulgated. The heinous and cannibalistic violence of
+the antediluvian era as presented in the Book of the Watchers helps justify the current (post-diluvian)
+order by presenting a coherent account of how it came into being in a way that legitimates God’s
+dominion over it. The essay also explores how attending to the theme of the monstrous can provide
+insight into the Book of the Watchers in relation to older mythic traditions embedded in Genesis 1 and
+the Babylonian creation poem, the Enuma Elish. The article also contends that Watchers’
+reformulation of the flood story with its heightened monstrosity can be profitably explained against
+the backdrop of cultural anxieties that were pervasive during the Hellenistic era during which it was
+written.
+
+Keywords: Exegesis, Cannibalism, monster theory, Giants, 1 Enoch, Book of the Watchers
+
+
+        The Book of the Watchers offers a disturbing account of life on earth before the flood:
+
+                 They devoured the labors of men. And when they were unable to supply
+                 them, the giants grew bold against them and devoured the men. They began
+                 to sin against birds, animals, reptiles and fish, and to eat the flesh of each
+                 other. And they drank the blood. (1 En. 7:3-5)117
+
+       While 1 Enoch is relatively unknown today, it was an important work in ancient Judaism and
+early Christianity. One legacy that testifies to the importance of the book in antiquity is that it remains
+
+117
+   This essay is an extensively revised and expanded version of a paper I delivered at a conference in 2014 on Animals
+and Monsters at St. Andrews, Scotland. An earlier form of this research can also be found on the “Flood of Noah”
+website. This essay uses for the text and translation of 1 Enoch, with modification, in George Nickelsburg and James C.
+VanderKam, 1 Enoch (Hermeneia; 2 vols.; Minneapolis: Fortress, 2001-12). For a basic overview of this composition,
+see Matthew Goff, “1 Enoch,” in The Oxford Encyclopedia of the Books of the Bible (ed. M.D. Coogan; 2 vols.; New
+York: Oxford University Press, 2011), 1.224-37. Feedback from the anonymous reviews of this article have enriched its
+content. I also thank Alana Zimath for her assistance with this essay.
+                                                                                                       40
+
+to this day in the canonical Old Testament of the Ethiopian Orthodox Church, one of the oldest forms
+of Christianity. For this reason the work in its entirety is preserved only in Classical Ethiopic (GeꜤez).
+The Book of the Watchers, the first section in the text of 1 Enoch (chs. 1-36), is a Jewish work written
+in the third century BCE. We know that it was composed originally in Aramaic, since fragments of
+the composition, along with Aramaic fragments of other works now in 1 Enoch, were discovered
+among the Dead Sea Scrolls. The Book of the Watchers puts forward a shocking description of the
+days before the flood. The cannibalistic crimes recounted in 1 Enoch 7 are committed by giants who
+rampaged across the world. According to most Ethiopic manuscripts of Watchers, they are of
+incredible stature: 3,000 cubits tall, or well over a mile. Both their bodies and their crimes transgress
+norms. The Book of the Watchers teaches that the giants are an important catalyst in the crisis that
+led to Noah’s flood.
+         The portrayal in the Enochic Book of the Watchers of the antediluvian crisis that triggered the
+flood leaves readers with a clear question. The account of the flood in Genesis 6 never describes
+cannibalistic giants causing havoc on the earth. So why would an ancient Jewish text offer such a
+monstrous depiction of the flood? In this essay I would like to explore this issue. There is clearly an
+exegetical aspect to Watchers’ presentation of the flood. While this conclusion is common in biblical
+studies, I would like to highlight a key issue that is often not stressed—that Watchers reconfigured
+the flood story in a way that transforms it into a much more monstrous tale than anything in the book
+of Genesis.
+         This leads to the other key point of this article: that reflection on the cannibalistic giants of
+Enochic literature can be informed by the burgeoning field of monster studies. This is an
+interdisciplinary field of scholarship that develops theoretical frameworks which help us comprehend
+how and why humanity has been and remains interested in tales about horrifying and disturbing
+creatures. Scholars of this field of knowledge often engage the issue of cannibalism—monsters who
+devour human beings. As we shall see below, they often understand this issue by means of
+psychoanalytic theory. They also emphasize that societies circulate stories about monsters as a way
+to articulate norms of conduct since such tales recount the disturbing creatures who lurk beyond the
+boundaries of what is known and accepted. In this way monster studies, as I would like to show, can
+help us understand how Watchers recounts the flood, and in particular how it thematizes eating. The
+essay will then suggest that examining the theme of the monstrous can illuminate how Watchers can
+be interpreted in relation to mythic traditions in Genesis 1. This chapter is profitably compared to the
+Babylonian creation account, the Enuma Elish, in which the chief god Marduk kills a sea monster
+named Tiamat and fashions the known world out of her body. Genesis 1, formulated in the context
+of the Babylonian exile, appropriates older mythic traditions in a way that does not highlight any
+monstrous creature along the lines of Tiamat. The reformulation of Genesis traditions in Watchers,
+by contrast, accentuates and heightens the monstrous. This return of the monstrous, I suggest, can be
+helpfully situated against the backdrop of the Hellenistic age during which it was written. As experts
+in monster theory discuss, the creation and dissemination of stories about monsters should be
+expected from cultures dealing with moments of intense anxiety or crisis. While it is common to
+understand the formation of the Book of the Watchers in terms of political violence perpetrated by
+Hellenistic empires, the cultural climate of the early Hellenistic age, as I discuss below, is a conducive
+context for the increase in monstrosity evident in Watchers.
+
+         TEXTUAL REFORMATIONS OF AN ANTEDILUVIAN CRISIS
+      The monstrosity of the account of the antediluvian period in the Book of the Watchers can be
+demonstrated by comparing it with Genesis 6, in particular its first four verses:
+              When people began to multiply on the surface of the earth, and daughters
+              were born to them, the sons of God saw that they were fair; and they took
+              wives for themselves of all that they chose. Then the Lord said, “My spirit
+              shall not abide in mortals forever, for they are flesh; their days shall be one
+              hundred twenty years.” The Nephilim were on the earth in those days—and
+                                                                                                                      41
+
+                also afterward—when the sons of God went in to the daughters of humans,
+                who bore children to them. They are the mighty men who are of old, the
+                men of renown (‫)הגבורים אשר מעולם אנשי השם‬.118
+         This passage has long struck commentators as perplexing. These verses contain the first story
+in the Hebrew Bible about angels. It is also arguably the oddest story in the Bible about angels. They
+are referred to as “sons of God,” a common ancient Hebrew idiom for divine beings (e.g., Ps 29:1;
+82:6).119 It construes them as coming down to earth to have sex. The offspring of the “sons of God”
+and the women are called ‫הגבורים‬, literally “the mighty ones.” The ambiguous Hebrew term nǝphîlîm
+can be understood as also signifying these children, but this is not clear on the basis of Genesis 6
+itself. The word derives from the root ‫“( נפל‬to fall”) and has in the history of interpretation been
+variously understood. Targum Pseudo-Jonathan, for example, interprets the term as signifying the
+angelic fathers; they “fell” (‫ )נפלן‬from heaven.120 Compilers of the Torah presumably took the term
+nǝphîlîm of Genesis 6 as signifying instead the children of the angels, as did its ancient Greek
+translators since they employ the same word to translate both gibbōrîm and nǝphîlîm—gigantes
+(“giants”; more on this below). The word nǝphîlîm occurs only one other time in the Hebrew Bible
+(Num 13:33), to signify one of the original and gargantuan peoples of Canaan, the Anakim. The odd
+locution in Gen 6:4 that the Nephilim were on the earth then “and also afterwards” (‫)וגם אחרי־כן‬
+seems to reflect awareness that they appear later in the Bible, implying, on the basis of Num 13:33,
+that the antediluvian gibbōrîm are the distant ancestors of the Canaanite giants. The root ‫ נפל‬on
+several occasions in the Hebrew Bible denotes soldiers who have fallen in battle (as in, for example,
+Judg 8:10 and 1 Sam 17:49). The term ‫ גבור‬likewise often describes elite and accomplished soldiers
+(e.g., 2 Sam 23:16). In that sense nǝphîlîm would be a fitting term for soldiers who ‘fell’ long ago
+(“the fallen ones” or “the ones who are fallen”). This is a reason why it is often suggested that the
+gibbōrîm of Genesis 6 allude to an otherwise lost Israelite epic tradition of legendary warriors.121 The
+relationship between the gibbōrîm and the nǝphîlîm, however, remains an ambiguous point.122
+         Genesis 6:4 does, however, make two things clear about the gibbōrîm: that they are “of old”
+
+118
+   Ronald S. Hendel, The Text of Genesis 1-11: Textual Studies and Critical Edition (New York: Oxford University
+Press, 1998), 132-33.
+119
+   For the present discussion it suffices to note that these creatures are from the heavenly world. While how exactly they
+were understood when Genesis 6 was initially produced cannot be recovered, the text presumes that they are transmundane
+and that their sexual interaction with women constitutes a violation of a designated boundary between the realms of
+heaven and earth. This is suggested by the unusual offspring that are produced and the subsequent flood. Such sexual
+activity is not presented as a sanctioned or regular occurrence. For the broader issue of the development and variety of
+conceptions of angels in ancient Israel and the Second Temple period, see Annette Reed, Demons, Angels and Writing in
+Ancient Judaism (Cambridge: Cambridge University Press, 2020), 65-81; Simon B. Parker, “Sons of (the) God(s),” in
+Dictionary of Deities and Demons in the Bible (ed. K. van der Toorn, Bob Becking, and Pieter W. van der Horst;
+Leiden/Grand Rapids: Brill/Eerdmans, 1999), 794-800; R.M.M. Tuschling, Angels and Orthodoxy: A Study in Their
+Development in Syria and Palestine from the Qumran Texts to Ephrem the Syrian (Tübingen: Mohr Siebeck, 2007);
+Michael Mach, Entwicklungsstadien des jüdischen Engelglaubens in vorrabbinischer Zeit (TSAJ 34; Tübingen: Mohr
+Siebeck, 1992).
+
+120
+    This late antique text uses Enochic traditions as an interpretative lens with which to understand Genesis 6, also
+specifying that the “fallen ones” in question are Shemḥazai and Azael, the two key angels who descend to earth in
+Watchers. See Annette Yoshiko Reed, Fallen Angels and the History of Judaism and Christianity: The Reception of
+Enochic Literature (New York: Cambridge University Press, 2005), 213; P.S. Alexander, “Targumim and Early Exegesis
+of ‘Sons of God,’” JJS 23 (1972): 60-71.
+121
+  For an overview of this issue, see Brian R. Doak, The Last of the Rephaim: Conquest and Cataclysm in the Heroic
+Ages of Ancient Israel (Boston/Washington, D.C.: Ilex Foundation/Center for Hellenic Studies, Trustees for Harvard
+University, 2012), 54-66.
+122
+   For discussion of this issue, see Matthew Goff, “Warriors, Cannibals and Teachers of Evil: The Sons of the Angels in
+Genesis 6, the Book of the Watchers and the Book of Jubilees,” SEÅ 80 (2015): 79-97 (82); Doak, The Last of the Rephaim,
+54-66.
+                                                                                                                     42
+
+(‫ )מעולם‬and are “men of renown” (literally “men of the name”; ‫)אנשי השם‬. Interestingly, both
+expressions are reasonably understood as positive, denoting that “the mighty ones” were on the earth
+long ago and had a great reputation. What they did to achieve this fame is, however, not specified.
+The emphasis on their fame is a core reason they are understood as warriors, as is their lineage. This
+can be likened to Greek epic. The military prowess of the legendary Achilles is attributed to the fact
+that he was not an ordinary human but rather a semi-divine being, with one human and one divine
+parent (his mother was Thetis, a Nereid, and his father King Peleus). The famous warrior-king of
+Mesopotamian tradition Gilgamesh likewise has a mixed human-divine parentage. So too the
+gibbōrîm of Genesis 6.123 Understanding “the mighty men” of Genesis 6:1-4 in relation to such
+comparisons can elucidate the odd fact that the passage describes them in positive, if brief, terms.
+        But when one turns to the very next verse, the reader is confronted with a problem—
+wickedness, Gen 6:5 states, spread throughout the earth. This raises an exegetical issue—how should
+the legendary warriors of verse 4 be related to the increase of evil of verse 5?
+        It is possible that the location of Gen 6:1-4 as prefacing the rest of the flood account may
+indicate that some ancient scribes considered the children of the angels to be evil, despite the
+passage’s somewhat laudatory description of them. The first four verses of the chapter are often
+understood in biblical studies as an independent text that had some sort of editorial development and
+tradition-history that are different from the rest of the flood narrative.124 Its placement at the
+beginning of the flood narrative may reflect the opinion that the gibbōrîm are evil, and that the sexual
+dalliance between angels and humans was inappropriate. This textual theory would offer a coherent
+explanation of the question at hand, namely, how the angels and their sexual encounter on earth should
+be understood vis-à-vis the flood. Understood in this way, it was the offspring of the angels and the
+women who increased the evil on the earth that led to the flood. This understanding of the giants as
+inherently negative may also help us understand why the Hebrew word gibbōrîm is translated with
+gigantes in the form of Gen 6:4 found in the ancient Greek translation of the Torah.125 In Greek myth,
+the gigantes are rebellious and vicious; they attempt and fail to challenge Olympian rule. 126 The
+translation choice, carried out in the third century BCE, is a kind of interpretatio graeca. The
+translators’ appeal to the gigantes as a way to understand the children of the angels conveys that they
+understood them very negatively. It is perhaps possible to delineate a negative view of the offspring
+of the angels that predates Watchers, suggesting that its reformulation of the tale may be in continuity
+with an older, pre-Enochic interpretative tradition. In any case, despite what we can infer about how
+ancient transmitters of Gen 6:1-4 understood it, its positive but terse account of the gibbōrîm remained
+and this is what was preserved in the Masoretic text. The story as we have it leaves open the key issue
+of how the evil that triggered the flood started or what form it took.
+        The Torah in ancient (pre-Christian) Judaism was quite fluid in terms of its textual form.
+Nevertheless, some writings from the period seem to engage versions of Torah passages that do not
+
+123
+   For an important effort to situate the sons of the angels in a broad comparative context, see Doak, The Last of the
+Rephaim, 222-30.
+124
+   The scholarship on this point is extensive. See, for example, Doak, The Last of the Rephaim, 60; Ronald Hendel, “Of
+Demigods and the Deluge: Toward an Interpretation of Genesis 6:1-4,” JBL 106 (1987): 13-26 (esp. 16); Gerhard von
+Rad, See his Genesis: A Commentary (rev. ed.; London: SCM Press, 1972 [orig. pub., 1949]), 113; Hermann Gunkel,
+Genesis (trans. M.E. Biddle; Macon: Mercer University Press, 1997 [orig. pub., 1901]), 59; Julius Wellhausen,
+Prolegomena to the History of Ancient Israel (New York: Meridian Books, 1957 [orig. pub., 1878]), 317. See also Archie
+T. Wright, The Origin of Evil Spirits: The Reception of Genesis 6:1-4 in Early Jewish Literature (rev. ed.; Minneapolis:
+Fortress, 2015), 51-96.
+125
+   This explains the conventional description in English of the sons of the angels in Genesis 6 as “giants,” a broad term
+used to describe a wide range of creatures that appear in the mythology of various cultures. Here the term has a specific
+referent—the sons of the angels described in Genesis 6.
+126
+   Françoise-Hélène Massa-Pairault, ed. Géants et gigantomachies entre Orient et Occident. Acts du Colloque, Naples,
+14–15 Novembre 2013 (Naples: Centre Jean Bérard, 2017).
+                                                                                                                   43
+
+appear to be substantially different from their form in the Masoretic text. The Book of the Watchers
+constitutes a good example of this issue. This composition can be plausibly understood as telling a
+similar but more expansive version of the flood story in Genesis.127 Genesis, for example, never
+specifies how many angels came down to earth. None of the angels are named in Genesis; the book
+also does not state where on earth they arrived when they descended from heaven. The Book of the
+Watchers, however, is clear on all these points. It asserts that the total number of the angels who
+descended was 200, and the names of their twenty chiefs are given. Watchers divulges further that
+the arrival point of the angels on earth was Mount Hermon, a fitting locale, given that, as a large
+mountain, it is a point on earth close to heaven.
+         The Book of the Watchers exhibits very little interest in the flood itself. The concern of the
+text is rather for the spread of evil and violence on the earth before the flood. According to 1 En.
+10:2, God sent an archangel to explain to Noah that it was coming, but there are many core details of
+the flood story as found in Genesis that are not in Watchers. These include the building of the ark, its
+measurements, the number or kind of animals present on the vessel, and the chronological length of
+the flood. Watchers is primarily interested in the flood as the means of punishing the watchers and
+their offspring; the flood also serves as a model for eschatological judgment (1 Enoch 10-11).
+         When it comes to the evil that preceded the flood, Watchers by contrast offers more narrative
+than Genesis. 1 Enoch 8 recounts that the angels disclosed supernatural and unsanctioned knowledge
+on various topics.128 In this way, Watchers provides an etiology for several types of knowledge that
+are critical for human civilization (more on this below), such as metallurgy, that is, how to acquire
+metals from the earth and how to make weaponry from this resource; they also reveal knowledge
+about types of ornamentation used by women; these include antimony, a metallic compound used in
+antiquity for the production of cosmetic eye-paint, and gems from the earth (8:1).129 This is a
+gendered iteration of the angelic revelation that for Watchers plays a central role in the antediluvian
+crisis that led to the flood. It has a ‘male’ aspect, in that being able to produce destructive weapons
+triggered more violence, and a ‘female’ aspect, in the sense that innovation in female beautification,
+in the androcentric mindset of the text, led to more temptation and promiscuity.130 Excesses of
+violence and sex characterize the antediluvian period, according to Watchers.
+         Watchers provides vivid and disturbing details about the children of the angels that are not
+found in Genesis. The Enochic text appears to show awareness of the trope that they are warriors,
+refashioning their martial prowess in horrific terms. They are no longer “men of renown.” They are
+unspeakably violent. They do not just murder people—they eat them. This unsettling portrayal of
+the angelic offspring offers a clear way to understand how they should be related to the rise of evil
+and violence that necessitated the flood—they are its prime cause. Above I observed that it is unclear
+in Genesis how to relate the gibbōrîm of Gen 6:4 to the increase of evil stated in verse 5 which
+precipitated the flood. Watchers, by contrast, is clear on this point. The Enochic reconfiguration of
+the gibbōrîm into terrifying, cannibalistic giants can be understood as offering a solution to an
+exegetical problem.
+         As is clear from the description of the antediluvian acts of the sons of the angels in 1 Enoch 7
+
+127
+      . This important issue is explicated in more depth below.
+128
+      For an overview of this theme, see Reed, Fallen Angels, 24-57.
+129
+    Fritz Graf, “Mythical Production: Aspects of Myth and Technology in Antiquity,” in From Myth to Reason? Studies
+in the Development of Greek Thought (ed. R. Buxton; New York: Oxford University Press, 2002), 317-28.
+130
+   Matthew Goff, “Male and Female, Heaven and Earth: Claude Lévi-Strauss’ Structuralist Approach to Myth and the
+Enochic Myth of the Watchers,” in The Dead Sea Scrolls and the Study of the Humanities. Method, Theory, Meaning:
+Proceedings of the Eighth Meeting of the International Organization for Qumran Studies (Munich, 4-7 August, 2013) (ed.
+S. Thomas, B. Hartog, and A. Schofield; STDJ 125; Brill, 2018), 77-91; Annette Yoshiko Reed, “Gendering Heavenly
+Secrets? Women, Angels, and the Problem of Misogyny and Magic,” in Daughters of Hecate: Women and Magic in
+Antiquity (ed. D. Kalleres and K. Stratton; Oxford: Oxford University Press), 108-51.
+                                                                                                                      44
+
+that was quoted at the outset of this article, they consumed blood. It is notable that the text emphasizes
+this point. Since they are devouring humans, one could readily assume that they swallow blood when
+they do so. The legal code in Leviticus asserts that blood is holy and belongs to God, not the person
+in which it flows.131 It is an embodied way to conceive of life, and the act of being alive, as under
+divine control. Leviticus 17:11 claims that the soul (‫ )נפש‬is in the blood; blood was conceptualized
+as the seat of life. This ancient theorization of blood makes intelligible why it is treated with such
+reverence in the sacrificial worship of ancient Israel and other religious traditions of the ancient Near
+East. Understood against this religio-cultural backdrop, the ingestion of blood does more than break
+a food taboo. It is affront against God. Describing the giants as consuming blood is a way to depict
+them as evil and opposed to God.
+        Watchers’ assertion that the giants ingest blood can also be understood as having an exegetical
+aspect. It makes sense in relation to the account in Genesis 9 of God’s covenant with Noah and his
+sons after the flood. Genesis 9:1-6 states:
+
+                  God blessed Noah and his sons, and said to them “Be fruitful and multiply,
+                  and fill the earth. The fear and dread of you shall rest on every animal of
+                  the earth, and on every bird of the air, on everything that creeps on the
+                  ground, and on all the fish of the sea; into your hand they are delivered.
+                  Every moving thing that lives shall be food for you; and just as I gave you
+                  the green plants, I give you everything. Only, you shall not eat flesh with
+                  its life (‫)נפשו‬, that is, its blood. For your own lifeblood I will surely require
+                  a reckoning: from every animal I will require it and from human beings,
+                  each one for the blood of another, I will require a reckoning for human life.
+                  Whoever sheds the blood of a human, by a human shall that person’s blood
+                  be shed.”
+
+        This pericope is generally attributed in biblical scholarship to the Priestly source.132 In it God
+asserts that he will never send another flood and that humankind will maintain power over other
+creatures on earth, provided that they keep two rules. People are not to eat blood or kill other people
+(9:4-6). These commandments are found within a larger passage in which God grants humankind the
+right to consume meat, a visceral expression of human dominion over other animals (v. 3). It may
+strike readers as odd that God’s promise to never send another flood is based on people agreeing to
+never ingest blood. Watchers can be plausibly interpreted as a consequence of reflection about the
+diluvian laws God gives to humanity.133 This ban in Genesis 9 against consuming blood, its linkage
+between killing and the swallowing of blood, and the fact that it brings up the issue of eating meat at
+all, become easier to understand if the reader imagines the crisis that led to the flood as it is presented
+in Watchers. With regard to the evil on earth that triggered the flood Genesis provides relatively few
+details. Watchers offers an antediluvian narrative that is informed by some form of Genesis 9.
+Additionally, because Gen 9:4 constitutes the first time the Hebrew Bible states that humans can
+
+131
+   I engage this issue in more depth in Matthew J. Goff, “Monstrous Appetites: Blood, Giants, Cannibalism and Insatiable
+Eating in Enochic Literature,” JAJ 1 (2010): 19-42. Consult also Yitzhaq Feder, Blood Expiation in Hittite and Biblical
+Ritual: Origins, Context, and Meaning (Atlanta: Society of Biblical Literature, 2014).
+132
+    For a helpful overview of this scholarly tradition, see the discussion of Genesis 9 in Alexander Rofé, Introduction to
+the Composition of the Pentateuch (Sheffield: Sheffield Academic Press, 1999), 28-45. Those interested in a recent and
+extensive examination of the Priestly source can consult Liane M. Feldman, The Story of Sacrifice: Ritual and Narrative
+in the Priestly Source (FAT 141; Tübingen: Mohr Siebeck, 2020).
+
+133
+   Samuel L. Boyd has recently argued that 1 Enoch 7 (and also the iteration of the flood story in Jubilees 5) makes
+explicit this same key point, which he argues is implicit in the Priestly text of Genesis 9—that animal consumption plays
+a major role in the violence that triggered the flood. See his “The Flood and the Problem of Being an Omnivore,” JSOT
+43 (2019): 163-78.
+                                                                                                                          45
+
+consume meat, the era before the flood can be imagined as a time of vegetarianism. This context
+would make the giants’ cannibalistic violence even more shocking.134
+        As I have sought to demonstrate, interpreting the Book of the Watchers as an exegetical text
+can be an instructive exercise. We should not, however, anachronistically assert our modern notion
+of canon onto ancient Jewish literature. It is evident that in the late Second Temple period there was
+an extensive interest in traditional writings that were considered to have a form of authoritative status.
+Many Jewish works from this period, including the Book of Jubilees, the Animal Apocalypse, the
+Temple Scroll and the Genesis Apocryphon, in myriad ways explore and reconfigure specific texts
+and themes of the Pentateuch. The Community Rule states that when at least ten members of the Dead
+Sea sect are together, one of them must be reciting or expounding the Torah, day and night (1QS 6:6-
+7). But there is not in this era a “Bible,” in the sense of the fixed canon of the Old Testament. Rather
+there was a loose body of traditional lore in textualized form with which Jewish scribes could and did
+display a great degree of literary creativity. Hindy Najman many years ago offered to explain the
+textuality of ancient Judaism not through appeal to anachronistic biblical or scriptural categories of
+analysis but rather what she termed “Mosaic Discourse.”135 The Dead Sea Scrolls offer a crucial
+window into a lost Jewish textual world, in which scripture is important but before the Bible (a term
+never found in the scrolls) comes into being as a textual and theological category.
+        The material in Watchers from the third century BCE offers a fleeting glimpse into this lost
+textual world. Watchers does not present itself as exegeting a scriptural text, in contrast to rabbinic
+midrash, a genre that emerges later and is self-consciously modeled as a verse-by-verse exposition of
+a sacred text. Rather Watchers, by using the pseudepigraphic device of attributing authorship to
+Enoch, whom the text extols as a righteous scribe from the antediluvian age, presents the watchers
+myth as what actually happened long ago, as an etiology of the flood, and as events witnessed and
+recorded by Enoch.136 Watchers’ presentation of the watchers and their violent offspring betrays an
+abiding concern with the deep past (an issue to which I return below). The composition’s articulation
+of antediluvian events reflects reliance on early forms of Genesis texts—but not simply reliance on
+them. Watchers expands and enlarges their content. As discussed above, the book of Genesis for
+example never provides the names of the angels or much detail regarding the violent rampages on
+earth that triggered the flood. To make this assessment one must posit that the scribes who produced
+Watchers had access to a form of Genesis 6 that is by and large similar to the Masoretic form of the
+text that became part of the Bible. This is, in my view, a reasonable position. While the Dead Sea
+Scrolls show a great deal of variety regarding how they engage Genesis traditions, they also include
+several manuscripts of Genesis that are quite similar to the later Masoretic versions of these texts,
+suggesting that Genesis had a degree of textual stability in this period, as George Brooke has stressed,
+that one does not find in this period with, say, the Psalms.137 Other compositions such as Jubilees or
+
+134
+   Yael Shemesh, “Vegetarian Ideology in Talmudic Literature and Traditional Biblical Exegesis,” Review of Rabbinic
+Judaism 9 (2006): 141-66.
+
+135
+   Hindy Najman, Seconding Sinai: The Development of Mosaic Discourse in Second Temple Judaism (Leiden: Brill,
+2003). See also Eva Mroczek, The Literary Imagination in Jewish Antiquity (New York: Oxford University Press, 2016);
+ibid. “The Hegemony of the Biblical in the Study of Second Temple Literature,” JAJ 6 (2015): 2-35.
+136
+   Matthew Goff, Reading Jewish Wisdom From Before the Flood: Authorship, Prophecy, and Textuality in Enochic
+Literature,” in Authorschaft und Autorisierungsstrategien in apokalyptischen Texten (ed. J. Frey, M.R. Jost and F. Tóth;
+Tübingen: Mohr Siebeck, 2019), 171-91; Annette Yoshiko Reed, “Pseudepigraphy and/as Prophecy: Continuity and
+Transformation in the Formation and Reception of Early Enochic Writings,” in Revelation, Literature, and Community
+in Late Antiquity (ed. Philippa Townsend and Moulie Vidas; Tubingen: Mohr Siebeck, 2011), 25–42.
+
+137
+   George J. Brooke, “Genesis 1-11 in the Light of Some Aspects of the Transmission of Genesis in Late Second Temple
+Times,” HeBAI 1 (2012): 465-82 (471). While the Dead Sea Scrolls present Genesis as having some coherence as a book
+(4Q8 [4QGenh] for example indicates that it could at that time circulate as a book with a title [‫ ]ברשית‬that is in accord
+with its title in later Judaism, ‫)בראשית‬, it is not clear that Psalms existed as a single book in this period, as Mroczek, The
+Literary Imagination, 51-85, argues.
+                                                                                                                      46
+
+the Genesis Apocryphon tell stories about the patriarchs which show detailed engagement—a kind of
+ancient textual scholarship—with forms of Genesis texts that are again similar to what became the
+book of Genesis.138 Annette Reed, who has justly criticized scholarship on Second Temple Judaism
+for its overemphasis on biblical categories, emphasizes this point with regard to Watchers. Speaking
+specifically about Gen 6:1-4, she writes: “What is allusive and unexplained in Genesis, however, is
+expounded in spectacularly specific detail in the Book of the Watchers.”139 The overarching goal of
+the composition was not necessarily to fill out an incomplete story in a scriptural text, or to
+demonstrate that Genesis, when properly retold, is a consistent and comprehensive narrative.140
+Rather Watchers constitutes reflection about the deep past that is informed by textual traditions found
+in Genesis. Its presumed brief and incomplete account of antediluvian events constituted an
+opportunity for creative reflection on this period.141 The transformation of the warriors of renown in
+Genesis 6 into cannibalistic giants of the Book of the Watchers can be reasonably understood as a
+form of exegesis on texts of Genesis, with “exegesis” employed here as a second-order term of
+analysis, an etic rather than emic characterization of the content of Watchers. If it is interpreted in
+this way, the composition’s disturbing, violent giants constitutes an odd, and monstrous, form of
+exegesis.
+
+              FORAYS INTO A MONSTROUS FIELD OF KNOWLEDGE
+         It is reductive, however, to limit the significance of Watchers to exegesis. There is more to
+the story. Although most people today have never heard of the composition, this was not the case in
+antiquity. The Dead Sea Scrolls, on the basis of the fact that the composition was copied and
+reworked, attest that some Jews in the second and first centuries BCE considered Watchers to have a
+type of authoritative status. The New Testament Letter of Jude quotes from it, presuming that it has
+some sort of authoritative status, and this comportment towards Watchers is continued in early
+Christian writings. The core tale of Watchers, that angels descended from heaven to have sex with
+women and produce children, was reconfigured and reimagined by numerous other ancient Jewish
+texts, including the Animal Apocalypse, the Book of Jubilees and the Qumran Book of Giants. They
+all came up with their own depictions of the giants, the sons of the angels. While scripture was an
+important cultural category in ancient Judaism, the appeal and popularity between 200 BCE and 100
+CE of such material—in part because none of these works explicitly frame themselves as exegeting
+citations of Watchers—cannot be wholly explained through appeal to exegesis.
+         I would like to suggest that we can arrive at a plausible understanding of both Watchers’
+portrayal of violent, destructive giants and the popularity of stories about these antediluvian creatures
+in ancient Judaism through engagement with scholarship on monsters and the monstrous.
+
+
+138
+  For an annotated translation of Jubilees that explicates how it reformulates material in Genesis (and Exodus) see
+Matthew Goff, “Jubilees,” in The Jewish Annotated Apocrypha (ed. J. Klawans and L.M. Wills; New York: Oxford
+University Press, 2020), 1-97.
+139
+   Reed, Demons, Angels and Writing, 199. For her criticism of forms of anachronistic applications of biblical
+perspectives onto the study of Second Temple literature, see, for example, pp. 23-25. Reed’s sentiments regarding
+Watchers vis-à-vis Genesis 6, with differing degrees of nuance, are common in biblical studies. See for example Julie
+Galambush, Reading Genesis: A Literary and Theological Commentary (Macon: Smyth & Helwys, 2018), 40; James L.
+Kugel, The Bible As It Was (Cambridge MA/London: Belknap Press, 1997), 110-12.
+140
+   In part to avoid such conclusions, scholars of ancient Judaism generally now no longer or only very sparingly use
+“Rewritten Bible” as a category of analysis, which used to be employed with much more regularity. See Daniel Machiela,
+“Once More, with Feeling: Rewritten Scripture in Ancient Judaism—A Review of Recent Developments,” JJS 61 (2010):
+308-20.
+141
+    As discussed below, Watchers’ engagement with the primordial period is fully in accord with the intellectual currents
+of the early Hellenistic period.
+                                                                                                                      47
+
+        What are monsters? The term denotes a second-order category of analysis used to interpret
+creatures from a vast range of cultural and historical contexts. The term, as scholars of monster theory
+(monstrologists?) know, originates from the Latin word monstrum, which can be related to the verb
+monere, “to warn”; Augustine connects the noun instead to monstrare, “to show,” explaining that the
+term denotes signs that “show by signifying something” (Civ. 21.8).142 The word monstrum often
+was invoked to interpret something strange or unusual as some sort of ominous portent. The birth of
+a child with a defect or the sighting of an odd creature could easily be construed as an omen, indicating
+some sort of future calamity or hardship.143 As Jeffery Jerome Cohen has emphasized, a monster is
+a signifier; it points to something that is beyond itself.144 Timothy Beal offers in his valuable book
+Religion and Its Monsters (2002) the definition of monsters as “personifications of the Unheimlich.”
+145
+     This conception of the monstrous utilizes the Freudian locution that is normally rendered as
+“uncanny.” A more literal translation would be “un-home-ly.” Following this thread, monsters are
+creatures which cannot be bounded or confined within a normative sense of place. They disrupt
+epistemological and taxonomic categories that conceptualize and articulate what is normal. So
+understood, monsters constitute “threatening figures of anomaly.”146 The term “monster” frequently
+refers to mixed, hybrid creatures that reconfigure component parts of actual animals in ways that do
+not occur in nature, as with the sphinx or centaur.147 To this end Cohen argues that the monster
+signifies a kind of “ontological liminality”; that is, the term can be applied to an entity that transcends
+and is unconstrained by normativizing categories of classification.148 For this reason, he aptly
+observes, one should discern a rise in interest in monsters during times of crisis. Political and military
+events and forms of disaster, because they are moments of turmoil, change, and violence, compel
+people to re-examine the world and the categories they deploy to understand it. This perspective is
+quite valid with regard to ancient Judaism (a point I return to below).
+        The interest people have in monsters is extensive and is not restricted to moments of crisis.
+Cohen emphasizes that the monstrous as a cultural category offers an effective way to articulate, and
+demonize, alterity. Monsters can represent the “dialectical Other,” and as such they do not only offer
+us a way to conceptualize enemies who are invading.149 Monsters also offer a way to understand
+142
+   Terry Kirk, “Monumental Monstrosity, Monstrous Monumentality,” Perspecta 40 (2008): 6-15 (7). For the key
+passage, see St. Augustine, The City of God (trans. Henry Bettenson; New York: Penguin Books,1984), 982.
+
+  D. Felton, “Rejecting and Embracing the Monstrous in Ancient Greece and Rome,” in The Ashgate Research
+143
+
+Companion to Monsters and the Monstrous (ed. A. Simon Mittman and P. Dendle; Surrey: Ashgate, 2013), 103-32 (104).
+144
+    Jeffery Jerome Cohen, “Monster Culture (Seven Theses),” in Monster Theory: Reading Culture (ed. J.J. Cohen;
+Minneapolis/London: University of Minnesota Press, 1996), 3-25 (4). See also Georges Canguilhem, “Monstrosity and
+the Monstrous” (trans. T. Jaeger), Diogenes 40 (1962): 27-42.
+145
+   David Gilmore, Monsters: Evil Beings, Mythical Beasts, and All Manner of Imaginary Terrors (Philadelphia: University
+of Pennsylvania Press, 2003), 5.
+146
+      Timothy K. Beal, Religion and Its Monsters (New York/London: Routledge, 2002), 4.
+
+  Asa Simon Mittman, “Introduction: The Impact of Monsters and Monster Studies,” in The Ashgate Research
+147
+
+Companion, 1-16 (5); Gilmore, Monsters, 6.
+148
+    Cohen, “Monster Culture,” 6. See also idem, “Postscript: The Promise of Monsters,” in The Ashgate Research
+Companion, 449-64 (452). Noël Carroll articulates the idea that monsters ignore and break through normative cultural
+categories in his well-known study of horror films by terming this trope “fusion”—the blending of things together into
+one entity that are in conceptually different categories, such as the zombie (which is both living and dead). He also
+stresses that another common recurring characteristic feature of monsters is “magnification”—the increase of a creature’s
+size far beyond biological norms. Since the giants of the Book of the Watchers are 3,000 cubits tall, they excessively
+exemplify Carroll’s trope of “magnification.” See his The Philosophy of Horror or Paradoxes of the Heart (New York:
+Routledge, 1990), 43-52. For discussion of the gigantic and the grotesque, consult Susan Stewart, On Longing; Narratives
+of the Miniature, the Gigantic, the Souvenir, the Collection (Durham: Duke University Press, 1993).
+149
+      Cohen, “Monster Culture,” 7.
+                                                                                                                      48
+
+places which are far away and different from the ones we consider normal. Lurking at the edge of
+the known world, as map makers of earlier eras often asserted, hic sunt dracones (“here be
+dragons”).150 Monsters in this sense demarcate the boundaries of normative space. They can do so
+by providing a glimpse of how strange things are on the other side. Stories of this sort were often
+told in the ancient world. Writers such as Herodotus and Ctesias, for example, gave expression to
+India in the Greek imaginary as a region populated with fantastic creatures. They include cynocephali
+(humans with heads of dogs or other animals), ants larger than foxes that burrow into the ground for
+gold, or the martikora (manticore), a creature with a human face, a lion’s body, and the tail of a
+scorpion.151
+        Such writers also told stories about far-flung tribes to construct ethical norms that help define
+civilization, by offering lurid depictions of the monstrous conduct beyond the pale.152 For example,
+Herodotus claims that the Messagatae, an Iranian nomadic tribe that lives in Central Asia, devour and
+sacrifice their elderly (1.216; cf. 3.25). He further asserts that other remote peoples such as the
+Scythians are cannibals who have no conception of justice or law (4.18, 102, 106). Strabo around the
+turn of the common era makes similar comments about the people of Ierna (Ἰέρνη), or Ireland. In his
+construal, the Irish are cannibals who consume the bodies of their fathers when they die and that
+among them incest is routine:
+
+                  Besides some small islands round about Britain, there is also a large island,
+                  Ierne, which stretches parallel to Britain on the north, its breadth being
+                  greater than its length. Concerning this island I have nothing certain to tell,
+                  except that its inhabitants are more savage than the Britons, since they are
+                  man-eaters as well as heavy eaters, and since, further, they count it an
+                  honorable thing, when their fathers die, to devour them, and openly to have
+                  intercourse, not only with the other women, but also with their mothers and
+                  sisters; but I am saying this only with the understanding that I have no
+                  trustworthy witnesses for it; and yet, as for the matter of man-eating, that is
+                  said to be a custom of the Scythians also, and, in cases of necessity forced
+                  by sieges, the Celts, the Iberians, and several other peoples are said to have
+                  practiced it (4.5.4; cf. 7.3.6).153
+
+In this lurid mode of ethnography, the shocking conduct on the edge of the known world to the west
+
+
+  Chet Van Duzer, “Hic sunt dracones: The Geography and Cartography of Monsters,” in The Ashgate Research
+150
+
+Companion, 387-436; idem, Sea Monsters on Medieval and Renaissance Maps (London: The British Library, 2014).
+151
+   For the large ants referred to by Herodotus, see 3.102. Aulus Gellius, in Attic Nights 9.4 (second century CE), asserts
+that he read in Ctesias (fourth century BCE) and other works that there are “marvels in the Far East,” signifying India,
+including men who have dog heads, monocoli, who hop around on one leg, and pygmies. Consult Lloyd Llewellyn-Jones
+and James Robson, Ctesias’ History of Persia: Tales of the Orient (London: Routledge, 2010), 110 (also 33). For the
+mantikora, see Felton, “Rejecting and Embracing the Monstrous,” 125. Note further Rudolf Wittkower, “Marvels of the
+East: A Study in the History of Monsters,” in Journal of the Warburg and Courtauld Institutes 5 (1942): 159-97 (160-
+61).
+152
+   I also discuss this material in “Deep Time, the Monstrous, and the Book of the Watchers in the Hellenistic Age,” in
+Notions of Time in Deuterocanonical and Cognate Literature (ed. S. Beyerle and M. Goff; Berlin: de Gruyter,
+forthcoming).
+153
+   Horace Leonard Jones, Strabo, Geography, Vol. II: Books 3-5 (Loeb Classical Library; Cambridge: Harvard University
+Press, 1923), 261. Diodorus likewise construes the Scythians and the Irish as cannibals (5.32.3). Pliny asserts that the
+Scythians engages in cannibalism and likens them to barbarian tribes north of the Alps (Nat. His. 7.2). For more on the
+topic of cannibalism, consult Cătălin Avramescu, An Intellectual History of Cannibalism (trans. A. Ian Blyth; Princeton:
+Princeton University Press, 2009); Mark P. Donnelly and Daniel Diehl, Eat Thy Neighbour: A History of Cannibalism
+(Stroud: Sutton, 2006).
+                                                                                                                    49
+
+reminds Strabo of the horrors in the distant east (Ireland and Central Asia, respectively). In either
+direction, when one goes beyond the fringes of civilization, one encounters monstrous forms of life.
+A similar presentation of imagined distant space is found in the Acts of Andrew and Matthias (third
+or fourth century CE). In this account the apostle Andrew travels to the mysterious city of
+Myrmidonia, whose inhabitants “ate no bread and drank no water but ate human flesh and drank their
+blood. They would seize all who came to their city, dig out their eyes, [and] make them drink a drug
+prepared by sorcery and magic” that would make their victims behave like animals.154
+        One countervailing impulse in the study of the monstrous is to reflect not on the strange
+creatures that roam in faraway lands but on the monster within. And one can note the odd relationship
+between them. Beal’s conception of the monster as expressing das Unheimliche can be helpful here.
+He wants to say more than that monsters embody a violation of a person’s normative values. Das
+Unheimliche, the un-home-ly, is not just out there. As the saying goes, the call is coming from inside
+the house. He terms this the paradox of the monstrous.155 David Gilmore in his Monsters: Evil
+Beings, Mythical Beasts and All Manner of Imaginary Terrors (2002) makes a similar observation.
+He promotes a psychoanalytical perspective with regard to monsters. He avers that the monster is
+“not simply a political metaphor, but also a projection of some repressed part of the self.”156 The
+monster represents the id, the classical Freudian term for the disturbing and animalistic instincts that
+are found deep within the human unconscious, but in an externalized form. This understanding of
+the issue offers a psychoanalytic way to explain the cross-cultural trope that monsters, while
+conquered by heroes, typically survive to fight another day. 157 In this construal of the topic, the
+monster and his overthrow constitute a projection of the id. It is effectively repressed but nonetheless
+remains, lurking in the shadows of the human mind. The universality of the trope, in this line of
+thinking, accords with the assessment that, despite the diversity of human cultures, the physical nature
+of the brain and thus its inner workings remain constant.
+
+
+          MONSTROUS, ANTHROPOPHAGOUS, ANTEDILUVIAN GIANTS
+        The key question for the matter at hand, however, is not how the brain works. Rather it is -
+how can monster theory assist our efforts to interpret the giants of the Book of the Watchers? A
+Freudian, psychological perspective towards the issue strikes me as interesting. But very little is
+known about whoever wrote the literature of 1 Enoch, which complicates speculation about their
+psyches. The story of Watchers, however, clearly accords with the cannibalism that is a prominent
+object of study in monster theory. Our own culture’s on-going obsession with the zombie apocalypse,
+as evident in shows such as The Walking Dead, underscores this point. Gilmore hypothesizes that
+cannibalism is “the primary form of human aggression.”158 In his perspective, cannibalism represents
+
+154
+    See David Frankfurter, Evil Incarnate: Rumors of Demonic Conspiracy and Satanic Abuse in History (Princeton:
+Princeton University Press, 2006), 77. For an edition of the Acts of Andrew and Matthias, see Dennis R. MacDonald,
+The Acts of Andrew and the Acts of Andrew and Matthias in the City of Cannibals (Atlanta: Scholars Press, 1990). Consult
+also Lautaro Roig Lanzillota, “Cannibals, Myrmidonians, Sinopeans or Jews? The Five Versions of the Acts of Andrew
+and Matthias and Their Sources,” in Wonders Never Cease: The Purpose of Narrating Miracle Stories in the New
+Testament and its Religious Environment (ed. M. Labahn and B. J. Lietaert Peerbolte; London: T. & T. Clark, 2006), 221-
+43.
+155
+      Beal, Religion and Its Monsters, 4.
+156
+  Gilmore, Monsters, 16. See also Jeffery Jerome Cohen, Of Giants: Sex, Monsters, and the Middle Ages (Minneapolis:
+University of Minnesota Press, 1999), xii.
+157
+      Cohen, “Monster Culture,” 4.
+158
+      Gilmore, Monsters, 186.
+                                                                                                           50
+
+our desire to eat laid bare, revealing it to be a primordial, animalistic impulse that can be clearly
+discerned as such when cultural norms about what one is supposed eat are removed. Gilmore asserts
+further that the ubiquitous human fear of cannibalistic monsters attests the existence within the mind
+of a primary desire, the raw and unmitigated urge to eat, which is then projected onto an external
+entity, the monster.159 He also thinks that guilt is a core human response to having this disturbing and
+yet essential desire. Following this theory, myths and lore about cannibalism signal a kind of
+psychological drama, or perhaps fantasy, in which people wrestle with the urge to be both the eater
+and the eaten, the expression of cannibalistic impulses and an interest in being devoured, as a product
+of the guilt of having alimentary urges that are so disturbing.
+         It is not necessary to endorse Gilmore or his orthodox Freudian approach to cannibalism in
+toto. His perspective, however, underscores a key point—that the anthropophagous monsters of the
+Book of the Watchers can be profitably understood as a way to engage a topic that might be described
+as the ethics of food. It is de rigueur in biblical studies for scholars to understand that a central or
+core theme in the literature of 1 Enoch is the origin of evil. But it is not evident, in my opinion, that
+“evil” is the best descriptor for the behavior of the giants or their motivation, but it depends on how
+one defines the term. They are not driven by a malicious intent to kill or harm people. Their actions
+are not an effort to carry out a malevolent plot or a master plan to dethrone God. Instead, according
+to Watchers, the crisis on earth that necessitated the flood was motivated by the base, animalistic urge
+of the giants to eat, run amok (1 Enoch 7). The act of eating food is an essentially destructive activity
+that is simultaneously necessary for life to continue. However, the consumptive act with regard to
+the giants is harmful for all life on earth. Their horrific rampages occur because their appetites, in a
+very literal sense, are unconstrained. They devour the food of humankind, then humans and then
+each other. As already discussed, Genesis 9 highlights the perspective that the re-creation of the world
+after the flood is predicated on the establishment of restrictions on eating practices. God exhibits
+genuine concern about what the people of Israel should put inside their bodies, as is evident from the
+copious laws in the Pentateuch regarding diet. One can reasonably interpret the Book of the Watchers
+as highlighting this key point, with monsters. The composition offers an intriguing example of how
+monsters can help articulate and enforce social norms, a point often emphasized by scholars of the
+monstrous.160 Watchers does so with regard to food, by articulating a disturbing account of what
+happened on the earth long ago when the desire to eat was wholly unimpeded.
+
+
+      THE RETURN OF THE REPRESSED? ENUMA ELISH, GENESIS 1, AND
+                     THE BOOK OF THE WATCHERS
+
+        I would like to suggest one other way that attending to the theme of monstrosity can help us
+better understand the Book of the Watchers in relation to older textual materials in Genesis. As is
+well-known in biblical studies, a broadly attested creation motif is the so-called Chaoskampf, the
+depiction of the formation of the world not as creatio ex nihilo, as many hold today, but rather as
+asserting that the creator god heroically defeated some form of powerful monster who is associated
+with chaos.161 While this scholarly trope is plausible, one should stress, as Debra Ballentine reminds
+us, that utilization of the word “chaos” to denote the era before the reigning god assumed control
+construes the perspective of his own dominion as an objective and neutral term of scholarly
+
+
+
+159
+      Ibid., 184.
+160
+      Cohen, “Monster Culture,” 12, argues that “the monster polices the border of the possible.”
+161
+  Gregory Mobley, The Return of the Chaos Monsters—And Other Backstories of the Bible (Grand Rapids: Eerdmans,
+2012), 16-33.
+                                                                                                                      51
+
+analysis.162 The parade example of the ancient Near Eastern trope of creation via the killing of a
+monster is the Mesopotamian text the Enuma Elish, a work often understood as having been produced
+in the late second or early first millennium BCE.163 This composition was for centuries recited at the
+Akitu festival, a major ceremony in ancient Babylonian religion. It was celebrated twice a year to
+commemorate the spring and fall equinoxes. The spring Akitu festival is also a ceremony for the
+New Year. Its most visible and central component involved a procession of a cult statue of Marduk,
+the chief god of Babylon, along other deities and the king out of the city, and their return three days
+later. This gave spatial and physical expression to a triumphant renewal of the religious-political
+order after a brief period of chaos, re-asserting the legitimacy of the normative order with Marduk
+and the king at the center.164 This public procession articulated core elements of the drama of the
+Enuma Elish itself, the reading of which was a component of this festival.165 In this work the stability
+of the world and the rule of the gods is endangered because of the machinations of Tiamat, a
+monstrous sea dragon who became the mother of a horde of other monsters. They include snakes and
+dragons, along with various hybrid creatures such as scorpion men, fish men, and bull men. Together
+they contest the rule of the gods (1.134-46).166 The problem they pose to the gods is resolved by the
+deity Marduk. He does more than slay her. He segments her body into pieces and forms the known
+world out of those portions. Marduk’s grand victory over Tiamat constitutes the etiology of his
+enthronement as king of the gods and provides a rationale for his centrality in the cult of the city of
+Babylon.
+         Genesis 1 is generally and plausibly thought in biblical studies to have been initially written
+in the sixth century BCE by priestly scribes (to whom the so-called P source of the Pentateuch is
+attributed), in the context of the Babylonian exile.167 The scribes responsible for it would very likely
+have known about the Marduk-Tiamat creation motif of Babylonian religion found in the Enuma
+Elish. As mentioned above, this was not an obscure text but at the center of a major Babylonian
+
+
+
+162
+  Debra Scoggins Ballentine, The Conflict Myth and the Biblical Tradition (New York: Oxford University Press, 2015),
+186.
+163
+   For discussion of the dating of the composition of the Enuma Elish, see W. G. Lambert, Babylonian Creation Myths
+(Winona Lake: Eisenbrauns, 2013), 439-44. This source also includes a text and translation of the text (pp. 50-133). One
+can also consult Philippe Talon, Enūma Eliš: The Standard Babylonian Creation Myth (Helsinki: The Neo-Assyrian Text
+Corpus Project, 2005), and, for an accessible English translation, Stephanie Dalley, Myths from Mesopotamia (Oxford:
+Oxford University Press), 228-77.
+164
+   Lauren Ristvet, Ritual, Performance and Politics in the Ancient Near East (Cambridge; Cambridge University Press,
+2014), 153-58; Beate Pongratz-Leisten, Ina šulmi īrub: die Kulttopographische und ideologische Programmatik der
+akītu-Prozession in Babylonien und Assyrien im 1. Jahrtausend v. Chr. (Mainz am Rhein: Verlag Philipp von Zabern,
+1994). See also Paul J. Kosmin, Time and Its Adversaries in the Seleucid Empire (London/Cambridge, MA: Belknap
+Press, 2018), 30-34.
+165
+   There are different scholarly reconstructions as to how public the recitation of the Enuma Elish was during the Spring
+Akitu festival. Compare, for example, Ristvet, Ritual, Performance and Politics, 153 (who describes the ceremony
+beginning with a priest publicly reading aloud the Enuma Elish) with Takayoshi Oshima, Babylonian Prayers to Marduk
+(Tübingen: Mohr Siebeck, 2011), 36 (who describes the high priest of Esagila, the central temple to Marduk in Babylon,
+reciting the poem during the Akitu without any audience). See also Anette Zgoll, “Schauseite, verborgene Seite und
+geheime Deutung des babylonischen Neujahrsfestes. Entwurf einer Handlungstheorie von ‚Zeigen und Verbergen,’” in
+Die gezeigte und die verborgene Kultur (ed. B. Streck; Wiesbaden: Harrassowitz, 2007), 165-89. As is clear from the
+discussion below, my argument does not hinge on whether the text was recited publicly or not.
+166
+      Mobley, The Return of the Chaos Monsters, 18.
+167
+   For a concise overview of why biblical scholars attribute Genesis 1 to a Priestly source, see Rofé, Introduction to the
+Composition of the Pentateuch, 18, 36. For a more extensive discussion of this issue, see Mark S. Smith, The Priestly
+Vision of Genesis 1 (Minneapolis: Fortress, 2010).
+                                                                                                                        52
+
+festival, the Akitu.168 How the Babylonians praised and described the dominion of Marduk changed
+how the Israelites in exile extolled their own deity, particularly with regard to creation. With the
+priestly authors of Genesis 1, they incorporated some core aspects of the Chaoskampf myth but at the
+same time sought to avoid recounting a scenario that was too similar to that of Marduk and Tiamat.
+        According to Genesis 1, the foundation of the normative order of the cosmos testifies to the
+ability of God to exert his will over the primeval waters which is associated with unformed matter
+(tohu va-vohu; NRSV: “a formless void”; Gen 1:2). The term “deep” in Gen 1:2 (tehom), signifying
+the watery abyss, is generally regarded as related to the Akkadian name Tiamat. The Bible (to my
+chagrin) does not begin with a battle royale between God and a sea dragon. Tiamat, however, lurks
+beneath the surface. The chapter puts forward an abstract iteration of this conflict, perhaps to avoid
+the suggestion that there is no creature, however powerful, who poses a legitimate threat to God’s
+control. This move also avoids the direct inference that there was a time when God was not in control.
+But Genesis 1, despite its theological hesitations, incorporates the core idea found in the Chaoskampf
+tradition as exemplified by the Enuma Elish by repeatedly asserting that God has full and unfettered
+control over the waters, as is clear from Gen 1:6-9, and also by the fact that “the great sea monsters”
+(ha-tanninim ha-gedolim) were the first creatures he fashioned—without any sense whatsoever that
+they pose a threat (v. 21; cf. Job 40:19). Other biblical texts do not share the same restraint with
+regard to asserting that God killed a dragon when he created the world. Psalm 74, for example, praises
+his manipulation of the waters during his creation in a way that poetically combines it with his defeat
+of a sea monster: “You divided the sea by your might, you broke the heads of the dragons in the
+waters; you crushed the heads of Leviathan” (vv. 13-14; cf. 89:10-12; cf. Isa 51:9). The motif of
+creation à la Genesis 1 utilizes older ancient Near Eastern creation traditions but, when compared to
+the Enuma Elish, the battle with monsters is absent. The Book of the Watchers, through its effort to
+portray the flood as the divine defeat of transgressive giants, writes monsters back into the story.
+Creation and the flood are thematically parallel in that both delineate the formation of the world via
+divine control over water. The Book of the Watchers reasserts the theme of monstrosity not with a
+sea dragon but rather through its violent giants and the re-creation of the world through the flood.
+The popularity and appeal of monsters offers a way to understand how the monstrous re-emerged into
+accounts of the primordial past (the return of the repressed?), after some scribes, such as the priestly
+intellectuals responsible for Genesis 1, sought to neuter this theme.
+
+
+                    THE MONSTROSITY OF THE HELLENISTIC AGE
+
+168
+    Even if one does not hold that the Enuma Elish was publicly recited during this festival, it is still likely that exiled
+Judeans in Babylon, along with the city’s population in general, knew at least the basic story of the Enuma Elish—that
+the natural order was established by Marduk’s defeat of Tiamat, and that this conquest was deployed to legitimate the
+authority of the king, by homologizing him with Marduk. The affinities between the Enuma Elish and Genesis 1 do not
+require that Judean scribes engaged in a close and careful textual study of the former composition to write the latter, only
+that they knew core elements of its narrative. Since the Enuma Elish provided mythic backstory to the very public
+procession of the spring Akitu festival, this is a reasonable view.
+          Also note that the Enuma Elish itself advocates the teaching of its core theme of the kingship of Marduk to
+people at all levels of Babylonian society. It concludes by stressing that one is to teach the fifty names that extol the
+dominion of Marduk: “The wise and learned should confer about them, a father should repeat them and teach them to his
+son, one should explain them to shepherd and herdsman” (VII.146-48; Lambdin, Babylonian Creation Myths, 133).
+          Because of the political utility of the cosmogonic myth of the Enuma Elish, that the victory of Marduk over
+Tiamat can legitimate monarchic power, there is also some evidence that the composition was adapted to other spheres
+of political power in a Syro-Mesopotamian context. There is for example an Assyrian version of the Enuma Elish that
+was promoted by that monarchy which prioritizes not Marduk but Ashur, the state deity of the Assyrian monarchy. This
+evidence for the spread and reception of the Enuma Elish, aside from its utilization during the Akitu festival, also speaks
+to the possibility that the core narrative elements of the composition were broadly known in the Mesopotamian world and
+not restricted to an esoteric priestly elite. See W.G. Lambert, “The Assyrian Recension of Enūma Eliš,” in Assyrien im
+Wandel der Zeiten: XXXIXe rencontre assyriologique internationale, Heidelberg, 6.-10. Juli 1992 (ed. H. Waetzoldt;
+Heidelberg: Heidelberger Orientverlag, 1997), 77-79.
+                                                                                                                 53
+
+
+         It is helpful, however, to explain the expansion of the monstrous in Watchers beyond that of
+Genesis not simply through appeal to a universalist, perennial interest in monsters. It is interesting
+to inquire if any more specific insights can be acquired by examining why we see this renewal of the
+monstrous in the third century BCE, the time when Watchers was written.169 A traditional explanation
+of the giants and their violence is that of Nickelsburg. He argued that they represent the Diadochi
+(“successors”), the generals of Alexander the Great who fought brutal wars with each other in the
+Near East in the fourth century BCE after the death of the conqueror and the dissolution of his
+empire.170 Such an interpretation is possible. But it offers no compelling way to explain why a
+representation of these brutal generals would be set in the primordial period. A leading reformulation
+of the interpretation of the giants offered by Nickelsburg has been more recently put forward by
+Anathea Portier-Young. She argues that Watchers constitutes “symbolic resistance to imperial
+violence and hegemony.”171 This constitutes one part of her larger scholarly project, to articulate
+Jewish apocalyptic literature and its origins as a form of theological resistance to empire.172 The core
+move is not to stress the Diadochi as did Nickelsburg but rather the contemporary difficulties of living
+under an empire—violence perpetrated by the state, and its concomitant humiliation and indignation,
+that are a natural result of being a subject people under the thumb of a hostile power. In the context
+of the third century BCE, Judea was controlled by the Ptolemaic Empire of Egypt and in 198 BCE
+dominion over the region shifted to the Seleucid Empire. In Portier-Young’s formulation, Jews in the
+third century BCE were powerless to overthrow their unjust rulers by force, so some launched more
+cerebral forms of resistance. Watchers offers, according to her formulation, an anti-imperial
+alternative construal of the world. Important in this perspective is that Watchers appropriates Greek
+myth—the traditional lore of the hegemonic rulers—and repurposes it so that the story now disrupts
+their worldview. Watchers’ account of the giants for her represents an inversion of the gigantomachy
+of Greek myth, the basic contours of which were laid out above. The Greek gigantes, like the children
+of the watchers in 1 Enoch, are violent and upend the normative order. The appropriation of this myth
+however in her reading constitutes a type of inversion in that in Watchers the violent giants represent
+Hellenistic rulers. The Greeks are recoded as the true barbarians.
+         I am, to some extent, sympathetic to the perspectives on the giants offered by Nickelsburg and
+Portier-Young. The third century was a time of strife in Judah and was the central site in which a
+long series of wars between the Ptolemaic and Seleucid empires, often called the Syrian Wars. It is
+certainly possible that the violence of the giants represents the violence of the period. But this
+interpretation does not square well with key aspects of Watchers itself. It has already been mentioned
+that this viewpoint does not offer a good explanation why the narrative is set in the time of the flood.
+Also Watchers very much does relate the antediluvian crimes of the giants to its contemporary world-
+-but not to Judah’s Ptolemaic overlords, or any other sort of king. The bodies of the giants are
+destroyed but their spirits are condemned to roam the earth and harass humankind as evil spirits (1
+Enoch 15). This is an etiology of demonic forces in the world, not of political opponents. While it
+is not difficult to construe imperial opponents in demonic terms, a move clearly made for example in
+the book of Revelation, the evil spirits of 1 Enoch 15 do things that one finds attributed to evil spirits
+cross-culturally, not imperial rulers. The evil spirits for example in particular attack pregnant women,
+
+169
+      See also my “Deep Time, the Monstrous, and the Book of the Watchers.”
+170
+      Nickelsburg, 1 Enoch 1, 170.
+171
+   Anathea Portier-Young, “Symbolic Resistance in the Book of the Watchers,” in The Watchers in Jewish and Christian
+Traditions (ed. Angela Kim Harkins, Kelley Coblentz Bautch, and John C. Endres, S.J.; Minneapolis: Fortress Press,
+2014), 39-49 (here 39). See also eadem, “Constructing Imperial and National Identities: Monstrous and Human Bodies
+in Book of Watchers, Daniel, and 2 Maccabees,” Interpretation 74 (2020): 159-70.
+172
+   Anathea Portier-Young, Apocalypse Against Empire: Theologies of Resistance in Early Judaism (Grand Rapids:
+Eerdmans, 2011).
+                                                                                                     54
+
+because they, as 1 En. 15:12 states, resent that they themselves were born from women. Fearsome
+demonic creatures, such as Lamashtu in a Mesopotamian context, or Obyzouth as described in the
+late antique Testament of Solomon (ch. 13), take particular pleasure in harming women during the
+liminal moment of giving birth. It was a way in antiquity to explain the dangers of giving birth by
+positing that particularly powerful spiritual forces would go after pregnant women. The giants do in
+Watchers represent and explain problems that contemporary people faced in the third century BCE—
+but the difficulties that are enumerated involve topics such as disease and problems in childbirth, not
+violence or injustice perpetrated by the state. Portier-Young’s idea that Watchers reconfigures the
+Greek gigantomachy works only if one starts from the perspective that the giants represent Hellenistic
+rulers. This is a possible but not necessary starting point.
+        Moreover, understanding the giants of Watchers as representing the violence of Hellenistic
+empire does not fit well with the basic point elucidated in the previous section of this essay—that
+Genesis 1 in its account of creation writes the monsters of the Chaoskampf out of the story, whereas
+Watchers, in its account of the re-creation of the world through the flood, puts them back in. Genesis
+1, as mentioned above, was likely written in the context of the Babylonian exile. The priestly scribes
+responsible for this text were among the elites taken there when the powerful Babylonian empire
+destroyed Jerusalem and its temple and conquered Judea. The Enuma Elish was a core part of the
+majority religion in the context of the exile in Babylon, while the Jews were a minority community.
+In this context, as I have already suggested, the priestly writers of Genesis 1 took on elements of the
+core act that legitimated Marduk’s sovreignity, his defeat of Tiamat, and applied them to their own
+deity while avoiding an explicit and overt connection to the creation myth of the city and its empire
+that was subjugating them. The people responsible for Genesis 1 in the sixth century BCE and
+Watchers in the third century BCE were both under the thumb of empire—the Babylonians and the
+Ptolemies, respectively. In the former case the monsters were written out the story but in the latter
+they were written back in. This suggests to me that appeal to living under empire, and all the violence
+and injustice which that entails, is in and of itself not sufficient for explaining the watchers myth of
+1 Enoch and its giants.
+        In terms of how to move forward here too monster studies can be instructive. As mentioned
+above, scholars such as Cohen have argued that we should expect a rise in monsters and interest in
+them in times of crisis, moments in which normative and conventional explanations are easily seen
+as insufficient. The Babylonian exile was humiliating and traumatic. Some biblical texts reflect the
+raw emotions of that difficult period. Psalm 137, for example, offers a form of revenge fantasy, . It
+depicts Israelites weeping by the rivers of Babylon while being taunted, wishing that Babylonian
+infants be bashed to death against rocks. But the Hellenistic period was a crisis of a different sort.
+Political violence and imperial aggression were clearly part of the Hellenistic era, as the work of
+Portier-Young emphasizes. But the challenges and anxieties of the period should not be reduced to
+state violence.
+        While the Hellenistic era is a macro-descriptor, a label that extends to several centuries and
+very different cultures, two overarching factors can be stressed. One, the Hellenistic period
+constitutes an expansion of the boundaries of the known world. Alexander the Great had extensive
+military campaigns in India, and the cultures of a vast area, from Egypt to what is today Afghanistan,
+came under the influence of a set of similar cultural factors. Despite their differences people were
+exposed, often in the medium of the Greek language, not only to Greek culture but also that of other
+peoples in a new way. Space does not permit a comprehensive treatment of this complex issue but
+this cultural situation led to a degree of epistemological uncertainty and anxiety. Conventional claims
+regarding ethnic self-identity had to contend with a new pluralistic environment in which conflicting
+constructions of knowledge were in circulation. Berossus (third century BCE), for example, was a
+priest of Marduk who wrote in Greek the Babyloniaca, an account of the early history of the world
+that prioritized Mesopotamian traditions. He drew on the archaic Mesopotamian apkallu tradition.
+These ichthymorphic, antediluvian sages were revered as custodians and originators of antediluvian
+wisdom. According to Berossus, foundational aspects of civilization such as writing, mathematics
+and agriculture, were bestowed to humankind by a giant fish monster, by the name of Oannes. In the
+                                                                                                                     55
+
+Hellenistic era such claims were contested and debated by intellectuals, as part of a vibrant discourse
+about the origins of civilization.173 The Egyptians, or at least some Egyptian intellectuals, bristled at
+such accounts, as they conflicted with Egyptian accounts of early human history. One Hellenistic
+Egyptian philosopher, Chaeremon, also writing in Greek, claimed that this the Babylonian story about
+Oannes is a type of ‘fake news’. He asserts that the putative sea monster was really a king of old
+disguised in a fish costume.174 Hellenistic culture is defined not simply by the spread of Homer and
+Greek ideas throughout the Near East. Various national traditions that had been developed as a way
+to make the world intelligible were challenged when the boundaries of the world became larger.
+Different scribal intellectuals wrestled with ways to construe human history in universalistic terms
+and the origins of knowledge evident throughout the Hellenistic world, such as writing and
+astronomy. A common move was to engage in a type of heurematography by positing a single source
+of such knowledge, a culture hero, from whom it disseminated outward to other cultures and the rest
+of the world.175 As with Berossus on Oannes, scribes often extoled cultural heroes in a way that gave
+pride of place to their own indigenous mythic traditions.
+        This raises a second important overarching factor regarding the Hellenistic era. A people
+generally regarded, even by themselves, as young (the Greeks), conquered several peoples regarded
+as much, much older—not just the Jews but also the Egyptians, the Babylonians, and Iranians. Age
+and antiquity were important values and were accorded value and respect. In this perspective there
+was something ‘backward’ about the Hellenistic era—particularly from the perspective of the ancient
+peoples under Greek rule. Not only do they not have national sovereignty—they have more wisdom
+and knowledge than their upstart rulers. The son has dominion over the father. This is not only a
+political crisis but a cultural one.176 The problem is not simply state violence but also a more
+unsettling sense of Unbehagen—a pervading sense of unease and anxiety about the status quo.
+        The factors under discussion help explain why there was a renewed interest in the distant,
+primordial past in the Hellenistic Near East. It served as a cultural space in which intellectuals of
+various ethnicities could highlight the accomplishments and traditions of their own people, while
+presenting the knowledge of other cultures as secondary and derivative. At roughly the same time as
+Berossus, Manetho, an Egyptian priest of the goddess Neith, wrote a chronology of Egyptian kings
+that stresses the profound antiquity of this monarchic tradition.177 While their writings are only
+preserved in later sources, the floruit of both Berossus and Manetho makes them roughly
+contemporary with the Book of the Watchers. It offers a cultural context that explains why Jewish
+scribes in the same period were interested in the primordial epoch, and in articulating it terms of their
+own national traditions. Enoch becomes valorized as an antediluvian sage—a viewpoint never
+espoused in the Hebrew Bible—whose knowledge is preserved. The book of Jubilees asserts that
+Enoch was the originator of writing and was the first to acquire genuine astronomical knowledge
+(4:17); the latter claim is implicit in the other booklet of 1 Enoch written in the third century BCE,
+the Astronomical Book (chs. 72-82). Both writing and astronomy were common topics in Hellenistic
+discourse about the origins of civilization. The desire of these contemporary intellectuals to reach
+
+173
+   I deal with this issue at more length in “A Blessed Rage for Order: Apocalypticism, Esoteric Revelation, and the
+Cultural Politics of Knowledge in the Hellenistic Age,” HeBAI 5 (2016): 193-211. See also William McCants, Founding
+Gods, Inventing Nations: Conquest and Culture Myths from Antiquity to Islam (Princeton: Princeton University Press,
+2011); Sandra Blakely, Myth, Ritual, and Metallurgy in Ancient Greece and Recent Africa (Cambridge: Cambridge
+University Press, 2006).
+174
+      Pieter Willem van der Horst, Chaeremon: Egyptian Priest and Stoic Philosopher (Leiden: Brill, 1987), 10-11.
+175
+      Leonid Zhmud, The Origin of the History of Science in Classical Antiquity (Berlin: de Gruyter, 2006), 23-44.
+176
+   Interpreting the Enochic literature of the early Hellenistic age in terms of cultural concerns rather than only state-
+sanctioned violence is also endorsed by Reed, Demons, Angels, and Writing, 102-5.
+177
+      John Dillery, Clio’s Other Sons (Ann Arbor: University of Michigan Press, 2015).
+                                                                                                                    56
+
+back to the deep past and describe it in a way that emphasizes their own native lore testifies to a type
+of cultural anxiety evident in the Hellenistic Near East.
+        Understanding the Hellenistic era as a time of cultural crisis helps explain why we see a return
+of the monstrous in this period. This is not to dismiss the thrust of Portier-Young’s work that imperial
+violence and injustice play a role in understanding Enochic literature. My sense is that one should
+also consider other cultural factors in order to understand Watchers and its giants. That sense that
+something is out of place or not quite right is, as scholars of monsters such as Cohen have emphasized,
+a time when we should expect a rise in monstrosity. The cultural backdrop of the early Hellenism of
+the Near East, with its anxieties about the new political norm and emerging interest in the primordial
+past, offers a way not just to understand why Watchers reformulated traditions found in Genesis 6 in
+a way that made them more monstrous but also why the scribes carrying out this textual work were
+interested in the antediluvian period in the first place. This also provides a way to understand the
+valid parallels that Portier-Young observes between the Greek gigantes and Jewish traditions about
+antediluvian sons of angels (which were also recognized in antiquity, as is clear from Josephus [Ant.
+1.73]). The relationship between the two myths involving the defeat of primordial colossal warriors
+is not necessarily one inverting the other. As is clear from the Pergamon altar, in the second century
+BCE the gigantes of Greek myth were depicted in monstrous form, as having snakes for legs and
+wings, the hybrid combination of elements of various animals.178 If one looks at older visual
+depictions of the depictions of the gigantomancy, the gigantes are not anguipedes but rather hoplites,
+that is, humanoid warriors, as at the Siphnian Treasury in Delphi (6th century BCE) or in
+thedescription of them in Hesiod (Theog. 185), whose writings are often dated to the 8th century
+BCE.179 With the gigantes one can discern an increased monstrosity in the Hellenistic period. This
+does not contrast but rather complements the move from the sons of the angels in Genesis 6 as
+legendary warriors to the monstrous giants recounted in Watchers. Both the Greek and Jewish
+examples testify to a cultural environment during the Hellenistic age in which traditions about the
+primordial past could be re-imagined in a way that made them more monstrous. The issue surely
+requires further elaboration, but here I have attempted to sketch out the basic cultural contours of the
+period in which these developments can be understood.
+
+
+                                               CONCLUSION
+
+       One can reasonably understand the Enochic Book of the Watchers as engaging in a kind of
+monstrous exegesis. The scribal intellectuals who produced the work in the third century BCE
+reconfigured older textual traditions regarding the flood in a way that made the sons of the angels
+much more monstrous. The composition reinvents the gibbōrîm from legendary warriors into
+cannibalistic giants. As I have tried to show, this development is not simply an exegetical issue. I
+have also attempted to demonstrate that this transformation is intelligible in the Hellenistic context in
+which the book was written. The field of monster studies helps us understand the giants’
+anthropophagous rampages as not only acts of profound violence but also a way to delineate social
+norms and conduct, especially regarding food, by putting forward disturbing portrayals of life on
+earth before such norms were in effect. The heightened monstrosity of the Book of the Watchers,
+
+178
+   Carlos A. Picón and Seán Hemingway, eds. Pergamon and the Hellenistic Kingdoms of the Ancient World (New York:
+The Metropolitan Museum of Art, 2016); Erich Gruen, “Culture as Policy: The Attalids of Pergamon,” in From Pergamon
+to Sperlonga: Sculpture and Context (ed. N.T. de Grummond and B.S. Ridgway; Berkeley: University of California Press,
+2000), 17-31; Max Kunze, Der Pergamonaltar: Seine Geschichte, Entdeckung und Rekonstruktion. 1992, Staatliche
+Museen zu Berlin Antikensammlung Preußischer Kulturbesitz (Mainz am Rhein: Verlag Philipp von Zabern, 1992).
+179
+   Richard T. Neer, “Framing the Gift: The Politics of the Siphnian Treasury at Delphi,” Classical Antiquity 20 (2001):
+273-344; Livingston Vance Watrous, “The Sculptural Program of the Siphnian Treasury at Delphi,” AJA 86 (1982): 159-
+72.
+                                                                                                    57
+
+discernible when compared to older Genesis traditions, becomes intelligible in the context of a climate
+of cultural anxiety and epistemological uncertainty that was pervasive in the early Hellenistic period.
+It is a valuable exercise to engage ancient Jewish literature through the lens of monster theory.
+

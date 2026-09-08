@@ -1,0 +1,576 @@
+                                          Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+                                                                                               Copyright © 2018 MAA
+                                                                     Open Access. Printed in Greece. All rights reserved.
+
+
+
+
+DOI: 10.5281/zenodo.1472282
+
+
+     THE DEVELOPMENT OF THE BABYLONIAN ZODIAC:
+          SOME PRELIMINARY OBSERVATIONS
+                                                 John Steele
+                        Department of Egyptology and Assyriology, Brown University,
+                               2 Prospect Street, Providence, RI 02912, USA
+
+
+
+
+Received: 19/02/2018
+Accepted: 01/04/2018                                         *Corresponding author: John Steele (john_steele@brown.edu)
+
+
+
+
+ABSTRACT
+The development of the signs of the zodiac as a division of the band through which the moon, sun, and
+planets travel into twelve equal parts represents a major step in the history of ancient astronomy. The
+development of the uniform zodiac took place in Babylonia in the late fifth century BC and was
+subsequently transmitted to other parts of the ancient world. In this paper I present a preliminary discussion
+of the development of the zodiac as a framework for positioning celestial bodies. This development took
+place within a Babylonian tradition which was both observational and computational. In addition to
+consideering the conceptual framework of the zodiac, I pay particular attention to the way that names for
+the signs of the zodiac were assigned.
+
+
+
+
+KEYWORDS: Zodiac, Babylonian Astronomy, Constellations.
+98                                                                                                         J. STEELE
+
+
+
+1. INTRODUCTION                                            of these constellations before reviewing the way that
+                                                           the zodiac was used and referred to in astronomical
+    The development of the zodiac was a key event in
+                                                           and astrological texts. I will then turn to the devel-
+the history of Babylonian astronomy and astrology.
+                                                           opment of the zodiac itself. My discussion of this
+In astronomy, the zodiac provided a uniform math-
+                                                           development will be split into two parts. First, I will
+ematical framework within which celestial bodies, in
+                                                           consider the development of the concept of the zodi-
+particular the moon, the sun, and the five planets,
+                                                           ac as a uniform division of the zodiacal band. And
+could be located (Steele, 2006, 2007). This mathemat-
+                                                           second, I will examine the naming of the zodiacal
+ical framework greatly simplified the calculation of
+                                                           signs, a question has been almost completely over-
+astronomical phenomena. Within astrology, the zo-
+                                                           looked in previous studies.
+diac opened up a whole range of new possibilities
+for making associations between the terrestrial and        2. BEFORE THE ZODIAC: ZODIACAL
+the celestial realm. The development of the zodiac            CONSTELLATIONS
+took place sometime in Babylonia during the late
+                                                              The text known as MUL.APIN, a compendium of
+fifth century BC (Britton, 2010). The concept of the
+                                                           early astronomical knowledge composed sometime
+zodiac subsequently circulated around the near east,
+                                                           before the beginning of the seventh century BC (pos-
+being transmitted to Egypt and the Greek world,
+                                                           sibly several centuries earlier), contains a list of sev-
+from where it spread to India and then from India to
+                                                           enteen zodiacal constellations (MUL.APIN I iv 31–
+China and other parts of east Asia, while in the west
+                                                           37, see Hunger and Steele, 2018):
+it became a standard part of Greek, Islamic and Eu-
+ropean astronomy (van der Waerden, 1952; Ross,                The stars who stand in the path of the moon,
+2014; Song, 2016).                                         through whose region the moon during a month
+    It is important before going any further to clarify    passes repeatedly and keeps touching them: The
+the distinction between the zodiac and the zodiacal        Stars, the Bull of Heaven, the True Shepherd of Anu,
+constellations. The zodiacal constellations are a set of   the Old Man, the Crook, the Great Twins, the Crab,
+constellations through which the sun, moon, and the        the Lion, the Furrow, the Scales, the Scorpion, Pabil-
+planets move. These constellations are a subset of the     sag, the Goat-fish, the Great One, the Tails of the
+larger number of constellations which are spread out       Swallow, Anunitu, and the Hired Man.
+across the whole of the celestial sphere, and, like all
+                                                              This list begins with the Stars (the Pleiades) be-
+constellations, they differ in size and shape and have
+                                                           cause it is assumed in MUL.APIN that in a normal
+gaps between them. All constellations are human
+                                                           year the moon is situated within this constellation at
+constructs, projections made onto the large number
+                                                           the start of the year. In the Babylonian calendar,
+of stars visible to the naked eye which are distribut-
+                                                           months begin on the evening when the new moon
+ed throughout the night sky. The constellations are
+                                                           crescent is visible for the first time. The year begins
+therefore culturally dependent—different cultures
+                                                           in the spring, around the time of the spring equinox
+will arrange the stars into different patterns and
+                                                           (exactly when in relation to the equinox depends
+name them different things—although like any as-
+                                                           upon intercalation). Thus, the year begins on the
+tronomical knowledge, traditions of defining and
+                                                           evening of the first visibility of the moon near the
+naming constellations can circulate between cul-
+                                                           spring equinox.
+tures. In modern terms, the zodiacal constellations are
+                                                              Observational texts from the seventh century BC
+a series of constellations distributed around a band
+                                                           onwards include reports of the position of the moon
+centred on the ecliptic through which the moon, sun
+                                                           and the planets relative to the zodiacal constellations
+and plants move. We can call this the zodiacal band.
+                                                           or individual stars or small star groups within those
+The zodiac is a uniform mathematical division of the
+                                                           constellations (e.g. the Front Star of the Head of the
+zodiacal band into twelve equal-length parts, each of
+                                                           Hired Man). These texts add one further zodiacal
+30°, which we can call zodiacal signs (or signs of the
+                                                           constellation to the list of zodiacal constellations: the
+zodiac). Unlike the zodiacal constellations the zodiacal
+                                                           Chariot. Astrological texts from the same period at-
+signs are all the same size and have no gaps between
+                                                           test to one further zodiacal constellation: the Field.
+them. However, whereas the boundaries of constel-
+                                                           Thus, at least nineteen zodiacal constellations were
+lations can be seen in the night sky by imagining
+                                                           identified by the Babylonians (see also Ratzon, 2016).
+lines between stars, the boundaries of zodiacal signs
+are defined mathematically and cannot be directly
+seen in the sky.
+    The development of the zodiac in Babylonia grew
+out of an existing tradition of zodiacal constellations.
+I begin this paper, therefore, with a brief discussion
+
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+THE DEVELOPMENT OF THE BABYLONIAN ZODIAC                                                                         99
+
+
+
+3. REFERENCES TO ZODIACAL SIGNS IN                          21st, Venus reached Cancer‖ (Sachs and Hunger,
+   ASTRONOMICAL AND                                         1996: no. -140A).
+   ASTROLOGICAL TEXTS                                          The dates when a planet reached a new sign of the
+                                                            zodiac cannot be directly observed because the zodi-
+3.1. Observational and related texts                        acal signs do not have visible boundaries. Instead,
+   A large number of cuneiform tablets are known            these dates were derived from the position of the
+from Babylonia which contain reports of astronomi-          planet relative to certain reference stars (named by
+cal observations. The observations contained in the         modern scholars ―Normal Stars‖). It was assumed
+texts written on these tablets date from the middle of      that the boundaries of the zodiacal signs either coin-
+the eighth down to the end of the first century BC.         cided with (in the case of the Southern Rein of the
+Most of the tablets contain texts which fall into a         Chariot (ζ Tau), the Rear Twin star (β Gem), and the
+small number of named (mostly by the Babylonians            Rear Star of the Goat-fish (δ Cap), which were taken
+themselves) text types. The most widely attested text       to mark the beginning of Gemini, Cancer, and
+type of the Astronomical Diary, which contains as-          Aquarius respectively) or at known distances in
+tronomical and terrestrial data covering a period of        front of or behind a Normal Star (Huber, 1958; Jones,
+several months (usually half a year, but Diaries cov-       2004). This link between the beginning of zodiacal
+ering periods from a few months up to a year are            signs and the location of stars indicates that the Bab-
+known) (Sachs and Hunger, 1988–96). From the Dia-           ylonian zodiac was sidereal and therefore slips rela-
+ries various texts were produced which contain col-         tive to our tropical zodiac over time, a conclusion
+lections of astronomical data either for analysing          confirmed through analysis of comparisons of Baby-
+past data in order to identify astronomical regulari-       lonian zodiacal positions with modern computation
+ties (lunar and planetary compilations—see Hunger,          (Huber, 1958; Steele and Gray, 2007; Britton, 2010).
+2001), or in order to make future predictions (Goal-        Two star catalogues are known which give the posi-
+Year Texts—see Hunger, 2006). These predictions             tions of the Normal Stars within the signs of the zo-
+were written in so-called Almanacs and Normal               diac (Roughton, Steele and Walker, 2004).
+Stars Almanacs, which are very similar in style to the      3.2. Mathematical astronomical texts
+Diaries (Hunger, 2014).
+   Beginning in around 400 BC, zodiacal signs are              Babylonian mathematical astronomy used arith-
+almost always given in reports of observations of the       metical functions to calculate the date and position
+first or last appearance (heliacal rising and setting) of   of the moon and the planets at their synodic phe-
+a planet. They are also occasionally given in reports       nomena (conjunction and opposition for the moon,
+of observations of planetary stations and of lunar          first and last appearance, stations, and acronychal
+eclipses. Predicted first and last appearances and          rising for the planets) along with related material
+stations of the planets also usually include the zodia-     such as the body’s celestial latitude, the lunar veloci-
+cal sign in which the planet was located on that date.      ty, and the length of the synodic month. In the texts
+Here is a typical example: ―Month IX, the 20th, Sat-        containing the results of these calculations the posi-
+urn’s first appearance in Sagittarius‖ (Hunger, 2006:       tion of the moon or a planet is specified by the num-
+no. 41). If the planet was near the start or the end of     ber of degrees (UŠ) within a sign of the zodiac.
+the zodiacal sign, the name of the zodiacal sign may        3.3. Astrological texts
+be preceded by the word ―beginning‖ (SAG) or
+―end‖ (TIL). The ―beginning‖ and ―end‖ zones of a              The zodiac appears in a wide variety of astrologi-
+zodiacal sign correspond to about the first and last 5°     cal texts dating from around 400 BC onwards. These
+of the sign (Steele and Gray, 2007). In contrast to         texts include horoscopes which contain collections of
+statements referring to constellations, where a planet      astronomical data for days on and around the date
+can be ―in‖, ―in front of‖ or ―behind‖ a constellation,     of birth of an individual (Rochberg, 1998). This data
+planets can only ever be ―in‖ a zodiacal sign.              often includes the sign of the zodiac within which
+   The second type of statements involving the zodi-        the sun, moon, and planets were located on that
+ac found in the Diaries and the Almanacs are state-         date. Related to the horoscopes are texts which list
+ments of which sign of the zodiac a planet was locat-       nativity omens which relate the sign of the zodiac
+ed in during a particular month. If the planet moved        that the sun, moon, or a planet are located in with
+from one sign to another sign that date is reported as      the future life and death of that child. Other astro-
+well. For example: ―[That month … Jup]iter was in           logical texts which make use of the signs of the zodi-
+Scorpio; Venus and Mars were in Gemini; Saturn              ac include texts giving associations between the zo-
+was in Virgo; the 19th, Mars reached Cancer; the            diacal signs and cities (Steele, 2015a), texts which
+                                                            associate zodiacal signs with parts of the human
+                                                            body (Wee, 2015), and texts which associate the signs
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+100                                                                                                       J. STEELE
+
+
+
+of the zodiac and the signs of the microzodiac             4. THE DEVELOPMENT OF THE CONCEPT
+(1/12th of a sign of the zodiac) with medical ingre-          OF THE ZODIAC
+dients, cultic sites, etc (Monroe, 2016).
+   A particularly interesting group of astrological        It is generally agreed among historians of Babyloni-
+texts are the so-called kalendertext, which use a sim-     an astronomy that the concept of the zodiac as a uni-
+ple numerical scheme to connect dates in the calen-        form division of the band through which the sun,
+dar with positions in the zodiac (Brack-Bernsen and        moon and planets move into twelve equal parts,
+Steele, 2004). These zodiacal sign of this position is     each of which was further subdivided into 30° de-
+then associated with terrestrial items such as cultic      veloped by analogy with the division of the schemat-
+sites and, most commonly, the materials for making         ic year into twelve months, each of which contains
+medical remedies (Wee, 2016; Steele, 2017a). Here is       30 days (Stephenson et al., 1995; Brack-Bernsen and
+a typical example of an entry from one of these texts:     Hunger, 1999; Brown, 2000; Steele, 2007; Britton,
+                                                           2010). The Babylonian calendar was a luni-solar cal-
+   8 12 1 6 nam.tar-wood, ú.gír-wood, white-plant,         endar in which the beginning of the month was gov-
+thyme-plant, […]-plant, sag.gil.mud-stone. Eanna.          erned by the first visibility of the new moon crescent,
+Day of the city god. Opening of the gate, Sin, Šamaš,      leading to months lasting either 29 or 30 days, and
+and [Ištar, A]nu, Enlil and Ea and the warrior Ning-       the year normally contained 12 months but slightly
+irsu. Jupiter. Weapons, strife. He should go out for       more often than every three years an extra interca-
+judgment. He should prostrate before Sin and               lary month was added to prevent the calendar from
+Šamaš, and he will prove to be merciful. 3 18              wandering too far with respect to the seasons, bring-
+   The entry begins with four numbers. The first two       ing the number of months in those years to 13. Be-
+numbers are the sign of the zodiac and the number          cause of the uncertainty in whether a month will
+of degrees within that sign (in this case 12° of the 8th   have 29 or 30 days, and whether a year will have 12
+sign which is Scorpio). The second two numbers cor-        or 13 months, from very early in Mesopotamian his-
+respond to the month of the year and the day within        tory we find evidence for the use of a simplified
+the month. The sign and degrees are calculated from        schematic calendar when making calculations. This
+the month and day according to calculation based           calendar, which was purely used for calculation and
+upon the rule that the position increases by 277° each     was never considered to be an actual calendar, simp-
+day. The text from which this example is taken co-         ly made each month 30 days long and each year 12
+vers the whole of the first month of the year. The         months long, making a total of 360 days within a
+material following the four numbers repeats every          year. The schematic calendar is first attested in eco-
+time the same sign of the zodiac is given by the           nomic documents to simplify the calculation of the
+scheme. (The final two numbers follow a different          allocation of rations and the calculation of interest on
+scheme which increases 13° per day.)                       loans, etc, but from the second millennium BC on-
+                                                           wards it was also often used in astronomical calcula-
+3.4. Schematic astronomical texts                          tions (Steele, 2011).
+   The zodiac appears in a small number of texts              Clear evidence for the role of the schematic calen-
+from a larger corpus of what I term schematic as-          dar in the development of the concept of the zodiac
+tronomy (Steele, 2017b). Schematic astronomical            is provided by several astronomical and astrological
+texts contain simple mathematical schemes which            texts which use month names to refer to the signs of
+describe astronomical phenomena such as the varia-         the zodiac (see section 5 below). Within schematic
+tion in the length of daylight across the year, the du-    astronomy the parallel structure of the zodiac and
+ration of lunar visibility, and the length of a shadow     the schematic calendar provided a simple model for
+cast by a gnomon. One group of texts in this genre         the sun’s motion in longitude in which the (mean)
+present a scheme for the so-called rising times. These     sun moves by 1° per day. Thus, if we assume that the
+texts exist in two forms: a calendar based version         sun is located at 1° in Aries on the 1st day of the
+which presents a scheme for the culmination of cer-        year, the sun’s position is always equal to the day of
+tain stars (or distances behind those stars) at sunrise    the year. Thus, the month and day number are the
+on dates through the year, and a zodiac based ver-         same as the sign of the zodiac and the degrees with-
+sion which presents the same scheme but relating           in that sign. For example, on the 14th day of Month
+the culminations to the rising at the eastern horizon      IV, the sun will be located 14° within the 4th zodia-
+of points in the zodiac (Steele, 2017b).                   cal sign which is Cancer. This equivalence between
+                                                           the date in the schematic calendar and the position
+                                                           of the sun was exploited in the rising time texts
+                                                           which transform a calendar based scheme into a zo-
+                                                           diac based scheme, and also in the astrological kalen-
+
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+THE DEVELOPMENT OF THE BABYLONIAN ZODIAC                                                                        101
+
+
+
+dertext, which exploit the parallelism of the calendar    For example, a list of the so-called ―terms‖ (the divi-
+and the zodiac to create an astrological scheme           sion of each sign of the zodiac into unequal length
+(Brack-Bernsen and Steele 2004).                          parts each associated with a particular planet) found
+   The concept of the zodiac, therefore, comes out of     in the astrological compendium BM 36303+ (+) BM
+the schematic calendar. In a sense, the zodiac served     36628+ (+) BM 36988 uses month names to refer to
+a parallel function to the schematic calendar as well.    the signs of the zodiac (Steele 2015b), and two kalen-
+The schematic calendar simplified calculation by          dertext tablets, SpTU III 104 and 105, mix month
+providing a uniform system of constant length             names and constellation names to indicate the signs
+months and years. Similarly, the zodiac simplified        of the zodiac (Steele 2017a).
+the calculation of the position of the sun, moon, and
+                                                          5.2. Naming by number
+planets by providing a ―schematic‖ set of constella-
+tions of uniform length. Just as there are 12 months      Several of the kalendertext tablets and related astro-
+of 30 days each in the schematic calendar, the zodiac     logical material refer to the signs of the zodiac using
+is divided into 12 signs each containing 30 UŠ. The       numerals. The signs of the zodiac are numbered in
+zodiac, therefore, is not a reduction of a large num-     order beginning with Aries. This practice seems to
+ber of zodiacal constellations to 12 but rather an in-    be restricted to texts which employ mathematical
+dependent system of dividing the zodiacal band. As        astrological schemes.
+I will discuss in the next section, one tradition for
+naming the signs of the zodiac was to use the names
+                                                          5.3. Naming by constellation name
+of constellations selected from the available reper-      The most common way of naming the signs of the
+toire of zodiacal constellations.                         zodiac was by the names of constellations located
+                                                          within the signs. A fairly standard list of the names
+5. NAMING THE ZODIACAL SIGNS
+                                                          of the twelve signs emerged by in the last few centu-
+    The process of naming the signs of the zodiac has     ries BC. This list is presented on the BM 34566 Obv.
+received very little attention by previous scholars. A    2–4 (I give both a transcription of the cuneiform
+full study of the signs of the zodiac should take into    signs and a translation for reference):
+account not only the names of the signs as found in
+                                                            HUN MÚL-MÚL MAŠ-MAŠ ALLA A ABSIN RÍN
+astronomical and astrological texts but also the im-
+                                                          GÍR-TAB PA MÁŠ GU zibme
+agery of zodiacal signs found in seal impressions
+(see provisionally Wallenfels, 1993), drawings on            The Hired Man, the Stars, the Twins, the Crab, the
+cuneiform tablets, etc. I hope to undertake such a        Lion, the Furrow, the Scales, the Scorpion, Pabilsag,
+study in due course but space considerations pre-         the Goat-fist, the Great One, the Tails.
+vent me from doing so here. In the following, there-
+                                                             This ―standard list‖, as I shall henceforth call it, is
+fore, I consider only textual evidence and restrict
+                                                          used for the names for the twelve signs of the zodiac
+even this to only selected astrological tablets and the
+                                                          that appear in the Astronomical Diaries and related
+Astronomical Diaries. Nevertheless, the results I pre-
+                                                          texts, in texts of mathematical astronomy, and in
+sent here seem to provide a coherent, if not neces-
+                                                          most astrological texts of this period, with only a few
+sarily complete, picture of the naming of the zodiacal
+                                                          exceptions which I shall discuss below. (Note that
+signs.
+                                                          sometimes these names are written slightly different-
+    Three methods for naming the signs of the zodiac
+                                                          ly in different texts, for example in fuller forms such
+are known: (i) by month name, (ii) by number, and
+                                                          as UR.A for the Lion, or shorter abbreviations, for
+(iii) by a constellation name.
+                                                          example MAŠ for the Twins and GÍR for the Scorpi-
+5.1. Naming by month name                                 on; these shorter forms are common in the texts of
+                                                          mathematical astronomy where space in a table was
+A small number of texts use month names to indi-
+                                                          at a premium and where visually it made sense to
+cate the signs of the zodiac. The earliest of these, BM
+                                                          refer to each sign of the zodiac by only one cunei-
+53282, a collection of horoscopes dating to the reign
+                                                          form sign rather than two signs as would be the case
+of one of the kings named Artaxerxes (almost cer-
+                                                          for four signs using the writings above.)
+tainly Artaxerxces II) uses the terminology É ituMN
+                                                             Comparing the standard list with the list of zodia-
+literally ―house of Month MN‖ (Hunger, 1999;
+                                                          cal constellations in MUL.APIN, we find that all of
+Brown, 2017) to indicate the sign of the zodiac. The
+                                                          these constellation names appear in the earlier list.
+same ―house of Month MN‖ terminology is used in
+                                                          As we will see, however, the process of choosing
+BM 36609+, a text containing a list of Normal Stars
+                                                          which twelve constellations to use was not straight
+with their zodiacal positions (Roughton, Steele and
+                                                          forward. Furthermore, it is clear that alternate names
+Walker, 2004). Several astrological texts refer to the
+                                                          for some of the signs of the zodiac were still in use in
+signs of the zodiac by the equivalent month name.
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+102                                                                                                     J. STEELE
+
+
+
+the early third century BC, well over a hundred              Word play is used to transform ―the Hired Man‖
+years after the zodiac was developed.                     into ―the Hired Sheep Man‖ and then into ―the
+   In the following, I present brief discussions of the   Hired Sheep‖. It is not hard to imagine the final step
+names of each sign of the zodiac.                         in which ―the Hired Sheep‖ is abbreviated to ―the
+                                                          Sheep‖. It is possible that this transformation of ―the
+5.3.1.   Aries
+                                                          Hired Man‖ into ―the Sheep‖ was influenced by the
+   The name of the zodiacal sign Aries is written us-     Greek tradition of Aries the Ram. However, given
+ing two different cuneiform signs: HUN and LU.            that the sign is already referred to as LU in an As-
+HUN is the most common writing at Babylon and is          tronomical Diary fro 374 BC, Greek influence seems
+an abbreviation of mul lúHUN.GA ―the Hired Man‖.          unlikely.
+LU is commonly used at Uruk, but is also occasional-
+                                                          5.3.2.   Taurus
+ly used at Babylon (the earliest example in a Diary
+being from 374 BC). I am uncertain how to translate           Taurus presents a particularly complicated case.
+LU. LU could simply be another abbreviation of mul        The so-called TE-tablet (BM 77824; Weidner 1915),
+lúHUN.GA. The sign LÚ in this name is a determina-        which lists zodiacal signs with their associated
+tive indicating that the following signs denote a pro-    months, gives two names next to the entry for Month
+fession. It is possible that LÚ has been taken as an      II: ―the Stars‖ and ―the Bull of Heaven‖. These two
+abbreviation of the whole name and then replaced          names are also given together as a pair in the micro-
+by the homophone cuneiform sign LU. We some-              zodiac texts to indicate Taurus (Monroe 2016). Thus,
+times find cases where complicated cuneiform signs        it would seem that either or both the names ―the
+are replaced by signs that have the same pronuncia-       Stars‖ and ―the Bull of Heaven‖ could refer to Tau-
+tion but which are simpler to write (for example, in      rus. In the Astronomical Diaries, Taurus is usually
+the Late Babylonian period the complicated signs          referred to as ―the Stars‖ (MÚL-MÚL). However,
+BÁR and SIG4 for Month I and Month III respective-        before 267 BC we find cases of the names ―the Bull of
+ly were often replaced by the signs BAR and SIG,          Heaven‖ (GU4-AN) and ―the Chariot‖ (gišGIGIR or
+which are simpler signs requiring less wedges and         GIGIR) where we would expect the name of the sign
+taking up less space). However, the sign LU is not        Taurus. Comparing these cases with modern compu-
+simpler than LÚ, requiring more not less wedges to        tation of the position of the planet when it is said to
+write. The alternative is to read the sign LU as UDU      be in ―the Bull of Heaven‖ and ―the Chariot‖, how-
+(they are the same sign) which can mean ―sheep‖.          ever, we find ―the Bull of Heaven‖ seems to be used
+Evidence from the early third century BC onwards          only for roughly the first half of Taurus and ―the
+suggests that the zodiacal sign Aries was sometimes       Chariot‖ is only used for the second half of the sign.
+interpreted as a sheep: a kalendertext which makes a      ―The Stars‖ seems to be used for the whole sign. No
+simple association between animals used to make           matter which name was used, the entries follow the
+medical ingredients with the corresponding animals        style of reports which otherwise are only used for
+uses as the names for zodiacal signs (e.g. Lion’s         zodiacal signs. It would seem, therefore, that Tau-
+blood and hair for Leo), lists sheep’s blood, hair, and   rus—uniquely—could sometimes be divided into
+fat for Aries (Steele, 2017a), and sheep seemingly        two halves when used as a sign of the zodiac, at least
+representing Aries are depicted in seals of the Hel-      before about 267 BC.
+lenistic period from Uruk. Thus, it may be that ―the          Although Taurus is most commonly called ―the
+Sheep‖ was an alternate name to ―the Hired Man‖           Stars‖, seal impressions from Hellenistic Uruk al-
+for Aries. A text describing the constellation known      ways portray the zodiacal sign as a bull. Further re-
+on a tablet from Uruk dating to the late third century    search is required to understand whether this is
+BC rationalises the transformation of ―the Hired          purely a local variation or whether the zodiacal sign
+Man‖ into ―the Sheep‖ by cuneiform wordplay as            Taurus was generally understood as a bull irrespec-
+follows (MLC 1866 Obv. I 13–16; Beaulieu et al.           tive of how it was named.
+2018):
+                                                          5.3.3.   Gemini
+   ―The Hired Sheep Man‖ (mulMÚ.MU.HUN.GA),
+                                                             The TE tablet lists a pair of names for the zodiacal
+―the Hired Sheep‖ (mulLU.HUN.GÁ), Nisan, the
+                                                          sign Gemini: ―the True Shepherd of Anu‖ and ―the
+Month of Anu, it is the star of the New Year. ―The
+                                                          Great Twins‖. The same pairing is used to name
+Hired Man‖ (mulLÚ.HUN.GÁ), the lamb, ram, Du-
+                                                          Gemini in the microzodiac texts. In the Astronomical
+muzi.      Concerning      ―the    Hired      Sheep‖
+                                                          Diaries and related material, however, Gemini is
+(mulLU.HUN.GÁ) — three stars are drawn at its
+                                                          only ever called ―the Twins‖. It is always written
+forehead; two stars are drawn on its thigh: four stars
+                                                          MAŠ-MAŠ.
+stand at its feet.
+
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+THE DEVELOPMENT OF THE BABYLONIAN ZODIAC                                                                    103
+
+
+
+5.3.4.   Cancer                                           5.3.11. Aquarius
+   All known texts refer to the zodiacal sign Cancer         All known texts refer to the zodiacal sign Aquari-
+as ―the Crab‖. In the Astronomical Diaries, the Crab      us as ―the Great One‖. In the Astronomical Diaries,
+is always written using the cuneiform sign ALLA.          ―the Great One‖ is usually written GU, although one
+Astrological texts sometimes use instead AL.LUL.          Diary (dating to 344 BC) writes GU-LA. Astrological
+                                                          texts use both forms.
+5.3.5.   Leo
+                                                          5.3.12. Pisces
+   All known texts refer to the zodiacal sign Leo as
+―the Lion‖. In the Astronomical Diaries, ―the Lion‖          The TE tablet refers to Pisces by the pair of names
+is written UR-A in texts dating from the sixth centu-     ―the Field‖ and ―the Tails‖. Surprisingly, the micro-
+ry down to 309 BC, and as A in texts from 307 BC          zodiac tablets only refer to Pisces as ―the Field‖.
+onwards. (The single exception to this rule is a Diary    ―The Field‖ is used quite often in astrological texts,
+from 381 BC which writes A rather than the expected       but is never used in the Astronomical Diaries which
+UR-A). Both forms are found in astrological texts         always call Pisces ―the Tails‖, written KUNme in ear-
+along with UR-GU-LA.                                      ly Diaries up to 381 BC and zibme in later Diaries be-
+                                                          ginning in 330 BC (with a single known exception in
+5.3.6.   Virgo
+                                                          383 BC where zibme is used, perhaps suggesting that
+   All known texts refer to the zodiacal sign Virgo as    it was right around this time where the convention
+―the Furrow‖. In the Astronomical Diaries, ―the Fur-      switched and the two forms coexisted for some
+row‖ is always written using the sign ABSIN. Astro-       years).
+logical texts sometimes use instead AB-SÍN.
+                                                          6. CONCLUSION
+5.3.7.   Libra
+                                                             The development of the zodiac was a significant
+   All known texts refer to the zodiacal sign Libra as    event in the history of Babylonian astronomy,
+―the Scales‖. In the Astronomical Diaries, ―the           providing a uniform system of positional reference,
+Scales‖ is always written using the sign RÍN. Astro-      simplifying the mathematical calculation of astro-
+logical texts sometimes use the fuller form gišRÍN or     nomical phenomena, and opening up new possibili-
+write the name syllabically (e.g. zi-ba-an-na).           ties within for the astrological interpretation of as-
+                                                          tronomical data.
+5.3.8.   Scorpio                                             The development of the zodiac required not only
+   All known texts refer to the zodiacal sign Scorpio     conceiving the concept of a uniform division of the
+as ―the Scorpion‖. In the Astronomical Diaries, ―the      zodiacal band, which came out of the parallel divi-
+Scorpion is always written GÍR-TAB.                       sion of the year in the schematic calendar, but also
+                                                          decisions over how the individual signs should be
+5.3.9.   Sagittarius                                      named. The most frequently adopted convention
+   All known texts refer to the zodiacal sign Sagitta-    was to name the signs after a selection of the zodia-
+rius as ―Pabilsag‖ (a Babylonian god). In the Astro-      cal constellations. By tracing the names used for the
+nomical Diaries, ―Pabilsag‖ is usually written PA,        signs of the zodiac attested in the Astronomical Dia-
+but earlier Diaries up to 369 BC sometimes use the        ries, it has been possible to explore which constella-
+fuller forms PA-BIL-SAG or PA-BIL. All three forms        tions were chosen as names for zodiacal signs, and
+are found in astrological texts.                          how this changed over time. In doing so, a better
+                                                          understanding of the cultural significance of the in-
+5.3.10. Capricorn                                         dividual zodiacal signs emerges (in particular, an
+   All known texts refer to the zodiacal sign Capri-      apparent preference for representing Aries and Tau-
+corn as ―the Goat-fish‖. In the Astronomical Diaries,     rus as animals at Uruk). In addition, the change in
+―the Goat-fish‖ is always written MÁŠ. Astrological       naming conventions may provide a further criterion
+texts sometimes use the fuller form SUHUR-MÁŠ.            that can be used in dating fragmentary Astronomical
+                                                          Diaries.
+REFERENCES
+Beaulieu, P.-A., Frahm, E., Horowitz, W. and Steele, J. M. (2018) The Cuneiform Uranology Texts: Drawing the
+         Constellations, Philadelphia, American Philosophical Society.
+Brack-Bernsen, L. and Hunger, H. (1999) The Babylonian zodiac: Speculations on its invention and signifi-
+         cance. Centaurus, Vol. 41, pp. 280—292.
+
+
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+104                                                                                                          J. STEELE
+
+
+
+Brack-Bernsen, L. and Steele, J. M. (2004) Babylonian mathemagics: Two mathematical astronomical-
+           astrological texts. In Studies in the History of the Exact Sciences in Honour of David Pingree, C. Burnett,
+           J. Hogensijk, K. Plofker and M. Yano (eds.), Leiden, Brill, pp. 95—125.
+Britton, J. P. (2010) Studies in Babylonian lunar theory: part III. The introduction of the uniform zodiac. Ar-
+           chive for History of Exact Sciences, Vol. 64, pp. 617—663.
+Brown, D. (2000) The cuneiform conception of celestial space and time. Cambridge Archaeological Journal, Vol.
+           10, pp. 103—122.
+Brown, D. (2017) Remarks on the earliest history of horoscopy. In At the Dawn of History: Ancient Near Eastern
+           Studies in Honour of J. N. Postgate, Y. Heffron, A. Stone and M. Worthington (eds.), Winona Lake,
+           Eisenbrauns, pp. 55—72.
+Huber, P. J. (1958) Ueber der Nullpunkt der babylonischen Ekliptik. Centaurus, Vol. 5, pp. 291—208.
+Hunger, H. (1999) Planetenstellungen bei der Geburt. In Muniscula Mesopotamica: Festschrift für Johannes
+           Renger, B. Böck, E. Cancik-Kirschbaum and T. Richter (eds.), Münster, Ugarit-Verlag, pp. 229—239.
+Hunger, H. (2001) Astronomical Diaries and Related Texts from Babylonia. Volume V: Lunar and Planetary Texts.
+           Vienna, Verlag der Österreichischen Akademie der Wissenschaften.
+Hunger, H. (2006) Astronomical Diaries and Related Texts from Babylonia. Volume VI: Goal Year Texts. Vienna,
+           Verlag der Österreichischen Akademie der Wissenschaften.
+Hunger, H. (2014) Astronomical Diaries and Related Texts from Babylonia. Volume VII: Almanacs and Normal Star
+           Almanacs. Vienna, Verlag der Österreichischen Akademie der Wissenschaften.
+Hunger, H. and Steele, J. M. (2018) The Babylonian Astronomical Compendium MUL.APIN, Abingdon,
+           Routledge.
+Jones, A. (2004) A study of Babylonian observations of planets near Normal Stars. Archive for History of Exact
+           Sciences, Vol. 58, 475—536.
+Monroe, M. W. (2016) Advice from the stars: The micro-zodiac in Seleucid Babylonia. Unpublished PhD Dis-
+           sertation, Brown University, USA.
+Ratzon, E (2014) Early Mesopotamian intercalation and the sidereal month. Mediterranean Archaeology and
+           Archaeometry, Vol.16, No.4, 143-151.
+Rochberg, F. (1998) Babylonian Horoscopes. Philadelphia, American Philosophical Society.
+Ross, M. T. (2014) The role of Alexander in the transmission of the zodiac. In Alexander the Great and Egypt:
+           History, Art, Tradition, V. Grieb, K. Nawotka, A. Wojciechowsky (eds.), Wiesbaden, Harrassowitz,
+           pp. 287—306.
+Roughton, N. A., Steele, J. M. and Walker, C. B. F. (2004) A Late Babylonian Normal and Ziqpu star text. Ar-
+           chive for History of Exact Sciences, Vol. 58, 537—572.
+Sachs, A. J. and Hunger, H. (1988—96) Astronomical Diaries and Related Texts from Babylonia. 3 volumes. Vien-
+           na, Verlag der Österreichischen Akademie der Wissenschaften.
+Song, S. (2016) The twelve signs of the zodiac during the Tang and Song dynasties: a set of signs which lost
+           their meanings within Chinese horoscopic astrology. In The Circulation of Astronomical Knowledge in
+           the Ancient World, J. M. Steele (ed.), Leiden, Brill, pp. 478—526.
+Steele, J/M (2006) Greek Influence on Babylonian Astronomy?, Mediterranean Archaeology and Archaeometry 6,
+           149–156.
+Steele, J. M. (2007) Celestial measurement in Babylonian astronomy. Annals of Science, Vol. 63, pp. 293—325.
+Steele, J. M. (2011) Making sense of time: Observational and theoretical calendars. In The Oxford Handbook of
+           Cuneiform Cultures, K. Radner and E. Robson (eds.), Oxford, Oxford University Press, pp. 470—485.
+Steele, J. M. (2015a) Mesopotamian astrological geography. In The Star of Bethlehem and the Magi: Interdiscipli-
+           nary Perspectives from Experts on the Ancient Near East, the Greco-Roman World, and Modern Astrono-
+           my, P. Barthel and G. van Kooten (eds.), Leiden, Brill, pp. 201—216.
+Steele, J. M. (2015b) A Late Babylonian compendium of calendrical and stellar astrology. Journal of Cuneiform
+           Studies, Vol. 67, pp. 187—251.
+Steele, J. M. (2017a) Real and constructed time in Babylonian astral medicine. In The Construction of Time in
+           Antiquity: Ritual, Art, and Identity, J. Ben-Dov and L. Doering (eds.), Cambridge, Cambridge Uni-
+           versity Press, pp. 69—82.
+Steele, J. M. (2017b) Rising Time Schemes in Babylonian Astronomy, Dordrecht, Springer.
+Steele, J. M. and Gray, J. M. K. (2007) A study of Babylonian observations involving the zodiac. Journal for the
+           History of Astronomy, Vol. 38, 443—458.
+Stephenson, F. R., Walker, C. B. F., Hunger, H. and Yau, K. K. C. (1985) Halley’s Comet in History, London,
+           British Museum.
+
+
+                   Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+THE DEVELOPMENT OF THE BABYLONIAN ZODIAC                                                                 105
+
+
+
+van der Waerden, B. L. (1952–52) History of the zodiac. Archiv für Orientforschung, Vol. 16, pp. 216—230.
+Wallenfels, R. (1993) Zodiacal signs among the seal impressions from Hellenistic Uruk. In The Tablet and the
+          Scroll: Near Eastern Studies in Honor of William W. Hallo, M. Cohen, D. C. Snell and D. B. Weisberg
+          (eds.), Bethesda, CDL Press, pp. 281—289.
+Wee, J. Z. (2015) Discovery of the zodiac man in cuneiform. Journal of Cuneiform Studies, Vol. 67, pp. 217—
+          233.
+Wee, J. Z. (2016) Virtual moons over Babylon: The calendar text system, its microzodiac of 13, and the mak-
+          ing of medical zodiology. In The Circulation of Astronomical Knowledge in the Ancient World, J. M.
+          Steele (ed.), Leiden, Brill, pp. 139—229.
+Weidner, E. F. (1915) Handbuch der babylonischen Astronomie, Leipzig, J. C. Hinrichs’sche.
+
+
+
+
+                  Mediterranean Archaeology and Archaeometry, Vol. 18, No 4, (2018), pp. 97-105
+

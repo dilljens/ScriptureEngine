@@ -1,0 +1,9 @@
+# Machine-readable guard: do not ingest this directory.
+# - scripts/ingest.py reads data/raw only (JSON/XML) -> scripture.db
+# - scripts/embed_verses.py embeds DB verses only
+# - No MCP tool, HTTP endpoint, generator, or test may read research/scholarship-private/
+# - LLM chat (web/routes/chat.py function-calling proxy) has no file-read path here.
+# Presence of this file means: git-tracked for persistence, invisible to chat by architecture.
+kind: noingest
+scope: research/scholarship-private/
+reason: third-party scholarship, private study only, fair-use excerpts + links in public

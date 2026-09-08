@@ -1,0 +1,745 @@
+Tyndale Bulletin 65.1 (2014) 85–100
+
+
+
+
+   MONOTHEISM AND THE LANGUAGE OF
+  DIVINE PLURALITY IN THE HEBREW BIBLE
+       AND THE DEAD SEA SCROLLS
+                          Michael S. Heiser
+
+
+                                 Summary
+Most Hebrew Bible scholars believe that Israelite religion evolved from
+polytheism to monotheism, an evolution in which the biblical writers
+participated. The dominant version of this consensus is that this
+religious evolution culminated by the end of the exile or shortly
+thereafter. A minority perspective places the evolutionary end point
+later. At issue is the presence of the language of divine plurality,
+positive references to other gods (‫ ֱאֹלהִ ים‬or ‫ ) ֵאלִ ים‬under YHWH’s
+authority, in Jewish religious texts composed during and after the
+Second Temple period. This article surveys the language of divine
+plurality in the Hebrew Bible and the sectarian literature at Qumran to
+show its conceptual continuity and longevity, and rejects the notion
+that it is incongruent with a belief in the uniqueness of YHWH.
+
+
+                            1. Introduction
+In 1991 the Journal for Jewish Studies published an intriguing article
+by Peter Hayman entitled, ‘Monotheism—A Misused Word in Jewish
+Studies?’ Hayman wrote:
+     In the academic world of twenty or thirty years ago it was conventional
+     to hold that the story of Judaism was one of a gradual, but inexorable,
+     evolution from a Canaanite/Israelite pagan and mythological en-
+     vironment into the pure light of an unsullied monotheism. The point at
+     which this breakthrough into monotheism was achieved was a subject of
+     debate, but most scholars seem to have agreed that it certainly took
+     place…. It will be my contention in this paper that it is hardly ever
+     appropriate to use the term monotheism to describe the Jewish idea of
+     God, that no progress beyond the simple formulas of the book of
+
+
+
+
+                         https://doi.org/10.53751/001c.29367
+                              https://tyndalebulletin.org/
+86                                      TYNDALE BULLETIN 65.1 (2014)
+      Deuteronomy can be discerned in Judaism before the philosophers of the
+      Middle Ages, and that Judaism never escapes from the legacy of the
+      battles for supremacy between Yahweh, Ba‘al and El from which it
+      emerged… . The pattern of Jewish beliefs about God remains monarch-
+      istic throughout. God is king of a heavenly court consisting of many
+      other powerful beings, not always under his control.1
+
+Hayman’s quotation illustrates that he would number himself among
+the majority of scholars who believe the Hebrew Bible reveals a
+religious progression from polytheism to monotheism. He disagrees,
+however, on the length of that evolution, placing its terminus ad quem
+much later than most. Hayman’s contention is that references to
+multiple gods (semantically plural ‫ ֱאֹלהִ ים‬or ‫ ) ֵאלִ ים‬in a collective
+assembly under YHWH, considered a biblical signpost for pre-exilic
+polytheism, continue well into Second Temple Jewish literature and
+beyond. For Hayman, this phenomenon requires delaying the
+culmination of the intellectual achievement of monotheism until the
+Middle Ages.2
+   This writer believes the phenomenon of divine plurality language
+that survived the exile needs revisiting. Hayman’s work focused on
+demonstrating that divine plurality extended through late antiquity. He
+consequently devoted attention to rabbinic texts supportive of his
+assertion.3 The presence of divine plurality language in Second Temple
+Jewish literature is much more abundant, however, making the
+phenomenon that drew Hayman’s attention more readily apparent. The
+Qumran sectarian material is arguably the best source for illustrating
+that divine plurality language was used frequently during that period.
+Consequently, the Qumran material will be a focus here.
+   It is the contention of this writer that, while divine plurality
+language is not difficult to detect in later Jewish literature, Hayman’s
+conclusion was misguided. The language of divine plurality in the
+Hebrew Bible and at Qumran is transparent, but does not justify the
+conclusion that either the biblical writers or Second Temple Jewish
+thinkers would have thought YHWH one among equals. Rather than
+
+
+1    Peter Hayman, ‘Monotheism—A Misused Word in Jewish Studies?’ JJS 42:1
+(Spring 1991): 1–15 (esp. 1–2, 15).
+2    When referencing biblical material or in generic use, the present article spells
+‫ ֱאֹלהִ ים‬defectively. The full (plene) spelling is adopted with respect to Qumran
+material, as that corpus overwhelmingly witnesses the full spelling.
+3    Hayman cited only two Qumran texts in his article: 1QM 15:14 and 4Q491 11,
+both of which contain the word ‫‘( אלים‬gods’).
+HEISER: Monotheism and Divine Plurality                                                87
+propose that Judaism only became monotheistic at a much later time,
+divine plurality language in Jewish text corpuses like Qumran ought to
+prompt reconsideration of whether divine plurality language constitutes
+a coherent argument for the presumed evolution.
+   This article proposes that there is a straight-forward way to parse the
+language of divine plurality in both the Hebrew Bible and the Qumran
+material that is congruent with a religious commitment to the
+uniqueness of YHWH. The language in itself provides no argument for
+religious evolution to monotheism, and so its presence at Qumran fails
+as a rationale for extending the terminus of that alleged evolution.
+Towards presenting this perspective, this essay will first briefly
+overview the conceptual context of the academic discussion. It will
+then demonstrate the continuity of the divine plurality language
+between the Hebrew Bible and Qumran. Finally, it will offer its
+proposal for reconciling this language with a Second Temple Jewish
+commitment to the uniqueness of YHWH. The implication of this
+proposal will be that the biblical writers shared the same theological
+outlook as their Second Temple counterparts.4
+
+
+                   2. Contextualising the Discussion
+
+2.1. Describing Polytheism and Monotheism
+Scholars of the Hebrew Bible have long known that Israelite religion
+included a belief in a divine assembly, or council, under YHWH.5 Since
+
+4    The phrase ‘biblical writers’ includes all hands that contributed to the final form of
+the text. This writer is not claiming that polytheism was absent in ancient Israel. The
+Hebrew Bible frequently laments its existence, and archaeology has produced evidence
+for it. The focus is on the biblical writers and their intellectual-religious descendants.
+The argument will be that the biblical usage of plural divinity terms like ‫ ֱאלוֹהִ ים‬or
+‫ ֵאלִ ים‬informs us that the writers did not assign the same attributes or qualities to all
+divine beings referenced by those terms. One among those divine beings (YHWH, the
+‫ ֱאֹלהִ ים‬of Israel) is unequivocally identified as inherently superior and distinct in
+comparison to all other ‫ ֱאֹלהִ ים‬or ‫ ֵאלִ ים‬.
+5    For example: Pss. 29:1; 82:1, 6; 89:5–8; Job 1:6–12; 2:1–6; 38:7–8; 1 Kgs 22:13–
+23. See Gerald Cooke, ‘The Sons of (the) God(s)’, ZAW 76 (1964): 22–47; Lowell K.
+Handy, Among the Host of Heaven: The Syro-Palestinian Pantheon as Bureaucracy
+(Winona Lake, IN: Eisenbrauns, 1994); J. Morgenstern, ‘The Mythological
+Background of Psalm 82’, HUCA 14 (1939): 29–126; E. Theodore Mullen, The Divine
+Council in Canaanite and Early Hebrew Literature (HSM 24; Missoula, MT: Scholars
+Press, 1980); Mark S. Smith, The Origins of Biblical Monotheism: Israel’s Polytheistic
+Background and the Ugaritic Texts (New York, NY: Oxford University Press, 2003);
+88                                     TYNDALE BULLETIN 65.1 (2014)
+this is a well-known feature of the ancient Near East’s polytheistic
+religions, it is assumed by most scholars that the presence of a divine
+assembly is evidence of polytheism in Israel’s religion. But there is
+much more to polytheism than divine plurality language. Polytheism is
+a system of belief that of necessity includes a range of concepts—
+concepts that are lacking in the religious conceptions of the biblical
+writers.
+   After noting the recency (17th century) of words like ‘monotheism’
+and ‘polytheism’, Jan Assmann outlines the crucial elements necessary
+in defining polytheism: (1) a cooperative cosmology (more than one
+deity creates and maintains the world); (2) a diversified, politicized
+cultus (important deities are worshipped in multiple locations,
+especially urban centres; (3) mythic, interactive biography (gods are
+known in relation to other gods).6
+   Assmann also articulates the relationship (and differentiation) of
+monotheism and polytheism.
+     In polytheistic religions, the deities are clearly differentiated and
+     personalized by name, shape, and function. The great achievement of
+     polytheism is the articulation of a common semantic universe. It is this
+     semantic dimension that makes the names translatable—that is, makes it
+     possible for gods from different cultures or parts of a culture to be
+     equated with one another…. In Mesopotamia, the pantheon is structured
+     by strong hierarchical relations of subordination, and this, in the long
+     run, fosters similar ideas of deep structural identity. The creation epic,
+     the Enuma Elish, ends with a hymn to the chief god, Marduk, calling
+     him by fifty names. The gods who are subordinated to Marduk become
+     his names, aspects of his all-encompassing essence…. In Egypt, this
+     concept of a Supreme Being comprising in his essence the whole
+     pantheon goes back to the Ramesside period (13th century BC) and
+     seems to be a reaction to Akhenaten’s monotheistic revolution. It
+     stresses the oneness of god while retaining the multiplicity of the
+     divine…. The idea that the various nations worshiped basically the same
+     deities but under different names and in different forms eventually led to
+     the belief in a Supreme Being…. This superdeity is addressed by
+     appellations such as Hypsistos (Supreme) and the widespread ‘One-God’
+     predication Heis Theos.7
+
+
+
+Matitiahu Tsevat, ‘God and the Gods in Assembly’, HUCA 40–41 (1969–1970): 123–
+37.
+6   Jan Assmann, ‘Monotheism and Polytheism’, in Ancient Religions (ed. Sarah Iles
+Johnston; Cambridge, MA: The Belknap Press of Harvard University Press, 2007): 17–
+31 (esp. 17–20).
+7   Assmann, ‘Monotheism and Polytheism’, 24–27.
+HEISER: Monotheism and Divine Plurality                                              89
+Assmann sees a progression in ancient Near Eastern religions towards
+the concept of hypsistos language and refers to it as ‘evolutionary
+monotheism.’ It is a description of henotheism, which allows the
+system of polytheism to remain intact while advocating the elevation of
+one supreme deity. Assmann is careful to distinguish this from
+‘revolutionary monotheism’. He writes:
+      Whereas evolutionary monotheism may be seen as the final stage of
+      polytheism, there is no evolutionary line leading from polytheism to
+      revolutionary monotheism. This form of monotheism manifests itself in
+      the first place as a negative or counter-religion, defining what god is not
+      and how god should not be worshiped.8
+
+This distinction is important in two respects for the subject matter of
+this paper. It recognises the ontological element in the religion of the
+biblical writers who were concerned with ‘what god is not’ (YHWH is
+unlike all other gods; he is unique) and ‘how god should not be
+worshiped’ (the isolation of cult to YHWH alone).9
+   These observations help frame the ensuing discussion in two ways.
+First, divine plurality language in the Hebrew Bible (and later) is not an
+adequate litmus test for polytheism. Polytheistic religion demands the
+system elements described by Assmann. Second, divine plurality
+language must not impinge on the two primary concerns for the biblical
+writers and later Judaism: the uniqueness of YHWH and the sole
+worship of YHWH.
+
+2.2. The Divine Council
+An inadequate conception of the meaning of monotheism as merely the
+acknowledgement of the existence of many divine beings has
+unfortunately caused confusion when it comes to the presence of a
+divine council under Yahweh in the Hebrew Bible. Council references
+are regularly framed as reflecting the early stage of Israel’s religious
+evolution prior to the emergence of an intolerant monotheism.
+Historical forces, in particular the shock of the exile, are presumed to
+have been the catalyst that precipitated the decisive commitment to
+monotheism. As a strategy for coping with the exile, the biblical
+
+8   Assmann, ‘Monotheism and Polytheism’, 28.
+9   While scholars of Israelite religion may presume that Israelite worship of other
+gods was at some point acceptable during the biblical period, the concern of this article
+is to avoid speculation and focus on the received (canonical) text for how it presents
+the language of divine plurality and the nature of YHWH.
+90                                       TYNDALE BULLETIN 65.1 (2014)
+writers cast YHWH as the sovereign deity of all nations and sentenced
+the other gods to death (Psalm 82). YHWH thus emerged from the exile
+as the lone existing God.10
+   One would assume in the context of a zealous monotheistic
+revolution that a term like ‫‘( ֵאלִ ים‬gods’) would be used with great care
+after the biblical period so as to avoid any hint of earlier, subsequently
+offensive, polytheism. But this is precisely what does not happen. The
+language of divine plurality persists well after the end of the exile. The
+Dead Sea Scrolls are perhaps the most telling demonstration of that
+persistence.
+   The presence of divine assembly members in the heavenly sanctuary
+described in Qumran texts like the Shabbat Shiroth has not gone
+unnoticed, but scholars have not noted the frequency of such language
+nor the implications of its obvious congruence to pre-exilic (allegedly)
+polytheistic expressions. The explicit terminology that purportedly
+evidences polytheism is for some reason semantically parsed as
+meaning ‘angels’ (‫ )מלאכים‬when occurring in Qumran texts, but not
+in earlier material from the Hebrew Bible.11 The weight of the
+prevailing consensus concerning an Israelite religious evolution
+appears to have produced an interpretative hesitation in scholars who
+have tried to deal with this vocabulary. Three examples are illustrative.
+   First, terminology that would unwaveringly be translated ‘gods’
+(‫ ) ֵאלִ ים‬in the pre-exilic texts of the Hebrew Bible is often obscured
+when encountered in the Qumran material. In place of this straight-
+forward translation readers find renderings such as ‘divine beings’, or
+the more transparent option is placed in quotation marks as though the
+rendering is artificial. For instance, in speaking of the inner sanctuary
+of the heavenly temple described in 4Q400 1 4 John C. Collins writes:
+‘These holy ones are also called “gods” (ʾēlı̂ m), angels, spirits, and
+princes.’12
+   Second, in a lengthy article related to the issue at hand, Michael
+Wise devotes over forty pages of analysis to articulating how several
+Qumran scrolls express the superiority of the God of Israel to the
+
+10 This viewpoint is eloquently set forth by S. B. Parker, ‘The Beginning of the Reign
+
+of God—Psalm 82 as Myth and Liturgy’, Revue Biblique 102 (1995): 532–59.
+11 Since Qumran Hebrew is not pointed, the author has used only consonantal Hebrew
+
+forms when referring to textual forms in that material.
+12 John C. Collins, ‘Powers in Heaven: God, Gods, and Angels in the Dead Sea
+
+Scrolls’, in Religion in the Dead Sea Scrolls (ed. John C. Collins and Robert A.
+Kugler; Grand Rapids, MI: William B. Eerdmans, 2000): 9–20 (esp. 12).
+HEISER: Monotheism and Divine Plurality                                                 91
+angels.13 The problem is that the word ‫‘( מלאכים‬angels’) never occurs
+in any of the text portions cited in the article title.14 On the other hand,
+plural ‫‘( אלים‬gods’) and semantically plural ‫‘( אלוהים‬gods’) occur
+with frequency. Wise assumes that since these texts are post-exilic,
+these Hebrew terms are to be translated ‘angels’, without offering any
+explanatory basis for the rendering.
+   Third, in her important work on the Shabbat Shirot texts at Qumran,
+Carol Newsom uses the term ‘angelic elim’ when encountering plural
+‫‘( אלים‬gods’) in the material.15 There is no biblical precedent for this
+combination and, as will become evident in the ensuing discussion, no
+theological need for blunting ‫ אלים‬or plural ‫אלוהים‬. The term ‫מלאך‬
+(‘angel’) means ‘messenger’ and therefore describes a task, not
+ontology.16 Viewed against the outlook of a religious worldview that
+had rejected polytheistic systems, speaking of ‘angelic gods’ would
+have been theologically awkward.
+   The disconnection between the clear terminology and its translation
+and interpretation becomes even more problematic in light of the actual
+
+
+13  Michael O. Wise, ‘‫מי כמוני באלים‬: A Study of 4Q491c, 4Q471b, 4Q427 7, and
+1QHa 25:25–26:10’, DSD 7:2 (2000): 173–219. This author’s conclusion was reached
+on the basis of database searches of the texts covered in Wise’s article. Two databases
+were used: Martin G. Abegg, Jr., Qumran Sectarian Manuscripts (Bellingham, WA:
+Logos Bible Software, 2003) and the digital edition of Florentino García Martínez and
+Eibert J. C. Tigchelaar, The Dead Sea Scrolls Study Edition (2 vols.; Leiden; New
+York, NY: E.J. Brill, 1997–1998). Differences between the two databases are as
+follows (Abegg = García Martínez and Tigchelaar): 4Q491c=4Q491 11–12;
+4Q471b=4Q471. The singular form (‫ )מלאך‬also does not appear in these texts.
+14 The text portions under Wise’s focus were 4Q491c, 4Q471b, 4Q427 7, and 1QHa
+
+25:25–26:10. The lemma does occur in 1QHa 25–26, but is found in col. 14, line 13
+(‫‘ ;מלאכי פנים‬angels of the presence’) and col. 24, line 10 (‫‘ ;מלאכי שׁלום‬angels of
+peace’). In neither case is there overlap with divine plurality language that would
+suggest ‘angels’ is a sensible rendering of ‫ אלים‬or plural ‫אלוהים‬.
+15 Carol A. Newsom, Songs of the Sabbath Sacrifice: A Critical Edition (HSM 27;
+
+Atlanta, GA: Scholars Press, 1985): 23–24.
+16 Ludwig Koehler et al., The Hebrew and Aramaic Lexicon of the Old Testament
+
+(Leiden; New York: E.J. Brill, 1999): 585–86. The close relationship between the
+vocabulary of the Hebrew Bible and the material of Ugaritic helps illustrate the point.
+At Ugarit, the cognate term mlʾk (‘messenger’) was used of ʾilm (‘gods’) who were
+dispatched by other gods to deliver messages (e.g., KTU 1.3.III:32; 1.3.VI:10–11; see
+Gregorio Del Olmo Lete and Joaquín Sanmartín, A Dictionary of the Ugaritic
+Language in the Alphabetic Tradition [vol. 2; Leiden: E.J. Brill, 2003], 546). Members
+at all levels of the Ugaritic pantheon are referenced as ʾilm, but they are not all referred
+to (individually or collectively) as mlʾkm (‘messengers’). The term was used for a task
+or activity performed by a lesser deity on behalf of a superior one. Ancient
+bureaucracies were not conceived on egalitarian terms. See the discussion of divine
+council tiers in Mullen, The Divine Council, 175–208.
+92                                       TYNDALE BULLETIN 65.1 (2014)
+use of angel terminology in the scrolls. The plural ‫‘( מלאכים‬angels’)
+occurs in close proximity to ‫‘( אלים‬gods’) or semantically plural
+‫‘( אלוהים‬gods’) only twice in the Qumran corpus.17 In neither case is
+there sufficient warrant to conclude that the Qumran writers redefined
+these terms of pre-exilic divine plurality as angels.
+   The tension between the consensus perspective on Israel’s evolution
+away from polytheism and this brief sampling of data raises obvious
+questions. If this evolution did indeed occur and was fundamental to
+Jewish religious and intellectual discussion about God, why did Second
+Temple writers use the older polytheistic terminology? Why not
+convey the evolution with clarity and employ ‫‘( מלאכים‬angels’) or
+some other circumlocution? Why not eliminate language of the pre-
+exilic polytheistic council altogether, centuries after the exile? The fact
+that Jewish writers of this period felt free to use this presumably
+forbidden terminology ought to prompt reconsideration of how their
+material should be interpreted.
+
+
+     3. Divine Plurality Terminology in the Hebrew Bible
+              and the Qumran Sectarian Scrolls
+The Qumran sectarian material displays thorough acquaintance with
+pre-exilic Israel’s divine council. Explicit references to a divine
+assembly and its divine members are abundant.18
+
+3.1. The Council Proper
+There are several lemmas in the Hebrew Bible for a heavenly assembly
+(‫עֵ ָדה‬, ‫דּוֹר‬, ‫סוֹד‬, and ‫) ָק ָהל‬, each occurring alone or in construct with a
+nomen rectum that designated deity or the holy status of the group.19 At
+
+
+17  See Abegg, Qumran Sectarian Manuscripts. The two instances are 4Q403 1 I.1
+(‫[‘ ;לאלוהי ]מ[לאכי רום‬to] the God of the exalted angels’) and 4Q405 23 I.8 ( ‫במבואי‬
+‫ …‘ = …אלי דעת בפתחי כבוד ו֯ בכול מוצאי מל֯ אכי קודש לממשלתם‬When the gods of
+knowledge enter through the gates of glory, and through all the exits of the holy angels
+to their domains’). The first example simply bears witness to the idea that angels are
+lesser than God in the cosmic hierarchy. It provides no commentary on frequent divine
+plurality language occurring elsewhere in the scrolls. The second example seems to
+distinguish the gods from the angels via different temple locations.
+18 All Qumran occurrences and the style of their citation come from Abegg, Qumran
+
+Sectarian Manuscripts.
+19 Pss. 82:1; 89:6–8 (Heb); Jer. 23:18–22. Wording in other passages implies the
+
+presence of a group of divine beings (Gen. 1:26; 3:5, 22; 11:7; Isa. 40:1–8). Council
+HEISER: Monotheism and Divine Plurality                                             93
+Qumran, only ‫‘( עדה‬assembly’) and ‫‘( סוד‬council’) appear in
+sectarian literature in unambiguous reference to a heavenly assembly.20
+The familiar ‫‘( עדת אל‬divine assembly’; ‘assembly of God’) of Psalm
+82:1 occurs six times at Qumran, only one instance of which is a
+quotation of Psalm 82.21 There are also four instances of ‫עדת אלים‬
+(‘assembly of the gods’).22 The variations […] ‫עדה לכול אלי‬
+(‘assembly of all the gods of ?’) and ‫‘( עם אלים בעדת יחד‬with the
+gods in the assembly of the community’) occur once and twice,
+respectively.23 The expression ‫‘( סוד אלים‬council of the gods’) occurs
+three times,24 with ‫‘( סוד אלי טוהר‬council of the pure gods’)
+occurring once.25
+   There are no instances of divine council terminology with the
+specific Hebrew lemma for angels (‫)מלאכים‬. This omission is curious
+given the modern consensus that a divine council in the Hebrew Bible
+points to vestigial polytheism prior to ‫ אלים‬and semantically plural
+‫ אלוהים‬being downgraded to angels. One would anticipate that, had
+Jewish writers wanted to make the religious transformation clear, there
+would be specific references to a council of angels instead of a council
+of ‫ אלים‬and semantically plural ‫אלוהים‬.
+   The location of the pre-exilic council in the Hebrew Bible is des-
+cribed with terms found in the literature of her polytheistic neighbours,
+such as Ugarit. Examples include the ‘heights’ (‫בָּ מוֹת‬, ‫ )מָ רוֹם‬or
+‘heights of the north’ (‫)יַ ְרכְּ ֵתי צָ פוֹן‬.26 At Qumran, the God of Israel is
+the ‘God of the exalted heights’ (‫ )אלוהי מרומים הרמים‬who is
+‘among all the gods of knowledge’ (‫)בכול אלי דעת‬.27 The well-
+known cosmic temple of the Shabbat Shirot is explicitly referred to as
+the ‘heights’ in scenes with multiple ‫אלים‬. For example, 4Q400 1 I.20
+
+
+meetings are described in 1 Kgs 22:19–22; Dan. 7:9–10; Isa. 6:1–11; Job 1:6–12; 2:1–
+7. See S. B. Parker, ‘Council’, DDD:204–208 for ancient Near Eastern parallels.
+20 In addition to the references that appear in the ensuing discussion, see 4Q401 5 4.
+21 1QM 4:9; 4Q401 11 3; 4Q427 7 I.14; 4Q427 8 I.10; 4Q457b 1 I.5; 11Q13 2 10.
+
+The last reference is a citation of Ps. 82:1.
+22 1QM 1:10; 1Q22 1 IV.1; 4Q400 2 7; 4Q491 11 I.12.
+23 4Q400 1 I.4 and 4Q427 7 II.9; 4Q431 2 8.
+24 4Q400 1 II.9; 4Q418 69 II.15; 4Q511 10 11.
+25 4Q286 7 I.6.
+26 Isa. 14:13–14; 24:21; Ps. 148:1; Mic. 6:6.
+27 4Q403 1 I.30–31; 11Q17 2 4. The phrase in the latter reference is slightly different:
+
+‫אלוהי כול מרומי רום‬. See also 4Q511 10 11 (=4Q510 1); 11Q13 II.10–11. This last
+passage quotes Ps. 82:1 and then identifies the place where the gods are being judged
+as the ‘heights’ (‫)מרום‬.
+94                                       TYNDALE BULLETIN 65.1 (2014)
+references ‘the gods, priests of the exalted heights’, ‫אלים כוהני מרומי‬
+‫רום‬.28
+3.2. The Divine Members of the Council
+There are a dramatic number of occurrences of ‫ אלים‬and semantically
+plural ‫ אלוהים‬in the Dead Sea Scrolls.
+
+a. ‫אלים‬
+According to Abegg’s database of the Qumran sectarian scrolls, there
+are 106 occurrences of ‫ אלים‬in the sectarian material.29 Eleven of those
+instances that occur in juxtaposition with council vocabulary have
+already been noted. Of the remaining aggregate, the familiar ‫בני אלים‬
+of the Hebrew Bible (Pss. 29:1; 89:7 [Eng 6]) occurs five times.30 The
+remaining instances occur in isolation or in phrases that are not found
+in the Hebrew Bible. Some of these phrases convey the notion of a
+collective of ‫אלים‬. For example, the phrase ‫‘( כול אלים‬all the gods’),
+occasionally with the construct form ‫ אלי‬modified by another noun is
+found eighteen times.31 ‫‘( כול צבאות אלים‬all the hosts of the gods’)
+occurs twice.32
+   None of the references to ‫ אלים‬are negative or polemic. The ‫אלים‬
+in the scrolls are not theological foils for denigration in or outside
+YHWH’s jurisdiction. The God of Israel is the ‘God of (these) gods’.
+He is above them in the unseen cosmic hierarchy. This status is
+
+
+
+28  Other examples include: 4Q402 4 9 (=Mas1k=MasShirShabb); 4Q404f 2+3AB
+(=4Q403 1 I; 4Q405 3 II); 4Q403 1 I.30–34 (=(4QShirShabbd).
+29 1QM 1:10,11; 14:15, 16, 17; 15:14; 17:7; 18:4,6; 1QHa 15:28; 18:8; 24:11; 27:3;
+
+2 I.3, 10; 11:8; 1Q22 1 IV.1; 1Q35 1 2; 4Q166 1 II.6; 4Q181 1 4; 4Q248 1 3; 4Q286
+2 2; 4Q286 7 I.6; 4Q381 15 6; 4Q400 1 I.4,20; 4Q400 1 II.9, 17; 4Q400 2 1,7; 4Q401
+14 I.5 (2×),7; 4Q401 16 1; 30 1; 4Q402 4 8; 4Q402 6 3; 4Q402 9 2; 4Q403 1 I.14, 18,
+21, 26, 31, 33, 34, 35, 38 (2×); 4Q403 1 II.26, 33, 35; 4Q404 2 2; 4Q404 4 6, 7; 4Q405
+4–5 1, 2, 3; 4Q405 13 2, 5; 4Q405 14–15 I.3; 4Q405 19 3; 4Q405 23 I.8; 4Q418 69
+II.15; 4Q418 81+81a 4; 4Q423 8 4; 4Q427 7 I.8, 11; 4Q427 7 II.9; 4Q428 8 2; 4Q428
+9 3; 4Q428 15 3; 4Q431 I.4,7; 4Q431 2 8; 4Q471b 1a-d 1; 4Q471b 1a-d5; 4Q471b 1a-
+d8; 4Q491 8–10 I.13 (2×),14; 4Q491 10 II.15; 4Q491 11 I.12,14,18; 4Q491 13 1;
+4Q491 14–15 8 (2×),11; 4Q491 24 3, 4; 4Q496 1–2 2; 4Q503 48–50 8; 4Q503 65 2;
+4Q510 1 2; 4Q511 10 11; 4Q511 16 4; 5Q13 1 6; 11Q11 2 10; 11Q13 2 14; 11Q17 3 5,
+9; 11Q17 4 1, 10; 11Q17 5 7; 11Q17 6 4; 11Q17 8 7.
+30 1QHa 2 I.3, 10; 4Q381 15 6; 4Q491 24 4; 5Q13 1 6.
+31 1QHa 11 8; 4Q400 1 I.4; 4Q402 6 3; 4Q403 1 I.14, 18; 4Q403 1 I.35, 38; 4Q403
+
+1 II.33, 35; 4Q404 4 6; 4Q405 4–5 3; 4Q405 13 2; 4Q418 81+81a 4; 4Q423 8 4;
+4Q491 24 3; 11Q13 2 14; 11Q17 3 5, 9.
+32 4Q503 48–50 8; 4Q503 65 2.
+HEISER: Monotheism and Divine Plurality                                            95
+expressed in the Qumran material with ‫( אל אלים‬once) 33 and ‫אלוהי‬
+‫( אלים‬eight times).34
+b. Semantically Plural ‫אלוהים‬
+The noun ‫ אלוהים‬occurs over five hundred times in Abegg’s database
+(absolute or construct form). This writer has found 70 occurrences
+where context indicates it is semantically plural.35 This number
+excludes references to idols, foreign gods (‘other gods’), and citation of
+passages from the Hebrew Bible (e.g. Ps. 82:1b). The spiritual nature
+of these ‫ אלוהים‬in the theology of the sectarian writers is indicated by
+phrases like ‫‘( רוחות אלוהים‬spirits of the gods’) and ‫רוחות אלוהים‬
+‫‘( חיים‬spirits of the living gods’).36
+   As previously noted, for the Qumran sectarian writers, the God of
+Israel is higher than these other gods (‘God of gods [‫)’]אל אלים‬. This
+superiority is also expressed with respect to phrases pointing to
+multiple ‫אלוהים‬. The phrases ‫‘( אל אלוהים‬God of gods’) and ‫אלוהי‬
+‫‘( אלוהים‬God of gods’) each occur one time.37
+   By way of summary, there are nearly 180 instances of explicit
+divine plurality in the sectarian Qumran scrolls, a number far greater
+than in the Hebrew Bible. Many of these instances are found in
+unequivocal divine council contexts of the type associated with the
+allegedly polytheistic stage of the religion of biblical Israel. These gods
+are found in the heavenly temple-heights praising God and serving
+him. Angels (‫ )מלאכים‬are seldom found in these contexts. When they
+are, there is no clear instance where ‫ אלים‬or semantically plural
+‫ אלוהים‬are described as ‫מלאכים‬. The data therefore portray a
+theological situation quite contrary to what would be expected if
+Jewish theological thinking was moving away from polytheistic belief
+towards an intolerant monotheism.
+
+
+33  4Q403 1 II.26.
+34  4Q401 16 1; 4Q402 4 8; 4Q402 9 2; 4Q403 1 I.26; 4Q511 16 4; 11Q11 2 10;
+11Q17 4 3; 11Q17 5 7.
+35 4Q400 1 I.2; 4Q400 1 II.7; 4Q400 2 2, 3, 5; 4Q400 3 I.3; 4Q401 1–2 5; 4Q401 14
+
+I.8; 4Q402 3 II.12; 4Q402 4 7, 9, 10; 4Q403 1 I.2, 32, 33, 36, 40, 43, 44, 46; 4Q403
+1 II.5, 6, 8, 9, 12, 16, 20; 4Q404 5 5; 4Q405 4–5 4; 4Q405 6 5, 7; 4Q405 14–15 I.5, 6,
+8; 4Q405 18 3; 4Q405 19 2, 4, 5, 6, 7; 4Q405 20 II-22 3, 7, 8, 11, 13; 4Q405 23 I.4, 5,
+6, 13; 4Q511 8 12; 11Q17 2 6; 11Q17 4 8, 10; 11Q17 5 3, 4, 6; 11Q17 6 3, 5, 6, 7, 8,
+9; 11Q17 7 5, 10, 11, 13; 11Q17 8 4, 6, 8.
+36 4Q405 6 7 and 4Q405 20 II-22:11, respectively.
+37 4Q403 1 II.20 and 4Q511 8 12, respectively.
+96                                         TYNDALE BULLETIN 65.1 (2014)
+   The question to consider next is straight-forward: Do the data
+indicate retention of polytheism among the sectarian Jewish writers at
+Qumran (and presumably wherever else the phenomenon can be
+found), or is there another way to understand the language of divine
+plurality?
+
+
+          4. Qumran’s Divine Plurality Language and
+              Second Temple Jewish Monotheism
+It would seem from this survey of Qumran sectarian material that
+Hayman’s assertion about monotheism being a misplaced concept in
+Jewish studies is a defensible one. This author, however, would
+disagree. The assertion can only be sustained if (1) the terms ‫ אלים‬and
+semantically plural ‫ אלוהים‬are attached to a specific set of shared
+attributes, and (2) the biblical and Qumran writers did not consider
+YHWH unique among multiple ‫ אלים‬and ‫ אלוהים‬by some criteria.
+    Both of these assumptions are demonstrably flawed. The biblical
+writers—and, by extension, their intellectual heirs in the Second Tem-
+ple period—did not use the term ‫ אלוהים‬exclusively of the God of
+Israel, nor was each referent of the term deemed equal in attributes:38
+
+
+
+38 The term ‫ ֱאֹלהִ ים‬is not used of human beings. The contrary is at times presumed by
+
+interpreters who wish to see the council of divine beings in Psalm 82 as a group of
+Israel’s elders. The occurrences of ‫ ֱאֹלהִ ים‬in Judg. 18 refer to God himself; the elders
+selected in that passage are never described with the term. Other passages, such as
+Exod. 21:2–6; 22:6–8 [Eng., 22:7–9], which describes the voluntary retention of a
+household servant, are ambiguous. On one hand, the plural predicator in Exod. 22:6
+with ‫ ֱאֹלהִ ים‬as subject is no guarantee that the subject is plural. See M. Heiser, ‘Should
+‫( אלהים‬ʾĕlōhı̂ m) with Plural Predication Be Translated ‘Gods’?” BT 61:3 (July 2010):
+123–36. If the ‫ ֱאֹלהִ ים‬is semantically singular, its omission in Deut. 15:17 is likely due
+to the secularizing of the ceremony. See J. Tigay, Deuteronomy (The JPS Torah
+Commentary; Philadelphia, PA: Jewish Publication Society, 1996): 150; M. Weinfeld,
+Deuteronomy and the Deuteronomic School (Winona Lake, Ind.: Eisenbrauns, 1992):
+223. If one regards the noun as semantically plural, there is no coherent rationale for
+deleting a reference to human judges. Given the context of Deuteronomy’s theological
+agenda, the plural ‫ ֱאֹלהִ ים‬would refer to divine beings, or perhaps teraphim, both of
+which could lead to idolatry. See Cyrus Gordon, ‘‫ אלהים‬in Its Reputed Meaning of
+Rulers, Judges’, JBL 54:3 (Sept 1935): 129–44. In like manner, the original orientation
+of ‫ ֱאֹלהִ ים‬in Psalm 45:6–7 can quite coherently be God himself (e.g. J. Goldingay,
+Baker Commentary on the Old Testament: Psalms 42–89 [ed. Tremper Longman III;
+vol. 2; Grand Rapids, MI: Baker Academic, 2006], 58). In any event, if one considers
+the term as describing the king in divine terms as an adaptation of ancient Near Eastern
+thought, the term cannot be extended to anyone who was not the king.
+HEISER: Monotheism and Divine Plurality                                                    97
+• YHWH, the God of Israel (over 2000 times)39
+• The ‫ ֱאֹלהִ ים‬of YHWH’s assembly (Ps. 82:1, 6; Ps. 89:5–8)
+• The ‫ ֱאֹלהִ ים‬of foreign nations (e.g., 1 Kgs 11:33; Deut. 32:8–9, 43
+   [with LXX, Qumran40])
+• ‘Demons’ (‫ )שֵׁ ִדים‬who are ‫( ֱאֹלהִ ים‬Deut. 32:17)41
+• The disembodied human dead are ‫( ֱאֹלהִ ים‬1 Sam. 28:13)
+• The Angel of Yahweh (Gen. 35:7)42
+The question we must ask in view of this usage is straight-forward:
+Would the biblical writers have considered all these ‫ ֱאֹלהִ ים‬as
+ontologically equivalent? This writer believes this question would have
+been no intellectual struggle. It would have been absurd to suggest to a
+biblical writer that the departed human dead or quasi-monstrous beings
+like ‫ שֵׁ ִדים‬were equal to YHWH. In regard to the former, the God of
+
+
+39 For more precise numbers, see Ernst Jenni and Claus Westermann, Theological
+
+Lexicon of the Old Testament (Peabody, MA: Hendrickson Publishers, 1997): 116–17.
+40 Textual critics of the Hebrew Bible are unanimous in agreement that the Qumran
+
+reading is superior to the Masoretic text in Deut. 32:8, which reads ‫‘( בני ישׂראל‬sons
+of Israel’). See P. W. Skehan, ‘A Fragment of the ‘Song of Moses’ (Deut. 32) from
+Qumran’, BASOR 136 (1954) 12–15; idem, ‘Qumran and the Present State of Old
+Testament Text Studies: The Masoretic Text’, JBL 78 (1959) 21; Julie Duncan, ‘A
+Critical Edition of Deuteronomy Manuscripts from Qumran, Cave IV. 4QDtb, 4QDte,
+4QDth, 4QDtj, 4QDtb, 4QDtk, 4QDtl’, (Ph.D. diss., Harvard University, 1989);
+Emanuel Tov, Textual Criticism of the Hebrew Bible (Minneapolis: Fortress Press,
+1992): 269; Eugene Ulrich et al., eds., Qumran Cave 4.IX: Deuteronomy to Kings
+(DJD XIV; Oxford: Clarendon Press, 1995): 75–79; P. Sanders, The Provenance of
+Deuteronomy 32, 156; J. Tigay, Deuteronomy, The JPS Torah Commentary
+(Philadelphia: Jewish Publication Society, 1996): 514–18.
+41 Regarding Deut. 32:17, English translations reflect disagreement over primarily
+
+two issues: whether to render ‫ ֱאֹל ַהּ‬as singular or plural and how to translate the
+verbless clause in which it appears ‫ל ֹא ֱאֹל ַהּ‬. The word ‫ ֱאֹל ַהּ‬is a defective spelling of
+the lemma ַ  ‫ ֱאלוֹהּ‬. A computer search of the Hebrew Bible (BHS) reveals that the lem-
+ma ַ ‫ ֱאלוֹהּ‬occurs 58 times. There are in fact no occasions in the Hebrew Bible where
+ַ‫ ֱאלוֹהּ‬is contextually plural or is used as a collective noun. The only place where such
+an option might appear to be workable is 2 Kgs 17:31, where the text informs us that
+‘the Sepharvites burned their children in the fire to Adrammelech and Anammelech,
+the gods of Sepharvaim (Kethiv: ‫ ;אלה ספרים‬Qere: ‫) ֱאֹלהֵ י ְספַ ְרוָ יִ ם‬.’ The Qere reads the
+first lemma not as ַ   ‫ ֱאלוֹהּ‬but rather ‫ ֱאֹלהִ ים‬. For a treatment of the verbless clause
+syntax, see M. Heiser, ‘Does Deuteronomy 32:17 Assume or Deny the Reality of Other
+Gods?’ BT 59:3 (July 2008): 137–45.
+42 This last identification is uncertain. The plural predication with ‫ האלהים‬as subject
+
+is very possibly designed to blur the distinction between God and the Angel of Yahweh
+(cp. Gen. 48:15–16 and its dual subject with singular verb), who elsewhere appears in
+human form. See M. Heiser, ‘(ʾĕlōhı̂ m) with Plural Predication’, 123–36. Additionally,
+some scholars would presume that Gen 32:1–2 also identifies angels (‫ )מלאכים‬as
+‫אלהים‬. See Stephen Geller, “The Struggle at the Jabbok: The Uses of Enigma in a
+Biblical Narrative,” JANES 14 (1982): 37–60 (esp. 54).
+98                                            TYNDALE BULLETIN 65.1 (2014)
+Israel was considered the judge of the dead (1 Sam. 2:6; Ps. 49:14–15).
+Regarding the latter, their inferior status in the ancient Near Eastern
+conceptions of pantheon and divinity has prompted some scholars to
+consider them supernatural but not divine.43
+    This leaves us with the ‫ ֱאֹלהִ ים‬of YHWH’s council and the
+surrounding nations. The two groups are of course linked by the
+cosmic-geographical world-view articulated in passages like
+Deuteronomy 32:8–9 (cp. Deut. 4:19–20).44 The biblical writers are
+careful to articulate the notion that YHWH is superior to all other
+‫ ֱאֹלהִ ים‬.45 There is none beside him; he is unique and incomparable:46
+
+43  John H. Walton, ‘Demons in Mesopotamia and Israel: Exploring the Category of
+Non-Divine but Supernatural Entities’, in Windows to the Ancient World of the Hebrew
+Bible: Essays in Honor of Samuel Greengus (Winona Lake, IN: Eisenbrauns, 2014):
+229–46.
+44 Many scholars do indeed presuppose that Deut. 32:8–9 has YHWH as one among
+
+equal gods under a distinct deity, El (Elyon) and that Psalm 82 should be read in that
+light. See David Frankel, ‘El as the Speaking Voice in Psalm 82: 6–8’, JHS 10 (2011);
+Smith, Origins of Biblical Monotheism, 48; Parker, ‘Reign of God’, 546. This
+perspective has been critiqued in detail elsewhere. See Michael S. Heiser, ‘Does
+Divine Plurality in the Hebrew Bible Demonstrate an Evolution from Polytheism to
+Monotheism in Israelite Religion?’ Journal for the Evangelical Study of the Old
+Testament 1:1 (2012): 1–24; idem, ‘Are Yahweh and El Distinct Deities in Deut. 32:8–
+9 and Psalm 82?’ HIPHIL 3 (2006). Space constraints allow only the following
+observations: (1) This reading of Deut. 32:8–9 ignores the El epithets in the preceding
+verses (Deut. 32:6–7) that are attributed to YHWH, thus identifying YHWH with El; (2)
+Deut. 4:19–20 has YHWH ‘taking’ (‫ )לקח‬his portion, not having it bestowed by a
+superior; (3) Reading Psalm 82 in light of this approach to Deut. 32:8–9 has El as the
+speaking voice in the psalm, which results in various points of incoherence in the flow
+of the psalm.
+45 This assertion of superiority can be found in the earliest material in the Hebrew
+
+Bible, such as Exod. 15:11, 18. Contrary to what is presumed by those scholars who
+argue that the supremacy of YHWH is a late development in biblical theology, the
+notion of the kingship of YHWH is ancient, also appearing in some of the oldest biblical
+material and passages that are certainly pre-exilic (e.g., Pss. 24; 29:1; 47:2). On the
+dating and setting of these ancient psalms, see J. J. M. Roberts, ‘The Religio-Political
+Setting of Psalm 47’, BASOR 221 (Feb 1976): 132; F. M. Cross, Canaanite Myth and
+Hebrew Epic: Essays in the History of the Religion of Israel (Cambridge, MA: Harvard
+University Press, 1973): 151–57; idem., ‘Notes on a Canaanite Psalm in the Old
+Testament’, BASOR 117 (1950): 19–21; F. M. Cross and D. N. Freedman, Studies in
+Ancient Yahwistic Poetry (Missoula, MT: Scholars Press, 1975): 45, n. 59.
+46 Phrases such as ‘there is no god besides me’ (‫ ) ֵאין ֱאֹלהִ ים עִ מָּ ִדי‬and ‘besides me
+
+there is no other’ (‫ ) ֵאין עוֹד מִ לְ בַ דּוֹ‬do not deny the existence of other ‫ ֱאֹלהִ ים‬. This is
+readily demonstrated by the fact that the phrases occur in passages that presume the
+division of the nations and their allotment to other gods (e.g. Deut. 4:35, 39 [cp. Deut.
+4:19–20] and Deut. 32:29 [cp. Deut. 32:8–9, 43]). This sort of phrasing is also used of
+Nineveh and Babylon, where the point cannot be non-existence, but incomparability
+(Zeph. 2:15; Isa. 47:8, 10). For discussions of the Hebrew Bible’s ‘denial phrases’
+demonstrating their meaning is incomparability, see Michael S. Heiser, ‘Monotheism,
+HEISER: Monotheism and Divine Plurality                                                     99
+      Exodus 15:11: ‘Who is like you among the gods (‫) ֵאלִ ים‬, Yahweh?’
+      Deuteronomy 3:24: ‘What god (‫ ) ֵאל‬is there in the heaven or on the
+      earth who can do according to your works and according to your mighty
+      deeds?’
+      1 Kings 8:23: ‘O Yahweh, God of Israel, there is no god (‫ ) ֱאֹלהִ ים‬like
+      you in the heavens above or on earth beneath…’
+      Psalm 97:9: ‘For you, O Yahweh, are most high over all the earth. You
+      are highly exalted above all gods (‫) ֱאֹלהִ ים‬.’
+
+Biblical writers also assign unique qualities to Yahweh that are never
+assigned to another ‫ ֱאֹלהִ ים‬. Yahweh is all powerful (Jer. 32:17, 27;
+Pss. 72:18; 115:3), the sovereign king over the other ‫( ֱאֹלהִ ים‬Ps. 95:3;
+Dan. 4:35; 1 Kgs 22:19), the creator of the other members of his host-
+council (Ps. 148:1–5; Neh. 9:6; cp. Job 38:7; Deut. 4:19–20; 17:3;
+29:25–26; 32:17), and the lone ‫ ֱאֹלהִ ים‬who deserves worship from the
+other ‫( ֱאֹלהִ ים‬Ps. 29:1). Nehemiah 9:6 explicitly declares that Yahweh
+is unique (‘You alone are Yahweh’).
+    This writer contends, therefore, that the term ‫ ֱאֹלהִ ים‬itself cannot be
+taken as an indication of polytheism. But what are we to make of the
+broad application of the term by biblical writers?
+    There is one aspect that unifies all the entities described with the
+word ‫ ֱאֹלהִ ים‬by the biblical writers that seems to have gone unnoticed
+for resolving the semantic-religious conundrum: They are all
+inhabitants of the divine or supernatural realm.47 In Israelite
+
+Polytheism, Monolatry, or Henotheism? Toward an Assessment of Divine Plurality in
+the Hebrew Bible’, BBR 18:1 (2008): 4–13; H. Rechenmacher, ‘Außer mir gibt es
+keinen Gott!’ Eine sprach- und literaturwissenschaftliche Studie zur Ausschließlich-
+keitsformel (ATSAT 49; St. Ottilien, 1997): 97–114; Nathan MacDonald,
+Deuteronomy and the Meaning of Monotheism (FAT 2. Reihe 1; Mohr-Siebeck, 2003):
+82–84; Catrin H. Williams, I am He: The Interpretation of ʾanı̂ hû Jewish and Early
+Christian Literature (WUNT 113, II; Tübingen: Mohr-Siebeck, 2000): 39–52.
+47 The discussion applies to ‫ ֵאלִ ים‬as well. The data show that ‫ ֵאלִ ים‬and semantically
+
+plural ‫ ֱאֹלהִ ים‬were used interchangeably in phrases (e.g. ‫[ בְּ נֵ י ֵאלִ ים‬Ps. 29:1; 89:6] cp.
+  ‫[ בְּ נֵ י ֱאֹלהִ ים‬Job 38:7]; ‫[ ֵאלִ ים‬Exod. 15:11] cp. ‫[ ֱאֹלהִ ים‬1 Kgs 8:23; Ps. 86:8]). The
+research of two other scholars on the meaning of ‫ ֱאֹלהִ ים‬in the Hebrew body deserves
+attention in this regard. Burnett found that biblical ‫ ֱאֹלהִ ים‬covers the same semantic
+range as similar words in cognate languages: a general sense of ‘god’; the gods of other
+nations; images (idols) of those gods; a general sense of ‘divinity’; abstract qualities
+(when used as adjectival genitive); and ‘divine beings’ (Joel S. Burnett, A
+Reassessment of Biblical Elohim [SBLDS 183; Atlanta, GA: Scholars Press, 2001]:
+54–58). Burnett made no attempt to ascertain what conceptually unites these usages.
+Wardlaw’s analysis concluded that biblical ‫ ֱאֹלהִ ים‬has the following senses: ‘God’ (a
+title for YHWH, the God of Israel); foreign gods or their idols; idiomatic (the term is
+used for lesser supernatural figures, such as ‫‘ ;בְּ נֵ י ֱאֹלהִ ים‬sons of God’). Wardlaw
+recognises that references to the disembodied dead (1 Sam. 28:13) or ‘demons’ (‫)שֵׁ ִדים‬
+have a general sense of divinity (‘spiritual being’) or ‘preternatural being’ without any
+indication of ontological sameness with the God of Israel (see Terence Randall
+100                                        TYNDALE BULLETIN 65.1 (2014)
+cosmology, this is the non-human realm; it is the realm of dis-
+embodiment. If we understand ‫ ֱאֹלהִ ים‬as a semantic label for an entity
+from the disembodied non-human realm, the problems for orthodox
+Yahwism imagined by modern scholars with respect to multiple ‫ֱאֹלהִ ים‬
+disappear. All ‫ ֱאֹלהִ ים‬by definition inhabit the supernatural realm.
+YHWH was an ‫ ֱאֹלהִ ים‬, but no other ‫ ֱאֹלהִ ים‬was YHWH.
+
+
+                                  5. Conclusion
+This essay has argued that the presence of multiple ‫ ֱאֹלהִ ים‬under
+YHWH’s authority in the Hebrew Bible and the Qumran sectarian texts
+is not evidence of polytheism in the religious outlook of either corpus.
+It is methodologically inconsistent for scholars to insist that the same
+terms used in the same phrases in the same contexts point to
+polytheism in one corpus, but a downgrading of divine beings to angels
+under the constraints of an intolerant monotheism in another. The
+usage of divine plurality terms in the Hebrew Bible informs us that
+biblical writers used the terms to denote inhabitants of the disembodied
+spiritual world without respect to divergence in attributes and status
+within the unseen hierarchy. Consequently, use of these terms was no
+affront to the uniqueness of YHWH in the minds of the biblical writers
+and their later theological compatriots in the Second Temple period of
+Judaism. YHWH was an ‫ ֱאֹלהִ ים‬, but no other ‫ ֱאֹלהִ ים‬was YHWH.
+
+
+
+
+Wardlaw, Conceptualizing Words for God within the Pentateuch: A Cognitive-
+Semantic Investigation in Literary Context (London: Continuum International
+Publishing Group, 2008], 96, 98, 109, 111). While it is of course possible and
+necessary for interpretation to distinguish those entities referenced by ‫ ֱאֹלהִ ים‬in the
+Hebrew Bible, it is not the term itself that accomplishes those distinctions. Rather, it is
+the religious conceptions that are part of the cognitive framework of the biblical
+writers that enable such a parsing. Consequently, one cannot coherently argue that the
+term ‫ ֱאֹלהִ ים‬when semantically plural constitutes a polytheistic system when the
+religious worldview of the writers using the term includes rejection of the very things
+that are integral to a polytheistic system (see the earlier references to Assmann). Put
+another way, the semantics of a term must be consistent with the cognitive framework
+of the writers who employ the vocabulary. The only option in the semantic range
+of ‫ ֱאֹלהִ ים‬that explains its usage in a manner consistent with the religious-cognitive
+framework of the biblical writers is the general concept of ‘divinity’ or ‘other-
+worldliness’.
+
