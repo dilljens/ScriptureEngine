@@ -62,3 +62,30 @@ Footstool vs love: Ps110/Dan7 eschatological, not devotional license.
 8. Peterson Nephi Asherah JBMS 9:2 — OPEN
 9. Hamblin Vindicating Josiah Interpreter 4 — OPEN counterpoint
 10. Pike/Seely Elohim RSC — OPEN lexical control
+
+## Examination 2026-09-08 — new shelf (all material examined)
+
+### Giants/Watchers papers (vendored, full reads)
+- Goff 2021: Watchers solves Gen 6:4 positive gibborim -> 6:5 evil gap via 3000-cubit cannibals (1 En 7, Ethiopic only — Aramaic lacks figure) + Gen 9 blood-law retrojection + LXX gigantes pre-Enochic hint. Moses 8 takes opposite fork (human guilt), converging with Jubilees re-balance. Supports ranking; Tier0 veto on legitimation-by-horror if theologized.
+- Heiser Tyndale 2014: ~180 DSS plurality instances (adat-el/sod-elim/elim), elohim = spirit-realm residence, YHWH uniquely. Consequence: bene elohim never = living humans in HB — Sethite reading of Gen 6 needs restoration claim, not philology. Supports council scores; no Mahijah link.
+- Augsburg Ch.1 sample (Frohlich): Shemihazah (union/violence) vs Asael (tech transfer) strands; exile/diaspora Aramaic milieu; determinist Watcher-origin vs Gen human-disobedience — Moses 8 anti-Enochic on culpability. Mahawai envoy + Ohyah/Hahyah + Gilgamesh mantic role confirmed at source level (4Q530/531). Name etymology admitted unknown. Mahijah-Mahaway stays TRUST-cluster, not proof.
+
+### Astral papers (vendored, full reads)
+- Steele 2018: uniform 12x30deg zodiac late 5th c. BCE, threshold ~400 BCE. Control: Job 38 Mazzaroth / Amos 5:26 / 2 Kgs 23:5 mazzaloth are pre-zodiac stations (MUL.APIN world), no horoscopic retrojection.
+- Cohn JBQ: Queen = Anat speculative (Bet She'an 13th c. + Elephantine 400 BCE + malkat/melekhet vocalization). No Asherah/Wisdom support in text. Jer 7/44 gains cakes/libations background only.
+- Link-only (not examined, SOURCES.md only): Reiner, Rochberg, Dever, Barker Temple-Hidden, Heiser Helel, Angelini, Boeckle, Daniels — do not cite as examined.
+
+### Ancient myths (vendored PD, targeted scans)
+- Hesiod: Chaos emergence vs word; ages gold->iron (Eden memory, no forgiveness); Titanomachy war-order vs Gen 1 non-combat; Tartarus god-prison vs Sheol; Olympus council litigates cattle vs servant court.
+- Ovid I: Chaos + anonymous architect (Riley notes Gen 1:2 parallel); ages; giants from blood (opposite vector to Gen 6); Jupiter council + Lycaon trap-test (Tier0 violation: tempts); flood over sacrifice-revenue (vs grief + covenant); Deucalion stones vs adamah breath; Phaethon sun-chariot vs ruled lamp. VIII: Baucis hospitality test (rare Tier0-positive giver moment, then mass drowning, no intercessor).
+- Homer: Olympus assembly by threat/faction; Hades bleak equality (best Sheol background); Odyssey council pity by majority vote; Nekyia efficacious necromancy (condemned Deut 18); hospitality by fear/reciprocity, suitors slaughtered not forgiven.
+- Virgil: Chaos as witchcraft power; bifurcated Tartarus/Elysium + purgation + metempsychosis (vs resurrection/grace); senate-graded council enforcing fate; Saturn nostalgia pre-war.
+- Enuma (King 1902, dated): waters-unnamed parallel Gen 1:2; combat/net/wind vs fiat; carcase-cosmos bolted vs spoken good; man from Kingu blood for god-service vs image + bread; word as magic trick vs and-it-was-so; no remnant theology. No apkallu term in edition.
+- Gilgamesh OB (Jastrow/Clay 1920, dated): 2/3-divine hero (not fallen sages); no antediluvian list in tablets; Enkidu clay rival (political relief vs fellowship); civilizing woman/bread ascent vs Fall; Humbaba terror-quest; flood/plant/Siduri present only in commentary — Standard XI motive NOT in vendored text, must not cite.
+- Book of Dead Ani (Budge 1895, dated): weighing + Amemit (no advocate) vs Ezek 18/Rev 20 + Lamb; heart-silencing spell vs confession; negative confessions self-declared maat vs turn/live; 42 gods + name-gnosis access vs known-via-Son; Field of Reeds eternal farm vs gift-city; annihilation maintenance vs enemy-love.
+
+### Purity impact
+No score changes. All new material is Tier2-3 background or negative example, consistent
+with existing ranks. Two refinements: (a) Sethite Gen 6 reading flagged philology-thin
+(needs restoration warrant); (b) Mahijah-Mahaway holds as TRUST-cluster (form + function
++ dream matrix, etymology open), not BIND.
