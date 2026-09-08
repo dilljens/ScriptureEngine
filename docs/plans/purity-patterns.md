@@ -128,3 +128,71 @@ vocabulary diffuses (b).
   Yahwistic solar items.
 - H6: Theodicy pendulum: exile needs cosmic blame (determinist Watchers);
   rebuilding needs agency (Jubilees re-balance → Moses 8 responsibility).
+
+### 6d. Why kingships project the court (expanded)
+
+1. Legitimation (as above, so below). A king whose throne has a heavenly
+double cannot be dismissed as merely human arrangement. Enuma's Anshar feast
+authorizes Marduk's kingship before he fights Tiamat; Ps 2/110 seats David's
+son at the right hand before battle; Aeneid X's senate-graded fate authorizes
+Augustus's order. The council is the cosmos signing the king's decrees in
+advance, which is why challengers attack the council first (Ps 82 God judges
+the judges; Isaiah 14 Helel would sit above the stars).
+
+2. Decision technology (making divine will legible). Humans decide in council,
+so depicting God deliberating lets prophets narrate persuasion, mercy, and
+changed outcomes: Abraham bargains (Gen 18), Micaiah watches the lying spirit
+volunteer (1 Kgs 22), Job's accuser proposes terms twice (Job 1-2). Without a
+court there is only fiat; with one, intercession has an address. This is why
+Genesis keeps the furniture while removing the veto — the servant-court exists
+so someone can talk God down, which trap-courts (Lycaon, Baucis) never allow.
+
+3. Judicial function (someone must judge the judges). Every kingdom has
+corrupt magistrates; projecting them upward as judged gods (Ps 82:2-4 "defend
+the poor") turns local injustice into cosmic trial with the high God as chief
+justice. Egypt's 42 assessors do the same work at the individual scale
+(weighing + confession), Homer's assembly does it by factional shouting.
+The procedure mirrors the plaintiff's legal system: graded senate (Virgil),
+vote (Odyssey), records opened (Rev 20), or single righteous decree (Deut).
+
+4. Bureaucratic administration (empires need staff). Seventy nations need
+seventy sons (Deut 32:8 LXX/DSS vs MT "sons of Israel"); messages need
+malakim, accusations need satans, records need scribes (Enoch), dreams need
+interpreters (Mahawai), gates need watchers. Heiser's dossier (~180 DSS
+plurality instances) shows the staff roster persisting after exile because
+administration cannot function without officers. Numbers like 70 and 42 are
+rosters, not theology — which is why they survive translation while doctrines
+change around them.
+
+5. Temple architecture (palace made stone). The temple IS a council hall:
+holy of holies = throne room, veil = boundary of the chamber, cherubim =
+throne guardians, priests = attendant hosts, menorah = light of the presence.
+Barker's core claim (Veil paper: veil screens holy of holies = boundary of
+earth/heaven) means anyone entering the building walks into the council.
+Ugaritic, Jerusalem, and Olympus all place quarrels, feasts, and verdicts in
+ halls because that is where assemblies physically happen.
+
+6. Cognitive projection (minds are committees). Humans experience their own
+thought as deliberation among voices, so a mind-like god gets a court: memory
+(scribe), accusation (prosecutor), advocacy (defender), appetite (the feast).
+Minimally counterintuitive agents — mostly human, one strange feature
+(immortal, all-seeing) — are the most memorable and transmissible, so council
+gods out-replicate abstract fates. This is the one cause that needs no contact
+at all and predicts the shape recurring even in isolation.
+
+7. Shared idiom and scribal contact (the vocabulary diffuses even when the
+shape would converge anyway). West-Semitic sod/adat-elim, bene elim/elohim,
+"host of heaven," Name-theology (Ex 23:20-23 Angel with Name; Gen 48 singular
+bless fusing God+Angel per Heiser OTGodhead) travel through Ugaritic tablets,
+Mari letters, and scribal schools. Diffusion explains why the furniture has
+the same NAMES (sons, hosts, holy ones, Name) while convergence explains why
+it has the same JOBS across Egypt, Greece, and Mesopotamia where names differ.
+
+8. Why procedures differ while furniture matches. Furniture answers "what is
+heaven like" (court, because every polity has one); procedure answers "who
+wins at home" (threat-veto for Homeric chieftains, majority pity-vote for
+Odyssean coalitions, senate-graded fate for Augustan order, bribed neutrality
+for tribute empires, servant unanimity for covenant Israel). Functional
+convergence predicts identical stages (summon, speech, assent, feast, verdict)
+with opposite rules of order — exactly what the shelf shows across Olympus,
+Anshar's feast, the 42 hall, and the bene elohim.
