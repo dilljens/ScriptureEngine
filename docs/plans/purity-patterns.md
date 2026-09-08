@@ -196,3 +196,38 @@ for tribute empires, servant unanimity for covenant Israel). Functional
 convergence predicts identical stages (summon, speech, assent, feast, verdict)
 with opposite rules of order — exactly what the shelf shows across Olympus,
 Anshar's feast, the 42 hall, and the bene elohim.
+
+### 6e. El Elyon, as-above-so-below, and the sons of God (2026-09-08)
+
+El's court mirrors a patriarchal household: aged father El at the source of
+rivers, mother Athirat, seventy sons (KTU 1.4 VI 46 "seventy sons of Athirat"),
+Baal as warrior-executive (vizier/firstborn-function). Human patrimonial
+kingdom writ large — legitimation (§6d.1), staff roster (§6d.4), throne-hall
+architecture (§6d.5) all present at Ugarit before Israel.
+
+Deut 32:8-9 three readings: MT "sons of Israel" vs LXX "angels of God" vs
+4QDeutj "sons of God" (bene elohim). Seventy nations (Gen 10 table) map to
+seventy sons: Elyon apportions, each son receives a nation. Three models:
+Smith (El and Yahweh originally distinct, later merged); Heiser (YHWH = Elyon
+Himself, sons are staff, elohim = residence-term, "no other elohim was YHWH");
+Bokovoy/LDS (El = Father, Yahweh = firstborn Son, receives Israel as
+inheritance-portion). All keep sons subordinate; none makes them rivals.
+
+Other sons — Ugaritic roster with biblical reflexes: Baal/Hadad (storm
+executive; cf. Baal-zebub polemic, Elijah contest), Yam/Nahar (Sea, judged;
+cf. Ps 74/89 Chaoskampf poetry), Mot (Death; cf. Isa 25:8 swallowing),
+Shapash (sun; cf. 2 Kgs 23:11 purge), Yarih (moon), Athtar (morning-star
+throne-seeker; cf. Isa 14:12-13 Helel), Ashtart/Anat (cf. Queen of Heaven
+Jer 7/44; Cohn Anat hypothesis speculative), Kothar (craftsman; cf. Tabernacle
+wisdom echoes). Biblical steward-reflexes: Dan 10:13,20-21 princes of Persia/
+Greece + Michael prince of Israel; Deut 4:19 host allotted; Jub 15:31-32
+spirits over nations but Lord alone over Israel; 1 En 89-90 seventy shepherds
+over Israel; Sir 17:17 ruler for every nation. Luke 10 sending of seventy/
+seventy-two reads as reversal — reclaiming the nations.
+
+Assessment: sons = real subordinate stewards (TRUST), judged in Ps 82 for
+unjust rule, disinherited at Babel (Deut 32) and reclaimed via Abraham/Israel
+firstborn portion + seventy sent. No rival creator; no second object of
+worship (sole-worship intact per Heiser incomparability). Falsifier: pre-exilic
+text with a son receiving independent worship commanded by Elyon, or Deut 32
+original MT "sons of Israel" with LXX/DSS both secondary.
