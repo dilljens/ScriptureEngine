@@ -231,3 +231,45 @@ firstborn portion + seventy sent. No rival creator; no second object of
 worship (sole-worship intact per Heiser incomparability). Falsifier: pre-exilic
 text with a son receiving independent worship commanded by Elyon, or Deut 32
 original MT "sons of Israel" with LXX/DSS both secondary.
+
+### 6f. Who is El, best info ranked, and what the DSS says (2026-09-08)
+
+El (Ugaritic il, "god" as proper name) is the aged creator-father: white beard,
+bull-throned, tent-dwelling at the source of the rivers, kind and merciful
+(latipan), who presides while the young warrior (Baal) executes. Titles
+absorbed into Genesis: El Elyon (Gen 14:18-22 Most High, Melchizedek's God),
+El Shaddai (Gen 17:1; 28:3; 35:11), El Olam (Gen 21:33), El Bethel (Gen 31:13;
+35:7), El Roi (Gen 16:13). Purity note: titles are Canaanite stock; Genesis
+claims them for Israel's God rather than inventing rivals — same move as
+un-naming the sun/moon (Gen 1 lamps).
+
+Best info, ranked: (1) Primary Ugaritic — KTU 1.1-1.6 Baal Cycle, 1.14-1.16
+Kirta, 1.17-1.19 Aqhat (El's decrees, Athirat's sons, Baal's executive wars).
+(2) Cross, Canaanite Myth and Hebrew Epic (1973) — El as epithet-cluster
+absorbed by Yahweh. (3) Smith, Early History of God (1990/2002) — convergence
+then differentiation; El and Yahweh originally distinct, later merged.
+(4) Day, Yahweh and the Gods of Canaan (2000) — Baal polemic + Asherah evidence
+catalog. (5) Handy, Among the Host of Heaven (1994) + Mullen, Divine Council
+(1980) — bureaucracy typology (messenger, herald, accuser, scribe). (6) Heiser
+diss 2004 (shelved) — elohim as residence-term, ~180 DSS plurality instances,
+"no other elohim was YHWH". (7) LDS bridge: Bokovoy/Christensen/Peterson
+(shelved) + Pike/Seely Elohim (Elohim plural-form + singular-verb; restoration
+Father=Elohim usage is later precision, not biblical usage).
+
+DSS on El, specific scrolls: 4QDeutj (4Q35) Deut 32:8 "sons of God" + 32:43
+expanded call for elohim/Gentiles to praise (underwrites Heb 1:6 citation);
+11Q13 Melchizedek II quotes Ps 82:1 ("Elohim stands in the assembly") with
+Melchizedek as heavenly elohim-deliverer in the Jubilee; Songs of Sabbath
+Sacrifice (4Q400-407, 11Q17, Mas1k) — elim/elohim as ranked heavenly priesthood
+ministering before the throne (plural heaven intact post-exile, contra
+evolution-to-monotheism litmus); 1QM War Scroll — sons of light vs Belial,
+Michael's lot vs darkness; 1QapGen XXII (Melchizedek/El Elyon Abram tithe
+retelling); Enochic fragments (4QEn/4QGiants) preserve Enoch-Mahaway matrix.
+Net: scrolls show El-language flourishing, not fading — council real,
+subordinate, headed by Elyon, with Israel's lot under Michael/Yahweh.
+Assessment: El-profile = TRUST background for Father-Elohim; DSS = second
+witness for plurality-with-uniqueness (Heiser) and steward-judgment (Ps 82).
+Reject: El-worship as separate cult object (Deut 4:19 forbids; purge stands).
+Falsifier: pre-exilic Israelite text commanding El-cult distinct from Yahweh
+with separate temple/priesthood, or DSS text equating a son with Elyon in
+worship-worthiness.
