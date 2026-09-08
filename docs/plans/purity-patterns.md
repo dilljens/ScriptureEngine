@@ -75,3 +75,56 @@ Pagan gods test to punish (Lycaon trap, Baucis drowning, suitors slaughter);
 YHWH in Gen 18 lets a man bargain Him down and drags Lot out. A tester-god who
 submits to intercession is the opposite of the accuser pattern — directly
 counters "Yahweh = tester = Satan" from inside the text, no JST needed.
+
+## 6. WHY (causal layer, 2026-09-08)
+
+### 6a. Why shapes recur (cause ranking per motif)
+- Waters (d inversion > b contact): tehom~Tiamat cognate kept, combat replaced
+  by fiat. Falsifier: unrelated etymology + native fiat with zero contact.
+- Council (c convergence > b idiom): every kingship projects its court;
+  Ugaritic sod/adat explains vocabulary, not cross-civilization shape.
+- Flood (a memory > b tablets): corruption→water→household→mountain→altar
+  bundle too specific for invention; motives diverge (revenue vs grief).
+- Giants (b chain > d flip): Gen 6:4→6:5 gap solved by Watchers horror +
+  Gen 9 blood retrojection; Jubilees re-balances; Moses 8 opposite fork.
+- Hospitality (d inversion > c honor): systematic trap-vs-intercede contrast.
+- Underworld (c convergence > d polemic): death furniture universal; tolls vs
+  advocate diverge maximally.
+- Sun-chariot (c convergence > d de-culting): vehicle metaphor natural;
+  Gen 1 lamps + Josiah purge de-cult without losing order (Steele control).
+- Tree/Wisdom (a memory > b iconography): oil-eyes + Lady + two-tree rivalry
+  + almond-menorah too specific; pre-623 anchor beats late syncretism.
+
+No single cause: shape converges or is remembered (a/c), ethic inverts (d),
+vocabulary diffuses (b).
+
+### 6b. Why ethic inverts (mixed mechanism, uniform direction)
+- Fiat: (a) polemic — authors knew combat trope (Ps 74/89/Job 26 as poetry),
+  chose fiat narrative.
+- Fellowship: (b) monotheizing + (d) carrier — no rival to staff, so fellows
+  not labor (Enuma blood-service vs image+bread).
+- Forgive: (b) one Judge fuses mercy+justice (Ex 34:6-7 → Ezek 18).
+- Covenant: (d) restoration + (c) modifier — investiture not passwords;
+  centralization standardizes but bottlenecks, doesn't open.
+- Advocate: (b) — one Judge provides His own Advocate (two-Yahwehs visible/
+  invisible; El=Father vs Yahweh=Son variants both keep Son distinct).
+- Gift: (d) early ethic (JST tempt/prove repair) — anti-(e) proof: Ovid late
+  cruel, Moses 8 early merciful. (e) fails uniform; only H6 trajectory holds.
+
+### 6c. Six WHYs
+- H1: No grace/atonement category → pollution purged by destruction; revenue
+  dependence (altars); factional honor court. Genesis: covenant + grief +
+  advocate change the physics.
+- H2: Temple-economy funding (gods need feeding; farm/price upward) vs manna
+  economics (gift creates dependence on Giver).
+- H3: Holy-danger anthropology: boundary + changed entrant (2 En 22 garments,
+  Zech 3 re-clothing, shining face residue). Resolves Ex 33:11/20 as mechanism.
+- H4: Legitimation technology: tyrants need independent holy men (maḫḫû →
+  Daniel/Arioch → cupbearer → Enoch scribe). Mahawai twice-sent + two dreams
+  fits; etymology open, TRUST-cluster.
+- H5: Calendar power: who controls times controls worship. Stations (MUL.APIN)
+  predate signs (~400 BCE); Josiah sweeps licit with illicit to break rural
+  time-keeping. Falsifier: pre-400 uniform horoscope, or purge list with zero
+  Yahwistic solar items.
+- H6: Theodicy pendulum: exile needs cosmic blame (determinist Watchers);
+  rebuilding needs agency (Jubilees re-balance → Moses 8 responsibility).
