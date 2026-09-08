@@ -115,3 +115,89 @@ Enemy-love control does NOT depend on it (Matt 5:44 + Rom 5 carry).
 - Rule restated: single-verse identity claims (YHWH=Satan, Comma-Trinity)
   die on variants; theme-clusters (bread, forgive, no-tempt, enemy-love,
   known-via-Son) survive across MT/LXX/DSS/NT/JST.
+
+## H. Bosheth names expanded (meaning + comparison)
+
+Hebrew bosheth (בֹּשֶׁת) = shame, disgrace; prophetic shorthand for idol-gods:
+Jer 11:13 "altars to burn incense to shame (bosheth)"; Hos 9:10 "consecrated
+themselves to shame"; Jer 3:24 "shame has devoured." Substituting bosheth for
+Baal turns a theophoric name into a slur. All three cases target Israelite
+personal names (covenant people must not bear Baal), never foreign kings
+(Ethbaal 1 Kgs 16:31 untouched), deities (Baal-berith Judg 8:33), or places
+(Kirjath-baal Josh 15:60).
+
+| Passage name | Hebrew sense | Original (Chronicles preserves) | Comparison |
+|---|---|---|---|
+| Ish-bosheth (2 Sam 2:8; 3:7-15; 4:5-12), Saul's son and brief king | "man of shame" | Eshbaal (1 Chr 8:33; 9:39), "man of Baal" (esh = man, dialectal) | A king of Israel reigning under a slur-name; original honorable theophoric. Strongest case: later book (Chronicles) preserves the unedited form, so the Samuel tradition was edited after their sources branched (or Chronicler archaized — minority view). |
+| Mephibosheth (2 Sam 4:4; 9:6ff; 16; 19; spared 21:7), Jonathan's lame son | First element uncertain: "from the mouth of shame"? "dispeller of shame"? (disputed; be honest) + bosheth | Merib-baal (1 Chr 8:34; 9:40), "Baal contends/pleads (for him)" (merib = strife, cause, advocacy) | Narrative unchanged (lameness, David's kindness for Jonathan's sake, Ziba dispute, Gibeonite sparing) — only the name shamed. If original meant "Baal is advocate," the irony is sharp: his advocate is David's covenant, not Baal. |
+| Jerubbesheth (2 Sam 11:21 only, David's rebuke re Abimelech) | "let shame contend" (nonsense — proves mechanical swap) | Jerubbaal (Judg 6:32; 7:1; 8:29; 9:1ff), "let Baal contend" (etiology: he broke Baal's altar, so let Baal sue) | Single-verse substitution; same tradition says Jerubbaal everywhere else including Abimelech's father (Judg 9). The absurdity ("let shame contend") is the fingerprint of secondary editing. Gideon's altar-breaking story needs Baal as loser, not as erased word. |
+| Eliada (2 Sam 5:16), David's Jerusalem-born son | "God/El knows" | Beeliada (1 Chr 14:7), "Baal knows" | Different fix: Baal→El, not bosheth. A king's son could not carry even a slur, so editors theologically corrected. Shows two scribal strategies: shame (dead Saulides, Gideon the judge) vs upgrade (living Davidide). |
+
+Timing: Josianic or exilic/post-exilic scribal piety under Deuteronomistic
+influence (Hosea/Jeremiah bosheth diction). Direction proof: (1) Chronicles
+preserves originals twice; (2) Jerubbesheth's nonsense-meaning; (3) untouched
+foreign/place Baal names (polemic scoped to Israel). Purity: background —
+no Tier0 sentence affected; use as direction-of-change control (shame replaces
+honor, never reverse), same arrow as sons-of-Israel smoothing (#8).
+
+## I. NT changes in the Catholic era — evidence audit
+
+Grades: DOCUMENTED (manuscript + versional + patristic trail) / TRANSLATION
+(Latin shaped doctrine, Greek untouched) / UNPROVEN (no manuscript trail).
+
+### Documented insertions via the Latin/TR stream
+
+- Comma Johanneum (1 John 5:7-8): absent all Greek before ~14th c. (4 late
+mss, marginal); Latin from ~5th c.; Erasmus omitted 1516/1519, included 1522
+after Codex Montfortianus surfaced (manufactured-to-order story in essence
+true); Trent's authentic Vulgate → KJV inherited it. DOCUMENTED insertion.
+Trinity doctrine is older (Ignatius ~107 "our God Jesus," Justin, Irenaeus),
+but this proof-text is spurious — purity: Reject as base (already #24).
+- Acts 8:37 (eunuch's confession): absent P45/74, Sinaiticus, Vaticanus;
+present Western + Latin; baptismal-liturgy interest. DOCUMENTED liturgical
+insertion. Confession doctrine rests on Rom 10:9 instead.
+- John 5:3b-4 (angel stirring pool): absent P66/75, earliest; explanatory
+gloss canonized via Latin. DOCUMENTED gloss.
+- Matt 18:11: assimilated from Luke 19:10; absent earliest. Harmonization.
+- Doxology (Matt 6:13): in Didache 8 (1st c.) — early liturgy into text,
+not conciliar invention. TR/Vulgate/KJV include; earliest Gospel mss lack.
+
+### Translation effects (Greek untouched, doctrine moved)
+
+- metanoeite → paenitentiam agite ("do penance," Matt 3:2 etc.): Jerome's
+Latin built sacramental-penance vocabulary out of "repent/change mind."
+Trent-era penance leans on Latin. DOCUMENTED translational effect with Tier0
+weight: repentance = turn (Matt 4:17 // Jonah), not tariff.
+- kecharitomene → gratia plena (Luke 1:28): perfect participle "highly
+favored" becomes "full of grace" → Hail-Mary theology. Real effect.
+- mysterion → sacramentum (Eph 5:32 marriage "great sacrament"): Latin
+mapping behind marriage-as-sacrament; Greek says mystery.
+- presbyter → priest (via sacerdos mapping): ecclesiology vocabulary drift.
+
+### Unproven / mythic (no manuscript trail)
+
+- Nicaea (325) chose the canon or rewrote the Bible: NO EVIDENCE. No canon
+list from Nicaea; canon via usage + Athanasius 367 + Hippo 393/Carthage 397
+(regional). Constantine ordered 50 luxury copies (Eusebius, Vita Const.) —
+a printing contract, not a rewrite; pre/post mss show continuity.
+- Matt 28:19 forged: Eusebius cites short "in my name" ~17x — real datum —
+but earliest Greek (Sinaiticus/Vaticanus) + Didache 7 trine immersion (1st c.)
+have the long form. UNPROVEN either way; manuscript weight favors long.
+- "Removed reincarnation" (Origen, 553): doctrinal condemnation
+(an apokatastasis anathemas), zero altered verses in mss.
+- Sabbath change: discipline (Laodicea canon 29), Ex 20/Deut 5 texts
+unchanged.
+- Deuterocanon: Trent 1546 dogmatized a list the Latin Bibles already
+contained (Jerome doubted them in the Helmeted Prologue yet translated);
+Reformers printed then dropped them. Boundary decision, not emendation of
+shared books. Direction depends on start point (LXX vs Jamnia).
+- "Constantine invented Jesus' divinity": refuted by pre-Nicene high
+Christology (Ignatius, Justin 1 Apol 63, Irenaeus) — documented, kills claim.
+- Positive Catholic-era stewardship (for balance): Jerome's Hebraica veritas
+(OT from Hebrew over Old Latin), Alcuin/Theodulf recensions, Sixto-Clementine
+standardization (1592), Nova Vulgata (1979, critical). Transmission, not
+corruption, is the norm in the evidence.
+
+Purity impact: Comma out; Acts 8:37 not base; penance/mystery readings must
+cite Greek (metanoia/mysterion), never Latin alone; Nicaea/Constantine/forgery
+claims add nothing to scores.
