@@ -339,3 +339,31 @@ regulates an institution modern morals condemn — same Tier0 tension as Deut
 21:10-14 captive-wife month + rights and Num 31. Test both by Tier0:
 enemy-love/forgiveness vetoes where contradicted; behavior prohibitions
 stand where consistent.
+
+### 6i. God bound by law — BoM doctrine and parallels (2026-09-08)
+
+BoM core: Alma 42 (law given, punishment affixed; justice claims, mercy
+satisfies via atonement — "mercy cannot rob justice" 42:25; God "would cease
+to be God" 42:13,22 if justice destroyed); 2 Ne 2:10-13 (without law no sin,
+no righteousness, no God); Morm 9:19 (God unchangeable yet "ceaseth" forms);
+D&C 82:10 ("I the Lord am bound when ye do what I say"); Heb 6:18/Titus 1:2
+(impossible for God to lie); 2 Tim 2:13 (cannot deny Himself); Jas 1:13
+(cannot be tempted); Gen 18:25 ("Shall not Judge of all earth do right?").
+
+Parallels: (1) Greek Fate — Zeus cannot save Sarpedon past moira (Il. XVI);
+Euthyphro dilemma implies piety-standard above gods; Stoic logos binds even
+Zeus to reason/nature. (2) Egypt Maat — gods uphold maat, judged by it.
+(3) Mesopotamia me/tablet of destinies — decrees bind holders; assembly oath
+binds An/Enlil/Enki (Eridu Genesis oath even gods cannot revoke). (4) Indic
+rta/dharma/karma — Varuna guards rta he obeys; gods accrue karma, reborn;
+dharma binds Indra (Nahusha cast down). (5) Zoroastrian asha — Wise Lord acts
+within truth-order. (6) Jewish covenant — God "remembers," keeps oath
+(Noahic/Abrahamic); rabbinic God prays mercy-over-anger (Berakhot 7a).
+(7) Islamic self-obligation — "prescribed mercy upon Himself" (Q6:12,54);
+"never breaks promise" (Q3:9); mercy-overcomes-wrath hadith.
+Distinction: BoM/D&C/Hebrews bind God by His OWN nature and word (internal),
+not by a higher power; Greek Fate and karma bind gods EXTERNALLY (a force
+above Zeus, a law grinding devas). Closest structural kin: Q6:54
+self-prescribed mercy + Heb 6 oath-comfort + Euthyphro's independent piety.
+Falsifier: BoM text where God breaks law without atonement-satisfaction and
+remains God.
