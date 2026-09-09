@@ -397,3 +397,43 @@ toward variable people — same sun melts wax, hardens clay. Num 23:19/1 Sam
 15:29 deny capricious lying, not responsive relenting within covenant terms.
 Falsifier: relenting that violates Tier0 (e.g., bargained into injustice) —
 never occurs; every relenting moves toward mercy, never away.
+
+### 6k. Why Tier0 is the lens — textual warrants, circularity admitted (2026-09-08)
+
+Charge: using Jesus to judge texts that present Jesus is circular. Admitted —
+all ultimate authorities are (reason proving reason). The question is whether
+the circle is text-derived, text-vulnerable, and independently converged.
+
+Warrants from inside the text:
+1. Jesus claims the office explicitly: "Scriptures testify of me" (John
+5:39); "Moses wrote of me" (5:46); Luke 24:27,44-45 opened understanding;
+"Think not I came to destroy... but fulfil" (Matt 5:17) — revision-by-
+fulfilment authority, exercised six times as "ye have heard... but I say"
+(Matt 5:21-48).
+2. "I desire mercy, not sacrifice" quoted twice (Matt 9:13; 12:7, from Hos
+6:6) — Jesus names His own criterion: mercy outranks ritual wherever they
+collide. Sabbath-for-man (Mark 2:27), foods declared clean (Mark 7:19),
+weightier matters (Matt 23:23) are applications.
+3. Deut 13 prophet-test + 18:15-19 Moses-like prophet + Isa 8:20 "to law and
+testimony" + Jer 8:8 scribal pen: the OT already subordinates later words to
+earlier covenant and true prophecy to God-likeness — the lens mechanism
+predates Jesus.
+4. Apostolic lock: Gal 1:8 (angel with contrary gospel accursed); 1 John 4:2-3
+(spirits tested by Christ-come-in-flesh); Heb 1:1-2 (final word = Son);
+2 Tim 3:16 profit operates inside that frame.
+5. Praxis criterion: John 7:17 ("if any do His will, shall know"); Matt 7:16
+(by fruits); Jas 1:22/Moro 10:5 (do + ask). The lens is testable by doing,
+not only by reading.
+6. Independent convergence (strongest non-circular support): 3 Nephi's risen-
+Christ portrait — separate transmission, no KJV dependence for its Sermon
+edits (12:22 drops "without cause," 12:48 perfect-as-I-or-Father) — lands on
+the identical Father: bread given, forgive-as-forgiven, no-tempting God,
+enemy-love, known-via-Son. Two streams, one portrait.
+7. Early-church control: regula fidei (Irenaeus) read scriptures by apostolic
+preaching against Gnostic exegesis — same method, pre-critical precedent.
+
+Falsifiability (lens is vulnerable, not imposed): a Jesus pericope commanding
+hate, unforgiveness, entrapment, or self-concealment as doctrine; Tier0
+failing across all four witness families (Gospels/3Ne/JST-fixes/prophets);
+3 Nephi diverging instead of converging. None occurs; tension pairs resolve
+Toward mercy without exception (§6j check).
