@@ -311,3 +311,31 @@ enemy-love (Shuruppak: don't feed stranger; buy rootless slave).
 Unique cluster nothing else matches whole: enemy-love + forgiveness-
 transaction + grace-atonement + known-via-Son. Behavior prohibitions are near-
 universal; the cluster is not.
+
+### 6h. Lawless gods + hard Quran texts (2026-09-08)
+
+Why pagan gods break the law (§6g.10): (a) projection of unaccountable power
+— kings above law project gods above law (Zeus rapes, murders, oath-breaks as
+aristocrats do); (b) genre split — morals live in wisdom/law/confessions,
+gods live in adventure stories where factions need drama; (c) honor/shame
+frame — gods defend honor violently like chiefs, morality = loyalty/ritual,
+not universal love; (d) no grace category — pollution purged by destruction,
+gods inside cosmos subject to Fate (even Zeus obeys moira); (e) succession
+cosmogony normalizes divine crime (castration, child-swallowing). Pagans
+noticed: Xenophanes (gods steal/adultery/deceive), Plato (banish Homeric
+gods, Republic). Israelite contrast: lawgiver bound by own character ("be
+holy"), covenant self-limitation, monotheizing fusion forces consistency.
+
+Quran war/captive texts (evidence, both sides): killing permitted in bounded
+warfare — 2:190-194 (fight fighters, no transgression, cease if they cease),
+4:89-91, 9:5 (treaty-breach context per classical asbab), 9:29 (People of
+Book/jizya); general prohibition 5:32 (killing one soul = all mankind, except
+soul-for-soul or fasad corruption); capital/apostasy rulings mostly hadith-
+fiqh extensions. Captives: 4:24, 23:5-6, 70:29-30, 33:50 assume/regulate milk
+al-yamin (existing war-captive concubinage); constraints 4:19 (no inheriting
+women by force), 24:33 (no compelled prostitution); modern consent-readings
+vs classical ownership-readings both live. Text never commands rape; it
+regulates an institution modern morals condemn — same Tier0 tension as Deut
+21:10-14 captive-wife month + rights and Num 31. Test both by Tier0:
+enemy-love/forgiveness vetoes where contradicted; behavior prohibitions
+stand where consistent.
