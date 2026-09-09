@@ -72,3 +72,13 @@ python3 -c "import json; ..."  # rebuild symbol-index.json (see session 2026-09-
 - `astral-religion/` — planet/hosts/Queen-of-Heaven scholarship. Vendored: Steele 2018, Cohn JBQ. Link-only: Reiner NYU, Rochberg NYU/Cambridge sample, Cooley, Smith, Taylor, Keel, Dever MDPI, Barker Temple-Hidden, Heiser Helel, Angelini, Boeckle, Daniels. See `astral-religion/SOURCES.md`.
 - `ancient-myths/` — PD-US originals vendored (Gutenberg): Hesiod, Iliad, Odyssey, Aeneid, Ovid I-XV, Babylonian Legends/Creation, OB Gilgamesh, Book of Dead. Link-only: Pyramid Mercer, ETCSL, Perseus, Theoi, CDLI/ORACC, UEE, Met/BM essays; copyright warnings for Foster/Dalley/Faulkner/Allen/Kovacs/Martinez. See `ancient-myths/SOURCES.md`.
 - `symbol-index.json` now covers all 27 files, 535 entries, 50 symbols (page-level `pdf_page` where a PDF twin exists).
+
+## New sub-shelves (2026-09-09)
+- `lxx/brenton-lxx-1851.txt` (4.1MB, PD 1851): full Brenton Greek-English LXX
+  text layer. Verified at source: Deut 32:8 "angels of God" + 32:9 "portion
+  of the Lord"; Ps 8:5 "a little less than angels". Scan: archive.org
+  SeptuagintBrenton1851 (ECMarsh mirror). CCEL HTML gaps (Psalms) — use this.
+- `apostolic-fathers/didache-lake-wikisource.html` (Lake trans., PD): ch.7
+  trine formula + ch.8 doxology (earliest doxology witness).
+- `josephus/apion-whiston-gutenberg2849.txt` (PD 1737): 22-book canon
+  (Apion 1.38-41), Essenes.
