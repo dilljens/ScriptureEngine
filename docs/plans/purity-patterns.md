@@ -273,3 +273,41 @@ Reject: El-worship as separate cult object (Deut 4:19 forbids; purge stands).
 Falsifier: pre-exilic Israelite text commanding El-cult distinct from Yahweh
 with separate temple/priesthood, or DSS text equating a son with Elyon in
 worship-worthiness.
+
+### 6g. Moral proximity to BoM/NT (2026-09-08)
+
+BoM/NT core: Decalogue seconds-table (no murder/adultery/theft/false witness),
+Sermon/3 Ne 12-14 (enemy-love, no retaliation, purity of heart, no oaths,
+secret charity/prayer, no Mammon-service, no judging), forgive 70x7
+(Matt 18; Moro 7; D&C 98), grace + atonement (Mosiah 3; Alma 34; Rom 5),
+impartial giving (Matt 5:45; Mosiah 4), known-via-Son.
+
+Ranked closest → farthest (examined corpora only):
+1. Judaism (Prophets/Second-Temple wisdom) — same Decalogue + Lev 19:18
+neighbor-love + Mic 6:8 justice/mercy; enemy-love is extension (Matt 5:44),
+grace mechanism is addition (atonement).
+2. Islam — zakat charity, prayer, honesty, chastity, no murder; Allah
+oft-forgiving; Q41:34 "repel evil with better" partial enemy-love; differs:
+scales-judgment, no atonement, enemy-love bounded.
+3. Buddhism — five precepts ≈ seconds-table; metta (Karaniya Metta: enemies
+included) closest enemy-love parallel; karuna compassion; differs: no God,
+no forgiveness transaction (karma vs grace), no Son.
+4. Zoroastrianism — good thoughts/words/deeds, lie as core evil, charity,
+creation-care; differs: dualist frame, purity law, no enemy-love command.
+5. Confucianism — shu ("do not impose what you dislike"), ren, filial piety;
+differs: no divine forgiveness, hierarchy-heavy.
+6. Stoicism — virtue sole good, cosmopolitanism, Marcus kindness-invincible
+(partial); differs: apatheia vs love, no grace.
+7. Egyptian Maat — confession content overlaps Decalogue strongly (no murder/
+theft/lie/adultery/oppression); differs: self-justification + spell vs
+repentance + grace.
+8. Hindu dharma — duties, truthfulness, hospitality, later ahimsa; differs:
+varna hierarchy vs impartiality, karma vs grace.
+9. Sumerian wisdom — prohibition forms similar; pragmatic, slave ethic fails
+enemy-love (Shuruppak: don't feed stranger; buy rootless slave).
+10. Pagan popular religion — honor/shame, sacrifice-bribe, factional gods; far.
+11. Gnostic/Marcion — reject (matter evil / creator denigrated).
+
+Unique cluster nothing else matches whole: enemy-love + forgiveness-
+transaction + grace-atonement + known-via-Son. Behavior prohibitions are near-
+universal; the cluster is not.
