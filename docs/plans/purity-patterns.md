@@ -367,3 +367,33 @@ above Zeus, a law grinding devas). Closest structural kin: Q6:54
 self-prescribed mercy + Heb 6 oath-comfort + Euthyphro's independent piety.
 Falsifier: BoM text where God breaks law without atonement-satisfaction and
 remains God.
+
+### 6j. Why God "changes His mind" when pressed (2026-09-08)
+
+Texts: Gen 18:23-33 (50→10 bargained); Ex 32:11-14 Moses talks YHWH down
+("relented," wayyinnachem); Num 14:13-20 (pardon, yet consequences);
+Amos 7:3,6 ("relented"); Jonah 3:10 (saw works, relented); Jer 18:7-10
+conditional nation-prophecy (build/tear down IF turn); 2 Kgs 20:1-6
+Hezekiah's tears + 15 years; Luke 11:5-8 midnight friend (shamelessness/
+anaideia); Luke 18:1-8 widow + unjust judge ("will he delay?"); Matt 15:21-28
+Canaanite woman ("even dogs crumbs"); Enos wrestle (Enos 1); Alma 22-23?
+Vs immutability: Num 23:19 (not man to lie/repent); 1 Sam 15:29 (Strength of
+Israel will not lie/repent — same chapter Saul rejected); Mal 3:6; Jas 1:17
+(no shadow of turning); Heb 13:8.
+
+WHY: (1) Covenant partnership is real — intercession is an office (Abraham
+prophet Gen 20:7, Moses mediator, Christ intercessor); prayer participates,
+not performs. (2) Conditional prophecy (Jer 18) — announced judgment carries
+implicit "unless"; relenting fulfills the condition-structure, not caprice.
+(3) Parables argue a fortiori, not univocally: midnight friend helps from
+shame-avoidance, unjust judge from annoyance — "how much more" the Father
+gives gladly (Luke 11:13; 18:7-8 vindication "speedily"). The portraits are
+contrast (even X yields), not comparison (Father IS X). Misreading as
+"pester God into caving" inverts the logic. (4) Persistence forms the asker:
+importunity (anaideia) forges faith/receipt-capacity; Canaanite woman's
+persistence IS her faith commended. (5) Anthropopathic narration + Tier0:
+immutable character (merciful/forgiving, Ex 34:6) produces variable actions
+toward variable people — same sun melts wax, hardens clay. Num 23:19/1 Sam
+15:29 deny capricious lying, not responsive relenting within covenant terms.
+Falsifier: relenting that violates Tier0 (e.g., bargained into injustice) —
+never occurs; every relenting moves toward mercy, never away.
