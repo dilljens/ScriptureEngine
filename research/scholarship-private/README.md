@@ -82,3 +82,8 @@ python3 -c "import json; ..."  # rebuild symbol-index.json (see session 2026-09-
   trine formula + ch.8 doxology (earliest doxology witness).
 - `josephus/apion-whiston-gutenberg2849.txt` (PD 1737): 22-book canon
   (Apion 1.38-41), Essenes.
+
+## Round 3 (2026-09-09)
+- `apot-charles/vol1-apocrypha-charles1913-djvu.txt` (6.3MB) + `vol2-pseudepigrapha-charles1913-djvu.txt` (4.5MB): full Charles 1913 OCR via archive.org (BYU/Claremont scans, PD). Replaces scattered sacred-texts links.
+- `targums/onkelos-ex24/ex33-etheridge.html` (Etheridge 1862-65, PD): Ex 24 "Glory" buffer + Ex 33 Shekinah/Memra verified at source.
+- `philo/confusion-tongues-yonge-b15.html` + `heir-divine-yonge-b17.html` (Yonge PD; browser UA bypasses earlychristianwritings 406): Conf. 62-63 East/firstborn verified.
