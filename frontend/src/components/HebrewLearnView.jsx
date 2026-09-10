@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import HebrewQuiz from './HebrewQuiz'
 import CardQueue from './CardQueue'
@@ -106,6 +106,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [showAudioReview, setShowAudioReview] = useState(false)
   const [audioWords, setAudioWords] = useState([])
   const [showQuiz, setShowQuiz] = useState(false)
+  // Anki-style daily pacing: deck options + live queue counts
+  const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
+  const [queueStats, setQueueStats] = useState(null)
+  const [prefsEditing, setPrefsEditing] = useState(false)
+  const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
 
   // Resolve the session-bound user (falls back to 'default' for anonymous
   // learners, so a missing/expired token is never a hard failure). Curriculum,
@@ -138,6 +143,49 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       .finally(() => setLoading(false))
   }
   useEffect(loadAll, [])
+
+  // Daily pacing: deck options + queue counts (due / new / capped)
+  const loadPacing = useCallback(async () => {
+    try {
+      const uq = await sessionQuery()
+      const amp = uq ? '&' + uq.slice(1) : ''
+      const [p, q] = await Promise.all([
+        fetch(`/api/v1/hebrew/prefs${uq}`, { headers: sessionHeaders() }).then(r => r.json()),
+        fetch(`/api/v1/hebrew/review-queue?limit=1${amp}`, { headers: sessionHeaders() }).then(r => r.json()),
+      ])
+      if (p.ok) { setPrefs(p.data); setPrefsDraft(p.data) }
+      if (q.ok) setQueueStats(q.data)
+    } catch {}
+  }, [])
+  useEffect(() => { loadPacing() }, [loadPacing])
+
+  const savePrefs = async () => {
+    try {
+      const r = await fetch('/api/v1/hebrew/prefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({
+          ...prefsDraft,
+          new_cards_per_day: Math.max(0, parseInt(prefsDraft.new_cards_per_day) || 0),
+          max_reviews_per_day: Math.max(0, parseInt(prefsDraft.max_reviews_per_day) || 0),
+          session_token: currentSessionToken(),
+        }),
+      })
+      const d = await r.json()
+      if (d.ok) { setPrefs(d.data); setPrefsEditing(false); loadPacing() }
+    } catch {}
+  }
+
+  // Audio-review ratings earn FSRS credit via Hebrew-text node resolution
+  const handleAudioRate = async (word, rating) => {
+    try {
+      await fetch('/api/v1/hebrew/fsrs/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ hebrew: word.hebrew, rating, session_token: currentSessionToken() }),
+      })
+    } catch {}
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -185,7 +233,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
 
   if (!curriculum) return null
 
-  const { nodes, total, mastered, in_progress, locked } = curriculum
+  const { nodes, total, mastered, tested_out, in_progress, locked } = curriculum
   const filtered = filter === 'all' ? nodes : nodes.filter(n => n.category === filter)
   const byLevel = {}
   for (const n of filtered) {
@@ -249,6 +297,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         hebrew: c.data?.hebrew || '',
         gloss: c.data?.gloss || c.data?.definition?.split(' — ')[1] || c.data?.definition || '',
         transliteration: c.data?.transliteration || '',
+        modes: c.modes,
       }))
 
     if (ankiCards.length === 0) {
@@ -311,7 +360,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             ← Back
           </button>
         </div>
-        <AudioReviewSession words={audioWords} onComplete={() => setShowAudioReview(false)} />
+        <AudioReviewSession words={audioWords} onComplete={() => setShowAudioReview(false)} onRate={handleAudioRate} />
       </div>
     )
   }
@@ -414,7 +463,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-1">Biblical Hebrew</h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{total} lessons · {mastered} mastered · {locked} locked</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{total} lessons · {mastered} mastered{tested_out > 0 ? ` · ${tested_out} tested out` : ''} · {locked} locked</p>
         </div>
         <div className="flex items-center gap-3">
           {gam.streak > 0 && (
@@ -451,6 +500,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         {/* Mastery stats inline */}
         <div className="hidden sm:flex items-center gap-2 text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {mastered}</span>
+          {tested_out > 0 && (
+            <span className="flex items-center gap-1" title="Diagnostic credit — demonstrated, not yet practiced">
+              <span className="w-2 h-2 rounded-full bg-sky-400" /> {tested_out} tested out
+            </span>
+          )}
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {in_progress}</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-600" /> {locked}</span>
         </div>
@@ -495,7 +549,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                       hebrew = hebParen || (glyphMatch ? glyphMatch[1] : title)
                       gloss = item.description || ''
                     }
-                    return { id: `due-${i}`, type: 'vocab', data: {
+                    return { id: `due-${i}`, type: 'vocab', modes: item.due_modes, data: {
                       node_id: item.node_id, hebrew, gloss,
                       definition: gloss || item.description || '',
                       language: item.language || 'hebrew',
@@ -535,6 +589,34 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             setShowAudioReview(true)
           }} icon="🎧" label="Audio Review" desc="Listen & repeat" />
         </DropdownMenu>
+      </div>
+
+      {/* Daily pacing (Anki-style deck options) */}
+      <div className="flex flex-wrap items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
+        <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
+          📊 {queueStats ? (
+            <>{queueStats.due_count} due · {queueStats.new_cards} new{queueStats.reviews_capped ? ` · capped (${queueStats.reviews_remaining} waiting)` : ''}</>
+          ) : 'Loading queue…'}
+        </span>
+        <span className="flex-1" />
+        {!prefsEditing ? (
+          <button onClick={() => { setPrefsDraft(prefs); setPrefsEditing(true) }}
+            className="text-[10px] text-neutral-500 dark:text-neutral-400 hover:text-indigo-500 cursor-pointer"
+            title="Deck options: daily new cards and max reviews">
+            ⚙️ {prefs.new_cards_per_day} new · {prefs.max_reviews_per_day === 0 ? '∞' : prefs.max_reviews_per_day} rev/day
+          </button>
+        ) : (
+          <span className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+            <label>New <input type="number" min="0" max="100" value={prefsDraft.new_cards_per_day}
+              onChange={e => setPrefsDraft(d => ({ ...d, new_cards_per_day: e.target.value }))}
+              className="w-12 px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none" />/day</label>
+            <label>Max <input type="number" min="0" max="1000" value={prefsDraft.max_reviews_per_day}
+              onChange={e => setPrefsDraft(d => ({ ...d, max_reviews_per_day: e.target.value }))}
+              className="w-14 px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none" /> rev/day</label>
+            <button onClick={savePrefs} className="px-2 py-0.5 rounded bg-indigo-600 text-white font-medium cursor-pointer">Save</button>
+            <button onClick={() => setPrefsEditing(false)} className="hover:text-neutral-700 cursor-pointer">✕</button>
+          </span>
+        )}
       </div>
 
       {/* Badges row */}
@@ -655,7 +737,10 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
               <div className="space-y-1.5">
                 {levelNodes.map(node => {
                   const cs = CATEGORY_STYLES[node.category] || {}
-                  const isMastered = node.mastery >= 0.8
+                  // Placement (diagnostic) credit unlocks but is NOT practiced
+                  // mastery — shown distinctly so it never masquerades as mastered.
+                  const isTestedOut = node.mastery >= 0.8 && node.source === 'placement'
+                  const isMastered = node.mastery >= 0.8 && !isTestedOut
                   const isLearning = node.mastery > 0 && node.mastery < 0.8
                   const isLocked = !node.unlocked
 
@@ -682,6 +767,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                       <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                         isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
                           : isMastered ? 'bg-green-500'
+                          : isTestedOut ? 'bg-sky-400'
                           : isLearning ? 'bg-amber-500'
                           : 'bg-neutral-200 dark:bg-neutral-700'
                       }`} />
@@ -700,6 +786,12 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                               {cs.icon} {cs.label}
                             </span>
                           )}
+                          {isTestedOut && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
+                              title="Diagnostic credit — demonstrated in the placement quiz, not yet practiced">
+                              ✓ tested out
+                            </span>
+                          )}
                         </div>
                         {node.description && (
                           <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
@@ -709,7 +801,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                       {/* Mastery bar */}
                       <div className="w-14 shrink-0">
                         <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
+                          <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isTestedOut ? 'bg-sky-400' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
                             style={{ width: `${node.mastery * 100}%` }} />
                         </div>
                         <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>

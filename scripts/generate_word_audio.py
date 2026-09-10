@@ -19,10 +19,17 @@ Requires Python <3.13 (phonikud constraint). Use the venv-align venv:
 Output: data/audio/words/{node_id}.wav, mirrored to data/audio/letters/ for
 consonant/vowel nodes so the existing letter endpoint works.
 
+Pointed text is REQUIRED (phonikud G2P needs niqqud; strip cantillation
+U+0591-U+05AF first). Two input modes:
+  DB mode (default): items from hebrew_nodes + hebrew_lessons in memorize.db.
+  Wordlist mode: --words-file items.json with [{"id": ..., "text": "<pointed>",
+    "category": "word"}] — no DB needed, e.g. top-frequency vocab.
+
 Usage:
     python3 scripts/generate_word_audio.py --dry-run
     python3 scripts/generate_word_audio.py --apply
     python3 scripts/generate_word_audio.py --apply --limit 50
+    python3 scripts/generate_word_audio.py --apply --words-file data/top_hebrew.json
 """
 
 import argparse
@@ -59,6 +66,27 @@ def _pointed_text(node_id, title, content):
         if any("\u0590" <= ch <= "\u05FF" for ch in p):
             return p
     return ""
+
+
+CANTILLATION_RE = re.compile(r"[\u0591-\u05AF\u05C3\u05C4\u05C6]")
+
+
+def clean_pointed(text: str) -> str:
+    """Strip cantillation (keep niqqud) for TTS input."""
+    return CANTILLATION_RE.sub("", text or "")
+
+
+def _iter_wordlist(path: Path):
+    """Yield (id, title, category, pointed_text) from a JSON wordlist file."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    items = data.get("words", data) if isinstance(data, dict) else data
+    for entry in items:
+        text = clean_pointed(entry.get("text", "")).strip()
+        if not text:
+            print(f"  WARNING: no text for entry {entry.get('id', '?')}")
+            continue
+        yield (entry.get("id") or text, entry.get("id") or text,
+               entry.get("category", "word"), text)
 
 
 def _iter_items(conn):
@@ -127,14 +155,20 @@ def main():
     parser.add_argument("--offset", type=int, default=0, help="Skip first N items (resume)")
     parser.add_argument("--force", action="store_true",
                         help="Regenerate even if the .wav already exists")
+    parser.add_argument("--words-file", default="",
+                        help="JSON wordlist [{id, text (pointed), category}] instead of DB nodes")
     args = parser.parse_args()
 
     if not args.dry_run and not args.apply:
         print("Usage: pass --dry-run to preview or --apply to apply")
         sys.exit(1)
 
-    conn = sqlite3.connect(str(MEM_DB))
-    items = list(_iter_items(conn))
+    if args.words_file:
+        items = list(_iter_wordlist(Path(args.words_file)))
+        conn = None
+    else:
+        conn = sqlite3.connect(str(MEM_DB))
+        items = list(_iter_items(conn))
     items = items[args.offset:]
     if args.limit:
         items = items[:args.limit]
@@ -149,7 +183,8 @@ def main():
     if args.dry_run:
         for nid, title, cat, text in items[:12]:
             print(f"  {nid:<26} [{cat:<10}] {text}")
-        conn.close()
+        if conn is not None:
+            conn.close()
         return
 
     WORDS_DIR.mkdir(parents=True, exist_ok=True)
@@ -164,7 +199,7 @@ def main():
     for nid, title, cat, text in items:
         out = WORDS_DIR / f"{nid}.wav"
         try:
-            dur, voiced = synth_word(phonemize, kokoro, text, out, category=cat)
+            dur, voiced = synth_word(phonemize, kokoro, clean_pointed(text), out, category=cat)
             if voiced < 0.15:
                 silent += 1
             if cat in ("consonant", "vowel"):
@@ -176,7 +211,8 @@ def main():
             errors += 1
             print(f"  ERROR {nid} ({text!r}): {e}")
 
-    conn.close()
+    if conn is not None:
+        conn.close()
     print(f"Done: {done} generated, {errors} errors, {silent} suspiciously-short")
 
 

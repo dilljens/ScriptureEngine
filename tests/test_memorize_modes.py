@@ -42,4 +42,5 @@ def test_available_modes_are_exactly_the_verified_backends():
     assert {
         "scripture_queue", "interleaved_review", "palace_walk",
         "weakest_first", "next_best", "hebrew_review", "hebrew_quiz_practice",
+        "progressive_hints",
     } == available

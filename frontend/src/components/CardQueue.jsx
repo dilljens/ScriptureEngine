@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import CardRenderer from './CardRenderer'
+import { previewCapNote } from '../lib/previewMask'
 
 /**
  * CardQueue — generic spaced-repetition card queue.
@@ -30,6 +31,9 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   const [results, setResults] = useState([])
   const [done, setDone] = useState(false)
   const [rateError, setRateError] = useState(false)
+  // Verse preview help (first-letter hints / full text), reset per card.
+  // Initialized from the backend's automated suggestion when present.
+  const [preview, setPreview] = useState({ mode: 'none', level: 100 })
 
   // Reset when cards change
   useEffect(() => {
@@ -43,6 +47,14 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
 
   const current = cards?.[idx]
 
+  // Per-card preview: pick up the automated level suggestion.
+  useEffect(() => {
+    setPreview({
+      mode: 'none',
+      level: current?.data?.suggested_preview ?? 100,
+    })
+  }, [idx, cards])
+
   const handleReveal = useCallback(() => {
     if (current?.type === 'drill' && !answerState?.[current.id]?.submitted) return
     if (!showAnswer) setShowAnswer(true)
@@ -52,6 +64,12 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
     if (rating !== null) return
     setRateError(false)
     setRating(val)
+
+    // Attach the preview help used so the backend can weight confidence.
+    if (current?.type === 'verse' && current?.data) {
+      current.data.preview_mode = preview.mode
+      current.data.preview_level = preview.level
+    }
 
     // Submit rating if callback provided
     let authoritativeCorrect
@@ -91,15 +109,19 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         if (onComplete) onComplete(nextResults)
       }
     }, 800)
-  }, [rating, current, idx, cards.length, onRate, onComplete, answerState, results])
+  }, [rating, current, idx, cards.length, onRate, onComplete, answerState, results, preview])
 
-  // Flip on Enter/Space
+  // Flip on Enter/Space, rate with 1-4 after reveal (Anki-style)
   const handleKey = useCallback((e) => {
+    if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       if (!showAnswer && current?.type !== 'drill') { handleReveal(); return }
     }
-  }, [showAnswer, handleReveal, current])
+    if (showAnswer && rating === null && ['1', '2', '3', '4'].includes(e.key)) {
+      handleRate(parseInt(e.key))
+    }
+  }, [showAnswer, handleReveal, current, rating, handleRate])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKey)
@@ -181,7 +203,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         <CardRenderer card={current} showAnswer={showAnswer} onAnswer={(ans) => {
           if (onAnswer) onAnswer(current, ans)
           if (current.type === 'drill') setShowAnswer(true)
-        }} answerState={answerState} hebrewOnly={hebrewOnly} />
+        }} answerState={answerState} hebrewOnly={hebrewOnly} preview={preview} onPreviewChange={setPreview} />
       </div>
 
       {/* Hint to flip */}
@@ -193,6 +215,11 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
       {showAnswer && rating === null && (
         <div className="mt-4">
           <p className="text-center text-[10px] text-neutral-400 mb-2">How well did you recall this?</p>
+          {current?.type === 'verse' && previewCapNote(preview.mode, preview.level) && (
+            <p className="text-center text-[10px] text-amber-600 dark:text-amber-400 mb-2">
+              ⚠️ {previewCapNote(preview.mode, preview.level)}
+            </p>
+          )}
           <div className="flex gap-2 justify-center">
             {[
               { val: 1, label: 'Again', desc: 'Forgot', color: 'bg-red-500 hover:bg-red-600' },

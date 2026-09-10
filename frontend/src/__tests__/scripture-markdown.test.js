@@ -106,4 +106,46 @@ describe('preprocess', () => {
   it('keeps DSS refs with digits in book id', () => {
     expect(preprocess('The book of 1QS.1.1 matters')).toContain('data-ref="1qs.1.1"')
   })
+
+  it('auto-links numbered books like 1 Nephi and 2 Corinthians', () => {
+    expect(preprocess('Read 1 Nephi 1:5 today')).toContain('data-ref="1ne.1.5"')
+    expect(preprocess('See 2 Corinthians 3:7 here')).toContain('data-ref="2cor.3.7"')
+    expect(preprocess('Hear Him in 3 Nephi 11:7')).toContain('data-ref="3ne.11.7"')
+  })
+
+  it('auto-links long book names like Deuteronomy', () => {
+    expect(preprocess('As in Deuteronomy 4:12')).toContain('data-ref="deu.4.12"')
+  })
+
+  it('auto-links D&C colon refs', () => {
+    expect(preprocess('Every soul per D&C 93:1')).toContain('data-ref="dc93.93.1"')
+  })
+
+  it('links multi-verse continuations sharing book context', () => {
+    const r = preprocess('Awake in Isaiah 52:1-2, 54:2 today')
+    expect(r).toContain('data-ref="isa.52.1-2"')
+    expect(r).toContain('data-ref="isa.54.2"')
+  })
+
+  it('links verse-only continuations like Isaiah 53:5, 11', () => {
+    const r = preprocess('Healed in Isaiah 53:5, 11 forever')
+    expect(r).toContain('data-ref="isa.53.5"')
+    expect(r).toContain('data-ref="isa.53.11"')
+  })
+
+  it('links cross-chapter en-dash ranges', () => {
+    const r = preprocess('Read Exodus 33:22–34:6 tonight')
+    expect(r).toContain('data-ref="exo.33.22"')
+    expect(r).toContain('data-ref="exo.34.6"')
+  })
+
+  it('does not link numbers glued to words', () => {
+    expect(preprocess('In Isaiah 40:31, 66th verse lurks')).not.toContain('isa.40.66')
+  })
+
+  it('auto-links bare refs appearing before explicit markers', () => {
+    const r = preprocess('Genesis 1:1 and :verse[gen.1.2] together')
+    expect(r).toContain('data-ref="gen.1.1"')
+    expect(r).toContain('data-ref="gen.1.2"')
+  })
 })

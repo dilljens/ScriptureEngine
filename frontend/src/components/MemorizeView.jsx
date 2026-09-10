@@ -48,6 +48,7 @@ export default function MemorizeView() {
             book: item.verse_id?.split('.')[0],
             chapter: parseInt(item.verse_id?.split('.')[1]) || 1,
             verse: parseInt(item.verse_id?.split('.')[2]) || 1,
+            suggested_preview: item.suggested_preview ?? 100,
           },
         }))
         setReviewData(cards)
@@ -61,7 +62,12 @@ export default function MemorizeView() {
       await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
-        body: JSON.stringify({ rating, session_token: sessionToken() }),
+        body: JSON.stringify({
+          rating,
+          session_token: sessionToken(),
+          preview_mode: card.data?.preview_mode || 'none',
+          preview_level: card.data?.preview_level || 0,
+        }),
       })
     }
   }

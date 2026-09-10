@@ -176,13 +176,14 @@ const [showAssessment, setShowAssessment] = useState(false)
     return () => window.removeEventListener('click', handler)
   }, [])
 
-  // Open study or shared-conversation from URL query params
-  // (e.g., ?study=torah-in-all-scripture or ?shared=<slug>)
+  // Open study, wiki article, or shared-conversation from URL query params
+  // (e.g., ?study=torah-in-all-scripture, ?wiki=ascending-to-presence, or ?shared=<slug>)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const studySlug = params.get('study')
     const sharedSlug = params.get('shared')
-    if (studySlug || sharedSlug) {
+    const wikiSlug = params.get('wiki')
+    if (studySlug || sharedSlug || wikiSlug) {
       // Wait a beat for tabs to initialize
       const timer = setTimeout(() => {
         if (sharedSlug) {
@@ -191,6 +192,8 @@ const [showAssessment, setShowAssessment] = useState(false)
             view: 'shared',
             viewRef: sharedSlug,
           })
+        } else if (wikiSlug) {
+          openWikiTab(wikiSlug, `Wiki: ${wikiSlug}`)
         } else {
           openTab(studySlug, 1, {
             label: `Study: ${studySlug}`,
@@ -201,7 +204,7 @@ const [showAssessment, setShowAssessment] = useState(false)
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [openTab])
+  }, [openTab, openWikiTab])
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
   const tabLabel = currentTab?.label || ''

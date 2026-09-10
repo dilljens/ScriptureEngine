@@ -534,6 +534,7 @@ function ArticleView({ article, onEntityClick, onOpenTab }) {
           rehypePlugins={[rehypeRaw]}
           components={createComponents({
             onOpenVerse: handleWikiVerse,
+            hoverPreview: true,
             customComponents: {
               img: ({ src, alt }) => src?.startsWith('http') ? (
                 <img src={src} alt={alt} className="max-w-sm rounded-lg shadow-md my-4" loading="lazy" />

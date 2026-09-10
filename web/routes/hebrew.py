@@ -1,4 +1,5 @@
 """Hebrew learning + grammar reference routes."""
+import contextlib
 import datetime
 import hashlib
 import json
@@ -9,6 +10,7 @@ import random
 import re
 import secrets
 import sqlite3
+import unicodedata
 import urllib.parse
 from pathlib import Path
 
@@ -427,20 +429,92 @@ def get_hebrew_remediation(node_id: str, pattern: str = "confusion", user_id: st
 
 
 def _ensure_hebrew_review_state(conn):
+    # Per-card-direction scheduling (Anki parity): hearing / reverse / forward
+    # reps of one node are independent FSRS rows. card_mode='' is the legacy
+    # general row (lesson/quiz practice). Migrates old PK(user,node) tables.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(hebrew_review_state)").fetchall()]
+    if not cols:
+        conn.execute("""
+            CREATE TABLE hebrew_review_state (
+                user_id TEXT NOT NULL,
+                node_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
+                card_mode TEXT NOT NULL DEFAULT '',
+                stability REAL NOT NULL DEFAULT 0.0,
+                difficulty REAL NOT NULL DEFAULT 5.0,
+                due TEXT NOT NULL DEFAULT (datetime('now')),
+                last_review TEXT,
+                last_rating INTEGER,
+                reps INTEGER NOT NULL DEFAULT 0,
+                lapses INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(user_id,node_id,card_mode)
+            )
+        """)
+        return
+    if "card_mode" not in cols:
+        conn.execute("""
+            CREATE TABLE hebrew_review_state_new (
+                user_id TEXT NOT NULL,
+                node_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
+                card_mode TEXT NOT NULL DEFAULT '',
+                stability REAL NOT NULL DEFAULT 0.0,
+                difficulty REAL NOT NULL DEFAULT 5.0,
+                due TEXT NOT NULL DEFAULT (datetime('now')),
+                last_review TEXT,
+                last_rating INTEGER,
+                reps INTEGER NOT NULL DEFAULT 0,
+                lapses INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(user_id,node_id,card_mode)
+            )
+        """)
+        conn.execute("""
+            INSERT INTO hebrew_review_state_new
+                (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
+            SELECT user_id,node_id,'',stability,difficulty,due,last_review,last_rating,reps,lapses
+            FROM hebrew_review_state
+        """)
+        conn.execute("DROP TABLE hebrew_review_state")
+        conn.execute("ALTER TABLE hebrew_review_state_new RENAME TO hebrew_review_state")
+
+
+CARD_MODES = ("hearing", "reverse", "forward")
+
+
+def _ensure_hebrew_prefs(conn):
+    """Anki-style deck options per user: daily new-card and review caps."""
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS hebrew_review_state (
-            user_id TEXT NOT NULL,
-            node_id TEXT NOT NULL REFERENCES hebrew_nodes(id),
-            stability REAL NOT NULL DEFAULT 0.0,
-            difficulty REAL NOT NULL DEFAULT 5.0,
-            due TEXT NOT NULL DEFAULT (datetime('now')),
-            last_review TEXT,
-            last_rating INTEGER,
-            reps INTEGER NOT NULL DEFAULT 0,
-            lapses INTEGER NOT NULL DEFAULT 0,
-            PRIMARY KEY(user_id,node_id)
+        CREATE TABLE IF NOT EXISTS hebrew_prefs (
+            user_id TEXT PRIMARY KEY,
+            new_cards_per_day INTEGER NOT NULL DEFAULT 10,
+            max_reviews_per_day INTEGER NOT NULL DEFAULT 100
         )
     """)
+
+
+def _ensure_hebrew_progress_source(conn):
+    """Provenance for derived mastery: 'practice' (real attempts), 'placement'
+    (    diagnostic test-out credit — demonstrated, not practiced), 'fire'
+    (implicit FIRe credit). Lets the UI tell 'mastered' apart from 'tested out'
+    so learners never see mastery for nodes they never tried."""
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE hebrew_progress ADD COLUMN source TEXT DEFAULT 'practice'")
+
+
+def read_hebrew_prefs(conn, user_id: str) -> dict:
+    _ensure_hebrew_prefs(conn)
+    row = conn.execute(
+        "SELECT new_cards_per_day, max_reviews_per_day FROM hebrew_prefs WHERE user_id=?",
+        (user_id,)).fetchone()
+    if row:
+        return {"new_cards_per_day": max(0, row[0]), "max_reviews_per_day": max(0, row[1])}
+    return {"new_cards_per_day": 10, "max_reviews_per_day": 100}
+
+
+def resolve_pacing(new_param: int = -1, max_param: int = -1, prefs: dict = None) -> tuple:
+    """Merge explicit params with stored prefs (-1 = use pref)."""
+    prefs = prefs or {}
+    new_cards = prefs.get("new_cards_per_day", 10) if new_param < 0 else max(0, new_param)
+    max_reviews = prefs.get("max_reviews_per_day", 100) if max_param < 0 else max(0, max_param)
+    return new_cards, max_reviews
 
 
 def _resolve_hebrew_user(user_id: str, session_token: str = "") -> str:
@@ -510,24 +584,45 @@ def post_hebrew_review(body: dict, authorization: str = Header("")):
         user_id=user_id,
         hint_level=int(body.get("hint_level", 0)),
         failure_location=body.get("failure_location", ""),
+        card_mode=body.get("card_mode", "") or "",
+        hebrew=body.get("hebrew", "") or "",
     )
+
+
+def resolve_hebrew_node(conn, hebrew: str) -> str:
+    """Resolve a Hebrew word to a node id via lesson content (audio-review path)."""
+    word = (hebrew or "").strip()
+    if not word:
+        return ""
+    row = conn.execute("""
+        SELECT n.id FROM hebrew_nodes n
+        JOIN hebrew_lessons l ON l.node_id=n.id
+        WHERE l.content_json LIKE ? LIMIT 1
+    """, (f'%"{word}"%',)).fetchone()
+    return row[0] if row else ""
 
 
 def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default",
                           session_token: str = "", hint_level: int = 0,
-                          failure_location: str = ""):
+                          failure_location: str = "", card_mode: str = "",
+                          hebrew: str = ""):
     """Process a persisted adaptive review with FIRe and failure tracking.
 
     Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
     hint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)
     failure_location: 'start', 'middle', 'end', 'confusion', or '' for no failure.
+    card_mode: Anki-style card direction — 'hearing', 'reverse', 'forward',
+      'drill', or '' (general). Each (node, mode) has its own FSRS schedule;
+      node-level mastery stays aggregated across modes.
+    hebrew: optional Hebrew word used instead of node_id (audio review);
+      resolved to a node via lesson content.
     Learning speed adjusts the interval: faster learners → longer intervals.
     If learning_speed < 0.5, FIRe credit is skipped (force explicit reviews).
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    if not node_id:
-        raise HTTPException(400, "node_id is required")
+    if card_mode not in ("", "hearing", "reverse", "forward", "drill"):
+        card_mode = ""
     user_id = _resolve_hebrew_user(user_id, session_token)
     rating = max(1, min(4, rating))
 
@@ -539,6 +634,9 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
 
     conn = sqlite3.connect(str(MEM_DB))
     _ensure_hebrew_review_state(conn)
+    _ensure_hebrew_progress_source(conn)
+    if not node_id and hebrew:
+        node_id = resolve_hebrew_node(conn, hebrew)
     conn.execute("BEGIN IMMEDIATE")
     if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
         conn.rollback()
@@ -550,8 +648,8 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     a, c, m = (row[1], row[2], row[0]) if row else (0, 0, 0.0)
     state = conn.execute("""
         SELECT stability,difficulty,last_review,reps,lapses
-        FROM hebrew_review_state WHERE user_id=? AND node_id=?
-    """, (user_id, node_id)).fetchone()
+        FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?
+    """, (user_id, node_id, card_mode)).fetchone()
     stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
 
     if state:
@@ -574,14 +672,14 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         (user_id, node_id, m, a, c))
     conn.execute("""
         INSERT INTO hebrew_review_state
-            (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
-        VALUES (?,?,?,?,?,?,?,?,?)
-        ON CONFLICT(user_id,node_id) DO UPDATE SET
+            (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
             stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
             last_review=excluded.last_review,last_rating=excluded.last_rating,
             reps=excluded.reps,lapses=excluded.lapses
     """, (
-        user_id, node_id, new_s, new_d,
+        user_id, node_id, card_mode, new_s, new_d,
         due_at.strftime("%Y-%m-%d %H:%M:%S"), reviewed_at.strftime("%Y-%m-%d %H:%M:%S"),
         rating, reps, lapses,
     ))
@@ -610,11 +708,15 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         fire_results = fire_process(graph, node_id, rating >= 2, weight=0.3)
         for prereq_id, credit in fire_results.items():
             if credit > 0:
-                pr = conn.execute("SELECT mastery FROM hebrew_progress WHERE user_id=? AND node_id=?",
+                pr = conn.execute("SELECT mastery, attempts, source FROM hebrew_progress WHERE user_id=? AND node_id=?",
                                   (user_id, prereq_id)).fetchone()
                 if pr:
-                    conn.execute("UPDATE hebrew_progress SET mastery=?,last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
-                                 (min(1.0, pr[0] + credit * 0.05), user_id, prereq_id))
+                    bumped = pr[0] + credit * 0.05
+                    if not (pr[1] or 0):
+                        # Implicit credit alone must never "master" an untried node.
+                        bumped = min(bumped, 0.79)
+                    conn.execute("UPDATE hebrew_progress SET mastery=?,source='fire',last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
+                                 (min(1.0, bumped), user_id, prereq_id))
 
         # Unified cross-domain FIRe: Hebrew concept review → credit to verses using this concept
         try:
@@ -649,7 +751,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     conn.commit()
     conn.close()
     return {"ok": True, "data": {
-        "node_id": node_id, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
+        "node_id": node_id, "card_mode": card_mode, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
         "due": due_at.strftime("%Y-%m-%d %H:%M:%S"), "scheduler": "adaptive-v1",
         "retrievability": 1.0, "reps": reps, "lapses": lapses,
@@ -1078,7 +1180,9 @@ def _placement_estimate(state, level_range):
 def _placement_apply_results(conn, user_id, results):
     """Apply placement results: test-out credit (mastery for known skills),
     SRS seeding (correct → mature interval, missed → review soon), and
-    per-skill 'start at lesson N' mapping."""
+    per-skill 'start at lesson N' mapping. Test-out rows are marked
+    source='placement' so the UI can show 'tested out' instead of 'mastered'."""
+    _ensure_hebrew_progress_source(conn)
     applied = {"nodes_tested_out": 0, "srs_seeded": 0, "skills": {}}
     for skill, cats, lo, hi, _start in PLACEMENT_SKILLS:
         est, conf = _placement_estimate(results[skill], (lo, hi))
@@ -1093,12 +1197,13 @@ def _placement_apply_results(conn, user_id, results):
             (*cats, max(1, est - 1))).fetchall()
         for r in mastered_nodes:
             conn.execute("""
-                INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced)
-                VALUES (?,?,0.8,1,1,datetime('now'))
+                INSERT INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced, source)
+                VALUES (?,?,0.8,1,1,datetime('now'),'placement')
                 ON CONFLICT(user_id,node_id) DO UPDATE SET
                     mastery=MAX(hebrew_progress.mastery,excluded.mastery),
                     attempts=hebrew_progress.attempts+1,
                     correct=hebrew_progress.correct+1,
+                    source='placement',
                     last_practiced=datetime('now')
             """, (user_id, r["id"]))
             applied["nodes_tested_out"] += 1
@@ -1120,19 +1225,19 @@ def _placement_apply_results(conn, user_id, results):
             _ensure_hebrew_review_state(conn)
             conn.execute("""
                 INSERT INTO hebrew_review_state
-                    (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
-                VALUES (?,?,?,?,?,?,?,?,?)
-                ON CONFLICT(user_id,node_id) DO UPDATE SET
+                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
                     stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
                     last_review=excluded.last_review,last_rating=excluded.last_rating,
                     reps=excluded.reps,lapses=excluded.lapses
-            """, (user_id, node_id, round(new_s, 2), round(new_d, 2),
+            """, (user_id, node_id, "", round(new_s, 2), round(new_d, 2),
                   due.strftime("%Y-%m-%d %H:%M:%S"),
                   datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                   rating, 1, 0))
             conn.execute("""
-                INSERT INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced)
-                VALUES (?,?,?,?,?,datetime('now'))
+                INSERT INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced,source)
+                VALUES (?,?,?,?,?,datetime('now'),'placement')
                 ON CONFLICT(user_id,node_id) DO UPDATE SET
                     mastery=MAX(hebrew_progress.mastery,excluded.mastery),
                     attempts=hebrew_progress.attempts+1,
@@ -1381,10 +1486,11 @@ def apply_diagnostic_results(body: dict, authorization: str = Header("")):
         stats["total"] += 1
         stats["correct"] += int(correct)
         total_correct += int(correct)
+        _ensure_hebrew_progress_source(conn)
         conn.execute("""
             INSERT INTO hebrew_progress
-                (user_id,node_id,mastery,attempts,correct,last_practiced)
-            VALUES (?,?,?,?,?,datetime('now'))
+                (user_id,node_id,mastery,attempts,correct,last_practiced,source)
+            VALUES (?,?,?,?,?,datetime('now'),'placement')
             ON CONFLICT(user_id,node_id) DO UPDATE SET
                 mastery=MAX(hebrew_progress.mastery,excluded.mastery),
                 attempts=hebrew_progress.attempts+1,
@@ -1412,11 +1518,14 @@ def get_hebrew_curriculum(
         return {"ok": True, "data": {"nodes": [], "total": 0}}
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
+    _ensure_hebrew_progress_source(conn)
     nodes = conn.execute("""
         SELECT n.*, COUNT(DISTINCT e.source_id) as prereq_count,
-               COUNT(DISTINCT e2.source_id) as dependent_count,
-               COALESCE(p.mastery,0) as mastery, COALESCE(p.attempts,0) as attempts,
-               COALESCE(p.correct,0) as correct, COALESCE(l.content_json,'') as has_content
+                COUNT(DISTINCT e2.source_id) as dependent_count,
+                COALESCE(p.mastery,0) as mastery, COALESCE(p.attempts,0) as attempts,
+                COALESCE(p.correct,0) as correct,
+                COALESCE(p.source,'practice') as source,
+                COALESCE(l.content_json,'') as has_content
         FROM hebrew_nodes n
         LEFT JOIN hebrew_edges e ON e.target_id=n.id
         LEFT JOIN hebrew_edges e2 ON e2.source_id=n.id
@@ -1442,6 +1551,7 @@ def get_hebrew_curriculum(
             "id": n['id'], "title": n['title'], "category": n['category'],
             "level": n['level'], "description": n['description'],
             "mastery": n['mastery'], "attempts": n['attempts'], "correct": n['correct'],
+            "source": n['source'],
             "prerequisite_count": n['prereq_count'], "dependent_count": n['dependent_count'],
             "prerequisites": prereq_list, "unlocked": all_mastered, "has_content": bool(n['has_content']),
             "hebrew": lesson.get("hebrew") or lesson.get("glyph") or "",
@@ -1503,7 +1613,10 @@ def get_hebrew_curriculum(
         result_nodes = ordered
 
     total = len(result_nodes)
-    mastered = sum(1 for n in result_nodes if n['mastery'] >= 0.8)
+    # 'Tested out' (diagnostic credit) unlocks like mastery but is tallied
+    # separately — it must never masquerade as practiced mastery.
+    tested_out = sum(1 for n in result_nodes if n['mastery'] >= 0.8 and n['source'] == 'placement')
+    mastered = sum(1 for n in result_nodes if n['mastery'] >= 0.8 and n['source'] != 'placement')
     in_progress = sum(1 for n in result_nodes if 0 < n['mastery'] < 0.8)
     locked = sum(1 for n in result_nodes if not n['unlocked'])
     # Compute speed distribution for summary
@@ -1515,6 +1628,7 @@ def get_hebrew_curriculum(
 
     return {"ok": True, "data": {
         "nodes": result_nodes, "total": total, "mastered": mastered,
+        "tested_out": tested_out,
         "in_progress": in_progress, "locked": locked,
         "overall_ability": overall_ability,
         "avg_learning_speed": avg_speed,
@@ -1647,13 +1761,13 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
         _due = _reviewed + datetime.timedelta(days=max(1, interval))
         conn.execute("""
             INSERT INTO hebrew_review_state
-                (user_id,node_id,stability,difficulty,due,last_review,last_rating,reps,lapses)
-            VALUES (?,?,?,?,?,?,?,?,?)
-            ON CONFLICT(user_id,node_id) DO UPDATE SET
+                (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
                 stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
                 last_review=excluded.last_review,last_rating=excluded.last_rating,
                 reps=excluded.reps,lapses=excluded.lapses
-        """, (user_id, node_id, new_s, new_d,
+        """, (user_id, node_id, "", new_s, new_d,
               _due.strftime("%Y-%m-%d %H:%M:%S"), _reviewed.strftime("%Y-%m-%d %H:%M:%S"),
               rating, reps, lapses))
         conn.commit()
@@ -1825,11 +1939,62 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     }}
 
 
+_ANKI_MANIFEST_CACHE: dict = {}
+_ANKI_MANIFEST_MTIME: float = 0.0
+
+
+def _load_anki_manifest() -> dict:
+    """Cached manifest of Anki-imported word audio (headword -> [files])."""
+    global _ANKI_MANIFEST_CACHE, _ANKI_MANIFEST_MTIME
+    path = BASE_DIR / "data" / "audio" / "anki" / "manifest.json"
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return {}
+    if mtime != _ANKI_MANIFEST_MTIME:
+        try:
+            _ANKI_MANIFEST_CACHE = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            _ANKI_MANIFEST_CACHE = {}
+        _ANKI_MANIFEST_MTIME = mtime
+    return _ANKI_MANIFEST_CACHE
+
+
+def _anki_fold(word: str) -> str:
+    """Strip niqqud/cantillation and fold final letters for manifest matching."""
+    w = re.sub(r"[\u0591-\u05C7]", "", unicodedata.normalize("NFC", word or "").strip())
+    return (w.replace("ך", "כ").replace("ם", "מ").replace("ן", "נ")
+             .replace("ף", "פ").replace("ץ", "צ"))
+
+
+def _match_anki_audio(word_clean: str) -> str:
+    """Find an Anki clip for a word: exact headword, else folded match."""
+    manifest = _load_anki_manifest()
+    if not manifest:
+        return ""
+    key = unicodedata.normalize("NFC", word_clean)
+    if manifest.get(key):
+        return manifest[key][0]
+    folded = _anki_fold(word_clean)
+    for headword, files in manifest.items():
+        if files and _anki_fold(headword) == folded:
+            return files[0]
+    return ""
+
+
 @router.get("/api/v1/hebrew/audio/{word:path}")
 def get_hebrew_audio(word: str):
     word_clean = word.strip()
     if not word_clean:
         raise HTTPException(400, "Word required")
+    # Tier 0: Anki-imported human word audio (data/audio/anki/manifest.json)
+    anki_file = _match_anki_audio(word_clean)
+    if anki_file:
+        return {"ok": True, "data": {
+            "audio_url": f"/api/v1/audio/anki/{urllib.parse.quote(anki_file)}",
+            "word": word_clean, "source": "anki",
+            "start": 0, "end": 0,
+        }}
     conn = get_db()
     rows = conn.execute(
         "SELECT verse_id, word_timestamps, source_file FROM audio_timestamps WHERE word_timestamps LIKE ? LIMIT 10",
@@ -2208,7 +2373,8 @@ def _interleave_due_items(by_cat, confusable_pairs):
 
 @router.get("/api/v1/hebrew/review-queue")
 def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
-                            new_cards_per_day: int = 10, include_new: bool = True,
+                            new_cards_per_day: int = -1, max_reviews_per_day: int = -1,
+                            include_new: bool = True,
                             session_token: str = "", authorization: str = Header("")):
     user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
@@ -2216,25 +2382,76 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
     _ensure_hebrew_review_state(conn)
+    prefs = read_hebrew_prefs(conn, user_id)
+    new_cards_per_day, max_reviews_per_day = resolve_pacing(
+        new_cards_per_day, max_reviews_per_day, prefs)
     now = datetime.datetime.now()
     rows = conn.execute("""
         SELECT p.node_id, n.title, n.level, n.category, n.description,
-               p.mastery, p.attempts, p.correct, p.last_practiced,
-               s.stability AS review_stability,s.difficulty AS review_difficulty,
-               s.due AS review_due,s.last_review AS state_last_review,
-               l.content_json
+                p.mastery, p.attempts, p.correct, p.last_practiced,
+                l.content_json
         FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id
-        LEFT JOIN hebrew_review_state s ON s.user_id=p.user_id AND s.node_id=p.node_id
         LEFT JOIN hebrew_lessons l ON l.node_id=p.node_id
         WHERE p.user_id=? ORDER BY p.last_practiced DESC
     """, (user_id,)).fetchall()
+    # Per-direction FSRS rows: a node is due in the modes whose row is due.
+    # Legacy '' rows (pre-direction) count as due in every direction once.
+    state_rows = conn.execute("""
+        SELECT node_id, card_mode, stability, difficulty, due, last_review
+        FROM hebrew_review_state WHERE user_id=?
+    """, (user_id,)).fetchall()
+    by_node_modes = {}
+    for s in state_rows:
+        by_node_modes.setdefault(s["node_id"], []).append(s)
     try:
         speeds, _, _ = compute_learning_speed(user_id)
     except Exception:
         speeds = {}
     due = []
     for r in rows:
-        last_str = r['state_last_review'] or r['last_practiced']
+        modes = by_node_modes.get(r['node_id'], [])
+        if modes:
+            # Scheduled rows: collect the modes actually due, most urgent first.
+            due_modes = []
+            worst_ret, worst_stab, worst_due, worst_days = 1.0, None, None, 0.0
+            for s in modes:
+                try:
+                    due_now = datetime.datetime.strptime(s["due"], "%Y-%m-%d %H:%M:%S") <= now
+                except (ValueError, TypeError):
+                    due_now = True
+                if not due_now:
+                    continue
+                stab = max(0.25, s["stability"] or 0.25)
+                try:
+                    last_time = datetime.datetime.strptime(s["last_review"], "%Y-%m-%d %H:%M:%S")
+                    days = (now - last_time).total_seconds() / 86400.0
+                except (ValueError, TypeError):
+                    days = 0.0
+                ret = fsrs_retrievability(stab, days)
+                if ret < worst_ret:
+                    worst_ret, worst_stab, worst_due, worst_days = ret, stab, s["due"], days
+                due_modes.extend(list(CARD_MODES) if not s["card_mode"] else [s["card_mode"]])
+            if not due_modes:
+                continue
+            last_str = r['last_practiced']
+            try:
+                language = json.loads(r['content_json'] or "{}").get("language", "hebrew")
+            except (TypeError, json.JSONDecodeError):
+                language = "hebrew"
+            lr = speeds.get(r['node_id'], 1.0)
+            due.append({
+                "node_id": r['node_id'], "title": r['title'], "level": r['level'],
+                "category": r['category'], "description": r['description'],
+                "language": language,
+                "mastery": r['mastery'], "attempts": r['attempts'], "correct": r['correct'],
+                "days_since": round(worst_days, 1), "stability": round(worst_stab or 1.0, 1),
+                "retrievability": round(worst_ret, 3), "learning_speed": round(lr, 3),
+                "last_practiced": last_str, "due": worst_due,
+                "scheduler": "adaptive-v1",
+                "due_modes": sorted(set(due_modes)),
+            })
+            continue
+        last_str = r['last_practiced']
         if not last_str: continue
         try:
             last_time = datetime.datetime.strptime(last_str, "%Y-%m-%d %H:%M:%S")
@@ -2245,16 +2462,8 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         a = r['attempts']
         c = r['correct']
 
-        has_state = r['review_due'] is not None
-        if has_state:
-            stability = max(0.25, r['review_stability'])
-            ret = fsrs_retrievability(stability, days)
-            try:
-                due_now = datetime.datetime.strptime(r['review_due'], "%Y-%m-%d %H:%M:%S") <= now
-            except (ValueError, TypeError):
-                due_now = True
-        elif a > 0 and c > 0:
-            # Legacy progress rows receive an estimated first due date until reviewed.
+        # No FSRS rows yet: legacy estimate until the first review.
+        if a > 0 and c > 0:
             stability = max(1.0, a * m * 7.0)
             ret = fsrs_retrievability(stability, days)
             due_now = ret < 0.9
@@ -2276,8 +2485,9 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                 "mastery": m, "attempts": a, "correct": c,
                 "days_since": round(days, 1), "stability": round(stability, 1),
                 "retrievability": round(ret, 3), "learning_speed": round(lr, 3),
-                "last_practiced": last_str, "due": r['review_due'],
-                "scheduler": "adaptive-v1" if has_state else "legacy-estimate",
+                "last_practiced": last_str, "due": None,
+                "scheduler": "legacy-estimate",
+                "due_modes": list(CARD_MODES),
             })
 
     # ── New-card introduction (Anki-style daily cap + backlog guardrail) ──
@@ -2292,9 +2502,10 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         backlog = len(due)
         new_budget = 0 if backlog > new_cards_per_day * 3 else max(0, new_cards_per_day - backlog // 3)
         if new_budget > 0:
-            # How many new cards were already introduced today (reps=1, reviewed today)
+            # How many new cards were already introduced today (distinct nodes
+            # with a first rep today — one node may hold several card modes).
             introduced_today = conn.execute("""
-                SELECT COUNT(*) FROM hebrew_review_state
+                SELECT COUNT(DISTINCT node_id) FROM hebrew_review_state
                 WHERE user_id=? AND reps=1 AND last_review >= date('now')
             """, (user_id,)).fetchone()[0]
             remaining = max(0, new_budget - introduced_today)
@@ -2410,26 +2621,71 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         else:
             compressed.append(item)
 
+    # ── Daily review cap (Anki "Maximum reviews/day") ──
+    # The queue is fully computed (due_count stays exact) but only the first
+    # N cards are handed out per day; the rest wait for tomorrow.
+    effective_limit = limit if max_reviews_per_day <= 0 else min(limit, max_reviews_per_day)
+    capped_reviews = compressed[:effective_limit]
+    capped = len(compressed) > len(capped_reviews)
+
     return {"ok": True, "data": {
-        "reviews": compressed[:limit],
+        "reviews": capped_reviews,
         "due_count": len(due),
         "total_practiced": len(rows),
         "compression_savings": len(interleaved[:limit]) - len(compressed),
         "new_cards": new_cards_available,
         "new_cards_per_day": new_cards_per_day,
         "new_cards_available_today": max(0, new_cards_per_day - new_cards_available) if include_new else 0,
+        "max_reviews_per_day": max_reviews_per_day,
+        "reviews_capped": capped,
+        "reviews_remaining": max(0, len(compressed) - len(capped_reviews)),
     }}
 
 
-@router.get("/api/v1/hebrew/verb-drill")
-def get_hebrew_verb_drill(count: int = 5, category: str = "", user_id: str = "default"):
+@router.get("/api/v1/hebrew/prefs")
+def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
+                     authorization: str = Header("")):
+    """Anki-style deck options: daily new-card and review caps."""
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
-        return {"ok": True, "data": {"drills": []}}
+        return {"ok": True, "data": {"new_cards_per_day": 10, "max_reviews_per_day": 100}}
     conn = sqlite3.connect(str(MEM_DB))
-    conn.row_factory = sqlite3.Row
+    prefs = read_hebrew_prefs(conn, user_id)
+    conn.close()
+    return {"ok": True, "data": prefs}
+
+
+@router.post("/api/v1/hebrew/prefs")
+def set_hebrew_prefs(body: dict, authorization: str = Header("")):
+    """Save Anki-style deck options (0 = no new cards / unlimited reviews)."""
+    session_token = _session_token_from_header(authorization) or (body or {}).get("session_token", "")
+    user_id = _require_hebrew_user((body or {}).get("user_id", "default"), session_token)
+    try:
+        new_cards = max(0, int((body or {}).get("new_cards_per_day", 10)))
+        max_reviews = max(0, int((body or {}).get("max_reviews_per_day", 100)))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "new_cards_per_day and max_reviews_per_day must be integers")
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    _ensure_hebrew_prefs(conn)
+    conn.execute("""
+        INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            new_cards_per_day=excluded.new_cards_per_day,
+            max_reviews_per_day=excluded.max_reviews_per_day
+    """, (user_id, new_cards, max_reviews))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"new_cards_per_day": new_cards, "max_reviews_per_day": max_reviews}}
+
+
+def _query_verb_lessons(conn, category: str = ""):
+    """Fetch verb lesson rows for a drill category."""
     verb_sql = "SELECT n.id, n.title, l.content_json FROM hebrew_nodes n " \
                "JOIN hebrew_lessons l ON l.node_id=n.id WHERE n.category='verb'"
-    verb_params = []
+    verb_params: list = []
     if category and category != 'all':
         if category == 'qal':
             verb_sql += " AND (n.id LIKE 'qal%' OR n.id LIKE 'weak_%')"
@@ -2446,7 +2702,11 @@ def get_hebrew_verb_drill(count: int = 5, category: str = "", user_id: str = "de
         else:
             verb_sql += " AND n.id LIKE ?"
             verb_params.append(f'{category}%')
-    verb_lessons = conn.execute(verb_sql, verb_params).fetchall()
+    return conn.execute(verb_sql, verb_params).fetchall()
+
+
+def _build_verb_drills(verb_lessons) -> list:
+    """Build verb drills WITH correct answers (stripped for public GET)."""
     drills = []
     for lesson in verb_lessons:
         try:
@@ -2491,12 +2751,80 @@ def get_hebrew_verb_drill(count: int = 5, category: str = "", user_id: str = "de
         drills.append({"node_id":"qal_perfect","question":"What is the function of the Qal binyan?","type":"multiple_choice",
             "options":json.dumps(["Simple active","Simple passive","Intensive","Causative"]),"correct":"Simple active",
             "explanation":"Qal is the simple active stem, the most common binyan."})
+    return drills
+
+
+def _grade_verb_answer(drill: dict, answer) -> bool:
+    """Server-side check: option text (or A/B/C/D letter / index) vs correct."""
+    correct = str(drill.get("correct", "") or "").strip()
+    if not correct:
+        return False
+    given = str(answer if answer is not None else "").strip()
+    if given.lower() == correct.lower():
+        return True
+    try:
+        options = json.loads(drill.get("options") or "[]")
+    except (json.JSONDecodeError, ValueError, TypeError):
+        options = []
+    # Letter (A/B/C/…) or 0-based index pointing at the correct option
+    letters = [chr(ord("A") + i) for i in range(len(options))]
+    if given.upper() in letters:
+        return options[letters.index(given.upper())].strip().lower() == correct.lower()
+    if given.isdigit() and options:
+        idx = int(given)
+        idx = idx - 1 if 1 <= idx <= len(options) else idx
+        if 0 <= idx < len(options):
+            return str(options[idx]).strip().lower() == correct.lower()
+    return False
+
+
+@router.get("/api/v1/hebrew/verb-drill")
+def get_hebrew_verb_drill(count: int = 5, limit: int = 0, category: str = "", user_id: str = "default"):
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"drills": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    drills = _build_verb_drills(_query_verb_lessons(conn, category))
     random.shuffle(drills)
     conn.close()
+    take = limit or count
     public_drills = []
-    for drill in drills[:count]:
+    for drill in drills[:take]:
         public_drills.append({key: value for key, value in drill.items() if key != "correct"})
     return {"ok": True, "data": {"drills": public_drills, "total": len(drills)}}
+
+
+@router.post("/api/v1/hebrew/verb-drill/grade")
+def grade_hebrew_verb_drill(body: dict, authorization: str = Header("")):
+    """Grade a verb-drill answer server-side and record FSRS credit.
+
+    Body: { node_id, question, answer, session_token? }.
+    Correct → Good (3), wrong → Again (1), scheduled as card_mode='drill'.
+    """
+    session_token = _session_token_from_header(authorization) or (body or {}).get("session_token", "")
+    user_id = _require_hebrew_user((body or {}).get("user_id", "default"), session_token)
+    node_id = (body or {}).get("node_id", "")
+    question = (body or {}).get("question", "")
+    if not node_id or not question:
+        raise HTTPException(400, "node_id and question required")
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    drill = next((d for d in _build_verb_drills(_query_verb_lessons(conn, ""))
+                  if d["node_id"] == node_id and d["question"] == question), None)
+    conn.close()
+    if not drill:
+        raise HTTPException(404, "Drill not found")
+    correct = _grade_verb_answer(drill, (body or {}).get("answer"))
+    review = process_hebrew_review(node_id, 3 if correct else 1, user_id,
+                                   card_mode="drill")
+    return {"ok": True, "data": {
+        "correct": correct, "correct_answer": drill["correct"],
+        "explanation": drill.get("explanation", ""),
+        "mastery": review["data"]["mastery"],
+        "due": review["data"]["due"],
+    }}
 
 
 @router.get("/api/v1/hebrew/quiz")
@@ -2865,18 +3193,20 @@ def _check_badges(user_id="default"):
     # Get user state
     gam = _get_gamification(user_id)
 
-    # Get progress stats
+    # Get progress stats (badges count practiced mastery only — diagnostic
+    # test-out credit unlocks lessons but doesn't earn mastery badges)
+    _ensure_hebrew_progress_source(conn)
     total_mastered = conn.execute(
-        "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=? AND mastery>=0.8",
+        "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=? AND mastery>=0.8 AND source!='placement'",
         (user_id,)).fetchone()[0]
     level1_mastered = conn.execute(
-        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.level=1 AND p.mastery>=0.8",
+        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.level=1 AND p.mastery>=0.8 AND p.source!='placement'",
         (user_id,)).fetchone()[0]
     level2_mastered = conn.execute(
-        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.level=2 AND p.mastery>=0.8",
+        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.level=2 AND p.mastery>=0.8 AND p.source!='placement'",
         (user_id,)).fetchone()[0]
     verb_count = conn.execute(
-        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.category='verb' AND p.mastery>=0.8",
+        "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=? AND n.category='verb' AND p.mastery>=0.8 AND p.source!='placement'",
         (user_id,)).fetchone()[0]
     total_items = conn.execute(
         "SELECT COUNT(*) FROM hebrew_practice_items WHERE node_id IN (SELECT node_id FROM hebrew_progress WHERE user_id=? AND attempts>0)",

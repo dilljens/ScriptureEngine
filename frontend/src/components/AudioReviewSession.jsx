@@ -4,13 +4,16 @@ import React, { useState, useEffect, useCallback } from 'react'
  * AudioReviewSession — eyes-free audio review for walking/driving/exercising.
  *
  * Speaks Hebrew word → pause → speaks English meaning → user rates recall.
- * Uses Web Speech Synthesis API (no external dependencies).
+ * Prefers server audio (/hebrew/audio — Anki clips, Kokoro TTS, verse slices)
+ * and falls back to Web Speech Synthesis. Ratings are reported via onRate
+ * for FSRS credit.
  *
  * Props:
  *   words: array of {hebrew, english, transliteration}
+ *   onRate: async (word, rating) => {} — called when user rates a word
  *   onComplete: () => void
  */
-export default function AudioReviewSession({ words, onComplete }) {
+export default function AudioReviewSession({ words, onRate, onComplete }) {
   const [idx, setIdx] = useState(0)
   const [phase, setPhase] = useState('listening') // listening | answering | rated
   const [rating, setRating] = useState(null)
@@ -29,29 +32,57 @@ export default function AudioReviewSession({ words, onComplete }) {
     })
   }, [])
 
-  // Speak the Hebrew word
+  // Speak the Hebrew word — server audio first, device TTS fallback
   useEffect(() => {
     if (!current || paused) return
     setPhase('listening')
+    let cancelled = false
+
+    const playUrl = (url) => new Promise((resolve) => {
+      const audio = new Audio(url)
+      audio.onended = resolve
+      audio.onerror = resolve
+      audio.play().catch(resolve)
+    })
 
     const run = async () => {
       if (current.hebrew) {
-        await speak(current.hebrew, 'he-IL', 0.7)
+        let played = false
+        try {
+          const r = await fetch(`/api/v1/hebrew/audio/${encodeURIComponent(current.hebrew)}`)
+          const d = await r.json()
+          if (!cancelled && d.ok && d.data?.audio_url) {
+            await playUrl(d.data.audio_url)
+            played = true
+          }
+        } catch {}
+        if (!cancelled && !played) {
+          await speak(current.hebrew, 'he-IL', 0.7)
+        }
       }
+      if (cancelled) return
       // Pause for user to think
       await new Promise(r => setTimeout(r, 2000))
+      if (cancelled) return
       // Speak the English answer
       if (current.english) {
         await speak(current.english, 'en-US', 0.9)
       }
-      setPhase('answering')
+      if (!cancelled) setPhase('answering')
     }
     run()
+    return () => { cancelled = true }
   }, [current, paused, speak])
 
   const handleRate = (val) => {
     setRating(val)
     setPhase('rated')
+    if (onRate && current) {
+      try {
+        const p = onRate(current, val)
+        if (p && p.catch) p.catch(() => {})
+      } catch {}
+    }
     setTimeout(() => {
       if (idx + 1 < words.length) {
         setIdx(p => p + 1)

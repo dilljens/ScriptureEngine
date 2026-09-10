@@ -21,10 +21,12 @@ import { currentSessionToken, fetchJSON, hebrewSessionUser } from '../api'
 const CARD_MODES = ['hearing', 'reverse', 'forward']
 
 export default function AnkiReview({ cards: initialCards, onComplete, title, onBack }) {
-  // Build shuffled cards with assigned modes
+  // Build shuffled cards with assigned modes. A card may carry `modes`
+  // (from review-queue due_modes) to review only the directions actually due;
+  // otherwise all three directions are practiced (Anki-style).
   const [cards] = useState(() => {
     const withModes = initialCards.flatMap(c =>
-      CARD_MODES.map(mode => ({ ...c, mode, id: `${c.node_id}_${mode}` }))
+      (c.modes && c.modes.length ? c.modes : CARD_MODES).map(mode => ({ ...c, mode, id: `${c.node_id}_${mode}` }))
     )
     // Fisher-Yates shuffle
     for (let i = withModes.length - 1; i > 0; i--) {
@@ -91,7 +93,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         method: 'POST',
         body: JSON.stringify({
           node_id: currentCard.node_id, rating, user_id: 'default',
-          session_token: sessionToken,
+          session_token: sessionToken, card_mode: currentCard.mode,
         }),
         headers: {
           'Content-Type': 'application/json',

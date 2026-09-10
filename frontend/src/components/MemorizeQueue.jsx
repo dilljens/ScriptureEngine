@@ -24,6 +24,9 @@ export default function MemorizeQueue({ onStartReview }) {
   const [displayLang, setDisplayLang] = useState('english')
   const [reviewVerse, setReviewVerse] = useState(null) // single-verse quick review
   const [reviewLang, setReviewLang] = useState('hebrew') // Anki-style: show target language first
+  const [masteryGroups, setMasteryGroups] = useState(null) // {group: count} for the LDS 100
+  const [masteryMsg, setMasteryMsg] = useState('')
+  const [masteryBusy, setMasteryBusy] = useState(false)
 
   const sessionToken = () => currentSessionToken()
   const sessionHeaders = () => {
@@ -42,6 +45,40 @@ export default function MemorizeQueue({ onStartReview }) {
   }
 
   useEffect(() => { loadQueue() }, [])
+
+  // Scripture Mastery (LDS 100) group counts
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/v1/memorize/mastery', { headers: sessionHeaders() })
+        const d = await r.json()
+        if (d.ok) setMasteryGroups(d.data.by_group)
+      } catch {}
+    })()
+  }, [])
+
+  const addMastery = async (group) => {
+    setMasteryBusy(true)
+    setMasteryMsg('')
+    try {
+      const r = await fetch('/api/v1/memorize/queue/mastery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify(group ? { group, session_token: sessionToken() } : { session_token: sessionToken() }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        const skipped = (d.data.skipped || []).length
+        setMasteryMsg(`Added ${d.data.verses_added} verses${skipped ? ` (${skipped} already queued or unavailable)` : ''}`)
+        loadQueue()
+      } else {
+        setMasteryMsg('Could not add mastery set.')
+      }
+    } catch {
+      setMasteryMsg('Could not add mastery set.')
+    }
+    setMasteryBusy(false)
+  }
 
   // Search: parse refs + FTS5 fallback
   useEffect(() => {
@@ -171,7 +208,12 @@ export default function MemorizeQueue({ onStartReview }) {
       await fetch(`/api/v1/memorize/review/${card.queue_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
-        body: JSON.stringify({ rating, session_token: sessionToken() }),
+        body: JSON.stringify({
+          rating,
+          session_token: sessionToken(),
+          preview_mode: card.data?.preview_mode || 'none',
+          preview_level: card.data?.preview_level || 0,
+        }),
       })
     }
     setReviewVerse(null)
@@ -243,6 +285,30 @@ export default function MemorizeQueue({ onStartReview }) {
       <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
         Add verses to your queue for spaced repetition review.
       </p>
+
+      {/* Scripture Mastery (LDS 100) bulk import */}
+      <details className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+        <summary className="text-xs font-medium text-amber-800 dark:text-amber-300 cursor-pointer">
+          📜 Scripture Mastery — add the LDS 100 to your queue
+        </summary>
+        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2 mb-2">
+          25 Old Testament · 25 New Testament · 25 Book of Mormon · 25 Doctrine &amp; Covenants.
+          Multi-verse passages are added verse by verse.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {(masteryGroups ? Object.keys(masteryGroups) : ['Old Testament', 'New Testament', 'Book of Mormon', 'Doctrine and Covenants']).map(g => (
+            <button key={g} onClick={() => addMastery(g)} disabled={masteryBusy}
+              className="px-2 py-1 rounded text-[10px] font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 cursor-pointer transition-colors">
+              + {g.replace(' Testament', 'T').replace('Book of Mormon', 'BoM').replace('Doctrine and Covenants', 'D&C')}
+            </button>
+          ))}
+          <button onClick={() => addMastery(null)} disabled={masteryBusy}
+            className="px-2 py-1 rounded text-[10px] font-medium bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer transition-colors">
+            + All 100
+          </button>
+        </div>
+        {masteryMsg && <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-2">{masteryMsg}</p>}
+      </details>
 
       {/* Search/add bar */}
       <div className="flex gap-2 mb-4">

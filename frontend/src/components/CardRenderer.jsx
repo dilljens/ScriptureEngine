@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { firstLetterMask, PREVIEW_LEVELS } from '../lib/previewMask'
 import { preprocess, openVerseRef, createComponents } from '../lib/scripture-markdown'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -21,13 +22,13 @@ import {
  * and use onAnswer callback to handle submission before rating.
  */
 
-export default function CardRenderer({ card, showAnswer, onAnswer, answerState, hebrewOnly }) {
+export default function CardRenderer({ card, showAnswer, onAnswer, answerState, hebrewOnly, preview, onPreviewChange }) {
   if (!card) return null
 
   // Dispatch to type-specific renderer
   switch (card.type) {
     case 'verse':
-      return <VerseCardRenderer card={card} showAnswer={showAnswer} />
+      return <VerseCardRenderer card={card} showAnswer={showAnswer} preview={preview} onPreviewChange={onPreviewChange} />
     case 'knowledge':
       return <KnowledgeCardRenderer card={card} showAnswer={showAnswer} />
     case 'connection':
@@ -61,11 +62,25 @@ function go(ref) {
 }
 
 // ── Verse Memory Card ──
-// Front: show reference, user must recall text
-// Back: show verse text
-function VerseCardRenderer({ card, showAnswer }) {
+// Front: show reference + optional preview (first-letter hints or full text).
+// The preview choice is reported with the rating so scheduling can weight
+// confidence by how much help was used. Back: show full verse text.
+function VerseCardRenderer({ card, showAnswer, preview, onPreviewChange }) {
   const { reference, text, book, chapter, verse } = card.data || {}
   const refStr = reference || `${book}.${chapter}.${verse}`
+  const fullText = text || card.data?.text_english || ''
+  const mode = preview?.mode || 'none'
+  const level = preview?.level ?? 100
+
+  const renderPreview = () => {
+    if (mode === 'full_text') return fullText
+    if (mode === 'first_letters') {
+      if (level <= 0) return ''
+      return firstLetterMask(fullText, level)
+    }
+    return ''
+  }
+
   return (
     <div className="text-center">
       <button onClick={() => go(refStr)} className="text-[10px] font-mono text-indigo-400 dark:text-indigo-300 mb-3 hover:text-indigo-600 dark:hover:text-indigo-200 cursor-pointer transition-colors">
@@ -73,12 +88,52 @@ function VerseCardRenderer({ card, showAnswer }) {
       </button>
       {showAnswer ? (
         <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 italic">
-          "{text || card.data?.text_english || ''}"
+          "{fullText}"
         </p>
       ) : (
-        <p className="text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
-          Recall this verse from memory…
-        </p>
+        <div>
+          {/* Preview mode toggle */}
+          <div className="flex justify-center gap-1 mb-3">
+            {[
+              { id: 'none', label: 'Recall' },
+              { id: 'first_letters', label: '1st letters' },
+              { id: 'full_text', label: 'Full text' },
+            ].map(o => (
+              <button key={o.id} onClick={(e) => { e.stopPropagation(); onPreviewChange?.({ mode: o.id, level }) }}
+                className={`px-2 py-1 rounded text-[10px] font-medium cursor-pointer transition-colors ${
+                  mode === o.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {/* First-letter level stepper: automated progression 25/50/75/100% */}
+          {mode === 'first_letters' && (
+            <div className="flex justify-center gap-1 mb-3">
+              {PREVIEW_LEVELS.filter(l => l > 0).map(l => (
+                <button key={l} onClick={(e) => { e.stopPropagation(); onPreviewChange?.({ mode, level: l }) }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono cursor-pointer transition-colors ${
+                    level === l
+                      ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-400'
+                      : 'text-neutral-400 border border-transparent hover:border-neutral-300 dark:hover:border-neutral-600'
+                  }`}>
+                  {l}%
+                </button>
+              ))}
+            </div>
+          )}
+          {renderPreview() ? (
+            <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 font-serif">
+              {renderPreview()}
+            </p>
+          ) : (
+            <p className="text-base leading-relaxed text-neutral-500 dark:text-neutral-400">
+              Recall this verse from memory…
+            </p>
+          )}
+        </div>
       )}
     </div>
   )
@@ -168,6 +223,18 @@ function GematriaCardRenderer({ card, showAnswer }) {
 function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
   const { word, transliteration, definition, lemma, language } = card.data || {}
   const isHebrew = language === 'hebrew' || !language
+  const [audioUrl, setAudioUrl] = useState(null)
+  const playAudio = (e) => {
+    e?.stopPropagation?.()
+    const play = (url) => { const a = new Audio(url); a.play().catch(() => {}) }
+    if (audioUrl) { play(audioUrl); return }
+    const hw = word || ''
+    if (!hw) return
+    fetch(`/api/v1/hebrew/audio/${encodeURIComponent(hw)}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok && d.data?.audio_url) { setAudioUrl(d.data.audio_url); play(d.data.audio_url) } })
+      .catch(() => {})
+  }
   return (
     <div className="text-center">
       <p className={`text-xl font-serif mb-2 text-neutral-800 dark:text-neutral-200 ${isHebrew ? 'text-2xl' : 'text-lg'}`}
@@ -175,6 +242,13 @@ function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
         style={isHebrew ? { fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" } : {}}>
         {word || ''}
       </p>
+      {isHebrew && word && !showAnswer && (
+        <button onClick={playAudio}
+          className="mb-2 px-3 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 text-xs hover:bg-neutral-200 dark:hover:bg-neutral-600 cursor-pointer transition-colors"
+          title="Hear pronunciation">
+          🔊 Hear
+        </button>
+      )}
       {transliteration && !showAnswer && !hebrewOnly && (
         <p className="text-xs text-neutral-400 italic">{transliteration}</p>
       )}

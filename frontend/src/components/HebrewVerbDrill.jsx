@@ -24,6 +24,8 @@ export default function HebrewVerbDrill({ onNavigate }) {
   const [qIdx, setQIdx] = useState(0)
   const [selected, setSelected] = useState(null)
   const [submitted, setSubmitted] = useState(false)
+  const [grade, setGrade] = useState(null) // {correct, correct_answer, explanation}
+  const [grading, setGrading] = useState(false)
   const [score, setScore] = useState({ correct: 0, total: 0 })
   const [category, setCategory] = useState('all')
   const [loading, setLoading] = useState(false)
@@ -34,6 +36,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
     setQIdx(0)
     setSelected(null)
     setSubmitted(false)
+    setGrade(null)
     setDone(false)
     setScore({ correct: 0, total: 0 })
     try {
@@ -53,10 +56,29 @@ export default function HebrewVerbDrill({ onNavigate }) {
     setSelected(opt)
   }
 
-  const handleSubmit = () => {
-    if (selected === null) return
+  const handleSubmit = async () => {
+    if (selected === null || submitted) return
     setSubmitted(true)
-    setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }))
+    setGrading(true)
+    try {
+      const r = await fetch('/api/v1/hebrew/verb-drill/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          node_id: current.node_id, question: current.question, answer: selected,
+        }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        setGrade(d.data)
+        setScore(prev => ({ correct: prev.correct + (d.data.correct ? 1 : 0), total: prev.total + 1 }))
+      } else {
+        setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }))
+      }
+    } catch {
+      setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }))
+    }
+    setGrading(false)
   }
 
   const handleNext = () => {
@@ -64,6 +86,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
       setQIdx(p => p + 1)
       setSelected(null)
       setSubmitted(false)
+      setGrade(null)
     } else {
       setDone(true)
     }
@@ -78,8 +101,8 @@ export default function HebrewVerbDrill({ onNavigate }) {
       <div className="max-w-2xl mx-auto px-4 py-8 text-center">
         <span className="text-4xl block mb-4">📚</span>
         <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">Drill Complete</h2>
-        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{score.total}</div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">questions recorded for review</p>
+        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{score.correct}/{score.total}</div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">correct — recorded for review</p>
         <div className="w-48 h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 mx-auto overflow-hidden mb-6">
           <div className="h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
         </div>
@@ -157,11 +180,17 @@ export default function HebrewVerbDrill({ onNavigate }) {
             <div className="space-y-1.5">
               {(JSON.parse(current.options || '[]')).map((opt, i) => {
                 const isSelected = selected === opt || selected === i
+                const isCorrectOpt = submitted && grade && opt === grade.correct_answer
+                const isWrongPick = submitted && grade && !grade.correct && isSelected
                 let cls = 'w-full text-left px-3 py-2.5 rounded-lg text-sm border transition-all cursor-pointer '
                 if (!submitted) {
                   cls += isSelected
                     ? 'border-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 font-medium'
                     : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300'
+                } else if (isCorrectOpt) {
+                  cls += 'border-green-500 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 font-medium'
+                } else if (isWrongPick) {
+                  cls += 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
                 } else {
                   cls += isSelected
                     ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
@@ -185,12 +214,20 @@ export default function HebrewVerbDrill({ onNavigate }) {
             </button>
           )}
 
-          {/* After submission */}
+          {/* After submission: server grade + correct answer */}
           {submitted && (
             <div className="mt-3">
-              <p className="text-xs text-center font-medium mb-2 text-neutral-600 dark:text-neutral-300">
-                Answer recorded — review the explanation below.
-              </p>
+              {grading ? (
+                <p className="text-xs text-center text-neutral-400 mb-2">Grading…</p>
+              ) : grade ? (
+                <p className={`text-sm text-center font-medium mb-2 ${grade.correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {grade.correct ? '✓ Correct' : `✗ Correct answer: ${grade.correct_answer}`}
+                </p>
+              ) : (
+                <p className="text-xs text-center font-medium mb-2 text-neutral-600 dark:text-neutral-300">
+                  Answer recorded — review the explanation below.
+                </p>
+              )}
               {current.explanation && (
                 <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>

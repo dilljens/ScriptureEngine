@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react'
 import VersePreviewCard from './VersePreviewCard'
+import VerseRef from './VerseRef'
+import { findVerseRefs } from '../lib/scripture-markdown'
 import { chatComplete } from '../api'
 
 // Lazy-loaded to break the StudyEditor ⇄ StudyViewer import cycle (editor
@@ -27,36 +29,26 @@ function typeLabel(type) {
 
 /** Split text on scripture refs (gen.1.1 / Gen 1:1) and render clickable. */
 function VerseText({ text, className }) {
-  const refRe = /\b([a-z0-9_]{1,8})\.(\d+)\.(\d+)\b|\b([A-Za-z][A-Za-z ]{1,10})\s+(\d+):(\d+)\b/g
-  const tokens = []
+  const hits = findVerseRefs(text || '')
+  if (hits.length === 0) return <span className={className}>{text}</span>
+  const parts = []
   let last = 0
-  let m
-  refRe.lastIndex = 0
-  while ((m = refRe.exec(text || '')) !== null) {
-    if (m.index > last) tokens.push({ type: 'text', value: text.slice(last, m.index) })
-    const book = m[1] || m[4]
-    const ch = m[2] || m[5]
-    const vs = m[3] || m[6]
-    const bookKey = m[1] ? m[1] : null
-    tokens.push({ type: 'ref', book: bookKey || book, ch, vs, raw: m[0] })
-    last = m.index + m[0].length
-  }
-  if (last < (text || '').length) tokens.push({ type: 'text', value: text.slice(last) })
-  if (tokens.length === 0) return <span className={className}>{text}</span>
+  hits.forEach((h, i) => {
+    if (h.index > last) parts.push(<span key={`t${i}`}>{text.slice(last, h.index)}</span>)
+    parts.push(
+      <VerseRef key={`v${i}`} refId={h.ref} label={text.slice(h.index, h.index + h.len)} onOpen={(ref) => {
+        const p = String(ref).split('.')
+        window.dispatchEvent(new CustomEvent('scripture-navigate', {
+          detail: { book: p[0].toLowerCase(), chapter: parseInt(p[1]) || 1, verse: p.length >= 3 ? (parseInt(p[2]) || undefined) : undefined },
+        }))
+      }} />
+    )
+    last = h.index + h.len
+  })
+  if (last < (text || '').length) parts.push(<span key="tail">{text.slice(last)}</span>)
   return (
     <span className={className}>
-      {tokens.map((t, i) => t.type === 'text' ? (
-        <span key={i}>{t.value}</span>
-      ) : (
-        <button key={i}
-          onClick={() => window.dispatchEvent(new CustomEvent('scripture-navigate', {
-            detail: { book: t.book.toLowerCase(), chapter: parseInt(t.ch), verse: parseInt(t.vs) }
-          }))}
-          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
-          title={`Open ${t.book}.${t.ch}.${t.vs}`}>
-          {t.raw}
-        </button>
-      ))}
+      {parts}
     </span>
   )
 }

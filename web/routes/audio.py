@@ -170,6 +170,22 @@ def get_word_audio(verse_id: str, word: str = ""):
     )
 
 
+@router.get("/api/v1/audio/anki/{filename:path}")
+def play_anki_audio(filename: str):
+    """Serve Anki-imported word audio (local personal-use clips, data/audio/anki/)."""
+    base = BASE_DIR / "data" / "audio" / "anki"
+    safe_name = audio_os.path.basename(filename)
+    audio_file = base / safe_name
+    if not safe_name or not audio_file.exists():
+        raise HTTPException(404, f"Anki audio not found: {filename}")
+    media_type = {
+        ".mp3": "audio/mpeg", ".wav": "audio/wav", ".ogg": "audio/ogg",
+        ".m4a": "audio/mp4",
+    }.get(audio_file.suffix.lower(), "audio/mpeg")
+    return FileResponse(str(audio_file), media_type=media_type,
+                        headers={"Content-Disposition": _inline_disposition(safe_name)})
+
+
 @router.get("/api/v1/audio/letter/{letter_id}")
 def play_letter_audio(letter_id: str):
     """Serve pre-generated Hebrew letter audio."""

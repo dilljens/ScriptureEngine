@@ -84,6 +84,24 @@ def get_conn():
     # Add fi_re_credit column if missing (for existing DBs)
     with contextlib.suppress(Exception):
         conn.execute("ALTER TABLE memorize_progress ADD COLUMN fi_re_credit REAL DEFAULT 0.0")
+    # Preview tracking: what help the user used on their last review
+    # (first-letter hints vs full text), so confidence ratings can be weighted.
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE memorize_progress ADD COLUMN last_preview_mode TEXT DEFAULT 'none'")
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE memorize_progress ADD COLUMN last_preview_level INTEGER DEFAULT 0")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS memorize_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'default',
+            verse_id TEXT NOT NULL,
+            rating INTEGER NOT NULL,
+            effective_rating INTEGER NOT NULL,
+            preview_mode TEXT NOT NULL DEFAULT 'none',
+            preview_level INTEGER NOT NULL DEFAULT 0,
+            reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
     return conn
 
 
@@ -163,6 +181,106 @@ def _fsrs_schedule(stability, difficulty, rating):
         new_s = _fsrs_stability_after_success(stability, difficulty, rating)
         new_d = _fsrs_next_difficulty(difficulty, rating)
     return new_s, new_d, _fsrs_next_interval(new_s)
+
+
+# ── Preview-aware review (first-letter hints vs full text) ──
+# A review card shows the reference plus an optional preview:
+#   first_letters — only the first letter of N% of words (levels 25/50/75/100)
+#   full_text     — the whole verse text
+#   none          — reference only, pure recall
+# More help = less scheduling credit (Anki honesty: if you read the answer,
+# you didn't recall it).
+
+PREVIEW_LEVELS = (0, 25, 50, 75, 100)
+PREVIEW_MODES = ("none", "first_letters", "full_text")
+
+
+def auto_preview_level(mastery: float = 0.0, attempts: int = 0) -> int:
+    """Automated first-letter progression: less help as mastery grows."""
+    if attempts <= 0:
+        return 100
+    if mastery < 0.3:
+        return 100
+    if mastery < 0.5:
+        return 75
+    if mastery < 0.7:
+        return 50
+    if mastery < 0.9:
+        return 25
+    return 0
+
+
+def next_preview_level(current_level: int = 100, effective_rating: int = 3) -> int:
+    """Step the hint level after a review: recall well → less help next time."""
+    levels = list(PREVIEW_LEVELS)
+    try:
+        idx = levels.index(current_level)
+    except ValueError:
+        idx = len(levels) - 1
+    if effective_rating >= 3 and idx > 0:
+        return levels[idx - 1]
+    if effective_rating <= 2 and idx < len(levels) - 1:
+        return levels[idx + 1]
+    return levels[idx]
+
+
+def effective_rating(rating: int, preview_mode: str = "none",
+                     preview_level: int = 0) -> int:
+    """Weight an Anki-style confidence rating (1-4) by the help used.
+
+    - full_text: seeing the answer caps the rating at Hard (2).
+    - first_letters at 75-100%: heavy hints cap Easy (4) down to Good (3).
+    - 0-50% first letters or no preview: full credit.
+    """
+    rating = max(1, min(4, int(rating or 3)))
+    if preview_mode == "full_text":
+        return min(rating, 2)
+    if preview_mode == "first_letters" and (preview_level or 0) >= 75:
+        return min(rating, 3)
+    return rating
+
+
+# ── Scripture Mastery (LDS 100) ──
+import json as _json
+
+_MASTERY_CACHE = None
+
+
+def load_mastery_list() -> list:
+    """Load the 100 LDS scripture-mastery passages from data file."""
+    global _MASTERY_CACHE
+    if _MASTERY_CACHE is None:
+        path = BASE_DIR / "data" / "scripture_mastery.json"
+        try:
+            _MASTERY_CACHE = _json.loads(path.read_text())["passages"]
+        except Exception:
+            _MASTERY_CACHE = []
+    return _MASTERY_CACHE
+
+
+def parse_verse_spec(spec: str) -> list:
+    """Expand '26-27' → [26, 27], '23,26' → [23, 26], '15,20-21' → [15, 20, 21]."""
+    verses: set = set()
+    for part in str(spec or "").split(","):
+        part = part.strip()
+        m = part.split("-")
+        try:
+            if len(m) == 2 and m[0].strip() and m[1].strip():
+                for v in range(int(m[0]), int(m[1]) + 1):
+                    verses.add(v)
+            elif part:
+                verses.add(int(part))
+        except ValueError:
+            continue
+    return sorted(verses)
+
+
+def expand_mastery_entry(entry: dict) -> list:
+    """Map a mastery entry to verse ids (<book>.<chapter>.<verse>)."""
+    return [
+        f"{entry['book']}.{entry['chapter']}.{v}"
+        for v in parse_verse_spec(entry.get("verses", ""))
+    ]
 
 
 # ── FIRe (Fractional Implicit Repetition) ──
@@ -580,6 +698,7 @@ def get_due_reviews(
             "difficulty": r["difficulty"],
             "fi_re_credit": round(fire_credit, 3),
             "retrievability": round(ret, 3),
+            "suggested_preview": auto_preview_level(r["mastery"] or 0.0, r["attempts"] or 0),
         })
 
     # Sort by retrievability (most forgotten first)
@@ -644,13 +763,31 @@ def get_due_reviews(
 
 @router.post("/api/v1/memorize/review/{queue_id}")
 def submit_review(queue_id: int, body: dict, request: Request):
-    """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy)."""
+    """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy).
+
+    Accepts the preview help the user used:
+      preview_mode: 'none' | 'first_letters' | 'full_text'
+      preview_level: 0 | 25 | 50 | 75 | 100 (first-letter coverage %)
+    The Anki-style confidence rating is weighted by that help: reading the
+    full text caps the rating at Hard, heavy first-letter hints cap Easy at
+    Good. The weighted (effective) rating drives FSRS scheduling.
+    """
     user_id = _require_review_user(
         (body or {}).get("user_id", "default"),
         (body or {}).get("session_token", ""),
         request.headers.get("authorization", ""),
     )
     rating = max(1, min(4, body.get("rating", 3)))
+    preview_mode = body.get("preview_mode", "none")
+    if preview_mode not in PREVIEW_MODES:
+        preview_mode = "none"
+    try:
+        preview_level = int(body.get("preview_level", 0) or 0)
+    except (TypeError, ValueError):
+        preview_level = 0
+    if preview_level not in PREVIEW_LEVELS:
+        preview_level = 0
+    eff = effective_rating(rating, preview_mode, preview_level)
 
     conn = get_conn()
     item = conn.execute(
@@ -676,7 +813,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
         difficulty = prog["difficulty"]
     else:
         a, c = 0, 0
-        stability = _fsrs_initial_stability(rating)
+        stability = _fsrs_initial_stability(eff)
         difficulty = 5.0
 
     # FSRS update with student-topic learning speed
@@ -686,7 +823,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
     # Fast learners get lower effective difficulty, slow learners higher
     speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
 
-    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, rating)
+    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff)
 
     # Apply learning speed to interval
     interval = max(1, round(base_interval * learning_speed))
@@ -695,20 +832,25 @@ def submit_review(queue_id: int, body: dict, request: Request):
     next_review = (datetime.datetime.now() + datetime.timedelta(days=interval)).strftime("%Y-%m-%d")
 
     a += 1
-    c += 1 if rating >= 3 else 0
+    c += 1 if eff >= 3 else 0
     mastery = min(1.0, c / max(a, 1))
 
     conn.execute("""
         INSERT OR REPLACE INTO memorize_progress
-            (user_id, verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?)
-    """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review))
+            (user_id, verse_id, mastery, attempts, correct, stability, difficulty, fi_re_credit, last_review, next_review, last_preview_mode, last_preview_level)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?, ?)
+    """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review, preview_mode, preview_level))
+    conn.execute("""
+        INSERT INTO memorize_reviews
+            (user_id, verse_id, rating, effective_rating, preview_mode, preview_level)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, verse_id, rating, eff, preview_mode, preview_level))
 
     # Unified FIRe credit propagation: verse review → credit to connected verses,
     # Hebrew concepts in this verse, and related learning modules
     with contextlib.suppress(Exception):
         from lib.api.fire_unified import compute_fire_credit as fire_unified
-        fire_unified(conn, "verse", verse_id, rating, user_id)
+        fire_unified(conn, "verse", verse_id, eff, user_id)
 
     conn.commit()
     conn.close()
@@ -718,6 +860,12 @@ def submit_review(queue_id: int, body: dict, request: Request):
         "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": interval, "next_review": next_review,
         "fi_re_credit_propagated": True,
+        "rating": rating, "effective_rating": eff,
+        "preview_adjusted": eff != rating,
+        "next_preview_level": next_preview_level(
+            preview_level if preview_mode == "first_letters" else auto_preview_level(mastery, a),
+            eff,
+        ),
     }}
 
 
@@ -732,6 +880,111 @@ def suggest_verses(limit: int = 5, user_id: str = "default"):
     results = get_graph_centrality(conn, limit=limit)
     conn.close()
     return {"ok": True, "data": {"suggestions": results, "total": len(results)}}
+
+
+# ── Scripture Mastery (LDS 100) ──
+
+@router.get("/api/v1/memorize/mastery")
+def list_mastery(user_id: str = "default", session_token: str = "",
+                 authorization: str = Header("")):
+    """List the 100 LDS scripture-mastery passages with queue/availability status.
+
+    Some passages span multiple verses (e.g. Exodus 20:3-17); each verse is
+    imported individually.
+    """
+    user_id = _require_review_user(user_id, session_token, authorization)
+    conn = get_conn()
+    passages = []
+    for entry in load_mastery_list():
+        verse_ids = expand_mastery_entry(entry)
+        existing = 0
+        queued = 0
+        if verse_ids:
+            q = f"SELECT id FROM verses WHERE id IN ({','.join('?' * len(verse_ids))})"
+            existing = len(conn.execute(q, verse_ids).fetchall())
+            q2 = (f"SELECT verse_id FROM memorize_queue WHERE user_id=? AND verse_id "
+                  f"IN ({','.join('?' * len(verse_ids))})")
+            queued = len(conn.execute(q2, [user_id, *verse_ids]).fetchall())
+        passages.append({
+            "n": entry["n"], "group": entry["group"],
+            "reference": entry["reference"], "verse_ids": verse_ids,
+            "verses_total": len(verse_ids), "verses_available": existing,
+            "verses_queued": queued,
+            "available": existing == len(verse_ids) and len(verse_ids) > 0,
+        })
+    conn.close()
+    groups = {}
+    for p in passages:
+        groups.setdefault(p["group"], []).append(p)
+    return {"ok": True, "data": {
+        "passages": passages, "total": len(passages),
+        "by_group": {g: len(v) for g, v in groups.items()},
+    }}
+
+
+@router.post("/api/v1/memorize/queue/mastery")
+def add_mastery_to_queue(body: dict, request: Request):
+    """Bulk-add scripture-mastery passages to the memorize queue.
+
+    Body: { group?: "Old Testament" | "New Testament" | "Book of Mormon" |
+                    "Doctrine and Covenants",
+            refs?: ["Genesis 1:26-27", ...] (reference strings, optional filter) }
+    Omit both to import all 100. Multi-verse passages add each verse
+    individually. Reports added vs skipped (already queued / not in library).
+    """
+    user_id = _require_review_user(
+        (body or {}).get("user_id", "default"),
+        (body or {}).get("session_token", ""),
+        request.headers.get("authorization", ""),
+    )
+    group = (body or {}).get("group", "")
+    refs = set((body or {}).get("refs", []) or [])
+
+    conn = get_conn()
+    added_verses = 0
+    added_entries = 0
+    skipped = []
+    for entry in load_mastery_list():
+        if group and entry["group"] != group:
+            continue
+        if refs and entry["reference"] not in refs:
+            continue
+        verse_ids = expand_mastery_entry(entry)
+        found = {r[0] for r in conn.execute(
+            f"SELECT id FROM verses WHERE id IN ({','.join('?' * len(verse_ids))})",
+            verse_ids,
+        ).fetchall()} if verse_ids else set()
+        missing = [v for v in verse_ids if v not in found]
+        if missing:
+            skipped.append({"reference": entry["reference"],
+                            "reason": "not in library",
+                            "missing": missing})
+            continue
+        entry_added = 0
+        for vid in verse_ids:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO memorize_queue (user_id, verse_id) VALUES (?, ?)",
+                (user_id, vid),
+            )
+            if cur.rowcount:
+                added_verses += 1
+                entry_added += 1
+            difficulty = get_connection_difficulty(conn, vid)
+            conn.execute("""
+                INSERT OR IGNORE INTO memorize_progress (user_id, verse_id, mastery, attempts, correct, difficulty)
+                VALUES (?, ?, 0, 0, 0, ?)
+            """, (user_id, vid, difficulty))
+        if entry_added:
+            added_entries += 1
+        elif verse_ids:
+            skipped.append({"reference": entry["reference"],
+                            "reason": "already queued"})
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {
+        "verses_added": added_verses, "entries_added": added_entries,
+        "skipped": skipped,
+    }}
 
 
 # ── Macro-Interleaving ──
@@ -918,7 +1171,8 @@ def get_next_review(
     # Get next due card from memorize queue
     rows = conn.execute("""
         SELECT q.id, q.verse_id, COALESCE(p.fi_re_credit, 0.0) as fire,
-               COALESCE(p.stability, 1.0) as stability, p.last_review
+                COALESCE(p.stability, 1.0) as stability, p.last_review,
+                COALESCE(p.mastery, 0) as mastery, COALESCE(p.attempts, 0) as attempts
         FROM memorize_queue q
         LEFT JOIN memorize_progress p ON p.user_id=q.user_id AND p.verse_id=q.verse_id
         WHERE q.user_id=? AND (p.fi_re_credit IS NULL OR p.fi_re_credit < 1.0)
@@ -947,6 +1201,7 @@ def get_next_review(
         "queue_id": chosen["id"],
         "verse_id": chosen["verse_id"],
         "text": text[:300] if text else "",
+        "suggested_preview": auto_preview_level(chosen["mastery"] or 0.0, chosen["attempts"] or 0),
     }}}
 
 
@@ -1036,8 +1291,9 @@ def _mode_registry() -> list:
          "label": "Hebrew quiz-in-lesson practice",
          "surface": "/api/v1/hebrew/lesson/{node_id}/quiz",
          "scheduler": "fsrs-5 (via /hebrew/progress)", "status": "available"},
-        {"id": "progressive_hints", "label": "Progressive hints",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+        {"id": "progressive_hints", "label": "Progressive hints (first-letter 25/50/75/100% + full text)",
+         "surface": "/api/v1/memorize/review (preview_mode/preview_level)",
+         "scheduler": "fsrs-5", "status": "available"},
         {"id": "audio_mode", "label": "Audio review mode",
          "surface": None, "scheduler": "fsrs-5", "status": "planned"},
         {"id": "hebrew_cloze", "label": "Hebrew cloze deletion cards",

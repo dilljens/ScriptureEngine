@@ -7,7 +7,7 @@
  *
  * Syntax              → Renders as
  * ─────────────────────────────────────────────────────────────────
- * :verse[gen.1.1]     → clickable verse chip with preview
+ * :verse[gen.1.1]     → clickable verse chip (hover preview with hoverPreview: true)
  * :entity[Abraham]    → wiki entity link
  * :entity[person.abraham]  → wiki entity link (with ID)
  * :gematria[יהוה=26]  → gematria value badge
@@ -17,6 +17,7 @@
 
 import React from 'react'
 import { BOOK_TITLES } from '../bookNames'
+import VerseRef from '../components/VerseRef'
 
 // Format a verse ref like "gen.1.1-12" into a readable name like "Genesis 1:1-12"
 function formatVerseRef(ref) {
@@ -110,8 +111,8 @@ export function preprocess(text) {
   let match
 
   while ((match = ALL_PATTERNS.exec(text)) !== null) {
-    // Add text before this match
-    result += text.slice(lastIndex, match.index)
+    // Auto-link bare refs in the text before this match too (not just the tail).
+    result += autoLinkBareRefs(text.slice(lastIndex, match.index))
 
     // Determine which rule matched
     for (let i = 0; i < RULES.length; i++) {
@@ -134,10 +135,106 @@ export function preprocess(text) {
 }
 
 // Detect bare verse references. Dot form first (most specific): "gen.1.1",
-// "1QS.1.1", "dc76.76.22". Colon form: "Gen 1:1", "Psalm 23:1" — but only when
-// the book name is a KNOWN book (avoids "The book of 1" false positives).
+// "1QS.1.1", "dc76.76.22". Colon form: "Gen 1:1", "Psalm 23:1", "1 Nephi 1:5",
+// "D&C 93:1" — but only when the book name is a KNOWN book
+// (avoids "The book of 1" false positives).
 const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?(?![\w\u0590-\u05FF])/g
-const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])([A-Za-z][A-Za-z ]{1,10})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[123]\s)?[A-Za-z][A-Za-z ]{1,16})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_DC_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+// Multi-verse continuations after a linked ref, same book context:
+// "Isaiah 52:1-2, 54:2", "Isaiah 53:5, 11", "Exodus 33:22–34:6".
+// Verse-only continuations ("53:5, 11") must not run into prose ("66 chapters").
+const CONT_CHVS_RE = /^(?:\s*[,;]\s*|\s+and\s+|\s*[–—]\s*)(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/
+const CONT_VS_RE = /^(?:\s*[,;]\s*|\s+and\s+)(\d+(?:-\d+)?)(?![\w\u0590-\u05FF:])/
+
+/**
+ * Find all verse references in plain text.
+ * Returns [{ index, len, ref }] where ref is a verse id like "isa.1.18"
+ * (ranges like "isa.33.14-17" included). Handles dot form, colon form with
+ * known book names (incl. numbered books and D&C), and multi-verse
+ * continuations sharing the preceding book context ("Isa 52:1, 54:2").
+ */
+export function findVerseRefs(text) {
+  if (!text) return []
+  const hits = []
+  let m
+  BARE_DOT_RE.lastIndex = 0
+  while ((m = BARE_DOT_RE.exec(text)) !== null) {
+    if (m[3]) {
+      hits.push({ index: m.index, len: m[0].length, ref: `${m[1].toLowerCase()}.${m[2]}.${m[3]}` })
+    } else {
+      // chapter-only "gen.1" — skip (not a verse ref)
+      continue
+    }
+  }
+  BARE_DC_RE.lastIndex = 0
+  while ((m = BARE_DC_RE.exec(text)) !== null) {
+    hits.push({ index: m.index, len: m[0].length, ref: `dc${m[1]}.${m[1]}.${m[2]}` })
+  }
+  BARE_COLON_RE.lastIndex = 0
+  while ((m = BARE_COLON_RE.exec(text)) !== null) {
+    // The name may include preceding prose ("Awake in Isaiah") — retry with
+    // leading words stripped until a known book resolves ("Isaiah").
+    const words = m[1].trim().split(/\s+/)
+    for (let drop = 0; drop < words.length; drop++) {
+      const candidate = words.slice(drop).join(' ')
+      const bookKey = resolveBookKey(candidate)
+      if (bookKey) {
+        const startInMatch = m[0].indexOf(candidate)
+        hits.push({
+          index: m.index + startInMatch,
+          len: m[0].length - startInMatch,
+          ref: `${bookKey}.${m[2]}.${m[3]}`,
+        })
+        break
+      }
+    }
+  }
+  // sort by index, drop overlaps (keep the earliest/longest)
+  hits.sort((a, b) => a.index - b.index || b.len - a.len)
+  const clean = []
+  let lastEnd = -1
+  for (const h of hits) {
+    if (h.index >= lastEnd) {
+      clean.push(h)
+      lastEnd = h.index + h.len
+    }
+  }
+  // Multi-verse continuations: scan forward from each hit for ", ch:vs",
+  // "; ch:vs", "and ch:vs", "–ch:vs" (same book), or bare ", vs" (same chapter).
+  const out = [...clean]
+  for (const h of clean) {
+    const isDc = h.ref.startsWith('dc')
+    const bookKey = isDc ? null : h.ref.split('.')[0]
+    const baseCh = isDc ? null : h.ref.split('.')[1]
+    let pos = h.index + h.len
+    for (;;) {
+      const tail = text.slice(pos)
+      let cm = tail.match(CONT_CHVS_RE)
+      if (cm) {
+        const ch = cm[1]
+        const vs = cm[2]
+        // D&C continuations name a new section ("D&C 38:42; 133:5").
+        const ref = bookKey
+          ? `${bookKey}.${ch}.${vs}`
+          : `dc${ch}.${ch}.${vs}`
+        out.push({ index: pos + cm[0].indexOf(ch), len: `${ch}:${vs}`.length, ref })
+        pos += cm[0].length
+        continue
+      }
+      cm = tail.match(CONT_VS_RE)
+      if (cm && baseCh) {
+        const vs = cm[1]
+        out.push({ index: pos + cm[0].indexOf(vs), len: vs.length, ref: `${bookKey}.${baseCh}.${vs}` })
+        pos += cm[0].length
+        continue
+      }
+      break
+    }
+  }
+  out.sort((a, b) => a.index - b.index || b.len - a.len)
+  return out
+}
 
 /**
  * Auto-link bare verse references in plain text into verse spans.
@@ -157,40 +254,13 @@ function autoLinkBareRefs(text) {
   }
   out += text.slice(idx)
 
-  // Merge matches from both patterns, dedupe by index, prefer dot-form (longer
+  // Merge matches from all patterns, dedupe by index, prefer dot-form (longer
   // refs like "1QS.1.1" win over "QS.1.1" sub-matches).
-  const hits = []
-  let m
-  BARE_DOT_RE.lastIndex = 0
-  while ((m = BARE_DOT_RE.exec(out)) !== null) {
-    if (m[3]) {
-      hits.push({ index: m.index, len: m[0].length, ref: `${m[1].toLowerCase()}.${m[2]}.${m[3]}` })
-    } else {
-      // chapter-only "gen.1" — skip (not a verse ref)
-      continue
-    }
-  }
-  BARE_COLON_RE.lastIndex = 0
-  while ((m = BARE_COLON_RE.exec(out)) !== null) {
-    const bookKey = resolveBookKey(m[1].trim())
-    if (bookKey) {
-      hits.push({ index: m.index, len: m[0].length, ref: `${bookKey}.${m[2]}.${m[3]}` })
-    }
-  }
-  // sort by index, drop overlaps (keep the earliest/longest)
-  hits.sort((a, b) => a.index - b.index || b.len - a.len)
-  const clean = []
-  let lastEnd = -1
-  for (const h of hits) {
-    if (h.index >= lastEnd) {
-      clean.push(h)
-      lastEnd = h.index + h.len
-    }
-  }
+  const hits = findVerseRefs(out)
 
   let result = ''
   let last = 0
-  for (const h of clean) {
+  for (const h of hits) {
     result += out.slice(last, h.index)
     result += `<span data-type="verse" data-ref="${h.ref}">${out.slice(h.index, h.index + h.len)}</span>`
     last = h.index + h.len
@@ -234,10 +304,11 @@ function extractValue(node) {
  * @param {Object} options
  * @param {Function} options.onOpenVerse — called with (ref) when a verse chip is clicked
  * @param {Function} options.onOpenEntity — called with (entityId) when an entity link is clicked
+ * @param {boolean} options.hoverPreview — render verse chips with hover text preview (default false)
  * @param {Object} options.customComponents — additional component overrides (merged in)
  */
 export function createComponents(options = {}) {
-  const { onOpenVerse, onOpenEntity, customComponents } = options
+  const { onOpenVerse, onOpenEntity, hoverPreview, customComponents } = options
 
   const base = {
     // ── Scripture custom spans ──
@@ -252,6 +323,9 @@ export function createComponents(options = {}) {
 
       switch (type) {
         case 'verse':
+          if (hoverPreview) {
+            return <VerseRef refId={value} label={formatVerseRef(value)} onOpen={onOpenVerse} />
+          }
           return (
             <span
               onClick={(e) => {
