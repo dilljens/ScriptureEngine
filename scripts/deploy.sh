@@ -50,9 +50,18 @@ echo "[0/5] Frontend build (first — a failed build must not leave the pytest"
 NODE_OPTIONS="--max-old-space-size=8192${NODE_OPTIONS:+ $NODE_OPTIONS}" \
     npm run build --prefix frontend
 
+# The suite MUST run against the small fixture DB. conftest.py silently falls
+# back to the 1.4GB production scripture.db when data/test/test.db is absent,
+# which turned this gate into a 77-minute, 50GB-read crawl. Generate it if
+# missing so a fresh clone / CI machine can't hit that cliff.
+if [ ! -f data/test/test.db ]; then
+    echo "  test fixture DB missing — building data/test/test.db"
+    python3 scripts/create_test_db.py --reset
+fi
+
 # Database-backed tests share SQLite files; run serially to avoid xdist workers
 # racing PRAGMA journal_mode/WAL initialization during the deploy gate.
-$PYTHON -m pytest tests/ -q --tb=short \
+$PYTHON -m pytest tests/ -q --tb=short --durations=10 \
   --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review \
   --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
   --deselect tests/test_db_schema.py::TestIntegrity::test_no_duplicate_connections \
@@ -60,6 +69,8 @@ $PYTHON -m pytest tests/ -q --tb=short \
   --deselect tests/test_db_schema.py::TestIntegrity::test_no_orphaned_target_verses \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_tg_topic \
   --deselect tests/test_api.py::TestGraphRoutes::test_graph_explore \
+  --deselect tests/test_api.py::TestGraphRoutes::test_graph_search \
+  --deselect tests/test_api.py::TestGraphRoutes::test_graph_centrality \
   --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search \
   --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_keyword \
   --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_vector \
