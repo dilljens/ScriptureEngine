@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import { reportIdleAnswer } from './HebrewIdleBar'
 import {
   ANSWER_MODES,
   answerModeForQuestion,
 } from '../lib/quiz-grading'
 import { currentSessionToken, hebrewSessionUser } from '../api'
-
 /**
  * HebrewQuiz — cumulative interleaved quiz from recently studied material.
  *
@@ -87,6 +87,35 @@ export async function submitHebrewProgress(progress) {
   }
 }
 
+/**
+ * Submit an answer and also return corrective feedback (correct answer +
+ * explanation). Grading is still server-authoritative; the feedback fields are
+ * only sent after grading, so they cannot leak into a production question.
+ */
+export async function submitHebrewProgressDetailed(progress) {
+  try {
+    const response = await fetch('/api/v1/hebrew/progress', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(currentSessionToken() ? { Authorization: `Bearer ${currentSessionToken()}` } : {}),
+      },
+      body: JSON.stringify(progress),
+    })
+    if (response?.ok === false) return null
+    const payload = await response.json()
+    const correct = getAuthoritativeCorrect(payload)
+    const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload
+    return {
+      correct,
+      correctAnswer: data?.correct_answer ?? '',
+      explanation: data?.explanation ?? '',
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId }) {
   const [questions, setQuestions] = useState([])
   const [idx, setIdx] = useState(0)
@@ -100,10 +129,17 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   const [timeLeft, setTimeLeft] = useState(null)
   const [missedItems, setMissedItems] = useState([])
   const [submissionError, setSubmissionError] = useState('')
+  const [feedback, setFeedback] = useState({}) // idx -> {correct, correctAnswer, explanation}
   const timerRef = useRef(null)
   const startRef = useRef(null)
+  const questionStartRef = useRef(Date.now())
   const answersRef = useRef(answers)
   const submittedRef = useRef(submitted)
+  // Missed items are re-asked once before the session ends: capitalises on the
+  // finding that unsuccessful retrieval attempts enhance later learning, and
+  // closes the correction loop immediately instead of days later via FSRS.
+  const retryRef = useRef([])
+  const retriedRef = useRef(false)
 
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { submittedRef.current = submitted }, [submitted])
@@ -163,7 +199,9 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         answer: ans ?? '',
         answer_mode: answerMode,
       }
-      authoritativeCorrect = await submitHebrewProgress(progress)
+      const res = await submitHebrewProgressDetailed(progress)
+      authoritativeCorrect = res ? res.correct : null
+      if (res) setFeedback(prev => ({ ...prev, [questionIndex]: res }))
     }
     if (authoritativeCorrect === null) {
       const pending = { ...submittedRef.current }
@@ -181,13 +219,26 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     submittedRef.current = { ...submittedRef.current, [questionIndex]: correct }
     setSubmitted(prev => ({ ...prev, [questionIndex]: correct }))
     setResults(prev => ({ correct: prev.correct + (correct ? 1 : 0), total: prev.total + 1 }))
+    // Feed the Aleph-to-Revelation adaptive loop (tap Ohr + tune difficulty).
+    // Grading stays server-authoritative; this is economy only.
+    if (correct !== null) reportIdleAnswer(correct, Date.now() - questionStartRef.current, {
+      source: 'quiz', qtype: question?.type, nodeId: question?.node_id,
+    })
     if (correct !== true) {
       setMissedItems(prev => [...prev, { ...question, quizIndex: questionIndex, yourAnswer: ans || '(timed out)' }])
+      // Queue for one in-session retry (deduped by question id).
+      if (question && !retryRef.current.some(q => q.question_id === question.question_id)) {
+        retryRef.current.push(question)
+      }
     }
   }, [idx, current])
 
-  // Per-question timer. A timeout is an assessed retrieval attempt, not just a UI state.
+  // Per-question timer (1s tick, not 200ms — avoids re-render while typing).
+  // If the user has typed something, never force-submit: show overtime and let
+  // them submit manually so a slow type doesn't wipe their answer.
+  // Also stamps per-question start time for the idle game's adaptive loop.
   useEffect(() => {
+    questionStartRef.current = Date.now()
     if (!current || done || submitted[idx] !== undefined) return
     const limit = getTimeLimit(current)
     setTimeLeft(limit)
@@ -195,13 +246,15 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     const start = Date.now()
     timerRef.current = setInterval(() => {
       const elapsed = (Date.now() - start) / 1000
-      const remaining = Math.max(0, limit - elapsed)
+      const remaining = Math.max(0, Math.ceil(limit - elapsed))
       setTimeLeft(remaining)
       if (remaining <= 0) {
         clearInterval(timerRef.current)
+        const typed = answersRef.current[idx]
+        if (typed !== undefined && typed !== '' && typed !== null) return
         submitAnswer(true)
       }
-    }, 200)
+    }, 1000)
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [idx, done, current, submitted, submitAnswer])
 
@@ -210,10 +263,20 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     if (idx < questions.length - 1) {
       setIdx(prev => prev + 1)
       setTimeLeft(null)
-    } else {
-      setDone(true)
-      onComplete?.(results)
+      return
     }
+    // End of round: re-ask everything missed, exactly once.
+    if (!retriedRef.current && retryRef.current.length > 0) {
+      retriedRef.current = true
+      const retries = retryRef.current.slice()
+      retryRef.current = []
+      setQuestions(q => [...q, ...retries])
+      setIdx(prev => prev + 1)
+      setTimeLeft(null)
+      return
+    }
+    setDone(true)
+    onComplete?.(results)
   }
 
   const setAnswer = (value) => {
@@ -386,12 +449,27 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
              <p className="text-sm font-medium mb-1">
                {submitted[idx] === true ? '✓ Correct!' : submitted[idx] === false ? '✗ Incorrect' : 'Unable to verify'}
              </p>
-             {submitted[idx] === false && displayedAnswer && (
+              {submitted[idx] === false && displayedAnswer && (
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 Your answer: <span className="text-red-500">{displayedAnswer}</span>
               </p>
             )}
-          </div>
+             {/* Corrective feedback: the single highest-value learning signal.
+                 Shown AFTER grading, always (right or wrong) — a correct guess
+                 still benefits from the explanation. */}
+             {feedback[idx] && (feedback[idx].correctAnswer || feedback[idx].explanation) && (
+               <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10">
+                 {feedback[idx].correctAnswer && (
+                   <p className="text-xs text-neutral-600 dark:text-neutral-300">
+                     Correct answer: <span className="font-semibold text-green-700 dark:text-green-400">{feedback[idx].correctAnswer}</span>
+                   </p>
+                 )}
+                 {feedback[idx].explanation && (
+                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{feedback[idx].explanation}</p>
+                 )}
+               </div>
+             )}
+           </div>
         )}
       </div>
 

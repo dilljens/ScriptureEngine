@@ -21,6 +21,7 @@ const HebrewDiagnostic = React.lazy(() => import('./HebrewDiagnostic'))
 const HebrewLessonView = React.lazy(() => import('./HebrewLessonView'))
 const HebrewLearnView = React.lazy(() => import('./HebrewLearnView'))
 const WikiArticleViewer = React.lazy(() => import('./WikiArticleViewer'))
+const ArticlesView = React.lazy(() => import('./ArticlesView'))
 const HebrewPassageReader = React.lazy(() => import('./HebrewPassageReader'))
 const LearnView = React.lazy(() => import('./LearnView'))
 const StudiesListView = React.lazy(() => import('./StudiesListView'))
@@ -175,6 +176,17 @@ export default function MainContentView(props) {
       />
     )
   }
+  // Articles view — the hand-written in-depth studies
+  if (viewLevel === 'articles') {
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading articles…</div>}>
+        <ArticlesView
+          onOpenArticle={(id) => updateTab(currentTab?.id, { view: 'wiki', viewRef: id, label: `📜 ${id}` })}
+        />
+      </Suspense>
+    )
+  }
+
   // Wiki view — render WikiArticleViewer
   if (viewLevel === 'wiki') {
     return (

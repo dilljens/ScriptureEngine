@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import HebrewQuiz from './HebrewQuiz'
+import HebrewModePicker, { getGame, loadLearnMode, loadGameId } from './HebrewModePicker'
+import GameReviewModal from './GameReviewModal'
+import { reportIdleAnswer } from './HebrewIdleBar'
+import { markSessionStart, startAutoFlush } from '../lib/analytics'
 import CardQueue from './CardQueue'
 import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
@@ -108,6 +112,13 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [showQuiz, setShowQuiz] = useState(false)
   // Anki-style daily pacing: deck options + live queue counts
   const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
+  // Classic Study vs Games — persisted, defaults to classic so existing
+  // learners see zero change until they opt into a game.
+  const [learnMode, setLearnMode] = useState(loadLearnMode)
+  const [activeGameId, setActiveGameId] = useState(loadGameId)
+  const [showBrowseInGame, setShowBrowseInGame] = useState(false)
+  // In-game practice: a bare node id (lesson quiz) or 'due' (interleaved review).
+  const [reviewTarget, setReviewTarget] = useState(null)
   const [queueStats, setQueueStats] = useState(null)
   const [prefsEditing, setPrefsEditing] = useState(false)
   const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
@@ -128,8 +139,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   }
 
   // Load curriculum + gamification in parallel
-  const loadAll = () => {
-    setLoading(true)
+  const loadAll = () => {    setLoading(true)
     sessionQuery().then(q => Promise.all([
       fetch(`/api/v1/hebrew/curriculum${q}`, { headers: sessionHeaders() }).then(r => r.json()),
       fetch(`/api/v1/hebrew/gamification${q}`, { headers: sessionHeaders() }).then(r => r.json()),
@@ -143,6 +153,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       .finally(() => setLoading(false))
   }
   useEffect(loadAll, [])
+  useEffect(() => {
+    try { markSessionStart() } catch {}
+    const stop = startAutoFlush()
+    return stop
+  }, [])
 
   // Daily pacing: deck options + queue counts (due / new / capped)
   const loadPacing = useCallback(async () => {
@@ -178,6 +193,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
 
   // Audio-review ratings earn FSRS credit via Hebrew-text node resolution
   const handleAudioRate = async (word, rating) => {
+    const t0 = Date.now()
     try {
       await fetch('/api/v1/hebrew/fsrs/review', {
         method: 'POST',
@@ -185,6 +201,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         body: JSON.stringify({ hebrew: word.hebrew, rating, session_token: currentSessionToken() }),
       })
     } catch {}
+    reportIdleAnswer(rating >= 3, Date.now() - t0, { source: 'audio', hebrew: word.hebrew })
   }
 
   const showToast = (message, type = 'success') => {
@@ -266,7 +283,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             </button>
           </div>
         </div>
-        <PassageReader key={passageInput} passageId={passageInput} />
+        <PassageReader key="passage-reader" passageId={passageInput} />
       </div>
     )
   }
@@ -448,6 +465,69 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
 
   const gam = gamification || {}
 
+  // ── Games mode: focused game screen (progressive disclosure — the full
+  // curriculum browse is one tap away, not dumped on top of the game) ──
+  if (learnMode === 'game' && !showBrowseInGame) {
+    const game = getGame(activeGameId)
+    const ActiveGame = game?.Component
+    const nextLesson = (nodes || [])
+      .filter(n => n.unlocked && n.mastery < 0.8)
+      .sort((a, b) => a.level - b.level || a.mastery - b.mastery)[0]
+    const cs = nextLesson ? (CATEGORY_STYLES[nextLesson.category] || {}) : {}
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {toast && (
+          <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all animate-slide-down ${
+            toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'
+          }`}>
+            {toast.message}
+          </div>
+        )}
+        <HebrewModePicker mode={learnMode} onMode={setLearnMode} activeGameId={activeGameId} onGame={setActiveGameId} />
+        {ActiveGame ? <ActiveGame curriculum={curriculum} /> : null}
+
+        {/* The earn loop: answers are the only tap. Keeps the game self-contained. */}
+        <div className="mt-4 p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+          <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
+            ⚡ Earn Ohr &amp; 🌟 Kavod
+          </div>
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
+            Every correct answer taps Ohr and mints Kavod. Golems mine Ohr passively, but only answering earns the 🌟 that buys Frenzy and Time Warps.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {nextLesson ? (
+              <button onClick={() => setReviewTarget(nextLesson.id)}
+                className="min-h-[44px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer">
+                ⚡ Practice now: {nextLesson.title}
+              </button>
+            ) : null}
+            {(queueStats?.due_count || 0) > 0 && (
+              <button onClick={() => setReviewTarget('due')}
+                className="min-h-[44px] px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium cursor-pointer">
+                🔁 Review due ({queueStats.due_count})
+              </button>
+            )}
+            <button onClick={() => setShowBrowseInGame(true)}
+              className="min-h-[44px] px-4 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-sm cursor-pointer">
+              📚 Browse all lessons
+            </button>
+          </div>
+        </div>
+
+        {reviewTarget && (
+          <GameReviewModal
+            nodeId={reviewTarget === 'due' ? null : reviewTarget}
+            title={reviewTarget === 'due'
+              ? 'Spaced-repetition review (interleaved)'
+              : nextLesson?.title}
+            onClose={() => setReviewTarget(null)}
+            onFinished={() => { loadAll(); loadPacing() }}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Toast notification */}
@@ -488,6 +568,15 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           )}
         </div>
       </div>
+
+      {/* Classic vs Games picker (registry in HebrewModePicker) */}
+      <HebrewModePicker mode={learnMode} onMode={setLearnMode} activeGameId={activeGameId} onGame={setActiveGameId} />
+      {learnMode === 'game' && (
+        <button onClick={() => setShowBrowseInGame(false)}
+          className="mb-4 min-h-[44px] px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium cursor-pointer">
+          ← Back to the game
+        </button>
+      )}
 
       {/* Stats + quick action dropdowns */}
       <div className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
@@ -795,6 +884,14 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                         </div>
                         {node.description && (
                           <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
+                        )}
+                        {/* Why is this locked? Never leave a dead end unexplained. */}
+                        {isLocked && (
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 truncate" title="Master the prerequisites (80%+) to unlock">
+                            🔒 Requires {(node.prerequisites && node.prerequisites.length > 0)
+                              ? node.prerequisites.map(p => `${p.title} (${Math.round((p.mastery || 0) * 100)}%)`).join(', ')
+                              : 'an earlier lesson'}
+                          </p>
                         )}
                       </div>
 

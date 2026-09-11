@@ -398,8 +398,23 @@ export function TabProvider({ children }) {
       }
     }, [state]),
 
-    openStudiesTab: useCallback((label) => {
+    openArticlesTab: useCallback((label) => {
       const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'articles')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || '📜 Articles',
+          view: 'articles',
+        })
+      }
+    }, [state]),
+
+    openStudiesTab: useCallback((label) => {      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
       const existing = ws?.tabs.find(t => t.view === 'studies')
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })

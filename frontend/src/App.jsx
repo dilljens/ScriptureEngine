@@ -53,7 +53,7 @@ function AppInner() {
     viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToVerse, goToBook, goToWork, openChatTab,
-    moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab,
+    moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab, openArticlesTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
@@ -162,11 +162,19 @@ const [showAssessment, setShowAssessment] = useState(false)
     let cancelled = false
     const check = () => {
       getInfo()
-        .then(r => { if (!cancelled) { setServerInfo(r.data); setApiConnected(true) } })
+        .then(r => {
+          if (cancelled) return
+          // Only re-render when the payload actually changed — this poll used
+          // to redraw the whole tree every 30s with identical data.
+          setServerInfo(prev => {
+            try { return JSON.stringify(prev) === JSON.stringify(r.data) ? prev : r.data } catch { return r.data }
+          })
+          setApiConnected(true)
+        })
         .catch(() => { if (!cancelled) setApiConnected(false) })
     }
     check()
-    const interval = setInterval(check, 30000)
+    const interval = setInterval(check, 60000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [])
   // Close dropdown menus when clicking outside
@@ -417,12 +425,13 @@ const [showAssessment, setShowAssessment] = useState(false)
   // ── Keyboard handler ──
   useEffect(() => {
     function handleKey(e) {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-        // Allow arrow keys through for navigation even when in an input
-        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-          // Let them through to the navigation logic below
-        } else if (e.key === 'Escape') { e.target.blur(); return }
-        else { return }
+      const t = e.target
+      const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)
+      if (inField) {
+        // Never hijack typing: arrows, space, enter, ?, / all belong to the field.
+        // Escape blurs so power users can get back to chapter navigation.
+        if (e.key === 'Escape') { e.target.blur(); return }
+        return
       }
       // Check configurable hotkeys
       if (matchesHotkey(e, 'chat')) { e.preventDefault(); handleOpenChat(); return }
@@ -705,10 +714,16 @@ const [showAssessment, setShowAssessment] = useState(false)
   const handleMainScroll = useCallback(() => {
     const el = mainRef.current
     if (!el) return
-    const dy = el.scrollTop - lastScrollY.current
-    if (dy > 15) setUiVisible(false)
-    else if (dy < -10) setUiVisible(true)
-    lastScrollY.current = el.scrollTop
+    const y = el.scrollTop
+    const dy = y - lastScrollY.current
+    lastScrollY.current = y
+    // At the top the bars are always shown — prevents them flickering over a
+    // short page where scrollTop jitters around the threshold.
+    if (y < 40) { setUiVisible(v => (v ? v : true)); return }
+    // Hysteresis: the hide threshold is deliberately larger than the show
+    // threshold, so a single wobble can't toggle the UI back and forth.
+    if (dy > 24) setUiVisible(v => (v === false ? v : false))
+    else if (dy < -16) setUiVisible(v => (v === true ? v : true))
   }, [])
   const handleMainClick = useCallback(() => {
     // Double-tap to toggle UI visibility (bars hide/show)
@@ -846,6 +861,7 @@ const [showAssessment, setShowAssessment] = useState(false)
                   <button onClick={() => { setShowMainMenu(false); openMemorizeTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🧠 Memorize</button>
                   <button onClick={() => { setShowMainMenu(false); setShowAssessment(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📝 Assess</button>
                   <button onClick={() => { setShowMainMenu(false); openHubNoteTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🗺️ Study Paths</button>
+                  <button onClick={() => { setShowMainMenu(false); openArticlesTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📜 Articles</button>
                   <button onClick={() => { setShowMainMenu(false); openWikiTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">📖 Wiki</button>
                   <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
                   <p className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Tools</p>

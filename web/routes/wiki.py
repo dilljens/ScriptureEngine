@@ -39,10 +39,12 @@ def browse_wiki(type_name: str = "entity"):
     """Browse wiki articles by type (entity, concept, etc.)."""
     t = type_name.strip("/").lower()
     results = [
-        {"id": a["id"], "title": a["title"], "summary": a["summary"][:100]}
+        {"id": a["id"], "title": a["title"], "summary": a["summary"][:100],
+         "length": len(a.get("content") or "")}
         for a in WIKI_CACHE.values()
         if a["article_type"] == t
     ]
+    results.sort(key=lambda r: r["length"], reverse=True)
     return {"ok": True, "data": {"type": t, "articles": results, "total": len(results)}}
 
 

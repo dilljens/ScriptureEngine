@@ -10,7 +10,7 @@ export default function MobileMenuDrawer({
   darkMode, onToggleDarkMode,
   fontSize, onChangeFontSize,
   onSettings,
-  onHebrew, onMemorize, onKnowledge, onHubNotes, onStudies,
+  onHebrew, onMemorize, onKnowledge, onHubNotes, onStudies, onArticles,
   authUser, authAvatar, onSignIn, onSignOut,
 }) {
   if (!open) return null
@@ -29,6 +29,7 @@ export default function MobileMenuDrawer({
           <MenuButton icon="🧠" label="Memorize" onClick={onMemorize} badge="" />
           <MenuButton icon="📚" label="Learn" onClick={onKnowledge} badge="" />
           <MenuButton icon="🗺️" label="Paths" onClick={onHubNotes} />
+          <MenuButton icon="📜" label="Articles" onClick={onArticles} />
           <MenuButton icon="📖" label="Wiki" onClick={onWiki} />
           <MenuButton icon="📚" label="Studies" onClick={onStudies} />
         </div>

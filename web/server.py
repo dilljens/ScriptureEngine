@@ -358,6 +358,9 @@ app.include_router(learn_router)
 # ─── RAM Cache (loaded at startup, zero disk reads after) ───
 from web.cache import GUIDE_CACHE, VERSE_CACHE, ENTITY_CACHE, LEXICON_CACHE, VEC_CACHE, BOOKS_CACHE, WIKI_CACHE
 
+# /api/v1/info aggregates 1.35M connection rows (~11s cold) but the result is
+# static per process and the client polls it — compute once, then serve from RAM.
+INFO_CACHE = None
 # ── Structured JSON Logger ──
 
 class JSONLogger:
@@ -1661,14 +1664,22 @@ def get_pardes(ref: str, level: str | None = None):
 
 @app.get("/api/v1/info")
 def get_info():
-    """Get database and system statistics."""
+    """Get database and system statistics.
+
+    Cached after first call: the connection/quality aggregates scan 1.35M rows
+    (~11s cold) and this endpoint is polled by the client on a timer. The data
+    is static for the life of the process, so compute once and serve from RAM.
+    """
+    global INFO_CACHE
+    if INFO_CACHE is not None:
+        return INFO_CACHE
     conn = get_db()
     layers = conn.execute("SELECT layer, COUNT(*) as c FROM connections GROUP BY layer ORDER BY layer").fetchall()
     quality = conn.execute("SELECT quality_level, COUNT(*) as c FROM connections GROUP BY quality_level").fetchall()
     pg = conn.execute("SELECT COUNT(*) as c FROM passage_guides").fetchone()["c"]
     conn.close()
 
-    return {
+    INFO_CACHE = {
         "ok": True,
         "data": {
             "total_connections": sum(r["c"] for r in layers),
@@ -1681,7 +1692,7 @@ def get_info():
             "tools_available": len(TOOL_REGISTRY),
         }
     }
-    conn.close()
+    return INFO_CACHE
 
 
 @app.get("/api/v1/books")

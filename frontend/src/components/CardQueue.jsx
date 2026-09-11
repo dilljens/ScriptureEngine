@@ -35,15 +35,20 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   // Initialized from the backend's automated suggestion when present.
   const [preview, setPreview] = useState({ mode: 'none', level: 100 })
 
-  // Reset when cards change
+  // Reset only when the deck identity actually changes (not on parent re-render
+  // with a new array reference). Prevents wiping typed answers mid-card.
+  const cardsKey = (cards || []).map(c => c.id ?? c.queue_id ?? '').join('|') + `:${(cards || []).length}`
+  const prevCardsKey = React.useRef(cardsKey)
   useEffect(() => {
+    if (prevCardsKey.current === cardsKey) return
+    prevCardsKey.current = cardsKey
     setIdx(0)
     setRating(null)
     setShowAnswer(false)
     setResults([])
     setDone(false)
     setRateError(false)
-  }, [cards])
+  }, [cardsKey])
 
   const current = cards?.[idx]
 

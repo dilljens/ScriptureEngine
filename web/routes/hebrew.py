@@ -1686,7 +1686,7 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
     question_id = body.get("question_id")
     if question_id is not None:
         item = conn.execute("""
-            SELECT question_type, options_json, correct_answer
+            SELECT question_type, options_json, correct_answer, explanation
             FROM hebrew_practice_items
             WHERE id=? AND node_id=?
         """, (question_id, node_id)).fetchone()
@@ -1797,7 +1797,11 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
     conn.close()
     return {"ok": True, "data": {"node_id": node_id, "mastery": round(mastery, 3),
                                   "attempts": attempts, "correct": correct_count,
-                                  "is_correct": bool(correct)}}
+                                  "is_correct": bool(correct),
+                                  # Corrective feedback (returned only AFTER grading,
+                                  # so it can never leak into a production question).
+                                  "correct_answer": item[2] if item else "",
+                                  "explanation": (item[3] or "") if item else ""}}
 
 
 @router.get("/api/v1/hebrew/practice/{node_id}")
@@ -2653,6 +2657,30 @@ def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
     prefs = read_hebrew_prefs(conn, user_id)
     conn.close()
     return {"ok": True, "data": prefs}
+
+
+@router.post("/api/v1/hebrew/analytics")
+def post_hebrew_analytics(body: dict):
+    """Append client-side game/learning events for balancing analysis.
+
+    Append-only JSONL at logs/hebrew-analytics.jsonl. Fire-and-forget from the
+    client; never blocks gameplay and never fails the request on a bad batch.
+    """
+    events = (body or {}).get("events") or []
+    if not isinstance(events, list) or not events:
+        return {"ok": True, "stored": 0}
+    path = BASE_DIR / "logs" / "hebrew-analytics.jsonl"
+    stored = 0
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as f:
+            for ev in events[:500]:
+                if isinstance(ev, dict):
+                    f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+                    stored += 1
+    except OSError as exc:  # never let telemetry break the app
+        log.warning("analytics append failed: %s", exc)
+    return {"ok": True, "stored": stored}
 
 
 @router.post("/api/v1/hebrew/prefs")

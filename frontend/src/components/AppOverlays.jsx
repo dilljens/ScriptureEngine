@@ -39,7 +39,7 @@ export default function AppOverlays(props) {
   const {
     currentTab, viewLevel, goToChapter, updateTab,
     currentWorkspace, selectTab, openChatTab, openHebrewTab, openLearnTab,
-    openMemorizeTab, openWikiTab, openHubNoteTab, openStudiesTab,
+    openMemorizeTab, openWikiTab, openHubNoteTab, openStudiesTab, openArticlesTab,
   } = useTabs()
   const {
     hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS,
@@ -246,6 +246,7 @@ export default function AppOverlays(props) {
       <MobileMenuDrawer
         open={showMobileMenu}
         onClose={() => setShowMobileMenu(false)}
+        onArticles={() => { setShowMobileMenu(false); openArticlesTab() }}
         onWiki={() => { setShowMobileMenu(false); openWikiTab() }}
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
         onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
