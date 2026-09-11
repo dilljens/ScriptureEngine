@@ -116,7 +116,8 @@ export async function submitHebrewProgressDetailed(progress) {
   }
 }
 
-export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId }) {
+export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId, mode = 'mc' }) {
+  const isMental = mode === 'mental'
   const [questions, setQuestions] = useState([])
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -130,6 +131,10 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   const [missedItems, setMissedItems] = useState([])
   const [submissionError, setSubmissionError] = useState('')
   const [feedback, setFeedback] = useState({}) // idx -> {correct, correctAnswer, explanation}
+  // Mental mode: think the answer, reveal, self-assess. The client is the
+  // grader here, so "I knew it" submits the correct answer (server confirms
+  // and advances FSRS) and "I missed it" submits a miss.
+  const [revealedMental, setRevealedMental] = useState({})
   const timerRef = useRef(null)
   const startRef = useRef(null)
   const questionStartRef = useRef(Date.now())
@@ -145,7 +150,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
   useEffect(() => { submittedRef.current = submitted }, [submitted])
 
   const quizUrl = nodeId
-    ? `/api/v1/hebrew/lesson/${encodeURIComponent(nodeId)}/quiz?count=${count}`
+    ? `/api/v1/hebrew/lesson/${encodeURIComponent(nodeId)}/quiz?count=${count}&mode=${mode}`
     : `/api/v1/hebrew/quiz?count=${count}`
 
   useEffect(() => {
@@ -279,6 +284,12 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     onComplete?.(results)
   }
 
+  const submitMental = (value) => {
+    answersRef.current = { ...answersRef.current, [idx]: value }
+    setAnswers(prev => ({ ...prev, [idx]: value }))
+    submitAnswer()
+  }
+
   const setAnswer = (value) => {
     setAnswers(prev => ({ ...prev, [idx]: value }))
   }
@@ -410,7 +421,30 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         {/* Answer area */}
         {!showResult ? (
           <>
-            {currentAnswerMode === ANSWER_MODES.CHOICE_INDEX && current.options?.length > 0 && (
+            {isMental && (
+              <div className="space-y-3">
+                {!revealedMental[idx] ? (
+                  <button onClick={() => setRevealedMental(p => ({ ...p, [idx]: true }))}
+                    className="w-full py-4 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 text-sm font-medium cursor-pointer">
+                    🧠 Think the answer in your head, then tap to reveal
+                  </button>
+                ) : (
+                  <>
+                    <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+                      <div className="text-[10px] uppercase tracking-wider text-green-600 dark:text-green-400 mb-1">Answer</div>
+                      <div className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">{current.answer}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => submitMental(current.answer)}
+                        className="flex-1 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-medium cursor-pointer">✓ I knew it</button>
+                      <button onClick={() => submitMental('')}
+                        className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium cursor-pointer">✗ I missed it</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {!isMental && currentAnswerMode === ANSWER_MODES.CHOICE_INDEX && current.options?.length > 0 && (
               <div className={current.type === 'true_false' ? 'flex gap-3' : 'space-y-2'}>
                 {current.options.map((opt, i) => (
                   <button key={i} onClick={() => setAnswer(i)}
@@ -424,7 +458,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
                 ))}
               </div>
             )}
-            {currentIsTextInput && (
+            {!isMental && currentIsTextInput && (
               <div>
                 <input type="text" value={answers[idx] || ''}
                   onChange={e => setAnswer(e.target.value)}
@@ -476,7 +510,12 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       {/* Action buttons */}
       {submissionError && <p className="text-center text-sm text-red-600 dark:text-red-400 mt-4">{submissionError}</p>}
       <div className="flex gap-3 mt-4">
-        {!showResult ? (
+        {showResult ? (
+          <button onClick={nextQuestion} disabled={submitted[idx] === null}
+            className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
+            {submitted[idx] === null ? 'Checking…' : idx < questions.length - 1 ? 'Next Question →' : 'See Results'}
+          </button>
+        ) : !isMental ? (
           <button onClick={submitAnswer} disabled={!answered}
             className={`flex-1 py-3 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
               answered
@@ -485,12 +524,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
             }`}>
             Submit Answer
           </button>
-        ) : (
-          <button onClick={nextQuestion} disabled={submitted[idx] === null}
-            className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
-            {submitted[idx] === null ? 'Checking…' : idx < questions.length - 1 ? 'Next Question →' : 'See Results'}
-          </button>
-        )}
+        ) : null}
       </div>
 
       {/* Hebrew keyboard */}

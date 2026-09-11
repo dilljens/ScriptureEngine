@@ -1867,8 +1867,70 @@ def _practice_to_quiz_question(item, node):
     }
 
 
+# Answer types that make sense as multiple choice (recognition/identification).
+MC_ANSWERABLE_TYPES = frozenset({
+    "multiple_choice", "letter_name", "letter_recognition", "classification",
+    "transliteration", "recall", "contrast",
+})
+
+# Five options as the default (was four): one more distractor is a cheap
+# difficulty increase that curbs guessing.
+MC_OPTION_COUNT = 5
+
+
+def _distractor_pool(conn, node_id, correct, limit=12):
+    """Plausible wrong answers: correct answers of sibling nodes in the same
+    category (letters vs letters, glosses vs glosses). Realistic distractors
+    make the choice informative instead of obviously wrong."""
+    row = conn.execute("SELECT category FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
+    if not row:
+        return []
+    rows = conn.execute("""
+        SELECT DISTINCT p.correct_answer
+        FROM hebrew_practice_items p
+        JOIN hebrew_nodes n ON n.id = p.node_id
+        WHERE n.category = ? AND p.node_id <> ? AND p.correct_answer IS NOT NULL AND p.correct_answer <> ''
+    """, (row[0], node_id)).fetchall()
+    pool = [r[0] for r in rows if r[0] and r[0] != correct]
+    random.shuffle(pool)
+    return pool[:limit]
+
+
+def _to_mc_question(conn, q, node, n_options=MC_OPTION_COUNT):
+    """Rewrite a question as N-option multiple choice. Returns None when there
+    aren't enough distinct distractors, so the caller can drop it rather than
+    ship a degenerate 2-option question."""
+    correct = q.pop("_correct", None)
+    if correct is None or correct == "":
+        return None
+    opts = [o for o in (q.get("options") or []) if o and o != correct]
+    if correct not in opts:
+        opts.insert(0, correct)
+    for d in _distractor_pool(conn, node["id"], correct, n_options * 3):
+        if len(opts) >= n_options:
+            break
+        if d not in opts:
+            opts.append(d)
+    if len(opts) < n_options:
+        return None
+    random.shuffle(opts)
+    q["options"] = opts
+    q["answer_mode"] = ANSWER_MODE_CHOICE_INDEX
+    return q
+
+
+def _to_mental_question(q):
+    """Mental-recall form: no options. The learner thinks the answer, reveals,
+    then self-assesses. The answer travels with the question because the client
+    is the grader in this mode (self-check), not the server."""
+    correct = q.pop("_correct", None)
+    q["options"] = []
+    q["answer_mode"] = ANSWER_MODE_FREE_TEXT
+    q["answer"] = correct or ""
+    return q
+
 @router.get("/api/v1/hebrew/lesson/{node_id}/quiz")
-def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default"):
+def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default", mode: str = "mc"):
     """Per-lesson quiz: this lesson's practice items interleaved by difficulty,
     plus up to 2 confusable distractor items for discrimination practice.
 
@@ -1893,7 +1955,9 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         WHERE node_id=?
     """, (node_id,)).fetchall()
     for item in items:
-        questions.append(_practice_to_quiz_question(item, node))
+        q = _practice_to_quiz_question(item, node)
+        q["_correct"] = item["correct_answer"]
+        questions.append(q)
 
     # Confusable distractors: pull 1 item from each node confused with this one,
     # so the quiz trains discrimination, not just recall (non-interference practice).
@@ -1920,6 +1984,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
             """, (other_id,)).fetchone()
             if ditem:
                 q = _practice_to_quiz_question(ditem, other_node)
+                q["_correct"] = ditem["correct_answer"]
                 q["is_distractor"] = True
                 questions.append(q)
     except Exception:
@@ -1932,10 +1997,51 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
              "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
              "letter_name": 2, "typing": 3}
     questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), q["difficulty"]))
+
+    # Guarantee bidirectional production practice. A session that is all
+    # multiple-choice trains option-elimination (recognition), not recall —
+    # reserve at least a third of the slots for types the learner must produce.
+    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast"}
+    want = max(1, count // 3)
+    own = [q for q in questions if not q.get("is_distractor")]
+    distractors = [q for q in questions if q.get("is_distractor")]
+    if sum(1 for q in own[:count] if q["type"] in PRODUCTION_TYPES) < want:
+        produced = [q for q in own if q["type"] in PRODUCTION_TYPES]
+        recognised = [q for q in own if q["type"] not in PRODUCTION_TYPES]
+        # keep the scaffolding order: the first `want` items come from the
+        # production pool, the rest from recognition, then fill from whatever's left
+        reserve = produced[:want]
+        reserve_ids = {q["question_id"] for q in reserve}
+        fill = [q for q in (recognised + produced) if q["question_id"] not in reserve_ids]
+        selected = (fill[:max(0, count - len(reserve))] + reserve + distractors)[:count]
+        selected.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), q["difficulty"]))
+    else:
+        selected = questions[:count]
+    # Mode transform. 'mc' = easier (N-option multiple choice, server-graded);
+    # 'mental' = recall in your head, then reveal and self-assess.
+    if mode == "mental":
+        selected = [_to_mental_question(q) for q in selected]
+    else:
+        mc = []
+        for q in selected:
+            if q.get("is_distractor"):
+                # confusable items already carry options; pad them too
+                converted = _to_mc_question(conn, q, node)
+            elif q["type"] in MC_ANSWERABLE_TYPES:
+                converted = _to_mc_question(conn, q, node)
+            else:
+                converted = None
+            if converted is not None:
+                mc.append(converted)
+        selected = mc[:count]
+    # Never leak the internal answer key to the client.
+    for q in selected:
+        q.pop("_correct", None)
+
     conn.close()
 
     return {"ok": True, "data": {
-        "questions": questions[:count],
+        "questions": selected,
         "node_id": node_id,
         "node_title": node["title"],
         "category": node["category"],

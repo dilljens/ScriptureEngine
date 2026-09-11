@@ -2,6 +2,21 @@ import React, { useState, useCallback, useEffect } from 'react'
 import CardRenderer from './CardRenderer'
 import { previewCapNote } from '../lib/previewMask'
 
+// Objectively-graded card types: the server decides correctness, so the learner
+// must never be asked to self-assess recall.
+const GRADED_CARD_TYPES = new Set(['drill', 'learn_question', 'assessment_question'])
+const isGradedCard = (card) => !!card && GRADED_CARD_TYPES.has(card.type)
+const gradeKnown = (card, answerState) => {
+  if (!card) return false
+  const st = answerState?.[card.id]
+  return !!st && typeof (st.correct ?? st.result?.correct) === 'boolean'
+}
+const gradeValue = (card, answerState) => {
+  const st = answerState?.[card.id]
+  const correct = st ? (st.correct ?? st.result?.correct) : undefined
+  return correct === true ? 3 : 1
+}
+
 /**
  * CardQueue — generic spaced-repetition card queue.
  *
@@ -216,8 +231,26 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
         <p className="text-center text-[10px] text-neutral-400 mt-2">Click card or press Space/Enter to reveal answer</p>
       )}
 
-      {/* Rating buttons — shown after answer revealed */}
-      {showAnswer && rating === null && (
+      {/* Rating buttons — shown after answer revealed.
+          Objectively-graded cards (quiz/drill) never ask you to self-assess
+          recall: the server already knows. Asking "how well did you recall?"
+          while the grade still read "Pending" was backwards — you were rating
+          yourself before being told whether you were right. Those cards get a
+          single Continue, and the rating is derived from the grade. */}
+      {showAnswer && rating === null && isGradedCard(current) && (
+        <div className="mt-4">
+          {gradeKnown(current, answerState) ? (
+            <button onClick={() => handleRate(gradeValue(current, answerState))}
+              className="w-full min-h-[48px] rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer">
+              Continue →
+            </button>
+          ) : (
+            <p className="text-center text-xs text-neutral-400">Grading…</p>
+          )}
+        </div>
+      )}
+
+      {showAnswer && rating === null && !isGradedCard(current) && (
         <div className="mt-4">
           <p className="text-center text-[10px] text-neutral-400 mb-2">How well did you recall this?</p>
           {current?.type === 'verse' && previewCapNote(preview.mode, preview.level) && (

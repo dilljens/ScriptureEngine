@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import HebrewQuiz from './HebrewQuiz'
 
 /**
@@ -8,11 +8,16 @@ import HebrewQuiz from './HebrewQuiz'
  * lesson page broke that loop (and the flow state with it), so the review runs
  * in an overlay: answer → tap Ohr + mint Kavod → back to the golems.
  *
+ * Two difficulty modes:
+ *   'mc'     (Easy)  — five-option multiple choice, server-graded.
+ *   'mental' (Recall)— no options: think the answer, reveal, self-assess.
+ *
  * nodeId: when set, runs that lesson's quiz (guaranteed questions). When null,
- * runs the cumulative interleaved review (spaced-repetition due items) — only
- * useful once the learner has history.
+ * runs the cumulative interleaved review (spaced-repetition due items).
  */
 export default function GameReviewModal({ nodeId = null, title, onClose, onFinished }) {
+  const [mode, setMode] = useState('mc')
+
   return (
     <div
       className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto"
@@ -25,7 +30,7 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
         className="w-full max-w-2xl bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl my-2 sm:my-6 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 bg-white dark:bg-neutral-900 z-10">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 sticky top-0 bg-white dark:bg-neutral-900 z-10">
           <div className="min-w-0">
             <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">
               ⚡ Practice — earn Ohr &amp; Kavod
@@ -34,9 +39,22 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
               {title || 'Every correct answer taps Ohr and mints 🌟'}
             </div>
           </div>
+
+          {/* Difficulty mode: multiple choice is the easier path */}
+          <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shrink-0" role="group" aria-label="Answer mode">
+            <button onClick={() => setMode('mc')}
+              className={`min-h-[40px] px-3 text-[11px] font-medium cursor-pointer ${mode === 'mc' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}>
+              Easy · Choices
+            </button>
+            <button onClick={() => setMode('mental')}
+              className={`min-h-[40px] px-3 text-[11px] font-medium cursor-pointer ${mode === 'mental' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}>
+              🧠 Mental
+            </button>
+          </div>
+
           <button
             onClick={onClose}
-            className="ml-3 min-h-[44px] min-w-[44px] rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 cursor-pointer shrink-0"
+            className="ml-1 min-h-[44px] min-w-[44px] rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 cursor-pointer shrink-0"
             aria-label="Close practice"
           >
             ✕
@@ -44,7 +62,9 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
         </div>
 
         <HebrewQuiz
+          key={mode}
           count={6}
+          mode={mode}
           nodeId={nodeId || undefined}
           onBack={onClose}
           onComplete={() => { onFinished?.(); onClose() }}
@@ -54,3 +74,4 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
     </div>
   )
 }
+
