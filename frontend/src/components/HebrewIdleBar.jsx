@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   LETTERS, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
   rootsEarned, shouldPrestige, offlineEarnings, totalOwned,
@@ -77,6 +77,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     return m
   }, [curriculum])
 
+  // Authoritative state mirror. React StrictMode double-invokes setState
+  // updaters in dev, so updaters must be PURE. Anything with a side effect
+  // (random crit roll, localStorage save, parent callback) is computed here
+  // from the mirror and applied once, outside the updater.
+  const stateRef = useRef(state)
+  const commit = useCallback((next) => {
+    stateRef.current = next
+    setState(next)
+    return next
+  }, [])
+  useEffect(() => { stateRef.current = state }, [state])
+
   const diff = state.difficulty || { bias: 0, recent: [] }
   const scalars = difficultyScalars(diff)
   const acc = recentAccuracy(diff)
@@ -88,41 +100,39 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   useEffect(() => {
     let n = 0
     const t = setInterval(() => {
-      setState(s => {
-        const gain = statePerSecond(s, mastery) * buffMultiplier(s)
-        const next = {
-          ...s,
-          ohr: s.ohr + gain,
-          lifetimeOhr: (s.lifetimeOhr || 0) + gain,
-        }
-        if (++n % 5 === 0) saveIdleState(next)
-        return next
-      })
+      const s = stateRef.current
+      const gain = statePerSecond(s, mastery) * buffMultiplier(s)
+      const next = {
+        ...s,
+        ohr: s.ohr + gain,
+        lifetimeOhr: (s.lifetimeOhr || 0) + gain,
+      }
+      if (++n % 5 === 0) saveIdleState(next)
+      commit(next)
     }, 1000)
-    return () => { clearInterval(t); setState(s => { saveIdleState(s); return s }) }
-  }, [mastery])
+    return () => { clearInterval(t); saveIdleState(stateRef.current) }
+  }, [mastery, commit])
 
   // Adaptive loop: graded answers from anywhere in the app.
   // Correct answers tap Ohr (streak + crit) — studying IS the clicker.
   useEffect(() => {
     const handler = (e) => {
       const { correct, ms } = e.detail || {}
+      const s = stateRef.current
+      const next = { ...s, difficulty: recordAttempt(s.difficulty || { bias: 0, recent: [] }, correct, ms) }
+      const rate = statePerSecond(next, mastery)
       let gainInfo = null
       let milestoneInfo = null
-      setState(s => {
-        const next = { ...s, difficulty: recordAttempt(s.difficulty || { bias: 0, recent: [] }, correct, ms) }
-        const rate = statePerSecond(next, mastery)
-        if (correct) {
-          const r = applyCorrectAnswer(next, rate)
-          gainInfo = { value: r.gained, crit: r.crit, kavod: r.kavod, n: next.taps }
-          milestoneInfo = checkStreakMilestone(next)
-          if (r.crit && onEarn) onEarn(r.gained)
-        } else {
-          applyWrongAnswer(next)
-        }
-        saveIdleState(next)
-        return { ...next }
-      })
+      if (correct) {
+        const r = applyCorrectAnswer(next, rate)
+        gainInfo = { value: r.gained, crit: r.crit, kavod: r.kavod, n: next.taps }
+        milestoneInfo = checkStreakMilestone(next)
+        if (r.crit && onEarn) onEarn(r.gained)
+      } else {
+        applyWrongAnswer(next)
+      }
+      saveIdleState(next)
+      commit(next)
       if (gainInfo) setLastGain(gainInfo)
       setAnswerPulse({ n: Date.now(), correct: !!correct })
       if (milestoneInfo) {
