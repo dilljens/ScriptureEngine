@@ -626,12 +626,12 @@ export function permEffect(perm = {}, key) {
 // (Cookie's actual tradeoff). Not a wipe: roots already supply the reset loop,
 // and DESIGN.md bans punishing resets.
 //
-// Deviation from the plan: the plan wrote BASE = 1e12 (Cookie's scale). Our
-// per-sec tops out ~1e3–1e5, so 1e12 is months-to-years away — unreachable
-// content violates "no dead time". BASE is 1e8 so the first spark lands after
-// the early game and the chain is playable. Shape (cube root) is as specified.
+// Tuned by headless sim (scripts/balance-sim.mjs): at 1e8 the first spark lands
+// at ~40m of engaged play and the whole chain finishes in ~1.8h — too early for
+// a meta layer. 1e12 puts the first spark at ~2.8h of *optimal* play, which is
+// roughly 1-4 days for a real learner (the sim is a 5-answers/min upper bound).
 
-export const ALIYAH_BASE = 1e8
+export const ALIYAH_BASE = 1e12
 export const SPARK_BONUS = 0.01
 export const HEAVENLY_UPGRADES = [
   { id: 'h_legacy', name: 'Legacy of the Fathers', icon: '📜', cost: 1, desc: 'Every prestige starts with +1 of your first letter', effect: { seedLetter: 1 } },

@@ -68,7 +68,7 @@ Goal: Clone Cookie Clicker's progression systems (mechanics only, original theme
 - 📏 Scope: ~1 file, ~90 lines (lib) + HUD
 - ✅ Checkpoint: 20+ self-checks for cube-root, chain gating, spend-reduces-bonus, effect plumbing; build green
 - ⚙ Fallback: keep sqrt-roots prestige, add % chain only
-- **Deviation:** plan wrote `BASE = 1e12` (Cookie's scale) and "~365 levels". Our per-sec tops out ~1e3–1e5, so 1e12 is months-to-years away — unreachable content violates DESIGN.md "no dead time". `ALIYAH_BASE = 1e8` keeps the shape and makes the chain playable. Deliberately NOT a wipe (roots already supply the reset loop; DESIGN.md bans punishing resets).
+- **Tuning note:** `ALIYAH_BASE = 1e12` (the plan's value), confirmed by headless sim (`scripts/balance-sim.mjs`): first spark ~2.8h / full chain ~13h of *optimal bot* play → days for a real learner. An earlier `1e8` was tried and **rejected** — first spark at 40m and the whole chain done in 1.8h (trivial). Deliberately NOT a wipe (roots already supply the reset loop; DESIGN.md bans punishing resets).
 - Depends on: nothing
 
 ### Phase B2: Golden Prompt buffs `[x]`

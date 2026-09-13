@@ -60,7 +60,7 @@
 
 ## Session 2026-09-13 — A2 + Tracks B, C, D (remaining plan phases)
 - [x] **A2** — HUD says `⚡ +X%` (breadth), each shop tile's tooltip shows its own live `synergy ×N.NN`; a footer explains it. Workshop number via new `workshopSynergy`.
-- [x] **B1 Aliyah sparks + heavenly chain** — `sparksEarned = floor(cbrt(lifetime/1e8))` (plan's 1e12 deviated: unreachable at our scale). Unspent sparks = +1% Ohr; ordered 6-upgrade chain bought with sparks, each gated on the previous, so bonus vs permanence is a real trade. Effects reuse `permEffect` (no dropped-modifier class of bug). Spark progress card in the goal grid.
+- [x] **B1 Aliyah sparks + heavenly chain** — `sparksEarned = floor(cbrt(lifetime/ALIYAH_BASE))`, BASE tuned to 1e12 by sim (see below). Unspent sparks = +1% Ohr; ordered 6-upgrade chain bought with sparks, each gated on the previous, so bonus vs permanence is a real trade. Effects reuse `permEffect` (no dropped-modifier class of bug). Spark progress card in the goal grid.
 - [x] **B2 Golden Prompts** — spawn every 60–180s (only when production > 0), claimed by the next graded answer inside a 20s window; Gale ×7/77s · Dew 2h · Rush ×3 tap/60s. Wrong/late fizzles; expired prompts auto-clear. Rewards use the *buffed* rate, matching Time Warp.
 - [x] **C1 Figs** — 20h timer, harvest grants 4h production × (1+level·0.1), levels grove 1–10, replants. Offline ladder intentionally NOT nerfed to 5% (contradicts DESIGN.md "offline = gift"; shipped 50%→100% already implements the ladder). Harvest is a deliberate tap, not quiz-gated (misclick would punish).
 - [x] **C2 Achievements→Shemen + daily** — 10 state-derived achievements, +4% Ohr each; daily lesson = 10 correct → 1h production, once/day, resets on rollover.
@@ -71,9 +71,18 @@
 - Known remaining: pre-existing impure `setState` updaters (offline/claimOffline/boost/quest/feedback/mute) still do side effects in the reducer — StrictMode can double-run them. Follow-up migration to the `commit` pattern.
 - `state.words` is still never assigned, so the `globalMultiplier` word term (+2%/word) is dormant — pre-existing, not touched.
 
+## Session 2026-09-13 — playtest: headless balance sim + Aliyah retune
+- [x] Added `scripts/balance-sim.mjs` — drives the real pure functions with a greedy engaged-player policy (~5 answers/min, optimal buying) and reports milestone timings. Explicitly an **optimistic upper bound** (real learners are ~10–50× slower).
+- [x] **Retuned `ALIYAH_BASE` 1e8 → 1e12** (reverting my earlier deviation). The sim showed 1e8 put the first spark at **40m** and finished the entire heavenly chain in **1.8h** — trivial for a meta layer. At 1e12: first spark ~2.8h, full chain ~13h of *bot* play → days for a human. My earlier "1e12 is months away" estimate was a bad static guess; the economy is exponential.
+- [x] Fig pacing confirmed correct: level 10 needs 10×20h ≈ 8.3 days (sim reaches level 8 in 7d).
+- [x] First root ~11m in bot play. Left unchanged on purpose: the bot is an upper bound, so ~11m bot ≈ 30–90m human, which is the design target.
+- Tests: 123 self-checks still green (all spark asserts are symbolic on `ALIYAH_BASE`); build green.
+- Remaining tuning data wanted: real `answer`/`purchase`/`prestige` events from play — the live `/hebrew/analytics` table is now queryable for that.
+
+
 
 
 
 - Blockers: vitest unusable on Node v26.8.1 (startup hang, 0 tests run)
-- Decisions made: mechanics-only clone; Ohr=wait/Kavod=know; punishment ban; local-first analytics; A1 = letter synergy (12-tier ladder superseded by DESIGN.md); Aliyah BASE 1e8 not 1e12 (reachability); offline not nerfed; figs not quiz-gated
+- Decisions made: mechanics-only clone; Ohr=wait/Kavod=know; punishment ban; local-first analytics; A1 = letter synergy (12-tier ladder superseded by DESIGN.md); Aliyah BASE 1e12 (1e8 rejected by sim); offline not nerfed; figs not quiz-gated
 - Tests: idle-game.js self-checks green (123); vite build green (1m16s); vitest blocked by environment hang
