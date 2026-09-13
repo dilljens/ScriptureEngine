@@ -44,13 +44,46 @@ export function baseRate(i) {
   return 0.2 * Math.pow(1.35, i)
 }
 
+// ── Letter synergy: breadth beats spam ───────────────────────────────
+// DESIGN.md: "leaders must shift over time (no permanently dominant letter) —
+// use mastery multipliers and synergy so studying a *new* letter beats spamming
+// a maxed one." Every letter you own lifts the others; every letter you MASTER
+// lifts them more. Capped so depth (×2 tiers) still matters.
+
+export const SYNERGY_OWNED = 0.02     // +2% per other letter owned
+export const SYNERGY_MASTERED = 0.04  // +4% more per other letter mastered
+export const SYNERGY_CAP = 1.0        // ceiling: +100%, workshop-wide
+export const MASTERY_THRESHOLD = 0.8  // curriculum's own mastery/unlock bar
+
+/** Workshop-wide synergy multiplier for letter i (counts every letter but i). */
+export function synergyMultiplier(owned = {}, mastery = {}, i = 0) {
+  let others = 0
+  let mastered = 0
+  for (let j = 0; j < LETTERS.length; j++) {
+    if (j === i || !(owned[j] > 0)) continue
+    others++
+    if ((mastery[j] ?? 0) >= MASTERY_THRESHOLD) mastered++
+  }
+  return 1 + Math.min(others * SYNERGY_OWNED + mastered * SYNERGY_MASTERED, SYNERGY_CAP)
+}
+
+/**
+ * Breadth bonus for the whole workshop, counting every owned letter — the single
+ * number the HUD shows. Within one letter's worth of any individual letter's
+ * multiplier (which excludes itself), so it reads as the honest "breadth" stat.
+ */
+export function workshopSynergy(owned = {}, mastery = {}) {
+  return synergyMultiplier(owned, mastery, -1)
+}
+
 /**
  * Total Ohr/sec.
  * mastery: {letterIndex: 0..1} from curriculum; unstudied = 0.5x, never 0.
  * letterUpgrades: {`u${i}:${k}`: true} — ×2 tiers.
- * perm: {upgradeId: true} — permanent Kavod upgrades.
+ * perm: {upgradeId: true} — permanent Kavod + heavenly upgrades.
+ * sparks: unspent Aliyah sparks — +1% global each.
  */
-export function perSecond(owned, mastery = {}, tracks = {}, words = 0, roots = 0, letterUpgrades = {}, perm = {}) {
+export function perSecond(owned, mastery = {}, tracks = {}, words = 0, roots = 0, letterUpgrades = {}, perm = {}, sparks = 0) {
   const readingMult = 1 + (tracks.reading || 0) * 0.10
   const global = globalMultiplier(roots, words, tracks) * (1 + permEffect(perm, 'globalMult'))
   let sum = 0
@@ -58,17 +91,17 @@ export function perSecond(owned, mastery = {}, tracks = {}, words = 0, roots = 0
     const n = owned[i] || 0
     if (!n) continue
     const m = mastery[i] ?? 0
-    sum += baseRate(i) * n * (0.5 + m) * letterMultiplier(letterUpgrades, i)
+    sum += baseRate(i) * n * (0.5 + m) * letterMultiplier(letterUpgrades, i) * synergyMultiplier(owned, mastery, i)
   }
-  return sum * readingMult * global
+  return sum * readingMult * global * sparkBonus(sparks)
 }
 
 /** Compose perSecond straight from game state (keeps call sites honest). */
 export function statePerSecond(state, mastery = {}) {
   return perSecond(
     state.owned || {}, mastery, state.tracks || {}, state.words || 0, state.roots || 0,
-    state.letterUpgrades || {}, state.perm || {},
-  )
+    state.letterUpgrades || {}, state.perm || {}, availableSparks(state),
+  ) * figMultiplier(state.figs) * shemenMultiplier(state)
 }
 
 export function globalMultiplier(roots = 0, words = 0, tracks = {}) {
@@ -78,12 +111,12 @@ export function globalMultiplier(roots = 0, words = 0, tracks = {}) {
   return (1 + roots * 0.10) * (1 + words * 0.02)
 }
 
-/** Tap value for one correct answer (× difficulty, × permanent upgrades). */
-export function tapValue(perSec, streak = 0, tracks = {}, diff = null, perm = {}) {
+/** Tap value for one correct answer (× difficulty, × permanent upgrades, × tap buff). */
+export function tapValue(perSec, streak = 0, tracks = {}, diff = null, perm = {}, tapBuff = 1) {
   const { tapMult } = difficultyScalars(diff || {})
   const dikdukMult = 1 + (tracks.dikduk || 0) * 0.15
   const streakBonus = 1 + Math.min(streak, 100) * 0.01
-  return (1 + 0.05 * perSec) * streakBonus * dikdukMult * tapMult * (1 + permEffect(perm, 'tapMult'))
+  return (1 + 0.05 * perSec) * streakBonus * dikdukMult * tapMult * (1 + permEffect(perm, 'tapMult')) * tapBuff
 }
 
 /** Crit chance: 2% base + Niqqud + permanents, cap 20%. Crit = x7. */
@@ -91,9 +124,9 @@ export function critChance(tracks = {}, perm = {}) {
   return Math.min(0.02 + (tracks.niqqud || 0) * 0.02 + permEffect(perm, 'critAdd'), 0.2)
 }
 
-export function rollTap(perSec, streak, tracks = {}, rng = Math.random, diff = null, perm = {}) {
+export function rollTap(perSec, streak, tracks = {}, rng = Math.random, diff = null, perm = {}, tapBuff = 1) {
   const crit = rng() < critChance(tracks, perm)
-  return { value: tapValue(perSec, streak, tracks, diff, perm) * (crit ? 7 : 1), crit }
+  return { value: tapValue(perSec, streak, tracks, diff, perm, tapBuff) * (crit ? 7 : 1), crit }
 }
 
 /** Roots earned from lifetime Ohr. First root ≈ 111k. */
@@ -198,7 +231,11 @@ export function defaultIdleState() {
     correct: 0,        // lifetime correct answers (quest + loop stats)
     kavod: 0,          // 🌟 learning currency: earned ONLY by correct answers, buys speed
     warps: 0,          // time warps purchased (escalates cost)
-    buffs: { frenzyEndsAt: 0 },
+    buffs: { frenzyEndsAt: 0, galeEndsAt: 0, tapEndsAt: 0 },
+    golden: null,        // active Golden Prompt {id, expiresAt}, null when none
+    nextGoldenAt: 0,     // timestamp the next prompt may spawn
+    figs: { level: 0, readyAt: 0 }, // 20h retention timer (sugar-lump analogue)
+    daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
     perm: {},           // permanent Kavod upgrades -> true
     quests: {},        // questId -> true when claimed
@@ -238,7 +275,7 @@ export function saveIdleState(s) {
 /** Apply one correct answer: tap + streak + Kavod. Returns {gained, crit, kavod}. */
 export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const streak = (state.streak || 0) + 1
-  const { value, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm)
+  const { value, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
   const kavod = 1 + Math.floor(streak / 5) + (crit ? 3 : 0)
@@ -382,9 +419,94 @@ export function warpCost(state) {
   return 30 * Math.pow(3, state.warps || 0)
 }
 
-/** Current buff multiplier (1 or FRENZY_MULT). Buffs expire on their own. */
+/** Current buff multiplier. Same-kind buffs don't stack — take the strongest. */
 export function buffMultiplier(state, now = Date.now()) {
-  return (state.buffs?.frenzyEndsAt || 0) > now ? FRENZY_MULT : 1
+  const frenzy = (state.buffs?.frenzyEndsAt || 0) > now ? FRENZY_MULT : 1
+  return Math.max(frenzy, galeMultiplier(state, now))
+}
+
+// ── Golden Prompts: quiz-gated buffs, accuracy windows, never reflex ──
+// Cookie's golden cookie, but claimed by answering correctly within a window
+// instead of clicking fast (DESIGN.md: no reflex gates). Wrong or late FIZZLES —
+// nothing is ever drained (punishment ban).
+
+export const GOLDEN_WINDOW_SEC = 20
+export const GOLDEN_INTERVAL_SEC = [60, 180]
+
+export const GOLDEN_PROMPTS = [
+  { id: 'gale', name: 'Ruach Gale', icon: '🌪️', kind: 'mult', mult: 7, seconds: 77, weight: 3, desc: 'x7 Ohr for 77s' },
+  { id: 'dew', name: 'Dew of Light', icon: '💧', kind: 'hours', hours: 2, weight: 2, desc: '2h of production, instantly' },
+  { id: 'rush', name: 'Dikduk Rush', icon: '📖', kind: 'tap', tapMult: 3, seconds: 60, weight: 2, desc: 'x3 tap power for 60s' },
+]
+
+function goldenByKind(kind) {
+  return GOLDEN_PROMPTS.find(p => p.kind === kind)
+}
+
+export function galeMultiplier(state, now = Date.now()) {
+  if ((state.buffs?.galeEndsAt || 0) <= now) return 1
+  return goldenByKind('mult')?.mult || 1
+}
+
+export function tapBuffMultiplier(state, now = Date.now()) {
+  if ((state.buffs?.tapEndsAt || 0) <= now) return 1
+  return goldenByKind('tap')?.tapMult || 1
+}
+
+/** Weighted pick (exported for tests/determinism). */
+export function pickGoldenPrompt(rng = Math.random) {
+  const total = GOLDEN_PROMPTS.reduce((a, p) => a + p.weight, 0)
+  let r = rng() * total
+  for (const p of GOLDEN_PROMPTS) { r -= p.weight; if (r < 0) return p }
+  return GOLDEN_PROMPTS[0]
+}
+
+/** Spawn a prompt when none is pending, the interval elapsed, and production exists. */
+export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, perSec = 1) {
+  if (state.golden) return null
+  if (perSec <= 0) return null // nothing to multiply yet — never hand out a value-less prompt
+  if (now < (state.nextGoldenAt || 0)) return null
+  const p = pickGoldenPrompt(rng)
+  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000 }
+  const [lo, hi] = GOLDEN_INTERVAL_SEC
+  state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
+  return state.golden
+}
+
+/** Clear a prompt whose claim window elapsed (fizzle — nothing lost). */
+export function expireGoldenPrompt(state, now = Date.now()) {
+  if (state.golden && now > state.golden.expiresAt) { state.golden = null; return true }
+  return false
+}
+
+export function goldenRemainingSec(state, now = Date.now()) {
+  return state.golden ? Math.max(0, Math.ceil((state.golden.expiresAt - now) / 1000)) : 0
+}
+
+/**
+ * Resolve a pending prompt with the player's answer.
+ * Correct inside the window → buff. Wrong or expired → fizzle (nothing lost).
+ */
+export function resolveGoldenPrompt(state, correct, now = Date.now(), perSec = 0) {
+  const g = state.golden
+  if (!g) return null
+  const expired = now > g.expiresAt
+  state.golden = null
+  if (!correct || expired) return { fizzled: true, reason: expired ? 'expired' : 'wrong' }
+  const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
+  if (!p) return { fizzled: true, reason: 'unknown' }
+  if (p.kind === 'mult') {
+    state.buffs = { ...(state.buffs || {}), galeEndsAt: now + p.seconds * 1000 }
+    return { claimed: p, granted: 0 }
+  }
+  if (p.kind === 'tap') {
+    state.buffs = { ...(state.buffs || {}), tapEndsAt: now + p.seconds * 1000 }
+    return { claimed: p, granted: 0 }
+  }
+  const granted = perSec * 3600 * (p.hours || 0)
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  return { claimed: p, granted }
 }
 
 export function frenzyRemainingSec(state, now = Date.now()) {
@@ -485,13 +607,197 @@ export const KAVOD_UPGRADES = [
 
 export function hasPerm(state, id) { return !!(state.perm || {})[id] }
 
-/** Sum a numeric effect key across owned permanents. */
+/** Sum a numeric effect key across owned permanents (Kavod + heavenly). */
 export function permEffect(perm = {}, key) {
   let total = 0
   for (const u of KAVOD_UPGRADES) {
     if (perm[u.id] && u.effect[key] !== undefined) total += u.effect[key]
   }
+  for (const u of HEAVENLY_UPGRADES) {
+    if (perm[u.id] && u.effect[key] !== undefined) total += u.effect[key]
+  }
   return total
+}
+
+// ── Aliyah: cube-root ascension sparks + heavenly unlock chain ───────
+// Cookie's heavenly-chips shape. Sparks are earned from LIFETIME Ohr by cube
+// root, give +1% Ohr each while UNSPENT, and are spent on an ordered heavenly
+// chain — so holding sparks and buying upgrades compete for the same resource
+// (Cookie's actual tradeoff). Not a wipe: roots already supply the reset loop,
+// and DESIGN.md bans punishing resets.
+//
+// Deviation from the plan: the plan wrote BASE = 1e12 (Cookie's scale). Our
+// per-sec tops out ~1e3–1e5, so 1e12 is months-to-years away — unreachable
+// content violates "no dead time". BASE is 1e8 so the first spark lands after
+// the early game and the chain is playable. Shape (cube root) is as specified.
+
+export const ALIYAH_BASE = 1e8
+export const SPARK_BONUS = 0.01
+export const HEAVENLY_UPGRADES = [
+  { id: 'h_legacy', name: 'Legacy of the Fathers', icon: '📜', cost: 1, desc: 'Every prestige starts with +1 of your first letter', effect: { seedLetter: 1 } },
+  { id: 'h_light', name: 'Primordial Light', icon: '💡', cost: 2, desc: 'All Ohr +25%', effect: { globalMult: 0.25 } },
+  { id: 'h_wisdom', name: 'Chochmah', icon: '🧠', cost: 3, desc: 'Tap power +50%', effect: { tapMult: 0.5 } },
+  { id: 'h_rest', name: 'Shabbat Rest', icon: '🕯️', cost: 5, desc: 'Offline earnings +25%', effect: { offlineAdd: 0.25 } },
+  { id: 'h_breath', name: 'Long Breath', icon: '🌬️', cost: 8, desc: 'Frenzy lasts +30s', effect: { frenzyBonusSec: 30 } },
+  { id: 'h_key', name: 'Key of David', icon: '🗝️', cost: 13, desc: 'All Ohr +100%', effect: { globalMult: 1.0 } },
+]
+
+/** Total sparks ever earned (cube root of lifetime Ohr). */
+export function sparksEarned(lifetimeOhr) {
+  return Math.floor(Math.cbrt(Math.max(0, lifetimeOhr) / ALIYAH_BASE))
+}
+
+/** Lifetime Ohr needed to reach `n` earned sparks (inverse of sparksEarned). */
+export function lifetimeForSpark(n) {
+  return Math.pow(n, 3) * ALIYAH_BASE
+}
+
+/** Sparks already spent on the heavenly chain. */
+export function heavenlySpent(perm = {}) {
+  let total = 0
+  for (const u of HEAVENLY_UPGRADES) if (perm[u.id]) total += u.cost
+  return total
+}
+
+/** Sparks not yet spent — these are the ones granting +1% each. */
+export function availableSparks(state) {
+  return Math.max(0, sparksEarned(state.lifetimeOhr || 0) - heavenlySpent(state.perm || {}))
+}
+
+/** Global multiplier from unspent sparks. */
+export function sparkBonus(sparks) {
+  return 1 + Math.max(0, sparks) * SPARK_BONUS
+}
+
+export function heavenlyOwned(state, id) {
+  return !!(state.perm || {})[id]
+}
+
+/** Chain gate: an upgrade unlocks only once the previous one is owned. */
+export function heavenlyUnlocked(state, id) {
+  const idx = HEAVENLY_UPGRADES.findIndex(u => u.id === id)
+  if (idx < 0) return false
+  return idx === 0 || heavenlyOwned(state, HEAVENLY_UPGRADES[idx - 1].id)
+}
+
+/** Buy a heavenly upgrade with sparks. Returns true on success. */
+export function buyHeavenly(state, id) {
+  const u = HEAVENLY_UPGRADES.find(x => x.id === id)
+  if (!u || heavenlyOwned(state, id)) return false
+  if (!heavenlyUnlocked(state, id)) return false
+  if (availableSparks(state) < u.cost) return false
+  state.perm = { ...(state.perm || {}), [id]: true }
+  return true
+}
+
+/** Progress toward the next earned spark — the "first ascension" target. */
+export function sparkProgress(lifetimeOhr) {
+  const earned = sparksEarned(lifetimeOhr)
+  const next = earned + 1
+  const need = lifetimeForSpark(next)
+  return { earned, next, need, pct: need > 0 ? Math.min(1, (lifetimeOhr || 0) / need) : 0 }
+}
+
+// ── Figs: the 20h retention timer (sugar-lump analogue) ──────────────
+// One fig grows over 20h; harvesting grants hours of production, levels the
+// grove (up to 10, +10% Ohr each forever), and plants the next one. Deliberately
+// NOT quiz-gated: losing a 20h timer to a misclick would punish, which DESIGN.md
+// bans. The timer IS the retention hook; harvesting is one deliberate tap.
+
+export const FIG_RIPEN_HOURS = 20
+export const FIG_MAX_LEVEL = 10
+export const FIG_REWARD_HOURS = 4
+export const FIG_LEVEL_BONUS = 0.10
+
+export function figReady(state, now = Date.now()) {
+  return (state.figs?.readyAt || 0) > 0 && now >= state.figs.readyAt
+}
+
+export function figRemainingSec(state, now = Date.now()) {
+  return Math.max(0, Math.ceil(((state.figs?.readyAt || 0) - now) / 1000))
+}
+
+export function figMultiplier(figs) {
+  return 1 + Math.min(FIG_MAX_LEVEL, figs?.level || 0) * FIG_LEVEL_BONUS
+}
+
+/** Plant a fig if none is growing. Returns true if planted. */
+export function plantFig(state, now = Date.now()) {
+  if (state.figs?.readyAt) return false
+  state.figs = { level: state.figs?.level || 0, readyAt: now + FIG_RIPEN_HOURS * 3600 * 1000 }
+  return true
+}
+
+/** Harvest a ripe fig: grants hours of production, levels up, replants. */
+export function harvestFig(state, perSec, now = Date.now()) {
+  if (!figReady(state, now)) return 0
+  const level = Math.min(FIG_MAX_LEVEL, (state.figs?.level || 0) + 1)
+  const granted = perSec * FIG_REWARD_HOURS * 3600 * (1 + level * FIG_LEVEL_BONUS)
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  state.figs = { level, readyAt: now + FIG_RIPEN_HOURS * 3600 * 1000 }
+  return granted
+}
+
+// ── Achievements → Shemen (oil): +4% Ohr each ────────────────────────
+// Derived from state — no extra bookkeeping, no way to lose one.
+// ("Talmidim multipliers read Shemen" from the plan is moot: there is no
+//  building ladder — letters are the generators — so Shemen is a global.)
+
+export const SHEMEN_PER_ACHIEVEMENT = 0.04
+
+export const ACHIEVEMENTS = [
+  { id: 'first_letter', name: 'First Light', icon: '🕯️', desc: 'Inscribe your first golem', check: s => totalOwned(s) >= 1 },
+  { id: 'own10', name: 'Choir', icon: '🗿', desc: 'Own 10 golems', check: s => totalOwned(s) >= 10 },
+  { id: 'own100', name: 'Legion', icon: '🏛️', desc: 'Own 100 golems', check: s => totalOwned(s) >= 100 },
+  { id: 'streak25', name: 'Unstoppable', icon: '🔥', desc: 'Reach a 25 streak', check: s => (s.bestStreak || 0) >= 25 },
+  { id: 'correct100', name: 'Diligent', icon: '📖', desc: 'Answer 100 correctly', check: s => (s.correct || 0) >= 100 },
+  { id: 'root1', name: 'First Fruits', icon: '🌿', desc: 'Forge your first root', check: s => (s.roots || 0) >= 1 },
+  { id: 'prestige5', name: 'Reformed', icon: '🔄', desc: 'Prestige 5 times', check: s => (s.prestiges || 0) >= 5 },
+  { id: 'fig1', name: 'Gardener', icon: '🍯', desc: 'Harvest your first fig', check: s => (s.figs?.level || 0) >= 1 },
+  { id: 'spark1', name: 'Ascendant', icon: '💫', desc: 'Earn your first Aliyah spark', check: s => sparksEarned(s.lifetimeOhr || 0) >= 1 },
+  { id: 'own22', name: 'Full Aleph-Bet', icon: '🔠', desc: 'Own every letter', check: s => LETTERS.every((_, i) => (s.owned?.[i] || 0) > 0) },
+]
+
+export function achievementsEarned(state) {
+  return ACHIEVEMENTS.filter(a => { try { return a.check(state) } catch { return false } })
+}
+
+export function shemenMultiplier(state) {
+  return 1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT
+}
+
+// ── Daily lesson: 10 correct answers, once per day ───────────────────
+
+export const DAILY_GOAL = 10
+export const DAILY_REWARD_HOURS = 1
+
+export function dayKey(now = Date.now()) {
+  return new Date(now).toDateString()
+}
+
+/** Record a correct answer toward today's goal (resets on a new day). */
+export function recordDailyCorrect(state, now = Date.now()) {
+  const key = dayKey(now)
+  const d = state.daily || {}
+  if (d.day !== key) state.daily = { day: key, correct: 1, claimed: false }
+  else state.daily = { ...d, correct: (d.correct || 0) + 1 }
+  return state.daily
+}
+
+export function dailyReady(state, now = Date.now()) {
+  const d = state.daily || {}
+  return d.day === dayKey(now) && (d.correct || 0) >= DAILY_GOAL && !d.claimed
+}
+
+/** Claim today's reward: DAILY_REWARD_HOURS of production, once per day. */
+export function claimDaily(state, perSec, now = Date.now()) {
+  if (!dailyReady(state, now)) return 0
+  const granted = perSec * DAILY_REWARD_HOURS * 3600
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  state.daily = { ...state.daily, claimed: true }
+  return granted
 }
 
 /** Buy a permanent with Kavod. Returns true on success. */
@@ -607,4 +913,109 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const pp = { ...kp, lifetimeOhr: 1e6, owned: { 0: 5 }, ohr: 0 }
   applyPrestige(pp)
   a(pp.owned[0] === 1, 'seed perm grants 1 starting letter after prestige')
+  // Letter synergy (breadth + mastery, capped)
+  a(synergyMultiplier({ 0: 5 }, {}, 0) === 1, 'lone letter has no synergy')
+  a(synergyMultiplier({ 0: 5, 1: 5 }, {}, 0) > 1, 'owning another letter lifts output')
+  const synOwn = synergyMultiplier({ 0: 5, 1: 5 }, {}, 0)
+  const synMastered = synergyMultiplier({ 0: 5, 1: 5 }, { 1: 1 }, 0)
+  a(synMastered > synOwn, 'mastering a neighbour lifts output more than owning it')
+  a(synergyMultiplier({ 0: 5, 1: 5 }, { 1: MASTERY_THRESHOLD }, 0) === synMastered, 'mastery bar is the curriculum threshold')
+  const allOwned = Object.fromEntries(LETTERS.map((_, k) => [k, 1]))
+  const allMastered = Object.fromEntries(LETTERS.map((_, k) => [k, 1]))
+  a(synergyMultiplier(allOwned, allMastered, 0) === 1 + SYNERGY_CAP, 'synergy is capped')
+  a(synergyMultiplier({ 0: 5, 1: 5 }, {}, 0) === synergyMultiplier({ 0: 5, 1: 5 }, {}, 1), 'synergy is symmetric between letters')
+  a(workshopSynergy({ 0: 5 }, {}) === 1 + SYNERGY_OWNED, 'workshop synergy counts every letter')
+  a(Math.abs(workshopSynergy({ 0: 5, 1: 5 }, { 1: 1 }) - (1 + 2 * SYNERGY_OWNED + SYNERGY_MASTERED)) < 1e-9, 'workshop synergy adds mastery on top')
+  const rawPair = (baseRate(0) * 10 * 1.5 + baseRate(1) * 10 * 1.5) * synergyMultiplier({ 0: 10, 1: 10 }, { 0: 1, 1: 1 }, 0)
+  a(Math.abs(perSecond({ 0: 10, 1: 10 }, { 0: 1, 1: 1 }) - rawPair) < 1e-9, 'perSecond applies synergy to every letter')
+  // Aliyah sparks + heavenly unlock chain
+  a(sparksEarned(0) === 0, 'no sparks at 0 lifetime')
+  a(sparksEarned(ALIYAH_BASE) === 1, 'first spark at ALIYAH_BASE')
+  a(sparksEarned(8 * ALIYAH_BASE) === 2 && sparksEarned(27 * ALIYAH_BASE) === 3, 'sparks are cube-root')
+  a(Math.abs(lifetimeForSpark(2) - 8 * ALIYAH_BASE) < 1, 'lifetimeForSpark inverts sparksEarned')
+  a(Math.abs(sparkBonus(5) - 1.05) < 1e-9, 'each unspent spark = +1%')
+  const hs = defaultIdleState()
+  hs.lifetimeOhr = 8 * ALIYAH_BASE
+  a(availableSparks(hs) === 2, 'available sparks = earned - spent')
+  a(heavenlyUnlocked(hs, 'h_legacy') && !heavenlyUnlocked(hs, 'h_light'), 'chain locked until previous owned')
+  a(buyHeavenly(hs, 'h_light') === false, 'cannot skip the chain')
+  a(buyHeavenly(hs, 'h_legacy') === true && heavenlyOwned(hs, 'h_legacy'), 'buy the first heavenly upgrade')
+  a(availableSparks(hs) === 1, 'spending a spark reduces the live bonus')
+  a(heavenlyUnlocked(hs, 'h_light'), 'chain unlocks after the previous is owned')
+  hs.lifetimeOhr = 27 * ALIYAH_BASE // 3 earned, 3 spent → 0 available
+  a(buyHeavenly(hs, 'h_light') === true && availableSparks(hs) === 0, 'buy the second once funded')
+  a(permEffect(hs.perm, 'globalMult') === 0.25, 'heavenly effect feeds permEffect (no dropped modifier)')
+  a(sparkBonus(0) === 1, 'no sparks = no bonus')
+  a(sparkProgress(0).next === 1 && sparkProgress(0).pct === 0, 'spark progress starts at 1, 0%')
+  a(sparkProgress(ALIYAH_BASE).earned === 1 && sparkProgress(ALIYAH_BASE).next === 2, 'spark progress advances')
+  const sparkState = { ...defaultIdleState(), lifetimeOhr: 27 * ALIYAH_BASE, owned: { 0: 10 } }
+  a(statePerSecond(sparkState, { 0: 1 }) > perSecond({ 0: 10 }, { 0: 1 }), 'statePerSecond includes the spark bonus')
+  a(Math.abs(statePerSecond(sparkState, { 0: 1 }) - perSecond({ 0: 10 }, { 0: 1 }, {}, 0, 0, {}, {}, 3) * shemenMultiplier(sparkState)) < 1e-9, 'spark bonus is exactly +1% each')
+  // Golden Prompts
+  const gp = defaultIdleState()
+  a(gp.golden === null && gp.nextGoldenAt === 0, 'no golden prompt at start')
+  a(spawnGoldenPrompt(gp, 1000) !== null && !!gp.golden, 'first prompt spawns when due')
+  a(goldenRemainingSec(gp, 1000) === GOLDEN_WINDOW_SEC, 'claim window is 20s')
+  const gRes = resolveGoldenPrompt(gp, true, 2000, 0)
+  a(gRes.claimed && !gRes.fizzled, 'correct answer claims the prompt')
+  a(gp.golden === null && gp.nextGoldenAt > 2000, 'prompt cleared + next one scheduled')
+  const gp2 = defaultIdleState()
+  spawnGoldenPrompt(gp2, 1000)
+  a(resolveGoldenPrompt(gp2, false, 2000, 0).fizzled === true, 'wrong answer fizzles')
+  a(gp2.buffs.galeEndsAt === 0 && gp2.buffs.tapEndsAt === 0, 'fizzle grants nothing (no punishment)')
+  const gp3 = defaultIdleState()
+  spawnGoldenPrompt(gp3, 1000)
+  const gExp = resolveGoldenPrompt(gp3, true, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000, 0)
+  a(gExp.fizzled === true && gExp.reason === 'expired', 'late answer fizzles (window enforced)')
+  const gp4 = defaultIdleState()
+  gp4.buffs = { ...gp4.buffs, galeEndsAt: 5000 }
+  a(galeMultiplier(gp4, 1000) === 7 && buffMultiplier(gp4, 1000) === 7, 'gale = x7 and feeds buffMultiplier')
+  gp4.buffs = { ...gp4.buffs, frenzyEndsAt: 5000 }
+  a(buffMultiplier(gp4, 1000) === 7, 'same-kind buffs take the max, not the product')
+  a(galeMultiplier(gp4, 6000) === 1, 'gale expires')
+  const gp5 = defaultIdleState()
+  gp5.buffs = { ...gp5.buffs, tapEndsAt: 5000 }
+  a(tapBuffMultiplier(gp5, 1000) === 3, 'rush = x3 tap')
+  a(tapValue(0, 0, {}, null, {}, tapBuffMultiplier(gp5, 1000)) === 3, 'tap value reflects the rush buff')
+  const gp6 = defaultIdleState()
+  gp6.golden = { id: 'dew', expiresAt: 99999 }
+  const dew = resolveGoldenPrompt(gp6, true, 1000, 10)
+  a(dew.granted === 10 * 3600 * 2, 'dew grants 2h of production instantly')
+  a(pickGoldenPrompt(() => 0).id === 'gale' && pickGoldenPrompt(() => 0.99).id === 'rush', 'weighted pick is ordered')
+  a(GOLDEN_PROMPTS.every(p => p.weight > 0), 'every prompt has weight')
+  a(spawnGoldenPrompt(defaultIdleState(), 1000, Math.random, 0) === null, 'no golden prompt with zero production')
+  const gp7 = defaultIdleState()
+  spawnGoldenPrompt(gp7, 1000)
+  a(expireGoldenPrompt(gp7, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000) === true && gp7.golden === null, 'expired prompt auto-clears')
+  a(expireGoldenPrompt(defaultIdleState(), 1000) === false, 'nothing to expire when none pending')
+  // Figs
+  const fg = defaultIdleState()
+  a(!figReady(fg, 1000), 'no fig ready at start')
+  a(plantFig(fg, 1000) === true && plantFig(fg, 2000) === false, 'plant once, not twice')
+  const fgRipe = 1000 + FIG_RIPEN_HOURS * 3600 * 1000
+  a(!figReady(fg, fgRipe - 1) && figReady(fg, fgRipe), 'fig ripens exactly at 20h')
+  a(harvestFig(defaultIdleState(), 10, 1000) === 0, 'cannot harvest an unripe fig')
+  const hres = harvestFig(fg, 10, fgRipe)
+  a(hres === 10 * FIG_REWARD_HOURS * 3600 * (1 + FIG_LEVEL_BONUS), 'harvest grants hours x (1 + level bonus)')
+  a(fg.figs.level === 1 && fg.figs.readyAt > fgRipe, 'harvest levels up and replants')
+  a(Math.abs(figMultiplier({ level: 1 }) - 1.1) < 1e-9, 'fig level = +10%')
+  a(figMultiplier({ level: 99 }) === 1 + FIG_MAX_LEVEL * FIG_LEVEL_BONUS, 'fig level caps at 10')
+  const fgs = { ...defaultIdleState(), owned: { 0: 10 }, figs: { level: 5, readyAt: 0 } }
+  a(statePerSecond(fgs, { 0: 1 }) > statePerSecond({ ...fgs, figs: { level: 0, readyAt: 0 } }, { 0: 1 }), 'statePerSecond includes the fig bonus')
+  // Achievements → Shemen
+  a(achievementsEarned(defaultIdleState()).length === 0, 'no achievements at start')
+  const ach = defaultIdleState(); ach.owned = { 0: 1 }
+  a(achievementsEarned(ach).some(x => x.id === 'first_letter'), 'first-letter achievement unlocks')
+  a(Math.abs(shemenMultiplier(ach) - (1 + SHEMEN_PER_ACHIEVEMENT)) < 1e-9, 'one achievement = +4% Shemen')
+  a(statePerSecond({ ...ach, owned: { 0: 10 } }, { 0: 1 }) === perSecond({ 0: 10 }, { 0: 1 }) * shemenMultiplier({ ...ach, owned: { 0: 10 } }), 'Shemen feeds statePerSecond')
+  // Daily lesson
+  const dl = defaultIdleState()
+  a(!dailyReady(dl), 'daily not ready at start')
+  for (let k = 0; k < DAILY_GOAL; k++) recordDailyCorrect(dl, 1000)
+  a(dl.daily.correct === DAILY_GOAL, 'daily counts correct answers')
+  a(dailyReady(dl, 1000), 'daily ready after 10 correct')
+  a(claimDaily(dl, 10, 1000) === 10 * DAILY_REWARD_HOURS * 3600, 'daily grants 1h of production')
+  a(claimDaily(dl, 10, 1000) === 0, 'daily claims once')
+  recordDailyCorrect(dl, 1000 + 86400000)
+  a(dl.daily.correct === 1 && !dl.daily.claimed, 'daily resets the next day')
 }

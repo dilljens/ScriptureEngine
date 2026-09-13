@@ -50,9 +50,30 @@
 - Tests: idle-game self-checks now **58 ok**; vitest **122/122**; build green.
 - Deferred nits (critic): impure setState updaters call `rollTap`/`saveIdleState` inside the reducer (dormant — `onEarn` not passed); shop handlers use render-closure state (two batched clicks could clobber).
 
+## Session 2026-09-13 — Track A1: letter synergy (breadth beats spam)
+- [x] Resolved a plan/design conflict before coding: plan A1 said "12-tier producer ladder (Etzba→Sofer→Yeshiva)", but `DESIGN.md` locks "Letters are the generators" (22 letters) and F1 already shipped A2's per-tier ×2 upgrades. User chose the DESIGN.md-consistent reading.
+- [x] `synergyMultiplier(owned, mastery, i)` in `idle-game.js`: +2% per *other* letter owned, +4% per other letter *mastered* (bar 0.8 = curriculum's own), capped at +100%. Folded into `perSecond` (so `statePerSecond`/`tapValue` inherit it).
+- [x] 8 new self-check asserts: lone-letter = ×1, breadth lifts, mastery > ownership, threshold match, cap, symmetry, perSecond wiring.
+- Tests: idle-game self-checks **65 ok / 0 fail** (was 58); `vite build` green (1m02s, 403 modules).
+- ⚠️ `vitest` hangs at startup at `RUN v4.1.10` on Node **v26.8.1** — zero tests run, on any file, independent of this change. Unit suite could not be executed; pre-existing environment breakage, not a regression.
+- Follow-up (A2 done in the next session): synergy surfaced in the HUD.
+
+## Session 2026-09-13 — A2 + Tracks B, C, D (remaining plan phases)
+- [x] **A2** — HUD says `⚡ +X%` (breadth), each shop tile's tooltip shows its own live `synergy ×N.NN`; a footer explains it. Workshop number via new `workshopSynergy`.
+- [x] **B1 Aliyah sparks + heavenly chain** — `sparksEarned = floor(cbrt(lifetime/1e8))` (plan's 1e12 deviated: unreachable at our scale). Unspent sparks = +1% Ohr; ordered 6-upgrade chain bought with sparks, each gated on the previous, so bonus vs permanence is a real trade. Effects reuse `permEffect` (no dropped-modifier class of bug). Spark progress card in the goal grid.
+- [x] **B2 Golden Prompts** — spawn every 60–180s (only when production > 0), claimed by the next graded answer inside a 20s window; Gale ×7/77s · Dew 2h · Rush ×3 tap/60s. Wrong/late fizzles; expired prompts auto-clear. Rewards use the *buffed* rate, matching Time Warp.
+- [x] **C1 Figs** — 20h timer, harvest grants 4h production × (1+level·0.1), levels grove 1–10, replants. Offline ladder intentionally NOT nerfed to 5% (contradicts DESIGN.md "offline = gift"; shipped 50%→100% already implements the ladder). Harvest is a deliberate tap, not quiz-gated (misclick would punish).
+- [x] **C2 Achievements→Shemen + daily** — 10 state-derived achievements, +4% Ohr each; daily lesson = 10 correct → 1h production, once/day, resets on rollover.
+- [x] **D3** — `/api/v1/hebrew/analytics` now also writes the indexed `hebrew_analytics_events` table (JSONL kept as never-fail fallback). Malformed `t` can no longer 500 it (`_safe_epoch`); connection closed in `finally`.
+- [x] **Critic pass → 5 real bugs found & fixed:** (1) the fig mount effect's value-commit clobbered the functional offline `pendingOffline` update → offline Ohr shown but not credited; merged to a single commit. (2) endpoint 500 on malformed `t` / leaked connection. (3) Dew/fig/daily omitted buffs (Dew could grant 0) → all use the buffed rate now. (4) expired prompts blocked future spawns → auto-clear. (5) `words100` achievement was unreachable (`state.words` is never written) → replaced with reachable `own22`.
+- Tests: idle-game self-checks **123 ok / 0 fail**; `vite build` green (1m16s, 403 modules, 0 warnings); full-app esbuild bundle green; `py_compile` + function-level endpoint test with malformed payloads green.
+- Note: the running backend on :8002 has no `--reload`, so the D3 change needs a restart before it's live.
+- Known remaining: pre-existing impure `setState` updaters (offline/claimOffline/boost/quest/feedback/mute) still do side effects in the reducer — StrictMode can double-run them. Follow-up migration to the `commit` pattern.
+- `state.words` is still never assigned, so the `globalMultiplier` word term (+2%/word) is dormant — pre-existing, not touched.
 
 
 
-- Blockers: none
-- Decisions made: mechanics-only clone; Ohr=wait/Kavod=know; punishment ban; local-first analytics
-- Tests: idle-game.js self-checks green (39+); vite build green; vitest 116/116 (prior session)
+
+- Blockers: vitest unusable on Node v26.8.1 (startup hang, 0 tests run)
+- Decisions made: mechanics-only clone; Ohr=wait/Kavod=know; punishment ban; local-first analytics; A1 = letter synergy (12-tier ladder superseded by DESIGN.md); Aliyah BASE 1e8 not 1e12 (reachability); offline not nerfed; figs not quiz-gated
+- Tests: idle-game.js self-checks green (123); vite build green (1m16s); vitest blocked by environment hang

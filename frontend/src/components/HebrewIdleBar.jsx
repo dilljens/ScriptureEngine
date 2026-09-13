@@ -5,9 +5,14 @@ import {
   QUESTS, questComplete, claimQuest, checkStreakMilestone, nextGoals,
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
   LETTER_UPGRADE_TIERS, availableLetterUpgrades, buyLetterUpgrade, letterMultiplier,
-  KAVOD_UPGRADES, buyPerm, hasPerm,
+  KAVOD_UPGRADES, buyPerm, hasPerm, synergyMultiplier, workshopSynergy,
   loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer,
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
+  sparksEarned, availableSparks, sparkBonus, sparkProgress,
+  HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly,
+  GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
+  figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
+  ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
 import GolemCanvas from './GolemCanvas'
@@ -57,6 +62,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [milestoneFlash, setMilestoneFlash] = useState(null)
   const [questFlash, setQuestFlash] = useState(null)
   const [boostFlash, setBoostFlash] = useState(null)
+  const [goldenFlash, setGoldenFlash] = useState(null)
   const [prestigeTick, setPrestigeTick] = useState(0)
   const [showGolems, setShowGolems] = useState(true)
   const [lastGain, setLastGain] = useState(null) // {value, crit, kavod, n} tap floater
@@ -93,6 +99,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const scalars = difficultyScalars(diff)
   const acc = recentAccuracy(diff)
   const perSec = statePerSecond(state, mastery)
+  const workshopSyn = workshopSynergy(state.owned, mastery)
+  const synPct = Math.round((workshopSyn - 1) * 100)
+  const sparks = availableSparks(state)
+  const sparksTotal = sparksEarned(state.lifetimeOhr || 0)
+  const sparkProg = sparkProgress(state.lifetimeOhr || 0)
   const goals = nextGoals(state, diff)
   const unclaimedQuests = QUESTS.filter(q => !state.quests?.[q.id] && questComplete(state, q)).length
 
@@ -101,12 +112,15 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     let n = 0
     const t = setInterval(() => {
       const s = stateRef.current
-      const gain = statePerSecond(s, mastery) * buffMultiplier(s)
+      const rate = statePerSecond(s, mastery)
+      const gain = rate * buffMultiplier(s)
       const next = {
         ...s,
         ohr: s.ohr + gain,
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
+      spawnGoldenPrompt(next, Date.now(), Math.random, rate) // only when due + production exists
+      expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
       if (++n % 5 === 0) saveIdleState(next)
       commit(next)
     }, 1000)
@@ -127,13 +141,26 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         const r = applyCorrectAnswer(next, rate)
         gainInfo = { value: r.gained, crit: r.crit, kavod: r.kavod, n: next.taps }
         milestoneInfo = checkStreakMilestone(next)
+        recordDailyCorrect(next)
         if (r.crit && onEarn) onEarn(r.gained)
       } else {
         applyWrongAnswer(next)
       }
+      // Golden Prompt resolves on this very answer: correct in-window wins, else fizzle.
+      // Rewards use the same effective rate as Time Warp/HUD (buffs included) so
+      // a Gale doesn't make the Dew worth 1/7 of the warp.
+      const goldenRes = resolveGoldenPrompt(next, !!correct, Date.now(), rate * buffMultiplier(next))
+      let goldenInfo = null
+      if (goldenRes?.claimed) goldenInfo = { name: goldenRes.claimed.name, desc: goldenRes.claimed.desc, fizzled: false }
+      else if (goldenRes?.fizzled) goldenInfo = { fizzled: true }
       saveIdleState(next)
       commit(next)
       if (gainInfo) setLastGain(gainInfo)
+      if (goldenInfo) {
+        setGoldenFlash(goldenInfo)
+        setTimeout(() => setGoldenFlash(null), 4000)
+        try { logEvent('golden', goldenInfo) } catch {}
+      }
       setAnswerPulse({ n: Date.now(), correct: !!correct })
       if (milestoneInfo) {
         try { logEvent('milestone', milestoneInfo) } catch {}
@@ -145,31 +172,35 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     return () => window.removeEventListener('hebrew-idle-answer', handler)
   }, [mastery, onEarn])
 
-  // Offline earnings → pending claim (tap-to-claim, Shark Game style).
+  // Mount: plant the first fig AND settle offline earnings in ONE commit.
+  // (Two separate commits here would let the later value-update clobber the
+  // offline pendingOffline queued by an earlier functional update.)
   useEffect(() => {
     try {
       const s = loadIdleState()
+      const next = { ...s }
+      if (!next.figs?.readyAt) {
+        next.figs = { level: next.figs?.level || 0, readyAt: 0 }
+        plantFig(next)
+      }
       if (s.pendingOffline >= 1) {
-        setState(prev => ({ ...prev, pendingOffline: s.pendingOffline }))
         setOfflinePopup({ earned: Math.floor(s.pendingOffline), claim: true })
+        commit(next); saveIdleState(next)
         return
       }
       const elapsed = (Date.now() - (s.lastSeen || Date.now())) / 1000
       if (elapsed > 60) {
-        const atDisconnect = statePerSecond(s, mastery)
-        const earned = offlineEarnings(atDisconnect, elapsed, s.tracks, s.roots, s.perm)
+        const atDisconnect = statePerSecond(next, mastery)
+        const earned = offlineEarnings(atDisconnect, elapsed, next.tracks, next.roots, next.perm)
         if (earned >= 1) {
-          const capHrs = (s.roots || 0) >= 10 ? 24 : 12
+          const capHrs = (next.roots || 0) >= 10 ? 24 : 12
           const hrs = (Math.min(elapsed, capHrs * 3600) / 3600).toFixed(1)
-          setState(prev => {
-            const next = { ...prev, pendingOffline: (prev.pendingOffline || 0) + earned }
-            saveIdleState(next)
-            return next
-          })
+          next.pendingOffline = (next.pendingOffline || 0) + earned
           setOfflinePopup({ earned: Math.floor(earned), hrs, claim: true })
           try { logEvent('offline_earned', { earned: Math.floor(earned), elapsed_h: Math.round((elapsed / 3600) * 10) / 10 }) } catch {}
         }
       }
+      commit(next); saveIdleState(next)
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -283,6 +314,39 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     }
   }
 
+  // Heavenly chain: spend Aliyah sparks (pure — computed from the mirror, applied once).
+  const buyHeaven = (id) => {
+    const next = { ...stateRef.current }
+    if (!buyHeavenly(next, id)) return
+    commit(next); saveIdleState(next)
+    try { logEvent('upgrade', { kind: 'heavenly', id }) } catch {}
+    const u = HEAVENLY_UPGRADES.find(x => x.id === id)
+    const left = availableSparks(next)
+    setBoostFlash({ text: `💫 ${u.icon} ${u.name} — ${u.desc}. ${left} unspent spark${left === 1 ? '' : 's'} still giving +${left}% Ohr.` })
+    setTimeout(() => setBoostFlash(null), 4500)
+  }
+
+  // Fig harvest + daily claim (pure — from the mirror, applied once).
+  const harvest = () => {
+    const next = { ...stateRef.current }
+    const granted = harvestFig(next, statePerSecond(next, mastery) * buffMultiplier(next))
+    if (granted <= 0) return
+    commit(next); saveIdleState(next)
+    try { logEvent('fig', { granted: Math.floor(granted), level: next.figs.level }) } catch {}
+    setBoostFlash({ text: `🍯 Fig harvested! +${Math.floor(granted).toLocaleString()} Ohr · grove level ${next.figs.level} (+${next.figs.level * 10}% Ohr forever).` })
+    setTimeout(() => setBoostFlash(null), 4500)
+  }
+
+  const claimDailyReward = () => {
+    const next = { ...stateRef.current }
+    const granted = claimDaily(next, statePerSecond(next, mastery) * buffMultiplier(next))
+    if (granted <= 0) return
+    commit(next); saveIdleState(next)
+    try { logEvent('daily', { granted: Math.floor(granted) }) } catch {}
+    setBoostFlash({ text: `📅 Daily lesson complete! +${Math.floor(granted).toLocaleString()} Ohr. Come back tomorrow.` })
+    setTimeout(() => setBoostFlash(null), 4500)
+  }
+
   const giveFeedback = (kind) => {
     setState(s => {
       const next = { ...s, difficulty: applyFeedback(s.difficulty || { bias: 0, recent: [] }, kind) }
@@ -300,6 +364,19 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const frenzyActive = frenzySecs > 0
   const effPerSec = perSec * buffMultiplier(state)
   const warpPrice = warpCost(state)
+  const goldenSecs = goldenRemainingSec(state)
+  const goldenPrompt = state.golden ? GOLDEN_PROMPTS.find(p => p.id === state.golden.id) : null
+  const shemenPct = Math.round((shemenMultiplier(state) - 1) * 100)
+  const earnedAch = achievementsEarned(state)
+  const figIsReady = figReady(state)
+  const figHoursLeft = Math.ceil(figRemainingSec(state) / 3600)
+  const figLevel = state.figs?.level || 0
+  const figPct = figIsReady ? 1 : figLevel >= 0 && state.figs?.readyAt
+    ? Math.max(0, Math.min(1, 1 - figRemainingSec(state) / (FIG_RIPEN_HOURS * 3600)))
+    : 0
+  const dailyOk = dailyReady(state)
+  const dailyCount = Math.min(DAILY_GOAL, state.daily?.correct || 0)
+  const dailyClaimed = !!state.daily?.claimed
 
   return (
     <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800">
@@ -320,9 +397,27 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''} · tap {tapValue(perSec, state.streak, state.tracks, diff, state.perm).toFixed(1)} · 🔥{state.streak || 0}
+            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''} · tap {tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)).toFixed(1)} · 🔥{state.streak || 0}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
             <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 {Math.floor(state.kavod || 0)}</span>
+            {synPct > 0 && (
+              <span className="text-amber-600 dark:text-amber-400"
+                title={`Breadth bonus: every letter you own boosts the others (+2% each, +4% more per mastered). Currently +${synPct}%, cap +100%.`}>
+                {' '}· ⚡ +{synPct}%
+              </span>
+            )}
+            {(sparksTotal > 0 || sparkProg.pct > 0) && (
+              <span className="text-teal-600 dark:text-teal-400"
+                title="Aliyah sparks — cube root of lifetime Ohr. Each UNSPENT spark is +1% Ohr; spend them on the heavenly chain (⬆️ Upgrades).">
+                {' '}· 💫 {sparks}{sparks > 0 ? ` +${Math.round((sparkBonus(sparks) - 1) * 100)}%` : ''}
+              </span>
+            )}
+            {shemenPct > 0 && (
+              <span className="text-lime-600 dark:text-lime-500"
+                title={`Shemen (oil): +4% Ohr for each achievement — ${earnedAch.length}/${ACHIEVEMENTS.length} earned.`}>
+                {' '}· 🫒 +{shemenPct}%
+              </span>
+            )}
           </div>
           {/* Tap floater: every correct answer pops its reward */}
           {lastGain && (
@@ -376,6 +471,23 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
+      {/* Golden Prompt — quiz-gated buff, claimed by the next correct answer */}
+      {state.golden && goldenPrompt && (
+        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium flex items-center gap-2">
+          <span className="text-lg">{goldenPrompt.icon}</span>
+          <span className="flex-1">
+            <b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}
+          </span>
+        </div>
+      )}
+      {goldenFlash && (
+        <div className={`idle-pop mt-2 p-2 rounded-lg text-white text-sm text-center font-medium ${goldenFlash.fizzled ? 'bg-neutral-500' : 'bg-yellow-500'}`}>
+          {goldenFlash.fizzled
+            ? '🌫️ The prompt faded — no harm done. Another will come.'
+            : `✨ ${goldenFlash.name} — ${goldenFlash.desc}!`}
+        </div>
+      )}
+
       {/* Next goals — always answers "what am I working toward?" */}
       <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
         {goals.gen && (
@@ -398,6 +510,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${goals.root.pct * 100}%` }} />
           </div>
         </div>
+        {((state.roots || 0) > 0 || sparksTotal > 0) && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 sm:col-span-2">
+            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
+              <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {Math.floor(sparkProg.need).toLocaleString()} lifetime Ohr</span>
+              <span className="tabular-nums">{Math.round(sparkProg.pct * 100)}%{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+              <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${sparkProg.pct * 100}%` }} />
+            </div>
+          </div>
+        )}
       </div>
 
       {prestigeFlash && (
@@ -461,7 +584,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const m = mastery[i] || 0
               return (
                 <button key={i} onClick={() => buy(i)}
-                  title={`${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}%`}
+                  title={`${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
                   className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{L}</div>
                   <div className="text-[9px] font-mono text-neutral-500 tabular-nums">
@@ -519,6 +642,62 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             })}
           </div>
         )}
+      </div>
+
+      {/* Grove + daily — the day-scale retention loop */}
+      <div className="mt-2 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
+        <div className="px-2.5 py-2 space-y-2">
+          {/* Fig — 20h timer */}
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{figIsReady ? '🍯' : '🌱'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+                <span>Fig <b>lvl {figLevel}</b>{figLevel > 0 && <span> · +{figLevel * 10}% Ohr</span>}{figLevel >= FIG_MAX_LEVEL && <span> · max</span>}</span>
+                <span className="tabular-nums">{figIsReady ? 'ripe!' : state.figs?.readyAt ? `${figHoursLeft}h left` : 'planting…'}</span>
+              </div>
+              <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
+                <div className={`h-full rounded-full ${figIsReady ? 'bg-amber-500' : 'bg-lime-500'}`} style={{ width: `${figPct * 100}%` }} />
+              </div>
+            </div>
+            <button onClick={harvest} disabled={!figIsReady}
+              className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+              Harvest
+            </button>
+          </div>
+          {/* Daily lesson */}
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📅</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+                <span>Daily lesson · answer {DAILY_GOAL} correctly</span>
+                <span className="tabular-nums">{dailyCount}/{DAILY_GOAL}{dailyClaimed ? ' · done ✓' : ''}</span>
+              </div>
+              <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
+                <div className={`h-full rounded-full ${dailyClaimed ? 'bg-green-500' : 'bg-indigo-400'}`} style={{ width: `${(dailyCount / DAILY_GOAL) * 100}%` }} />
+              </div>
+            </div>
+            <button onClick={claimDailyReward} disabled={!dailyOk}
+              className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${dailyOk ? 'idle-pop bg-green-500 hover:bg-green-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+              {dailyClaimed ? '✓' : 'Claim'}
+            </button>
+          </div>
+          {/* Achievements → Shemen */}
+          <div>
+            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-0.5">
+              <span>🏆 Achievements · each +4% Ohr (🫒 Shemen)</span>
+              <span className="tabular-nums">{earnedAch.length}/{ACHIEVEMENTS.length}</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {ACHIEVEMENTS.map(a => {
+                const has = earnedAch.some(x => x.id === a.id)
+                return (
+                  <span key={a.id} title={`${a.name} — ${a.desc}${has ? '' : ' (locked)'}`}
+                    className={`text-sm ${has ? '' : 'opacity-30 grayscale'}`}>{a.icon}</span>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Upgrades — the choice axis. Letter ×2s (Ohr) + permanents (Kavod). */}
@@ -607,6 +786,35 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 )
               })}
             </div>
+
+            {/* Heavenly chain — Aliyah sparks, bought in order */}
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+                Heavenly · pay 💫 sparks ({sparks} available{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''})
+              </div>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
+                Bought in order. Unspent sparks give +1% Ohr each, so buying trades bonus for permanence.
+              </p>
+              {HEAVENLY_UPGRADES.map(u => {
+                const ownedH = heavenlyOwned(state, u.id)
+                const unlocked = heavenlyUnlocked(state, u.id)
+                const afford = unlocked && sparks >= u.cost
+                return (
+                  <button key={u.id} disabled={ownedH} onClick={() => buyHeaven(u.id)}
+                    className={`w-full min-h-[48px] mb-1 px-2.5 rounded-lg border text-left ${ownedH ? 'border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-900/20 cursor-default' : afford ? 'border-sky-300 dark:border-sky-700 bg-white dark:bg-neutral-800 cursor-pointer active:scale-[0.99]' : 'border-neutral-200 dark:border-neutral-700 opacity-60 cursor-pointer'}`}>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                        {u.icon} {u.name} {ownedH ? <span className="text-green-600">✓</span> : (!unlocked && <span className="text-neutral-400">🔒</span>)}
+                      </span>
+                      <span className={`tabular-nums ${ownedH ? 'text-green-600' : 'text-sky-500'}`}>
+                        {ownedH ? 'owned' : `${u.cost} 💫`}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400">{u.desc}</div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -654,7 +862,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
       <div className="mt-1 text-[10px] text-neutral-400 dark:text-neutral-500">
-        Answer → tap Ohr → buy letters → quests → roots. Green dot = mastered (0.8+). The game watches your accuracy and adjusts — the pace buttons steer it.
+        Answer → tap Ohr → buy letters → quests → roots. Green dot = mastered (0.8+). ⚡ = breadth bonus (each letter you own lifts all the others). The game watches your accuracy and adjusts — the pace buttons steer it.
       </div>
     </div>
   )

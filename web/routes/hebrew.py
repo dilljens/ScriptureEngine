@@ -2765,28 +2765,88 @@ def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
     return {"ok": True, "data": prefs}
 
 
+def _ensure_analytics_table(conn):
+    """Create the analytics table + indexes. Idempotent; safe to call per batch."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS hebrew_analytics_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            t INTEGER NOT NULL,
+            session TEXT,
+            mode TEXT,
+            game TEXT,
+            type TEXT,
+            data TEXT
+        )"""
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_hebrew_analytics_type ON hebrew_analytics_events(type)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_hebrew_analytics_t ON hebrew_analytics_events(t)")
+
+
+def _safe_epoch(value) -> int:
+    """Client-supplied timestamp → a finite int, else 0. Never raises."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return 0
+    if f != f or f in (float("inf"), float("-inf")) or abs(f) > 1e15:
+        return 0
+    return int(f)
+
+
 @router.post("/api/v1/hebrew/analytics")
 def post_hebrew_analytics(body: dict):
     """Append client-side game/learning events for balancing analysis.
 
-    Append-only JSONL at logs/hebrew-analytics.jsonl. Fire-and-forget from the
-    client; never blocks gameplay and never fails the request on a bad batch.
+    Dual-write: JSONL at logs/hebrew-analytics.jsonl (never-fail fallback) plus
+    the queryable hebrew_analytics_events table in memorize.db. Fire-and-forget
+    from the client; never blocks gameplay and never fails on a bad batch.
     """
     events = (body or {}).get("events") or []
     if not isinstance(events, list) or not events:
-        return {"ok": True, "stored": 0}
+        return {"ok": True, "stored": 0, "stored_db": 0}
+    batch = [ev for ev in events[:500] if isinstance(ev, dict)]
     path = BASE_DIR / "logs" / "hebrew-analytics.jsonl"
     stored = 0
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "a", encoding="utf-8") as f:
-            for ev in events[:500]:
-                if isinstance(ev, dict):
-                    f.write(json.dumps(ev, ensure_ascii=False) + "\n")
-                    stored += 1
+            for ev in batch:
+                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+                stored += 1
     except OSError as exc:  # never let telemetry break the app
         log.warning("analytics append failed: %s", exc)
-    return {"ok": True, "stored": stored}
+
+    stored_db = 0
+    if batch and MEM_DB.exists():
+        conn = None
+        try:
+            conn = sqlite3.connect(str(MEM_DB))
+            _ensure_analytics_table(conn)
+            conn.executemany(
+                "INSERT INTO hebrew_analytics_events (t, session, mode, game, type, data) VALUES (?,?,?,?,?,?)",
+                [
+                    (
+                        _safe_epoch(ev.get("t")),
+                        str(ev.get("session") or ""),
+                        str(ev.get("mode") or ""),
+                        str(ev.get("game") or ""),
+                        str(ev.get("type") or ""),
+                        json.dumps(ev.get("data") or {}, ensure_ascii=False),
+                    )
+                    for ev in batch
+                ],
+            )
+            conn.commit()
+            stored_db = len(batch)
+        except Exception as exc:  # telemetry must never break the request
+            log.warning("analytics db insert failed: %s", exc)
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+    return {"ok": True, "stored": stored, "stored_db": stored_db}
 
 
 @router.post("/api/v1/hebrew/prefs")
