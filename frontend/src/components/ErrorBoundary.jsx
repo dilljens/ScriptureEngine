@@ -1,4 +1,5 @@
 import React from 'react'
+import { currentSessionToken } from '../api'
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -21,6 +22,7 @@ export default class ErrorBoundary extends React.Component {
     try {
       const payload = {
         level: 'error',
+        session_token: currentSessionToken(), // server requires a valid session (anonymous reports are dropped with 401)
         message: error?.message || String(error),
         stack: error?.stack || '',
         componentStack: errorInfo?.componentStack || '',

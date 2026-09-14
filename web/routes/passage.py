@@ -1,6 +1,7 @@
 """Passage-level connection routes."""
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from lib.db import get_db
 from lib.api.passage import (
     get_passage_connections,
@@ -10,6 +11,18 @@ from lib.api.passage import (
 )
 
 router = APIRouter(prefix="/api/v1")
+
+
+def _teaching_404(message: str, hint: str | None = None,
+                  see: str | None = "/api/v1/orient") -> JSONResponse:
+    """Same teaching-404 envelope as the verse/chapter routes (web/server.py):
+    {ok, error, detail, hint?, see?} at 404 — one error shape everywhere."""
+    body: dict = {"ok": False, "error": message, "detail": message}
+    if hint:
+        body["hint"] = hint
+    if see:
+        body["see"] = see
+    return JSONResponse(status_code=404, content=body)
 
 
 @router.get("/passage/{ref}/connections")
@@ -36,6 +49,12 @@ def book_connection_summary(book: str):
     """Get book-level connection summary."""
     conn = get_db()
     result = get_book_summary(conn, book)
+    if isinstance(result, dict) and "error" in result:
+        return _teaching_404(
+            result["error"],
+            hint=("Book ids are short (gen, matt, psa, dc121) — list: /api/v1/books. "
+                  "Books with no verses yet report available:false there."),
+        )
     return result
 
 

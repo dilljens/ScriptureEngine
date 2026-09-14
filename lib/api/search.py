@@ -385,9 +385,10 @@ def semantic_search_text(conn, query, limit=20, mode="hybrid"):
                             FROM verses v JOIN books b ON b.id = v.book_id WHERE v.id = ?
                         """, (vid,)).fetchone()
                         if v:
+                            from lib.api.refs import format_reference
                             results.append({
                                 "verse": vid,
-                                "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+                                "reference": format_reference(v['book_title'], vid, v['chapter'], v['verse']),
                                 "text": (v["text_english"] or "")[:300],
                                 "text_hebrew": (v["text_hebrew"] or "")[:150],
                                 "text_greek": (v["text_greek"] or "")[:150],

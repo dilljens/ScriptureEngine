@@ -283,9 +283,10 @@ def _search_greek(conn, query, limit):
 
 def _format_verse_result(v, score):
     """Format a verse result dict."""
+    from lib.api.refs import format_reference
     return {
         "verse": v["id"],
-        "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+        "reference": format_reference(v["book_title"], v["id"], v["chapter"], v["verse"]),
         "text": (v["text_english"] or "")[:300],
         "text_hebrew": (v["text_hebrew"] or "")[:150],
         "text_greek": (v["text_greek"] or "")[:150],

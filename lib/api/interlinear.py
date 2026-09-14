@@ -98,9 +98,16 @@ def get_interlinear(conn, book, chapter, verse):
             word_data["morph_parsed"] = parse_morph(w["morph"])
         words.append(word_data)
 
-    return {
-        "reference": f"{result.get('book_title', book)} {chapter}:{verse}",
+    from lib.api.refs import format_reference, versification_block
+    payload = {
+        "reference": format_reference(result.get('book_title', book), verse_id, chapter, verse),
         "verse_id": verse_id,
         "word_count": len(words),
         "words": words,
     }
+    # The disclosure belongs HERE — this side uses MT numbering, so a word
+    # study runs on the shifted verse without any signal otherwise.
+    _vblock = versification_block(book, chapter)
+    if _vblock is not None:
+        payload["versification"] = _vblock
+    return payload

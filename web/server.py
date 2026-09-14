@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from lib.api import TOOL_REGISTRY, call_tool
+from lib.api.refs import format_reference, normalize_ref
 from lib.connections.pardes import LEVELS as PARDES_LEVELS
 from lib.connections.pardes import get_pardes_level
 from lib.controls.calibration import (
@@ -439,6 +440,17 @@ def load_ram_cache():
     global BOOKS_CACHE
     _bt0 = _time.time()
     works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY position").fetchall()
+    # Verse counts per book: the catalog must never disagree with the content
+    # store (a listed book with zero verses misleads consumers into blaming
+    # their own refs). `available: false` marks known gaps explicitly.
+    counts = {}
+    try:
+        for row in conn.execute(
+            "SELECT SUBSTR(id, 1, INSTR(id, '.') - 1) AS b, COUNT(*) AS n FROM verses GROUP BY b"
+        ).fetchall():
+            counts[row["b"]] = row["n"]
+    except Exception:
+        counts = {}
     books_result = []
     for w in works_rows:
         books = conn.execute(
@@ -449,7 +461,13 @@ def load_ram_cache():
             "id": w["id"],
             "title": w["title"],
             "subtitle": w["subtitle"],
-            "books": [{"id": b["id"], "title": b["title"], "subtitle": b["subtitle"]} for b in books],
+            "books": [{
+                "id": b["id"],
+                "title": b["title"],
+                "subtitle": b["subtitle"],
+                "verses": counts.get(b["id"], 0),
+                "available": counts.get(b["id"], 0) > 0,
+            } for b in books],
         })
     BOOKS_CACHE = {"works": books_result, "total": len(books_result)}
     log.info("Cache loaded", cache="books", count=len(books_result), duration_ms=int((_time.time()-_bt0)*1000))
@@ -547,6 +565,9 @@ _REF_SHAPE_RE = re.compile(r"^[a-z0-9_]+\.\d+(\.\d+)?$", re.IGNORECASE)
 
 def _ref_hint(ref: str) -> str:
     """The one sentence that unblocks the most common first-call failure."""
+    if re.search(r"(?i)\bdc\b|d&c|doctrine", ref):
+        return ("D&C sections are books (dc121): try dc121.121.7, or the short "
+                "forms dc121.7 / dc.121.7. Book ids: /api/v1/books")
     if ":" in ref or " " in ref:
         fixed = ref.replace(":", ".").replace(" ", ".")
         return (f"Use dots between parts — try '{fixed}'. Book IDs are short "
@@ -567,6 +588,8 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
     original_ref = ref  # keep the caller's form — the hint should echo it
     ref = ref.replace(":", ".").replace(" ", ".")
     import re
+    # D&C short forms (dc121.7, dc.121.7, D&C 121:7) expand to canonical ids.
+    ref = normalize_ref(ref)
 
     # Try RAM cache first, fall back to SQLite for multi-worker mode
     r = VERSE_CACHE.get(ref) if VERSE_CACHE else None
@@ -643,7 +666,8 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
             pass  # Non-critical
     resp = {
         "verse_id": vid,
-        "reference": f"{r.get('book_title', '')} {r.get('chapter','')}:{r.get('verse','')}",
+        "reference": format_reference(
+            r.get('book_title', ''), r.get('id', ''), r.get('chapter', ''), r.get('verse', '')),
         "text_english": r["text_english"],
         "text_hebrew": r.get("text_hebrew") or None,
         "text_greek": native_greek or lxx_fallback,
@@ -740,18 +764,17 @@ def get_verse(ref: str, show_signals: bool | None = Query(False, description="En
         except Exception:
             resp["disagreements"] = {"verse": vid, "count": 0, "disagreements": []}
 
-    # Psalms versification note (field note #4): English payloads are
-    # KJV-numbered; the interlinear indexes MT text where a superscription
-    # counts as verse 1. The corpus has no per-verse MT mapping table, so we
-    # disclose the convention instead of fabricating one.
-    if vid.startswith("psa."):
-        resp["versification"] = {
-            "english_scheme": "kjv",
-            "interlinear_scheme": "mt",
-            "note": ("For superscripted psalms the interlinear index is "
-                     "KJV + 1 (e.g. KJV psa.69.14 = interlinear 69:15)."),
-            "see": "/api/v1/orient/refs",
-        }
+    # Versification disclosure (field notes + follow-up): English payloads are
+    # KJV-numbered; the interlinear indexes MT text. The shift is per-psalm
+    # (0-2 measured, e.g. Psalm 51 is +2) and per-chapter elsewhere (Jonah 1
+    # is -1) — never a blanket rule. Measured numbers ship on the payload;
+    # unmeasured psalms say so instead of guessing.
+    _vparts = vid.split(".")
+    if len(_vparts) >= 2:
+        from lib.api.refs import versification_block
+        _vblock = versification_block(_vparts[0], _vparts[1])
+        if _vblock is not None:
+            resp["versification"] = _vblock
 
     # Context window — surrounding verses for inline preview
     if context > 0:
@@ -931,7 +954,7 @@ def search(
                 results.append({
                     "verse": r["verse"],
                     "text": r["text"][:200],
-                    "book": r["reference"].split(" ")[0],
+                    "book": r.get("book") or r["reference"].split(" ")[0],
                     "language": "english",
                     "similarity": r.get("similarity", 0.5),
                 })
@@ -1078,9 +1101,13 @@ def sod(verse: str | None = None, atbash_word: str | None = None, acrostic_book:
 # ─── PaRDeS ───
 
 @app.get("/api/v1/verses/{ref}/guide")
-def get_passage_guide(ref: str):
+def get_passage_guide(ref: str, layer: str = Query("", description="Restrict to one connection layer (e.g. intertextual, sod). See orient/layers.")):
     """Instant passage guide from RAM cache — sub-ms, zero disk."""
     ref = ref.replace(":", ".").replace(" ", ".").lower()
+    try:
+        ref = normalize_ref(ref)
+    except Exception:
+        pass
     import re
     r = VERSE_CACHE.get(ref)
     if not r:
@@ -1093,13 +1120,27 @@ def get_passage_guide(ref: str):
     guide = GUIDE_CACHE.get(r["id"])
     if not guide:
         return {"ok": True, "data": {"verse": r["id"], "note": "No connections"}}
+    connections = json.loads(guide["connections_json"])
+    if layer:
+        # Buckets are keyed by layer name (sod, intertextual, ...).
+        match = next((k for k in connections if k.lower() == layer.lower()), None)
+        if match is None:
+            return JSONResponse(status_code=400, content={
+                "ok": False,
+                "error": f"Unknown layer: {layer}",
+                "detail": f"Unknown layer: {layer}",
+                "hint": f"Layers on this verse: {sorted(connections)}. See orient/layers.",
+                "see": "/api/v1/orient",
+            })
+        connections = {match: connections[match]}
+    total = sum(len(v) for v in connections.values()) if isinstance(connections, dict) else len(connections)
     return {
         "ok": True,
         "data": {
             "verse": r["id"],
-            "connections": json.loads(guide["connections_json"]),
-            "total_connections": guide["total_connections"],
-            "layer_count": guide["layer_count"],
+            "connections": connections,
+            "total_connections": total,
+            "layer_count": len(connections) if isinstance(connections, dict) else 1,
             "gematria": json.loads(guide["gematria_json"]) if guide.get("gematria_json") and guide["gematria_json"] != "null" else None,
             "quality_summary": json.loads(guide["quality_summary"]) if guide.get("quality_summary") else None,
         }
@@ -1504,7 +1545,8 @@ def _format_verse_result(v, score):
     """Format a verse result dict."""
     return {
         "verse": v["id"],
-        "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+        "reference": format_reference(v["book_title"], v["id"], v["chapter"], v["verse"]),
+        "book": v["book_title"],
         "text": (v["text_english"] or "")[:300],
         "text_hebrew": (v["text_hebrew"] or "")[:150],
         "text_greek": (v["text_greek"] or "")[:150],
@@ -1704,6 +1746,14 @@ def get_books():
     # Fall back to direct SQLite for multi-worker or cold start
     conn = get_db()
     works_rows = conn.execute("SELECT id, title, subtitle FROM works ORDER BY position").fetchall()
+    counts = {}
+    try:
+        for row in conn.execute(
+            "SELECT SUBSTR(id, 1, INSTR(id, '.') - 1) AS b, COUNT(*) AS n FROM verses GROUP BY b"
+        ).fetchall():
+            counts[row["b"]] = row["n"]
+    except Exception:
+        counts = {}
     result = []
     for w in works_rows:
         books = conn.execute(
@@ -1714,7 +1764,13 @@ def get_books():
             "id": w["id"],
             "title": w["title"],
             "subtitle": w["subtitle"],
-            "books": [{"id": b["id"], "title": b["title"], "subtitle": b["subtitle"]} for b in books],
+            "books": [{
+                "id": b["id"],
+                "title": b["title"],
+                "subtitle": b["subtitle"],
+                "verses": counts.get(b["id"], 0),
+                "available": counts.get(b["id"], 0) > 0,
+            } for b in books],
         })
     conn.close()
     return {"ok": True, "data": {"works": result, "total": len(result)}}
@@ -1852,10 +1908,10 @@ def get_chapter_connections(ref: str):
 
     /api/v1/connections/chapter/isa.55
     """
-    ref_clean = ref.strip("/")
+    ref_clean = normalize_ref(ref.strip("/"), expect="chapter")
     parts = ref_clean.split(".")
     if len(parts) < 2:
-        raise HTTPException(status_code=400, detail="Use book.chapter")
+        raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
     book_id = parts[0]
     chapter_num = int(parts[1])
     prefix = f"{book_id}.{chapter_num}.%"
@@ -2228,6 +2284,27 @@ def _bind_tool_user(tool_name: str, args: dict, request: Request, session_token:
         raise HTTPException(401, "session_token required for a user-scoped tool")
     args["user_id"] = "default"
 
+def _validate_tool_args(tool_name: str, schema: dict, args: dict):
+    """422 (not 500) when required tool params are missing — the teaching-error
+    treatment for /tools/{name}, naming the missing parameter. Returns a
+    JSONResponse on failure, None when the call may dispatch."""
+    required = schema.get("required", []) or []
+    missing = [p for p in required if p not in args or args[p] is None]
+    if not missing:
+        return None
+    names = ", ".join(f"'{p}'" for p in missing)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "ok": False,
+            "error": f"Missing required parameter(s) for {tool_name}: {names}",
+            "detail": f"Missing required parameter(s) for {tool_name}: {names}",
+            "hint": f"See the parameter schema at GET /api/v1/tools (entry '{tool_name}')",
+            "see": "/api/v1/tools",
+        },
+    )
+
+
 @app.get("/api/v1/tools/{tool_name:path}")
 def call_tool_get(tool_name: str, request: Request):
     """Call any registered tool by name — auto-generated from the shared tool registry.
@@ -2274,6 +2351,9 @@ def call_tool_get(tool_name: str, request: Request):
             except (ValueError, json.JSONDecodeError):
                 typed_args[key] = val
 
+    bad = _validate_tool_args(tool_name, schema, typed_args)
+    if bad is not None:
+        return bad
     _bind_tool_user(tool_name, typed_args, request, session_token)
 
     conn = get_db()
@@ -2299,6 +2379,10 @@ def call_tool_post(tool_name: str, body: dict, request: Request):
 
     args = dict(body or {})
     session_token = args.pop("session_token", "")
+    fn, schema, _desc = TOOL_REGISTRY[tool_name]
+    bad = _validate_tool_args(tool_name, schema, args)
+    if bad is not None:
+        return bad
     _bind_tool_user(tool_name, args, request, session_token)
     conn = get_db()
     try:
@@ -2944,7 +3028,7 @@ def get_chapter(ref: str):
     /api/v1/chapter/matt.5      → All data for Matthew 5
     /api/v1/chapter/gen.1       → All data for Genesis 1
     """
-    ref_clean = ref.strip("/")
+    ref_clean = normalize_ref(ref.strip("/"), expect="chapter")
     parts = ref_clean.split(".")
     if len(parts) < 2:
         raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
@@ -2963,7 +3047,7 @@ def get_chapter(ref: str):
 
     if not verse_rows:
         conn.close()
-        raise HTTPException(status_code=404, detail=f"Chapter not found: {ref_clean}")
+        return _teaching_404(f"Chapter not found: {ref_clean}", hint=_ref_hint(ref_clean))
 
     verse_list = [dict(r) for r in verse_rows]
     verse_ids = [v["id"] for v in verse_list]
@@ -3062,6 +3146,49 @@ def get_chapter(ref: str):
     }}
 
 
+@app.get("/api/v1/chapter/{ref}/guides")
+def get_chapter_guides(ref: str, layer: str = Query("", description="Restrict every guide to one connection layer. See orient/layers.")):
+    """Per-verse connection guides for a whole chapter in one call.
+
+    /api/v1/chapter/psa.110/guides → what /verses/{ref}/guide returns,
+    for every verse in the chapter. Collapses a 441-request week to 19
+    (inbox: batch the connections the way verses are already batched).
+    """
+    ref_clean = normalize_ref(ref.strip("/"), expect="chapter")
+    parts = ref_clean.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
+    book_id, chapter_num = parts[0], int(parts[1])
+    conn = get_db()
+    verse_rows = conn.execute(
+        "SELECT id FROM verses WHERE book_id = ? AND chapter = ? ORDER BY verse",
+        (book_id, chapter_num)).fetchall()
+    conn.close()
+    if not verse_rows:
+        return _teaching_404(f"Chapter not found: {ref_clean}", hint=_ref_hint(ref_clean))
+    guides = []
+    for (vid,) in [tuple(r) for r in verse_rows]:
+        guide = GUIDE_CACHE.get(vid) if GUIDE_CACHE else None
+        if not guide:
+            guides.append({"verse": vid, "note": "No connections"})
+            continue
+        connections = json.loads(guide["connections_json"])
+        if layer:
+            match = next((k for k in connections if k.lower() == layer.lower()), None)
+            if match is None:
+                return JSONResponse(status_code=400, content={
+                    "ok": False,
+                    "error": f"Unknown layer: {layer}",
+                    "detail": f"Unknown layer: {layer}",
+                    "hint": "See orient/layers for the layer table.",
+                    "see": "/api/v1/orient",
+                })
+            connections = {match: connections[match]}
+        total = sum(len(v) for v in connections.values()) if isinstance(connections, dict) else 0
+        guides.append({"verse": vid, "connections": connections, "total_connections": total})
+    return {"ok": True, "data": {"chapter": ref_clean, "guides": guides, "verses": len(guides)}}
+
+
 @app.get("/api/v1/chapter/{ref}/entities")
 def get_chapter_entities(ref: str):
     """Get all entities (people, places, concepts) for verses in a chapter.
@@ -3069,7 +3196,7 @@ def get_chapter_entities(ref: str):
     /api/v1/chapter/isa.55/entities   → Entities in Isaiah 55
     /api/v1/chapter/gen.1/entities    → Entities in Genesis 1
     """
-    ref_clean = ref.strip("/")
+    ref_clean = normalize_ref(ref.strip("/"), expect="chapter")
     parts = ref_clean.split(".")
     if len(parts) < 2:
         raise HTTPException(status_code=400, detail="Use format: book.chapter (e.g., isa.55)")
@@ -3085,7 +3212,7 @@ def get_chapter_entities(ref: str):
     ).fetchall()
     if not verse_rows:
         conn.close()
-        raise HTTPException(status_code=404, detail=f"Chapter not found: {ref_clean}")
+        return _teaching_404(f"Chapter not found: {ref_clean}", hint=_ref_hint(ref_clean))
 
     verse_ids = [r["id"] for r in verse_rows]
     placeholders = ",".join("?" for _ in verse_ids)

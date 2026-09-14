@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from lib.db import get_db
+from lib.api.refs import format_reference
 from lib.api.sefirot import lookup_sefirot, get_sefirah_info
 
 router = APIRouter()
@@ -88,7 +89,8 @@ def get_sefirah_verses(sefirah: str, limit: int = Query(50, ge=1, le=500)):
         "verses": [
             {
                 "verse": v["verse_id"],
-                "reference": f"{v['book_title']} {v['chapter']}:{v['verse']}",
+                "reference": format_reference(
+                    v['book_title'], v["verse_id"], v['chapter'], v['verse']),
                 "text": (v["text_english"] or "")[:150],
                 "matched_keyword": v["matched_keyword"],
                 "strength": v["strength"],

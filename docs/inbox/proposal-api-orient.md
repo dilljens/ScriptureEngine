@@ -1,5 +1,5 @@
 ---
-status: proposal
+status: implemented
 kind: proposal
 area: api
 author: external

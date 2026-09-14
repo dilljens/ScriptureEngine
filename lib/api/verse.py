@@ -208,8 +208,9 @@ def lookup_verse(conn, book, chapter, verse, version=None):
             default = list(text_versions.keys())[0]
         result["text_english"] = text_versions[default]["text"]
 
+    from lib.api.refs import format_reference
     return {
-        "reference": f"{result.get('book_title', book)} {chapter}:{verse}",
+        "reference": format_reference(result.get('book_title', book), verse_id, chapter, verse),
         "verse_id": verse_id,
         "text_english": result.get("text_english", ""),
         "text_hebrew": result.get("text_hebrew") or None,

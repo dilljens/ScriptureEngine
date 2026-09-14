@@ -9,6 +9,8 @@ router = APIRouter()
 class ForumPostCreate(BaseModel):
     topic_id: int
     content: str
+    # Legacy field, IGNORED server-side: the author is resolved from the
+    # session (user_id/session_token/Authorization), never trusted from the body.
     author: str = "anonymous"
     parent_id: int | None = None
 
@@ -54,14 +56,17 @@ def get_forum_topic(topic_id: str):
     return {"ok": True, "data": {"topic": dict(topic), "posts": [dict(p) for p in posts]}}
 
 
-@router.post("/api/v1/forum/posts", operation_id="forum_create_post")
-def create_forum_post(post: ForumPostCreate):
-    """Create a new post in a forum topic."""
+@router.post("/api/v1/forum/posts", operation_id="forum_create_post",
+               description="Create a post. The author is resolved server-side from user_id/session_token/Authorization (same rule as conversations); a caller-supplied author in the body is IGNORED, so nobody can post as anyone else.")
+def create_forum_post(post: ForumPostCreate, user_id: str = "", session_token: str = "", authorization: str = ""):
+    """Create a new post in a forum topic (author resolved server-side)."""
+    from web.routes.conversations import _owner_id
+    author = _owner_id(user_id, session_token, authorization)
     conn = get_db()
     conn.execute("""
         INSERT INTO forum_posts (topic_id, author, content, parent_id)
         VALUES (?, ?, ?, ?)
-    """, (post.topic_id, post.author, post.content.strip(), post.parent_id))
+    """, (post.topic_id, author, post.content.strip(), post.parent_id))
     conn.execute("UPDATE forum_topics SET post_count = post_count + 1 WHERE id = ?", (post.topic_id,))
     conn.commit()
     conn.close()

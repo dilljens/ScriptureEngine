@@ -21,19 +21,28 @@ TOPICS = {
   (DSS sigla like `1QS` keep their case).
 - **D&C double-numbering:** sections are stored as `dc<section>.<section>.<verse>`
   (e.g. `dc88.88.67` = D&C 88:67). Both chapter numbers are the section.
+  Short forms work everywhere a ref is taken: `dc121.7`, `dc.121.7`,
+  and `D&C 121:7` all resolve to `dc121.121.7`; `dc121` means the chapter.
+  Display strings never repeat the number ("Doctrine and Covenants 121:7").
 - **Psalms versification differs by endpoint** (see below).
 - **DSS material** uses a `dss.` prefix (`dss.1QS...` style rows exist for
   some content); chapter/verse shapes vary by scroll — expect misses when
   probing sigla directly.
 
-## Psalms: two correct conventions
+## Psalms: two correct conventions — and the shift is per-psalm, not +1
 
 The English endpoints use **KJV numbering**. The interlinear tool indexes
-the Hebrew (MT) text, where a superscription counts as verse 1 — so for any
-psalm carrying a title, **interlinear verse N = KJV verse N−1**
-(e.g. KJV `psa.69.14` "Deliver me out of the mire…" is interlinear
-`book=psa&chapter=69&verse=15`). Verse payloads for `psa.*` carry a
-`versification` note. There is no per-verse MT mapping table in this corpus;
+the Hebrew (MT) text. The MT-minus-KJV offset is measured per psalm, not
+stated as a rule: Psalm 51 is **+2**, ten psalms are +1, six are aligned
+(50, 66, 71, 72, 78, 86) — a superscription does NOT predict the shift,
+only verse counts do. Payloads for `psa.*` carry a `versification` block
+with the measured `offset` for that psalm (unmeasured psalms say so).
+The same block rides `scripture_interlinear` responses, which is the side
+that actually uses MT numbering.
+Beyond Psalms: Jonah 1 is **−1**, Jonah 2 is **+1** (also on the payload),
+and Joel, Malachi, Numbers and the Samuels move boundaries the same way —
+unmeasured, so verify word studies against both numbers everywhere.
+There is no per-verse MT mapping table in this corpus;
 verify word studies against both numbers.
 """,
 
@@ -78,6 +87,19 @@ quality-signal breakdown.
 
 Filter any connection listing with `?layer=`; layer semantics differ enough
 that cross-layer score comparison is meaningless.
+
+Route coverage (same question, different doors):
+- `GET /api/v1/verses/{ref}/guide` serves **intertextual** links at verse
+  scale (quotations, allusions, TSK).
+- `GET /api/v1/chapter/{book}/{chapter}/connections` serves **structural**
+  and **interpretive** links at passage scale (parallels, chiasms, readings).
+  The two answers are near-disjoint by design — the chapter route is NOT a
+  cheaper version of the guide.
+- `GET /api/v1/chapter/{ref}/guides` returns the per-verse guide for every
+  verse in a chapter in one call (batch form of the first).
+- `GET /api/v1/search` (full text) reaches what the graph cannot: a hit in
+  search with no graph edge means the relationship is real but unlinked,
+  not absent.
 """,
 
     "limits": """# What this corpus cannot see
@@ -90,6 +112,16 @@ connection."*
   Greek word matches the LXX wording of the verse it echoes — often the
   strongest allusion evidence. `text_greek` fields on OT verses are null by
   design (`has_greek: false`).
+- **Two Pearl of Great Price books have no verses**: Joseph Smith—Matthew
+  (`jsm`) and Articles of Faith (`aoff`) are listed in `/api/v1/books` with
+  `available: false` and zero verses. Joseph Smith—History (`jsh`) is complete
+  (75 verses). A listed-but-empty book is a known gap, not a bad ref.
+- **The connection graph has no Old Testament → Restoration edges.** Search
+  finds what the graph cannot (e.g. Psalm 51:17's "broken heart" family
+  across the Book of Mormon and D&C); the graph carries zero of those links.
+  Treat a missing edge as unlinked, never as evidence of no relationship.
+- **No JST variants loaded.** `text_jst` is absent and `jst_diff` never fires;
+  do not diff English against a JST field that is not there.
 - **Psalms MT numbering** is implicit in the interlinear only; there is no
   MT-numbered verse table (see the `refs` topic).
 - **Cloudflare fronts this site** and rejects the default Python urllib
@@ -125,7 +157,13 @@ _CONVENTIONS = [
     "connection.quality grades confidence, not truth: 'suggested' and 'pattern' "
     "are algorithmic proposals. Verify before citing (topic: quality).",
     "Psalms: English endpoints use KJV numbering, the interlinear uses Hebrew "
-    "(MT); superscripted psalms differ by one (topic: refs).",
+    "(MT); the shift is per-psalm 0-2, never a blanket +1 (topic: refs).",
+    "D&C short forms resolve everywhere a ref is taken: dc121.7, dc.121.7, "
+    "'D&C 121:7' all mean dc121.121.7. Display strings never repeat the number.",
+    "Writes are authenticated except where noted: /debug/log needs a session "
+    "token, /forum/posts resolves the author server-side (a body author is "
+    "ignored), conversations keep a legacy anonymous path. No rate limiter — "
+    "batch endpoints (chapter guides, batch lookup) exist to keep load down.",
 ]
 
 _CAPABILITIES = [

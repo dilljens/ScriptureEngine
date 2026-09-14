@@ -1,6 +1,6 @@
 """Admin/debug/staging/truth-score routes — extracted from server.py."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter()
 
@@ -39,10 +39,14 @@ def staging_list_studies(status: str = "submitted", limit: int = 20):
         return {"ok": False, "error": str(e)}
 
 
-@router.post("/api/v1/debug/log")
+@router.post("/api/v1/debug/log",
+             description="Authenticated client crash reports only. Requires a valid session_token in the body (same session the rest of the user surface uses); anonymous calls get 401. Fields are truncated server-side.")
 def client_error_log(data: dict):
-    """Store client-side error logs for debugging."""
+    """Store client-side error logs for debugging (authenticated)."""
     try:
+        from web.routes.auth import _resolve_user_from_token
+        if not _resolve_user_from_token(data.get("session_token") or ""):
+            raise HTTPException(status_code=401, detail="Invalid session token")
         conn = get_db()
         conn.execute('CREATE TABLE IF NOT EXISTS client_logs ('
             'id INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -53,21 +57,32 @@ def client_error_log(data: dict):
             'user_agent TEXT DEFAULT "",'
             'created_at TEXT DEFAULT (datetime("now"))'
         ')')
+        # Truncate: unbounded third-party inserts are a disk/lock problem
+        # on a 1.4GB SQLite file before they are anything else.
+        msg = str(data.get("message", ""))[:2000]
+        stack = str(data.get("stack", "") or data.get("componentStack", ""))[:8000]
+        url = str(data.get("url", ""))[:512]
+        ua = str(data.get("user_agent", ""))[:512]
         conn.execute(
             "INSERT INTO client_logs (level, message, stack, url, user_agent) VALUES (?,?,?,?,?)",
-            (data.get("level", "error"), data.get("message", ""), data.get("stack", ""),
-             data.get("url", ""), data.get("user_agent", ""))
+            (str(data.get("level", "error"))[:20], msg, stack, url, ua)
         )
         conn.commit()
         conn.close()
         return {"ok": True}
+    except HTTPException:
+        raise
     except Exception:
         return {"ok": False}
 
 
-@router.get("/api/v1/debug/logs")
-def get_client_logs(limit: int = 50):
-    """Get recent client-side error logs."""
+@router.get("/api/v1/debug/logs",
+              description="Read recent client error logs (may contain URLs/user agents). Requires a valid session_token query param.")
+def get_client_logs(limit: int = 50, session_token: str = ""):
+    """Get recent client-side error logs (authenticated)."""
+    from web.routes.auth import _resolve_user_from_token
+    if not _resolve_user_from_token(session_token or ""):
+        raise HTTPException(status_code=401, detail="Invalid session token")
     conn = get_db()
     logs = conn.execute(
         "SELECT * FROM client_logs ORDER BY created_at DESC LIMIT ?",
