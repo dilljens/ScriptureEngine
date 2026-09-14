@@ -88,12 +88,16 @@ def run_all(verbose=False):
     if bad > 0:
         failures.append(f"{bad} connections with invalid source_verse")
 
-    # 5. Duplicates — warn if >5%
+    # 5. Duplicates — warn if >5%. Grouped by the FULL row identity
+    # (source, target, layer, type, subtype), matching the UNIQUE constraint:
+    # rows differing only in subtype (e.g. gematria value 3 vs 4) are distinct
+    # findings, not duplicates. Grouping by 4 columns false-flagged all 76,839
+    # subtype variants as dupes on 2026-09-14.
     dupes = conn.execute("""
         SELECT COUNT(*) FROM (
-            SELECT source_verse, target_verse, layer, type
+            SELECT source_verse, target_verse, layer, type, subtype
             FROM connections WHERE deprecated=0
-            GROUP BY 1,2,3,4 HAVING COUNT(*) > 1
+            GROUP BY 1,2,3,4,5 HAVING COUNT(*) > 1
         )
     """).fetchone()[0]
     dupe_pct = dupes / max(total, 1) * 100
