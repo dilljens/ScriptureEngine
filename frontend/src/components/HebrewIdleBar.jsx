@@ -11,6 +11,7 @@ import {
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly,
   GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
+  PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
   plantVineyard, harvestVine, vineReady, vineRemainingSec, vineyardMultiplier,
   VINE_COUNT, VINE_MAX_LEVEL, VINE_RIPEN_HOURS,
@@ -65,6 +66,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [questFlash, setQuestFlash] = useState(null)
   const [boostFlash, setBoostFlash] = useState(null)
   const [goldenFlash, setGoldenFlash] = useState(null)
+  const [prophetPick, setProphetPick] = useState(null)
   const [prestigeTick, setPrestigeTick] = useState(0)
   const [showGolems, setShowGolems] = useState(true)
   const [lastGain, setLastGain] = useState(null) // {value, crit, kavod, n} tap floater
@@ -146,14 +148,23 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         recordDailyCorrect(next)
         if (r.crit && onEarn) onEarn(r.gained)
       } else {
-        applyWrongAnswer(next)
+        const wres = applyWrongAnswer(next)
+        if (wres?.graced) {
+          setBoostFlash({ text: `🛡️ Streak grace — a wrong answer halved your streak to ${next.streak} instead of resetting it. Once per day.` })
+          setTimeout(() => setBoostFlash(null), 4500)
+        }
       }
       // Golden Prompt resolves on this very answer: correct in-window wins, else fizzle.
       // Rewards use the same effective rate as Time Warp/HUD (buffs included) so
       // a Gale doesn't make the Dew worth 1/7 of the warp.
       const goldenRes = resolveGoldenPrompt(next, !!correct, Date.now(), rate * buffMultiplier(next))
       let goldenInfo = null
-      if (goldenRes?.claimed) goldenInfo = { name: goldenRes.claimed.name, desc: goldenRes.claimed.desc, fizzled: false }
+      if (goldenRes?.choice) {
+        // The Prophet offers — the next answer already resolved, so the choice
+        // itself never expires. Present all three blessings, player takes one.
+        setProphetPick({ options: goldenRes.choice })
+        try { logEvent('prophet', { options: goldenRes.choice }) } catch {}
+      } else if (goldenRes?.claimed) goldenInfo = { name: goldenRes.claimed.name, desc: goldenRes.claimed.desc, fizzled: false }
       else if (goldenRes?.fizzled) goldenInfo = { fizzled: true }
       saveIdleState(next)
       commit(next)
@@ -230,6 +241,12 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   }
 
   const buy = (i) => {
+    if (!exileAllows(state, i)) {
+      // Vow-bound: explain instead of silently ignoring.
+      setBuyHint({ i, need: 0, locked: true })
+      setTimeout(() => setBuyHint(null), 3500)
+      return
+    }
     const owned = state.owned[i] || 0
     const { n, spend } = buyAmount(i)
     if (n <= 0 || state.ohr < spend) {
@@ -253,18 +270,36 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     } catch {}
   }
 
-  const doPrestige = () => {
+  const doPrestige = (intoExile = false) => {
     const target = rootsEarned(state.lifetimeOhr || 0)
     const gained = Math.max(0, target - (state.roots || 0))
     if (gained <= 0) return
     const next = { ...state }
     applyPrestige(next)
+    let exiled = null
+    if (intoExile) {
+      exiled = rollExileLetters()
+      startExile(next, exiled)
+    }
     setState({ ...next }); saveIdleState(next)
-    try { logEvent('prestige', { gained, roots: next.roots, lifetime: Math.floor(next.lifetimeOhr || 0), prestiges: next.prestiges }) } catch {}
-    setPrestigeFlash({ gained })
+    try { logEvent('prestige', { gained, roots: next.roots, lifetime: Math.floor(next.lifetimeOhr || 0), prestiges: next.prestiges, exile: exiled }) } catch {}
+    setPrestigeFlash({ gained, exiled })
     setTimeout(() => setPrestigeFlash(null), 5000)
     setPrestigeTick(t => t + 1)
     if (onEarn) onEarn(0)
+  }
+
+  // Take one of the Prophet's three blessings (the choice itself never expires).
+  const takeBlessing = (id) => {
+    const next = { ...stateRef.current }
+    const rate = statePerSecond(next, mastery) * buffMultiplier(next)
+    const res = applyProphetChoice(next, id, rate)
+    if (res.fizzled) { setProphetPick(null); return }
+    commit(next); saveIdleState(next)
+    setProphetPick(null)
+    try { logEvent('prophet_choice', { id, granted: Math.floor(res.granted || 0) }) } catch {}
+    setGoldenFlash({ name: res.claimed.name, desc: res.claimed.desc, fizzled: false })
+    setTimeout(() => setGoldenFlash(null), 4000)
   }
 
   const buyBoostFrenzy = () => {
@@ -404,6 +439,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const dailyOk = dailyReady(state)
   const dailyCount = Math.min(DAILY_GOAL, state.daily?.correct || 0)
   const dailyClaimed = !!state.daily?.claimed
+  const graceAvailable = (state.streakGraceDay || '') !== dayKey()
+  const prophetPending = state.golden?.id === 'prophet'
+  const exileLetters = state.exile?.letters || null
 
   return (
     <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800">
@@ -424,7 +462,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''} · tap {tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)).toFixed(1)} · 🔥{state.streak || 0}
+            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''} · tap {tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)).toFixed(1)} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
             <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 {Math.floor(state.kavod || 0)}</span>
             {synPct > 0 && (
@@ -466,10 +504,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             {showShop ? 'Hide Letters ▲' : 'Letters ▼'}
           </button>
           {nextRoots > (state.roots || 0) && (
-            <button onClick={doPrestige}
-              className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-teal-600 hover:bg-teal-700 text-white animate-pulse' : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'}`}>
-              🌿 Root (+{nextRoots - (state.roots || 0)})
-            </button>
+            <>
+              <button onClick={() => doPrestige(false)}
+                title={exileLetters ? 'Complete your exile run: forge roots, release the vow' : 'Forge roots: reset Ohr + generators, keep roots, +10% each forever'}
+                className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-teal-600 hover:bg-teal-700 text-white animate-pulse' : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'}`}>
+                🌿 Root (+{nextRoots - (state.roots || 0)})
+              </button>
+              {!exileLetters && (
+                <button onClick={() => doPrestige(true)}
+                  title="Vow exile: forge roots AND lock study to Aleph + 2 random letters until the next root, for double 🌟 Kavod"
+                  className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-neutral-700 hover:bg-neutral-800 text-white animate-pulse' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'}`}>
+                  ⛓️ Exile
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -499,12 +547,39 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       )}
 
       {/* Golden Prompt — quiz-gated buff, claimed by the next correct answer */}
-      {state.golden && goldenPrompt && (
+      {state.golden && (goldenPrompt || prophetPending) && (
         <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium flex items-center gap-2">
-          <span className="text-lg">{goldenPrompt.icon}</span>
+          <span className="text-lg">{prophetPending ? '🔮' : goldenPrompt.icon}</span>
           <span className="flex-1">
-            <b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}
+            {prophetPending
+              ? <span><b>The Prophet visits!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → choose 1 of 3 blessings</span>
+              : <span><b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}</span>}
           </span>
+        </div>
+      )}
+      {/* Prophet's Choice — the decision after the claim */}
+      {prophetPick && (
+        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
+          <div className="mb-1.5 text-center"><b>🔮 The Prophet offers — take one blessing:</b></div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {prophetPick.options.map(id => {
+              const b = PROPHET_BLESSINGS.find(x => x.id === id) || { name: id, desc: '', icon: '✨' }
+              return (
+                <button key={id} onClick={() => takeBlessing(id)}
+                  className="min-h-[52px] p-1.5 rounded-lg bg-white/15 hover:bg-white/25 active:scale-95 cursor-pointer text-center">
+                  <div className="text-lg leading-none">{b.icon}</div>
+                  <div className="text-[11px] font-bold">{b.name}</div>
+                  <div className="text-[9px] opacity-90 leading-tight">{b.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {/* Exile — the active vow */}
+      {exileLetters && (
+        <div className="mt-2 p-2 rounded-lg bg-neutral-700 text-neutral-100 text-xs text-center font-medium">
+          ⛓️ In exile: only {exileLetters.map(i => LETTERS[i]).join(' · ')} may be inscribed · double 🌟 Kavod · prestige out any time to complete the run
         </div>
       )}
       {goldenFlash && (
@@ -553,6 +628,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {prestigeFlash && (
         <div className="idle-pop mt-2 p-2 rounded-lg bg-teal-600 text-white text-sm text-center font-medium">
           🌿 Root forged! +{prestigeFlash.gained} root{prestigeFlash.gained > 1 ? 's' : ''} — all Ohr production +{prestigeFlash.gained * 10}% forever.
+          {prestigeFlash.exiled && (
+            <span> ⛓️ And you walk into exile with {prestigeFlash.exiled.map(i => LETTERS[i]).join(' · ')} — +50% 🌟 until the next root.</span>
+          )}
         </div>
       )}
 
@@ -585,7 +663,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
       {buyHint && (
         <div className="idle-pop mt-2 p-2 rounded-lg bg-red-500 text-white text-xs text-center font-medium">
-          Need {buyHint.need.toLocaleString()} more ✨ Ohr for {LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.
+          {buyHint.locked
+            ? `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`
+            : `Need ${buyHint.need.toLocaleString()} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`}
         </div>
       )}
 
@@ -609,11 +689,12 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const { n, spend } = buyAmount(i)
               const afford = n > 0 && state.ohr >= spend
               const m = mastery[i] || 0
+              const locked = !exileAllows(state, i)
               return (
                 <button key={i} onClick={() => buy(i)}
-                  title={`${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
-                  className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
-                  <div className="text-xl leading-none">{L}</div>
+                  title={locked ? `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}` : `${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
+                  className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
+                  <div className="text-xl leading-none">{locked ? '⛓️' : L}</div>
                   <div className="text-[9px] font-mono text-neutral-500 tabular-nums">
                     {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
                   </div>

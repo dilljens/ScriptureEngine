@@ -172,3 +172,8 @@ Goal: Clone Cookie Clicker's progression systems (mechanics only, original theme
 ## Track E: Minigames (future) `[ ]`
 - ~~Vineyard (Garden)~~ `[x]` shipped 2026-09-14: 3 parallel 4h vines, 15min harvests, vineyard level 1-10 (+5%/lvl to 1.5x), Vinedresser achievement → Shemen. Sim: first harvest 4h bot, level 10 ~16h bot, no early-milestone distortion.
 - Midrash (Grimoire), Sanhedrin (Pantheon), Shuk (Market) — still future. Listed so clones don't fork structure early: keep `systems/` seams in lib files.
+
+## Engagement pass (post-plan, 2026-09-14) `[x]`
+- Prophet's Choice: 12% of golden spawns offer pick-1-of-3 blessings (gale/dew/rush + Manna Kavod + Early Harvest timer cut). Same 20s window, same fizzle rules.
+- Exile runs: optional prestige vow locking study to Aleph + 2 random letters until the next root, for double Kavod. Return achievement → Shemen. Sim prices the variant honestly (bot exiling half its prestiges runs ~2x slower to full heavenly — a real challenge tradeoff, not a tax on normal play).
+- Streak reframe: best-streak is the hero number; once-a-day grace halves (not resets) a 10+ streak on a wrong answer. Nothing earned is ever lost.

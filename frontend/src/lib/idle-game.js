@@ -222,9 +222,12 @@ export function defaultIdleState() {
     tracks: {},      // trackId -> level
     streak: 0,
     bestStreak: 0,
+    streakGraceDay: '', // last day grace halved (not reset) a 10+ streak
     taps: 0,
     crits: 0,
     prestiges: 0,
+    exilesCompleted: 0, // finished exile runs (vow kept to the next root)
+    exile: null,        // active vow {letters:[i,j,k], startedAt} or null
     lastSeen: Date.now(),
     muted: false,
     difficulty: defaultDifficulty(),
@@ -279,7 +282,9 @@ export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const { value, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
-  const kavod = 1 + Math.floor(streak / 5) + (crit ? 3 : 0)
+  // Exile runs pay double: fewer letters to study, faster Kavod, harder breadth.
+  let kavod = 1 + Math.floor(streak / 5) + (crit ? 3 : 0)
+  if (state.exile) kavod = Math.round(kavod * EXILE_KAVOD_MULT)
   state.kavod = (state.kavod || 0) + kavod
   state.streak = streak
   state.bestStreak = Math.max(state.bestStreak || 0, streak)
@@ -291,8 +296,21 @@ export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   return { gained: value, crit, streak, kavod }
 }
 
-export function applyWrongAnswer(state) {
+/**
+ * Apply a wrong answer. Streaks break — but once a day, a streak of 10+
+ * bends instead: grace keeps half (Duolingo-freeze analogue). Milestones are
+ * one-time bursts, so nothing earned is ever lost; only the live streak dips.
+ * Returns {graced} so the HUD can say what happened.
+ */
+export function applyWrongAnswer(state, now = Date.now()) {
+  const streak = state.streak || 0
+  if (streak >= 10 && (state.streakGraceDay || '') !== dayKey(now)) {
+    state.streak = Math.floor(streak / 2)
+    state.streakGraceDay = dayKey(now)
+    return { graced: true }
+  }
   state.streak = 0
+  return { graced: false }
 }
 
 /** Prestige: reset Ohr + generators, keep roots/words/tracks. Returns roots gained. */
@@ -300,6 +318,11 @@ export function applyPrestige(state) {
   const target = rootsEarned(state.lifetimeOhr || 0)
   const gained = Math.max(0, target - (state.roots || 0))
   if (gained <= 0) return 0
+  // Coming home from exile counts: the run is complete, the vow released.
+  if (state.exile) {
+    state.exilesCompleted = (state.exilesCompleted || 0) + 1
+    state.exile = null
+  }
   state.roots = target
   state.ohr = STARTING_OHR
   state.owned = {}
@@ -309,6 +332,39 @@ export function applyPrestige(state) {
   state.streak = 0
   state.prestiges = (state.prestiges || 0) + 1
   return gained
+}
+
+// ── Exile runs: the prestige variant (challenge, not punishment) ───
+// Realm Grinder's lesson: prestige must change HOW you play, not just the
+// numbers. Vowing exile at prestige locks the workshop to 3 random letters
+// until the next root — forcing breadth-first study (the synergy theme) on a
+// constrained set — and pays double Kavod while the vow holds. Ending early is
+// always allowed (prestige out); completing one counts toward an achievement.
+
+export const EXILE_KAVOD_MULT = 2.0
+export const EXILE_LETTERS = 3
+
+/** Take the vow: lock to `letters` until the next prestige. Returns true if vowed. */
+export function startExile(state, letters, now = Date.now()) {
+  const set = [...new Set(letters)].filter(i => i >= 0 && i < LETTERS.length)
+  if (set.length !== EXILE_LETTERS || state.exile) return false
+  state.exile = { letters: set.sort((a, b) => a - b), startedAt: now }
+  return true
+}
+
+/** Sample the vow: Aleph (so the run is never dead) + 2 random others. */
+export function rollExileLetters(rng = Math.random) {
+  const pool = LETTERS.map((_, i) => i).slice(1)
+  const out = [0]
+  while (out.length < EXILE_LETTERS && pool.length) {
+    out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
+  }
+  return out.sort((a, b) => a - b)
+}
+
+/** A letter is buyable when no vow holds, or it is one of the exiled three. */
+export function exileAllows(state, i) {
+  return !state.exile || (state.exile.letters || []).includes(i)
 }
 
 // ── Gameplay loop: bulk-buy, quests, streak milestones, next goals ────
@@ -395,6 +451,7 @@ export function checkStreakMilestone(state) {
 export function nextGoals(state, diff = null) {
   let gen = null
   for (let i = 0; i < LETTERS.length; i++) {
+    if (!exileAllows(state, i)) continue // never point at a locked letter
     const cost = generatorCost(i, (state.owned || {})[i] || 0, diff)
     if (!gen || cost < gen.cost) gen = { letter: LETTERS[i], index: i, cost }
   }
@@ -444,6 +501,71 @@ function goldenByKind(kind) {
   return GOLDEN_PROMPTS.find(p => p.kind === kind)
 }
 
+// ── Prophet's Choice: the rare pick-1-of-3 visitation ──────────────
+// Golden Prompts are always-take surprises; the Prophet adds the one thing
+// surprises lack — a decision. Three blessings, one choice, same 20s window,
+// same fizzle rules (wrong/expired = nothing lost).
+
+export const PROPHET_CHANCE = 0.12   // share of spawns that arrive as the Prophet
+export const PROPHET_OPTIONS = 3
+export const MANNA_KAVOD = 30        // Manna blessing: instant learning currency
+export const EARLY_FIG_HOURS = 6     // Early Harvest: fig timer cut
+export const EARLY_VINE_HOURS = 2    // Early Harvest: each vine timer cut
+
+export const PROPHET_BLESSINGS = [
+  { id: 'gale', name: 'Ruach Gale', icon: '🌪️', desc: 'x7 Ohr for 77s' },
+  { id: 'dew', name: 'Dew of Light', icon: '💧', desc: '2h of production, instantly' },
+  { id: 'rush', name: 'Dikduk Rush', icon: '📖', desc: 'x3 tap power for 60s' },
+  { id: 'manna', name: 'Manna', icon: '🍞', desc: `+${MANNA_KAVOD} 🌟 Kavod, instantly` },
+  { id: 'early', name: 'Early Harvest', icon: '⏰', desc: `Fig −${EARLY_FIG_HOURS}h, every vine −${EARLY_VINE_HOURS}h` },
+]
+
+/** Sample PROPHET_OPTIONS distinct blessing ids (exported for tests/determinism). */
+export function sampleBlessings(rng = Math.random) {
+  const pool = PROPHET_BLESSINGS.map(b => b.id)
+  const out = []
+  while (out.length < PROPHET_OPTIONS && pool.length) {
+    out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
+  }
+  return out
+}
+
+/**
+ * Apply the player's chosen blessing. gale/dew/rush reuse the Golden Prompt
+ * effects; manna grants Kavod; early cuts the grow timers. Returns the same
+ * {claimed, granted} shape as resolveGoldenPrompt.
+ */
+export function applyProphetChoice(state, id, perSec = 0, now = Date.now()) {
+  const def = id => PROPHET_BLESSINGS.find(b => b.id === id) || { name: id, desc: '' }
+  if (id === 'gale' || id === 'rush') {
+    const p = goldenByKind(id === 'gale' ? 'mult' : 'tap')
+    const key = id === 'gale' ? 'galeEndsAt' : 'tapEndsAt'
+    state.buffs = { ...(state.buffs || {}), [key]: now + p.seconds * 1000 }
+    return { claimed: def(id), granted: 0 }
+  }
+  if (id === 'dew') {
+    const p = goldenByKind('hours')
+    const granted = perSec * 3600 * (p.hours || 0)
+    state.ohr += granted
+    state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+    return { claimed: def(id), granted }
+  }
+  if (id === 'manna') {
+    state.kavod = (state.kavod || 0) + MANNA_KAVOD
+    return { claimed: def(id), granted: MANNA_KAVOD }
+  }
+  if (id === 'early') {
+    if (state.figs?.readyAt) state.figs = { ...state.figs, readyAt: state.figs.readyAt - EARLY_FIG_HOURS * 3600 * 1000 }
+    const vines = [...(state.vineyard?.vines || [])]
+    for (let i = 0; i < vines.length; i++) {
+      if (vines[i]) vines[i] -= EARLY_VINE_HOURS * 3600 * 1000
+    }
+    state.vineyard = { level: state.vineyard?.level || 0, vines }
+    return { claimed: def(id), granted: 0 }
+  }
+  return { fizzled: true, reason: 'unknown' }
+}
+
 export function galeMultiplier(state, now = Date.now()) {
   if ((state.buffs?.galeEndsAt || 0) <= now) return 1
   return goldenByKind('mult')?.mult || 1
@@ -467,6 +589,15 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   if (state.golden) return null
   if (perSec <= 0) return null // nothing to multiply yet — never hand out a value-less prompt
   if (now < (state.nextGoldenAt || 0)) return null
+  // Rare visitation: the Prophet offers a CHOICE of three blessings instead
+  // of one fixed prompt — the surprise system with an actual decision in it.
+  if (rng() < PROPHET_CHANCE) {
+    const options = sampleBlessings(rng)
+    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options }
+    const [lo, hi] = GOLDEN_INTERVAL_SEC
+    state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
+    return state.golden
+  }
   const p = pickGoldenPrompt(rng)
   state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000 }
   const [lo, hi] = GOLDEN_INTERVAL_SEC
@@ -494,6 +625,9 @@ export function resolveGoldenPrompt(state, correct, now = Date.now(), perSec = 0
   const expired = now > g.expiresAt
   state.golden = null
   if (!correct || expired) return { fizzled: true, reason: expired ? 'expired' : 'wrong' }
+  // The Prophet doesn't grant — he offers. The HUD presents g.options and
+  // calls applyProphetChoice with the player's pick.
+  if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
   if (!p) return { fizzled: true, reason: 'unknown' }
   if (p.kind === 'mult') {
@@ -570,6 +704,7 @@ export function letterMultiplier(upgrades = {}, i) {
 
 /** Tiers that are unlocked (owned threshold met) and not yet bought. */
 export function availableLetterUpgrades(state, i) {
+  if (!exileAllows(state, i)) return []
   const owned = (state.owned || {})[i] || 0
   const ups = state.letterUpgrades || {}
   const out = []
@@ -584,6 +719,7 @@ export function availableLetterUpgrades(state, i) {
 
 /** Buy one letter upgrade. Returns true on success. */
 export function buyLetterUpgrade(state, i, k) {
+  if (!exileAllows(state, i)) return false
   const owned = (state.owned || {})[i] || 0
   const t = LETTER_UPGRADE_TIERS[k]
   if (!t || owned < t.at) return false
@@ -812,6 +948,7 @@ export const ACHIEVEMENTS = [
   { id: 'fig1', name: 'Gardener', icon: '🍯', desc: 'Harvest your first fig', check: s => (s.figs?.level || 0) >= 1 },
   { id: 'vine1', name: 'Vinedresser', icon: '🍇', desc: 'Harvest your first vine', check: s => (s.vineyard?.level || 0) >= 1 },
   { id: 'spark1', name: 'Ascendant', icon: '💫', desc: 'Earn your first Aliyah spark', check: s => sparksEarned(s.lifetimeOhr || 0) >= 1 },
+  { id: 'exile1', name: 'Return', icon: '⛓️', desc: 'Complete an exile run', check: s => (s.exilesCompleted || 0) >= 1 },
   { id: 'own22', name: 'Full Aleph-Bet', icon: '🔠', desc: 'Own every letter', check: s => LETTERS.every((_, i) => (s.owned?.[i] || 0) > 0) },
 ]
 
@@ -1007,20 +1144,20 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const sparkState = { ...defaultIdleState(), lifetimeOhr: 27 * ALIYAH_BASE, owned: { 0: 10 } }
   a(statePerSecond(sparkState, { 0: 1 }) > perSecond({ 0: 10 }, { 0: 1 }), 'statePerSecond includes the spark bonus')
   a(Math.abs(statePerSecond(sparkState, { 0: 1 }) - perSecond({ 0: 10 }, { 0: 1 }, {}, 0, 0, {}, {}, 3) * shemenMultiplier(sparkState)) < 1e-9, 'spark bonus is exactly +1% each')
-  // Golden Prompts
+  // Golden Prompts (deterministic rng: () => 0.5 never rolls the Prophet)
   const gp = defaultIdleState()
   a(gp.golden === null && gp.nextGoldenAt === 0, 'no golden prompt at start')
-  a(spawnGoldenPrompt(gp, 1000) !== null && !!gp.golden, 'first prompt spawns when due')
+  a(spawnGoldenPrompt(gp, 1000, () => 0.5) !== null && !!gp.golden, 'first prompt spawns when due')
   a(goldenRemainingSec(gp, 1000) === GOLDEN_WINDOW_SEC, 'claim window is 20s')
   const gRes = resolveGoldenPrompt(gp, true, 2000, 0)
   a(gRes.claimed && !gRes.fizzled, 'correct answer claims the prompt')
   a(gp.golden === null && gp.nextGoldenAt > 2000, 'prompt cleared + next one scheduled')
   const gp2 = defaultIdleState()
-  spawnGoldenPrompt(gp2, 1000)
+  spawnGoldenPrompt(gp2, 1000, () => 0.5)
   a(resolveGoldenPrompt(gp2, false, 2000, 0).fizzled === true, 'wrong answer fizzles')
   a(gp2.buffs.galeEndsAt === 0 && gp2.buffs.tapEndsAt === 0, 'fizzle grants nothing (no punishment)')
   const gp3 = defaultIdleState()
-  spawnGoldenPrompt(gp3, 1000)
+  spawnGoldenPrompt(gp3, 1000, () => 0.5)
   const gExp = resolveGoldenPrompt(gp3, true, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000, 0)
   a(gExp.fizzled === true && gExp.reason === 'expired', 'late answer fizzles (window enforced)')
   const gp4 = defaultIdleState()
@@ -1041,7 +1178,7 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(GOLDEN_PROMPTS.every(p => p.weight > 0), 'every prompt has weight')
   a(spawnGoldenPrompt(defaultIdleState(), 1000, Math.random, 0) === null, 'no golden prompt with zero production')
   const gp7 = defaultIdleState()
-  spawnGoldenPrompt(gp7, 1000)
+  spawnGoldenPrompt(gp7, 1000, () => 0.5)
   a(expireGoldenPrompt(gp7, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000) === true && gp7.golden === null, 'expired prompt auto-clears')
   a(expireGoldenPrompt(defaultIdleState(), 1000) === false, 'nothing to expire when none pending')
   // Figs
@@ -1090,4 +1227,62 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(statePerSecond(vys, { 0: 1 }) > statePerSecond({ ...vys, vineyard: { level: 0, vines: [0, 0, 0] } }, { 0: 1 }), 'statePerSecond includes the vineyard bonus')
   const vyach = defaultIdleState(); vyach.vineyard = { level: 1, vines: [0, 0, 0] }
   a(achievementsEarned(vyach).some(x => x.id === 'vine1'), 'first-vine achievement unlocks')
+  // Prophet's Choice
+  const ph = defaultIdleState()
+  a(spawnGoldenPrompt(ph, 1000, () => 0.05)?.id === 'prophet', 'low roll summons the Prophet')
+  a(Array.isArray(ph.golden.options) && ph.golden.options.length === PROPHET_OPTIONS, 'prophet offers three blessings')
+  a(new Set(ph.golden.options).size === PROPHET_OPTIONS, 'prophet blessings are distinct')
+  const phRes = resolveGoldenPrompt(ph, true, 2000, 0)
+  a(phRes.choice && phRes.choice.length === PROPHET_OPTIONS && ph.golden === null, 'correct answer opens the choice, prompt clears')
+  const ph2 = defaultIdleState()
+  spawnGoldenPrompt(ph2, 1000, () => 0.05)
+  a(resolveGoldenPrompt(ph2, false, 2000, 0).fizzled === true, 'wrong answer fizzles the Prophet too')
+  const manna = applyProphetChoice(defaultIdleState(), 'manna', 0)
+  a(manna.granted === MANNA_KAVOD, 'manna grants instant Kavod')
+  const dewChoice = applyProphetChoice(defaultIdleState(), 'dew', 10)
+  a(dewChoice.granted === 10 * 3600 * 2, 'dew choice matches the dew prompt')
+  const galeChoice = applyProphetChoice(defaultIdleState(), 'gale', 0, 1000)
+  a(galeChoice.granted === 0, 'gale choice buffs instead of granting')
+  const early = { ...defaultIdleState(), figs: { level: 0, readyAt: 100000 }, vineyard: { level: 0, vines: [100000, 0, 0] } }
+  applyProphetChoice(early, 'early', 0)
+  a(early.figs.readyAt === 100000 - EARLY_FIG_HOURS * 3600 * 1000 && early.vineyard.vines[0] === 100000 - EARLY_VINE_HOURS * 3600 * 1000, 'early harvest cuts both timers')
+  a(applyProphetChoice(defaultIdleState(), 'bogus', 0).fizzled === true, 'unknown blessing fizzles')
+  // Exile runs
+  const ex = defaultIdleState()
+  a(startExile(ex, [0, 1]) === false && !ex.exile, 'exile needs exactly three letters')
+  a(startExile(ex, [0, 5, 21]) === true && ex.exile.letters.length === 3, 'vow locks three letters')
+  a(startExile(ex, [2, 3, 4]) === false, 'cannot re-vow mid-exile')
+  a(exileAllows(ex, 5) && !exileAllows(ex, 6), 'only the exiled three are buyable')
+  a(exileAllows(defaultIdleState(), 20), 'no vow means every letter')
+  const exRoll = rollExileLetters(() => 0)
+  a(exRoll.length === 3 && new Set(exRoll).size === 3, 'rolled exile letters are distinct')
+  a(exRoll[0] === 0, 'exile always carries Aleph (never a dead run)')
+  const exK = defaultIdleState()
+  startExile(exK, [0, 1, 2])
+  const exCr = applyCorrectAnswer(exK, 0, () => 0.99)
+  a(exCr.kavod === 2 && exK.kavod === 2, 'exile doubles Kavod (1 -> 2)')
+  a(nextGoals(exK).gen.index !== undefined && exileAllows(exK, nextGoals(exK).gen.index), 'next goal never points at a locked letter')
+  const exU = defaultIdleState()
+  exU.owned = { 0: 10 }
+  startExile(exU, [0, 1, 2])
+  a(availableLetterUpgrades(exU, 0).length === 1 && availableLetterUpgrades(exU, 3).length === 0, 'upgrades respect the vow')
+  exU.ohr = 1e9
+  a(buyLetterUpgrade(exU, 3, 0) === false, 'cannot buy upgrades for locked letters')
+  const exP = { ...defaultIdleState(), lifetimeOhr: 1e6, exile: { letters: [0, 1, 2], startedAt: 0 } }
+  exP.ohr = 0
+  applyPrestige(exP)
+  a(!exP.exile && exP.exilesCompleted === 1, 'prestiging out completes the exile')
+  const exAch = defaultIdleState(); exAch.exilesCompleted = 1
+  a(achievementsEarned(exAch).some(x => x.id === 'exile1'), 'completed exile unlocks Return')
+  // Streak grace
+  const gr = defaultIdleState()
+  gr.streak = 4
+  a(applyWrongAnswer(gr, 1000).graced === false && gr.streak === 0, 'short streaks still reset')
+  gr.streak = 20
+  const grRes = applyWrongAnswer(gr, 1000)
+  a(grRes.graced === true && gr.streak === 10, 'grace halves a 10+ streak instead of resetting')
+  a(applyWrongAnswer(gr, 2000).graced === false && gr.streak === 0, 'grace is once per day')
+  const grNext = { ...gr, streak: 20 }
+  applyWrongAnswer(grNext, 1000 + 86400000)
+  a(grNext.streak === 10, 'grace renews the next day')
 }

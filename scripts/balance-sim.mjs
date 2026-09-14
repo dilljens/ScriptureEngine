@@ -38,6 +38,7 @@ g.plantVineyard(state, 0)
 function cheapest() {
   let best = 0, bestCost = Infinity
   for (let i = 0; i < g.LETTERS.length; i++) {
+    if (!g.exileAllows(state, i)) continue // the vow binds the bot too
     const c = g.generatorCost(i, state.owned[i] || 0, state.difficulty)
     if (c < bestCost) { bestCost = c; best = i }
   }
@@ -58,7 +59,13 @@ for (let t = 0; t < TOTAL; t += DT) {
       mastery[answers % g.LETTERS.length] = Math.min(1, (mastery[answers % g.LETTERS.length] || 0) + 0.05)
     } else g.applyWrongAnswer(state)
     answers++
-    g.resolveGoldenPrompt(state, correct, at * 1000, rate0 * g.buffMultiplier(state))
+    const gres = g.resolveGoldenPrompt(state, correct, at * 1000, rate0 * g.buffMultiplier(state))
+    if (gres?.choice) {
+      // Greedy prophet: hours scale best late, then mult, tap, kavod, timers.
+      const prio = ['dew', 'gale', 'rush', 'manna', 'early']
+      const pick = prio.find(p => gres.choice.includes(p)) || gres.choice[0]
+      g.applyProphetChoice(state, pick, rate0 * g.buffMultiplier(state), at * 1000)
+    }
     g.spawnGoldenPrompt(state, at * 1000, rnd, rate0)
     g.expireGoldenPrompt(state, at * 1000)
   }
@@ -96,7 +103,14 @@ for (let t = 0; t < TOTAL; t += DT) {
     }
   }
 
-  if (g.shouldPrestige(state.lifetimeOhr, state.roots || 0)) g.applyPrestige(state)
+  if (g.shouldPrestige(state.lifetimeOhr, state.roots || 0)) {
+    g.applyPrestige(state)
+    // Vow exile on every other prestige (after the first): the bot plays the
+    // variant the way a curious player would — often enough to price it.
+    if (!state.exile && (state.prestiges || 0) >= 1 && (state.prestiges || 0) % 2 === 1) {
+      g.startExile(state, g.rollExileLetters(rnd), t * 1000)
+    }
+  }
 
   if (g.totalOwned(state) >= 1) mark('first_letter', t)
   if ((state.roots || 0) >= 1) mark('first_root', t)
@@ -109,12 +123,13 @@ for (let t = 0; t < TOTAL; t += DT) {
   if ((state.figs?.level || 0) >= 10) mark('fig_10', t)
   if ((state.vineyard?.level || 0) >= 1) mark('vineyard_1', t)
   if ((state.vineyard?.level || 0) >= 10) mark('vineyard_10', t)
+  if ((state.exilesCompleted || 0) >= 1) mark('exile_done', t)
   if (state.lifetimeOhr >= 1e6) mark('life_1e6', t)
   if (state.lifetimeOhr >= 1e9) mark('life_1e9', t)
   if (state.lifetimeOhr >= 1e12) mark('life_1e12', t)
 }
 
 const fmt = (s) => s === undefined ? 'never' : s < 3600 ? `${(s / 60).toFixed(0)}m` : s < 86400 ? `${(s / 3600).toFixed(1)}h` : `${(s / 86400).toFixed(1)}d`
-console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | vineyard lvl ${state.vineyard?.level} | owned ${g.totalOwned(state)}`)
-for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'vineyard_1', 'vineyard_10', 'life_1e6', 'life_1e9', 'life_1e12'])
+console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | vineyard lvl ${state.vineyard?.level} | exiles ${state.exilesCompleted || 0} | owned ${g.totalOwned(state)}`)
+for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'vineyard_1', 'vineyard_10', 'exile_done', 'life_1e6', 'life_1e9', 'life_1e12'])
   console.log(`  ${k.padEnd(13)} ${fmt(ms[k])}`)
