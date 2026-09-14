@@ -52,10 +52,11 @@ export default function BookView({ bookId }) {
   const inputRef = useRef(null)
   let bookInfo = null
 
-  // Auto-focus input when entering BookView
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 100)
-  }, [bookId])
+  // NOTE: no autofocus here on purpose. Stealing focus on mount eats the
+  // next keyboard zoom (the app ignores arrows from inside inputs so typing
+  // is never hijacked) — users arrive here via ArrowUp and expect another
+  // ArrowUp to keep zooming. Digits route to the filter via the handler
+  // below, and the box is one click away.
 
   // Also route any number key to the input when not focused
   useEffect(() => {
