@@ -463,7 +463,7 @@ export const QUESTS = [
   { id: 'correct3', name: 'Warming up', desc: 'Answer 3 correctly', goal: 3, reward: 50, progress: s => s.correct || 0 },
   { id: 'streak5', name: 'On a roll', desc: 'Reach a 5 streak', goal: 5, reward: 75, progress: s => s.bestStreak || 0 },
   { id: 'earn1k', name: 'Kindling', desc: 'Earn 1,000 lifetime Ohr', goal: 1000, reward: 150, progress: s => s.lifetimeOhr || 0 },
-  { id: 'own10', name: 'Choir', desc: 'Own 10 generators', goal: 10, reward: 300, progress: s => totalOwned(s) },
+  { id: 'own10', name: 'Minyan', desc: 'Own 10 generators — a prayer quorum of golems', goal: 10, reward: 300, progress: s => totalOwned(s) },
   { id: 'streak25', name: 'Unstoppable', desc: 'Reach a 25 streak', goal: 25, reward: 500, progress: s => s.bestStreak || 0 },
   { id: 'root1', name: 'First fruits', desc: 'Forge your first root', goal: 1, reward: 1000, progress: s => s.roots || 0 },
   { id: 'earn100k', name: 'Blaze', desc: 'Earn 100,000 lifetime Ohr', goal: 100000, reward: 2000, progress: s => s.lifetimeOhr || 0 },
@@ -1024,8 +1024,8 @@ export const SHEMEN_PER_ACHIEVEMENT = 0.04
 
 export const ACHIEVEMENTS = [
   { id: 'first_letter', name: 'First Light', icon: '🕯️', desc: 'Inscribe your first golem', check: s => totalOwned(s) >= 1 },
-  { id: 'own10', name: 'Choir', icon: '🗿', desc: 'Own 10 golems', check: s => totalOwned(s) >= 10 },
-  { id: 'own100', name: 'Legion', icon: '🏛️', desc: 'Own 100 golems', check: s => totalOwned(s) >= 100 },
+  { id: 'own10', name: 'Minyan', icon: '🕍', desc: 'Own 10 golems — a quorum', check: s => totalOwned(s) >= 10 },
+  { id: 'own100', name: 'Kehillah', icon: '⛺', desc: 'Own 100 golems — a whole congregation', check: s => totalOwned(s) >= 100 },
   { id: 'own1000', name: 'Multitude', icon: '👥', desc: 'Own 1,000 golems', check: s => totalOwned(s) >= 1000 },
   { id: 'streak25', name: 'Unstoppable', icon: '🔥', desc: 'Reach a 25 streak', check: s => (s.bestStreak || 0) >= 25 },
   { id: 'streak50', name: 'Steadfast', icon: '🏔️', desc: 'Reach a 50 streak', check: s => (s.bestStreak || 0) >= 50 },
@@ -1040,7 +1040,7 @@ export const ACHIEVEMENTS = [
   { id: 'own22', name: 'Full Aleph-Bet', icon: '🔠', desc: 'Own every letter', check: s => LETTERS.every((_, i) => (s.owned?.[i] || 0) > 0) },
   // Hidden deeds: concealed (❓) until earned — discovery is the reward.
   { id: 'breadth10', name: 'Well-Rounded', icon: '🍲', desc: 'Study 10 different letters', hidden: true, check: s => Object.values(s.owned || {}).filter(n => (n || 0) > 0).length >= 10 },
-  { id: 'crit50', name: 'Sharpshooter', icon: '🎯', desc: 'Land 50 crits', hidden: true, check: s => (s.crits || 0) >= 50 },
+  { id: 'crit50', name: 'True Aim', icon: '🎯', desc: 'Land 50 crits — emet, true', hidden: true, check: s => (s.crits || 0) >= 50 },
   { id: 'hoarder10', name: 'Patient', icon: '🏦', desc: 'Hold 10 unspent sparks at once', hidden: true, check: s => availableSparks(s) >= 10 },
 ]
 

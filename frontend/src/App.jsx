@@ -847,7 +847,7 @@ const [showAssessment, setShowAssessment] = useState(false)
 
             {/* ── Unified Menu dropdown ── */}
             <div className="relative">
-              <button onClick={(e) => { e.stopPropagation(); setShowMainMenu(p => !p); setShowStudyMenu(false); setShowToolsMenu(false) }}
+              <button onClick={(e) => { e.stopPropagation(); setShowMainMenu(p => !p) }}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 text-[10px] font-medium ${
                   showMainMenu ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
                 }`} title="Menu">

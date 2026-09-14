@@ -74,6 +74,7 @@ Thumbs.db
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+frontend/e2e-artifacts/
 
 # Vite cache + root-level node_modules (playwright for E2E tests)
 node_modules/

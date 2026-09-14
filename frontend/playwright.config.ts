@@ -46,14 +46,14 @@ export default defineConfig({
       url: 'http://127.0.0.1:8002/api/v1/info',
       reuseExistingServer: true,
       timeout: 30000,
-      cwd: '/home/dillon/_code/scriptureengine',
+      cwd: '/home/dillon/_code/ScriptureEngine',
     },
     {
       command: 'npx vite --port 5176 --host 127.0.0.1',
       url: 'http://127.0.0.1:5176',
       reuseExistingServer: true,
       timeout: 30000,
-      cwd: '/home/dillon/_code/scriptureengine/frontend',
+      cwd: '/home/dillon/_code/ScriptureEngine/frontend',
     },
   ],
 })

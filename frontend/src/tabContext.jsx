@@ -124,6 +124,18 @@ function reducer(state, action) {
       s = { ...state }
       const ws = s.workspaces.find(w => w.id === s.activeWorkspace)
       if (!ws) return state
+      // Singleton views (hebrew/learn/chat): their openers already assume
+      // one instance, but racy double-dispatches slip past the check-then-act
+      // in the opener. Enforce it here — focus the existing tab instead.
+      const SINGLETONS = ['hebrew', 'learn', 'chat']
+      if (SINGLETONS.includes(action.view || 'chapter')) {
+        const dupe = ws.tabs.find(t => t.view === action.view && (t.viewRef || null) === (action.viewRef || null))
+        if (dupe) {
+          s.activeTab = dupe.id
+          saveState(s)
+          return s
+        }
+      }
       const tab = {
         id: genId(),
         book: action.book || 'isa',

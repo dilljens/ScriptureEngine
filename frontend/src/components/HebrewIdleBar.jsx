@@ -543,7 +543,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           {/* Tap floater: every correct answer pops its reward */}
           {lastGain && (
             <span key={lastGain.n}
-              className={`idle-gain text-sm font-bold tabular-nums whitespace-nowrap ${lastGain.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}>
+              className={`idle-gain pointer-events-none text-sm font-bold tabular-nums whitespace-nowrap ${lastGain.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}>
               +{lastGain.value.toFixed(1)} +{lastGain.kavod}🌟{lastGain.crit ? ' CRIT! ⚡' : ''}
             </span>
           )}
@@ -555,7 +555,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             title="Toggle letter audio">
             {state.muted ? '🔇' : '🔊'}
           </button>
-          <button onClick={() => setShowShop(s => !s)}
+          <button onClick={() => setShowShop(s => !s)} data-testid="shop-toggle"
             className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${totalOwned(state) === 0 ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
             {showShop ? 'Hide Letters ▲' : 'Letters ▼'}
           </button>
@@ -569,14 +569,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           {!exileKind && heavenlyOwned(state, 'h_legacy') && totalOwned(state) > 0 && (
             <button onClick={takeExile}
               title="Vow exile, any time: lock new study to Aleph + 2 letters until your next root, for double 🌟 Kavod (your workshop keeps running)"
-              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-neutral-700 hover:bg-neutral-800 text-white active:scale-[0.99]">
               ⛓️ Exile
             </button>
           )}
           {!exileKind && heavenlyOwned(state, 'h_legacy') && totalOwned(state) > 0 && (
             <button onClick={takeRest}
               title="Vow shemittah (rest hour), any time: inscribe nothing for one hour — every tap counts double"
-              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-lime-100 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300">
+              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-lime-700 hover:bg-lime-800 text-white active:scale-[0.99]">
               🌾 Rest
             </button>
           )}
@@ -592,12 +592,12 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       <div className="mt-2 flex gap-2">
         <button onClick={buyBoostFrenzy} disabled={(state.kavod || 0) < FRENZY_COST || frenzyActive}
           title={frenzyActive ? `Frenzy active — ${frenzySecs}s left` : `x${FRENZY_MULT} Ohr/sec for 60s — costs ${FRENZY_COST} 🌟`}
-          className={`flex-1 min-h-[48px] px-3 rounded-lg text-xs font-semibold cursor-pointer active:scale-[0.99] ${frenzyActive ? 'bg-orange-500 text-white' : (state.kavod || 0) >= FRENZY_COST ? 'bg-white dark:bg-neutral-800 border-2 border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-300' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-70'}`}>
+          className={`flex-1 min-h-[48px] px-3 rounded-lg text-xs font-semibold cursor-pointer active:scale-[0.99] ${frenzyActive ? 'bg-orange-500 text-white' : (state.kavod || 0) >= FRENZY_COST ? 'bg-white dark:bg-neutral-800 border-2 border-orange-400 dark:border-orange-600 text-orange-600 dark:text-orange-300' : 'bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300'}`}>
           {frenzyActive ? `🌬️ Frenzy x${FRENZY_MULT} · ${frenzySecs}s` : `🌬️ Frenzy x${FRENZY_MULT} · ${FRENZY_COST} 🌟`}
         </button>
         <button onClick={buyBoostWarp} disabled={(state.kavod || 0) < warpPrice}
           title={`Instantly grant 1h of production — costs ${warpPrice} 🌟 (earned only by studying)`}
-          className={`flex-1 min-h-[48px] px-3 rounded-lg text-xs font-semibold cursor-pointer active:scale-[0.99] ${(state.kavod || 0) >= warpPrice ? 'bg-white dark:bg-neutral-800 border-2 border-indigo-400 dark:border-indigo-600 text-indigo-600 dark:text-indigo-300' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-70'}`}>
+          className={`flex-1 min-h-[48px] px-3 rounded-lg text-xs font-semibold cursor-pointer active:scale-[0.99] ${(state.kavod || 0) >= warpPrice ? 'bg-white dark:bg-neutral-800 border-2 border-indigo-400 dark:border-indigo-600 text-indigo-600 dark:text-indigo-300' : 'bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300'}`}>
           ⏳ +1h now · {warpPrice} 🌟
         </button>
       </div>
@@ -656,6 +656,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
+      {/* The legend — why golems: one word, one book, one eraser */}
+      <details className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-600 dark:text-neutral-300">
+        <summary className="cursor-pointer font-semibold">📜 Why golems?</summary>
+        <p className="mt-1 leading-relaxed">
+          The word <i>golem</i> appears once in Scripture — Ps 139:16, “unformed substance.”
+          Sefer Yetzirah teaches that God creates through the 22 letters, so the sages tell
+          of clay men animated by <b>אמת</b> (<i>emet</i>, truth) on the brow. Erase the א
+          and <b>מת</b> (<i>met</i>) remains: dead. Every golem you inscribe, every root you
+          forge by erasing, plays that story.
+        </p>
+      </details>
+
       {/* Next goals — always answers "what am I working toward?" */}
       <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
         {goals.gen && (
@@ -693,7 +705,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
       {prestigeFlash && (
         <div className="idle-pop mt-2 p-2 rounded-lg bg-teal-600 text-white text-sm text-center font-medium">
-          🌿 Root forged! +{prestigeFlash.gained} root{prestigeFlash.gained > 1 ? 's' : ''} — all Ohr production +{prestigeFlash.gained * 10}% forever.
+          🌿 You erase the א — אמת becomes מת. The golems return to clay; their gathered truth remains: +{prestigeFlash.gained} root{prestigeFlash.gained > 1 ? 's' : ''} (+{prestigeFlash.gained * 10}% Ohr forever).
         </div>
       )}
 
@@ -833,7 +845,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 <div className={`h-full rounded-full ${figIsReady ? 'bg-amber-500' : 'bg-lime-500'}`} style={{ width: `${figPct * 100}%` }} />
               </div>
             </div>
-            <button onClick={harvest} disabled={!figIsReady}
+            <button onClick={harvest} disabled={!figIsReady} data-testid="fig-harvest"
               className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
               Harvest
             </button>
@@ -852,7 +864,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                     <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
                       <div className={`h-full rounded-full ${v.ready ? 'bg-purple-500' : 'bg-lime-500'}`} style={{ width: `${v.pct * 100}%` }} />
                     </div>
-                    <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready}
+                    <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready} data-testid={`vine-tend-${v.i}`}
                       className={`shrink-0 min-h-[32px] px-2 rounded-md text-[10px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
                       {v.ready ? 'Tend' : `${v.hoursLeft}h`}
                     </button>
@@ -873,7 +885,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 <div className={`h-full rounded-full ${dailyClaimed ? 'bg-green-500' : 'bg-indigo-400'}`} style={{ width: `${(dailyCount / DAILY_GOAL) * 100}%` }} />
               </div>
             </div>
-            <button onClick={claimDailyReward} disabled={!dailyOk}
+            <button onClick={claimDailyReward} disabled={!dailyOk} data-testid="daily-claim"
               className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${dailyOk ? 'idle-pop bg-green-500 hover:bg-green-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
               {dailyClaimed ? '✓' : 'Claim'}
             </button>
