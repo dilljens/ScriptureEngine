@@ -36,7 +36,15 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
     if (!scrollRef.current || !chapterData?.verses) return
     const el = scrollRef.current.querySelector(`[data-verse="${info?.verse}"]`)
     if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Same containment as VersePreviewCard: scroll the popup's own
+      // container only, never the page behind it.
+      const container = scrollRef.current
+      const cRect = container.getBoundingClientRect()
+      const eRect = el.getBoundingClientRect()
+      container.scrollTo({
+        top: container.scrollTop + (eRect.top - cRect.top) - container.clientHeight / 2 + eRect.height / 2,
+        behavior: 'smooth',
+      })
     }
   }, [chapterData, info?.verse])
 

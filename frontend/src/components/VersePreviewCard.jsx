@@ -60,7 +60,16 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
     // Find the DOM element for the highlighted verse
     const el = scrollRef.current.querySelector(`[data-verse="${firstHighlight.verse}"]`)
     if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      // Scroll the card's own container only — never the page. The old
+      // el.scrollIntoView({ block: 'center' }) bubbled to every scrollable
+      // ancestor and yanked page focus when the chapter fetch resolved.
+      const container = scrollRef.current
+      const cRect = container.getBoundingClientRect()
+      const eRect = el.getBoundingClientRect()
+      container.scrollTo({
+        top: container.scrollTop + (eRect.top - cRect.top) - container.clientHeight / 2 + eRect.height / 2,
+        behavior: 'smooth',
+      })
     }
   }, [chapterData, highlightVerses])
 
