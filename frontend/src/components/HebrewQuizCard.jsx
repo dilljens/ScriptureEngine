@@ -71,7 +71,9 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
       options,
       mode: choiceAnswerMode,
     })
-    void finishAnswer(isCorrect, selected, choiceAnswerMode)
+    // Post the chosen label TEXT, not the index: the server shuffles MC options
+    // per request, so an index is meaningless to it. Local UI keeps `selected`.
+    void finishAnswer(isCorrect, options?.[selected] ?? selected, choiceAnswerMode)
   }
 
   const finishAnswer = async (localCorrect, answer, answerMode) => {

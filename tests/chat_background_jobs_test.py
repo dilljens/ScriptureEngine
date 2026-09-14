@@ -13,6 +13,8 @@ import pytest
 from web.routes import chat as chat_routes
 from web.lib import jobs as chat_jobs
 
+from tests._chat_fakes import FakeHttpClient, FakeResp
+
 
 def _auth_headers():
     return {"Origin": "https://scriptureengine.org"}
@@ -20,40 +22,6 @@ def _auth_headers():
 
 def _sse_chunk(payload: dict) -> str:
     return "data: " + json.dumps(payload)
-
-
-class FakeResp:
-    def __init__(self, lines, status_code=200):
-        self.status_code = status_code
-        self._lines = lines
-
-    async def aread(self):
-        return b""
-
-    def aiter_lines(self):
-        async def gen():
-            for line in self._lines:
-                yield line
-        return gen()
-
-
-class _FakeStreamCtx:
-    def __init__(self, resp):
-        self._resp = resp
-
-    async def __aenter__(self):
-        return self._resp
-
-    async def __aexit__(self, *exc):
-        return False
-
-
-class FakeHttpClient:
-    def __init__(self, responses):
-        self._responses = list(responses)
-
-    def stream(self, method, url, **kwargs):
-        return _FakeStreamCtx(self._responses.pop(0))
 
 
 def _complete_stream(content="hello job"):
@@ -185,7 +153,13 @@ def test_job_saves_assistant_to_conversation(client, monkeypatch):
     session_id = "test-session-jobs"
     conn = get_db()
     try:
-        conn.execute("INSERT OR IGNORE INTO conversation_sessions (id, title) VALUES (?, ?)",
+        # Reset to a clean slate: unauthenticated chat normalizes to user
+        # 'default' (_normalize_user_id), so the session must be owned by
+        # 'default' for the job's save to be accepted (jobs.py refuses on
+        # owner mismatch).
+        conn.execute("DELETE FROM conversation_messages WHERE session_id=?", (session_id,))
+        conn.execute("DELETE FROM conversation_sessions WHERE id=?", (session_id,))
+        conn.execute("INSERT INTO conversation_sessions (id, title, created_by) VALUES (?, ?, 'default')",
                      (session_id, "jobs test"))
         conn.commit()
     except Exception as e:

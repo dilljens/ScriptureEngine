@@ -79,7 +79,10 @@ def test_progress_binds_session_token_over_forged_user_id(client):
         q for q in quiz.json()["data"]["questions"]
         if q["type"] == "multiple_choice" and len(q["options"]) >= 2
     )
-    answer = question["options"].index(_practice_answer(question))
+    # Submit the issued label TEXT, not the index: the server shuffles MC
+    # options per request, so an index is meaningless to it.
+    answer = _practice_answer(question)
+    assert answer in question["options"]
     r = client.post("/api/v1/hebrew/progress", json={
         "user_id": "attacker-forged",
         "session_token": token,
@@ -218,7 +221,8 @@ def test_progress_grades_issued_choice_instead_of_client_boolean(client):
         and len(q["options"]) >= 2
         and _practice_answer(q) in q["options"]
     )
-    answer_index = question["options"].index(_practice_answer(question))
+    answer_text = _practice_answer(question)
+    assert answer_text in question["options"]
     user_id = "authoritative-hebrew-progress"
     token = _make_token(user_id)
 
@@ -227,7 +231,7 @@ def test_progress_grades_issued_choice_instead_of_client_boolean(client):
         "session_token": token,
         "node_id": question["node_id"],
         "question_id": question["question_id"],
-        "answer": answer_index,
+        "answer": answer_text,
         "answer_mode": "choice_index",
         "correct": False,
     })
@@ -235,13 +239,13 @@ def test_progress_grades_issued_choice_instead_of_client_boolean(client):
     assert r.status_code == 200
     assert r.json()["data"]["correct"] == 1
 
-    wrong_index = (answer_index + 1) % len(question["options"])
+    wrong_text = next(o for o in question["options"] if o != answer_text)
     r = client.post("/api/v1/hebrew/progress", json={
         "user_id": user_id,
         "session_token": token,
         "node_id": question["node_id"],
         "question_id": question["question_id"],
-        "answer": wrong_index,
+        "answer": wrong_text,
         "answer_mode": "choice_index",
         "correct": True,
     })
@@ -265,7 +269,7 @@ def test_fsrs_review_binds_session_token(client):
     })
     assert r.status_code == 200
     rows = _mem_db_rows(
-        "SELECT user_id, reps FROM hebrew_review_state WHERE node_id='aleph'"
+        "SELECT user_id, reps FROM hebrew_review_state WHERE node_id='aleph' AND user_id='review-user'"
     )
     assert rows and rows[0]["user_id"] == "review-user"
     assert rows[0]["reps"] == 1

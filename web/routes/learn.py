@@ -35,7 +35,10 @@ DB_PATH = BASE_DIR / "data" / "processed" / "scripture.db"
 
 
 def get_conn():
-    conn = sqlite3.connect(str(DB_PATH))
+    # Honor the configured DB path (lib.db.DEFAULT_DB_PATH). conftest.py points
+    # it at the test fixture; in production it is still the production DB.
+    from lib.db import DEFAULT_DB_PATH
+    conn = sqlite3.connect(str(DEFAULT_DB_PATH))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
 

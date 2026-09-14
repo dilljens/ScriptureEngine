@@ -196,12 +196,18 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     let authoritativeCorrect = null
     if (question?.node_id && question.question_id !== undefined && question.question_id !== null) {
       const token = currentSessionToken()
+      // The server shuffles MC options per request, so a submitted INDEX is
+      // meaningless to it — post the chosen label TEXT (order-independent).
+      // The index stays in answers[] for local UI (highlight/display).
+      const postAnswer = answerMode === ANSWER_MODES.CHOICE_INDEX && typeof ans === 'number'
+        ? (question.options?.[ans] ?? ans ?? '')
+        : (ans ?? '')
       const progress = {
         node_id: question.node_id,
         user_id: 'default',
         session_token: token,
         question_id: question.question_id,
-        answer: ans ?? '',
+        answer: postAnswer,
         answer_mode: answerMode,
       }
       const res = await submitHebrewProgressDetailed(progress)

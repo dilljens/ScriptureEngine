@@ -26,7 +26,10 @@ MEM_DB_PATH = BASE_DIR / "data" / "memorize.db"
 
 
 def get_conn():
-    return sqlite3.connect(str(DB_PATH))
+    # Honor the configured DB path (lib.db.DEFAULT_DB_PATH). conftest.py points
+    # it at the test fixture; in production it is still the production DB.
+    from lib.db import DEFAULT_DB_PATH
+    return sqlite3.connect(str(DEFAULT_DB_PATH))
 
 
 def get_mem_conn():

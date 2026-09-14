@@ -178,6 +178,10 @@ def hebrew_placement(conn, user_id="default"):
                LIMIT 20""",
             (user_id,),
         ).fetchall()
+    except sqlite3.OperationalError:
+        # Table only exists once a placement has been started; absence means
+        # no placement, not an error.
+        sessions = []
     finally:
         c.close()
 
@@ -224,13 +228,17 @@ def hebrew_placement(conn, user_id="default"):
 
 def _latest_placement(c, user_id):
     """Most recent placement session, collapsed to per-skill level estimates."""
-    row = c.execute(
-        """SELECT state_json, created_at, used_at
-           FROM hebrew_placement_sessions
-           WHERE user_id = ?
-           ORDER BY created_at DESC LIMIT 1""",
-        (user_id,),
-    ).fetchone()
+    try:
+        row = c.execute(
+            """SELECT state_json, created_at, used_at
+               FROM hebrew_placement_sessions
+               WHERE user_id = ?
+               ORDER BY created_at DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        # Table only exists once a placement has been started.
+        return None
     if not row:
         return None
     try:
@@ -250,13 +258,17 @@ def _latest_placement(c, user_id):
 
 def _latest_diagnostic(c, user_id):
     """Most recent batch diagnostic (2-3 MC per category pre-assessment)."""
-    row = c.execute(
-        """SELECT batch_id, question_ids_json, used_at
-           FROM hebrew_diagnostic_batches
-           WHERE user_id = ?
-           ORDER BY expires_at DESC LIMIT 1""",
-        (user_id,),
-    ).fetchone()
+    try:
+        row = c.execute(
+            """SELECT batch_id, question_ids_json, used_at
+               FROM hebrew_diagnostic_batches
+               WHERE user_id = ?
+               ORDER BY expires_at DESC LIMIT 1""",
+            (user_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        # Table only exists once a diagnostic has been issued.
+        return None
     if not row:
         return None
     try:

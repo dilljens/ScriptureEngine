@@ -775,6 +775,16 @@
               "default": "default",
               "title": "User Id"
             }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "mc",
+              "title": "Mode"
+            }
           }
         ],
         "responses": {
@@ -1032,8 +1042,18 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 10,
+              "default": -1,
               "title": "New Cards Per Day"
+            }
+          },
+          {
+            "name": "max_reviews_per_day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": -1,
+              "title": "Max Reviews Per Day"
             }
           },
           {
@@ -1089,6 +1109,153 @@
         }
       }
     },
+    "/api/v1/hebrew/prefs": {
+      "get": {
+        "summary": "Get Hebrew Prefs",
+        "description": "Anki-style deck options: daily new-card and review caps.",
+        "operationId": "get_hebrew_prefs_api_v1_hebrew_prefs_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Set Hebrew Prefs",
+        "description": "Save Anki-style deck options (0 = no new cards / unlimited reviews).",
+        "operationId": "set_hebrew_prefs_api_v1_hebrew_prefs_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/analytics": {
+      "post": {
+        "summary": "Post Hebrew Analytics",
+        "description": "Append client-side game/learning events for balancing analysis.\n\nDual-write: JSONL at logs/hebrew-analytics.jsonl (never-fail fallback) plus\nthe queryable hebrew_analytics_events table in memorize.db. Fire-and-forget\nfrom the client; never blocks gameplay and never fails on a bad batch.",
+        "operationId": "post_hebrew_analytics_api_v1_hebrew_analytics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/hebrew/verb-drill": {
       "get": {
         "summary": "Get Hebrew Verb Drill",
@@ -1102,6 +1269,16 @@
               "type": "integer",
               "default": 5,
               "title": "Count"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Limit"
             }
           },
           {
@@ -1125,6 +1302,57 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hebrew/verb-drill/grade": {
+      "post": {
+        "summary": "Grade Hebrew Verb Drill",
+        "description": "Grade a verb-drill answer server-side and record FSRS credit.\n\nBody: { node_id, question, answer, session_token? }.\nCorrect \u2192 Good (3), wrong \u2192 Again (1), scheduled as card_mode='drill'.",
+        "operationId": "grade_hebrew_verb_drill_api_v1_hebrew_verb_drill_grade_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2115,6 +2343,44 @@
               "type": "string",
               "default": "",
               "title": "Word"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audio/anki/{filename}": {
+      "get": {
+        "summary": "Play Anki Audio",
+        "description": "Serve Anki-imported word audio (local personal-use clips, data/audio/anki/).",
+        "operationId": "play_anki_audio_api_v1_audio_anki__filename__get",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
             }
           }
         ],
@@ -7390,7 +7656,7 @@
     "/api/v1/memorize/review/{queue_id}": {
       "post": {
         "summary": "Submit Review",
-        "description": "Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy).",
+        "description": "Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy).\n\nAccepts the preview help the user used:\n  preview_mode: 'none' | 'first_letters' | 'full_text'\n  preview_level: 0 | 25 | 50 | 75 | 100 (first-letter coverage %)\nThe Anki-style confidence rating is weighted by that help: reading the\nfull text caps the rating at Hard, heavy first-letter hints cap Easy at\nGood. The weighted (effective) rating drives FSRS scheduling.",
         "operationId": "submit_review_api_v1_memorize_review__queue_id__post",
         "parameters": [
           {
@@ -7464,6 +7730,104 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memorize/mastery": {
+      "get": {
+        "summary": "List Mastery",
+        "description": "List the 100 LDS scripture-mastery passages with queue/availability status.\n\nSome passages span multiple verses (e.g. Exodus 20:3-17); each verse is\nimported individually.",
+        "operationId": "list_mastery_api_v1_memorize_mastery_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "session_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Session Token"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memorize/queue/mastery": {
+      "post": {
+        "summary": "Add Mastery To Queue",
+        "description": "Bulk-add scripture-mastery passages to the memorize queue.\n\nBody: { group?: \"Old Testament\" | \"New Testament\" | \"Book of Mormon\" |\n                \"Doctrine and Covenants\",\n        refs?: [\"Genesis 1:26-27\", ...] (reference strings, optional filter) }\nOmit both to import all 100. Multi-verse passages add each verse\nindividually. Reports added vs skipped (already queued / not in library).",
+        "operationId": "add_mastery_to_queue_api_v1_memorize_queue_mastery_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -8651,7 +9015,7 @@
     "/api/v1/info": {
       "get": {
         "summary": "Get Info",
-        "description": "Get database and system statistics.",
+        "description": "Get database and system statistics.\n\nCached after first call: the connection/quality aggregates scan 1.35M rows\n(~11s cold) and this endpoint is polled by the client on a timer. The data\nis static for the life of the process, so compute once and serve from RAM.",
         "operationId": "get_info_api_v1_info_get",
         "responses": {
           "200": {
