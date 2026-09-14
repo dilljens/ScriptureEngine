@@ -226,7 +226,8 @@ export function defaultIdleState() {
     taps: 0,
     crits: 0,
     prestiges: 0,
-    exilesCompleted: 0, // finished exile runs (vow kept to the next root)
+    exilesCompleted: 0, // finished vow runs (exile or shemittah)
+    lastVowPrestige: 0, // prestige count when the current/past vow started (sim pacing)
     exile: null,        // active vow {letters:[i,j,k], startedAt} or null
     lastSeen: Date.now(),
     muted: false,
@@ -264,6 +265,8 @@ export function loadIdleState() {
       s.ohr = STARTING_OHR
       s.lifetimeOhr = Math.max(s.lifetimeOhr || 0, STARTING_OHR)
     }
+    // Vow backfill: saves from before vows carried expiry get one from load.
+    if (s.exile && !s.exile.endsAt) s.exile = { ...s.exile, endsAt: Date.now() + VOW_MAX_HOURS * 3600 * 1000 }
     return s
   } catch {
     return defaultIdleState()
@@ -279,12 +282,14 @@ export function saveIdleState(s) {
 /** Apply one correct answer: tap + streak + Kavod. Returns {gained, crit, kavod}. */
 export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const streak = (state.streak || 0) + 1
-  const { value, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
+  const { value: raw, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
+  // Shemittah sprint: every tap counts double. Exile: Kavod doubles instead.
+  const value = raw * shemittahTapMult(state)
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
   // Exile runs pay double: fewer letters to study, faster Kavod, harder breadth.
   let kavod = 1 + Math.floor(streak / 5) + (crit ? 3 : 0)
-  if (state.exile) kavod = Math.round(kavod * EXILE_KAVOD_MULT)
+  if (state.exile?.kind === 'exile') kavod = Math.round(kavod * EXILE_KAVOD_MULT)
   state.kavod = (state.kavod || 0) + kavod
   state.streak = streak
   state.bestStreak = Math.max(state.bestStreak || 0, streak)
@@ -334,21 +339,64 @@ export function applyPrestige(state) {
   return gained
 }
 
-// ── Exile runs: the prestige variant (challenge, not punishment) ───
+// ── Vow runs: the prestige variants (challenge, not punishment) ───
 // Realm Grinder's lesson: prestige must change HOW you play, not just the
-// numbers. Vowing exile at prestige locks the workshop to 3 random letters
-// until the next root — forcing breadth-first study (the synergy theme) on a
-// constrained set — and pays double Kavod while the vow holds. Ending early is
-// always allowed (prestige out); completing one counts toward an achievement.
+// numbers. Two covenants, same seam (state.exile = {kind, ...}):
+//   exile:     vowed any time once the meta layer opens — lock NEW study to
+//              Aleph + 2 random letters until the next root (production keeps
+//              running), and earn double Kavod while the vow holds.
+//   shemittah: vowed any time once the meta layer opens — the rest HOUR.
+//              Inscribe nothing for one hour (production keeps running), every
+//              tap counts double, then the run completes. A sprint, never a
+//              freeze: a buying freeze during compounding costs 20x (measured),
+//              so shemittah is fixed-duration by design.
+// Ending early is always allowed (prestige out); completing one counts toward
+// the Covenant Keeper achievement. Vows open with the first heavenly upgrade —
+// endgame spice for committed students, not early detours.
 
 export const EXILE_KAVOD_MULT = 2.0
 export const EXILE_LETTERS = 3
+export const SHEMITTAH_TAP_MULT = 2.0
+export const SHEMITTAH_HOURS = 1
+export const VOW_MAX_HOURS = 24 // backstop: a vow that cannot complete in a day releases uncounted (fizzle, not trap)
 
-/** Take the vow: lock to `letters` until the next prestige. Returns true if vowed. */
+/** Take the vow of exile: lock to `letters` until the next prestige. Returns true if vowed. */
 export function startExile(state, letters, now = Date.now()) {
   const set = [...new Set(letters)].filter(i => i >= 0 && i < LETTERS.length)
   if (set.length !== EXILE_LETTERS || state.exile) return false
-  state.exile = { letters: set.sort((a, b) => a - b), startedAt: now }
+  state.exile = { kind: 'exile', letters: set.sort((a, b) => a - b), startedAt: now, endsAt: now + VOW_MAX_HOURS * 3600 * 1000 }
+  state.lastVowPrestige = state.prestiges || 0
+  return true
+}
+
+/** Take the shemittah vow any time: inscribe nothing for one hour. Returns true if vowed. */
+export function startShemittah(state, now = Date.now()) {
+  if (state.exile) return false
+  state.exile = { kind: 'shemittah', startedAt: now, endsAt: now + SHEMITTAH_HOURS * 3600 * 1000 }
+  state.lastVowPrestige = state.prestiges || 0
+  return true
+}
+
+/**
+ * Complete a rested shemittah: the hour elapsed, so the run counts.
+ * (Prestiging out mid-hour also counts, via applyPrestige.) Returns true on completion.
+ */
+export function checkShemittah(state, now = Date.now()) {
+  if (state.exile?.kind !== 'shemittah') return false
+  if (now < (state.exile.endsAt || 0)) return false
+  state.exile = null
+  state.exilesCompleted = (state.exilesCompleted || 0) + 1
+  return true
+}
+
+/**
+ * Release an expired vow. A vow that cannot complete within 24h releases
+ * UNCOUNTED — the fizzle rule applied to vows. Returns true if released.
+ */
+export function vowReleased(state, now = Date.now()) {
+  if (!state.exile) return false
+  if (now <= (state.exile.endsAt || Infinity)) return false
+  state.exile = null
   return true
 }
 
@@ -362,9 +410,16 @@ export function rollExileLetters(rng = Math.random) {
   return out.sort((a, b) => a - b)
 }
 
-/** A letter is buyable when no vow holds, or it is one of the exiled three. */
+/** A letter is buyable when no vow holds; exile allows its three; shemittah allows none. */
 export function exileAllows(state, i) {
-  return !state.exile || (state.exile.letters || []).includes(i)
+  if (!state.exile) return true
+  if (state.exile.kind === 'shemittah') return false
+  return (state.exile.letters || []).includes(i)
+}
+
+/** Tap multiplier while the shemittah vow holds (the sprint payoff). */
+export function shemittahTapMult(state) {
+  return state.exile?.kind === 'shemittah' ? SHEMITTAH_TAP_MULT : 1
 }
 
 // ── Gameplay loop: bulk-buy, quests, streak milestones, next goals ────
@@ -941,15 +996,22 @@ export const ACHIEVEMENTS = [
   { id: 'first_letter', name: 'First Light', icon: '🕯️', desc: 'Inscribe your first golem', check: s => totalOwned(s) >= 1 },
   { id: 'own10', name: 'Choir', icon: '🗿', desc: 'Own 10 golems', check: s => totalOwned(s) >= 10 },
   { id: 'own100', name: 'Legion', icon: '🏛️', desc: 'Own 100 golems', check: s => totalOwned(s) >= 100 },
+  { id: 'own1000', name: 'Multitude', icon: '👥', desc: 'Own 1,000 golems', check: s => totalOwned(s) >= 1000 },
   { id: 'streak25', name: 'Unstoppable', icon: '🔥', desc: 'Reach a 25 streak', check: s => (s.bestStreak || 0) >= 25 },
+  { id: 'streak50', name: 'Steadfast', icon: '🏔️', desc: 'Reach a 50 streak', check: s => (s.bestStreak || 0) >= 50 },
   { id: 'correct100', name: 'Diligent', icon: '📖', desc: 'Answer 100 correctly', check: s => (s.correct || 0) >= 100 },
+  { id: 'correct1000', name: 'Scribe', icon: '✍️', desc: 'Answer 1,000 correctly', check: s => (s.correct || 0) >= 1000 },
   { id: 'root1', name: 'First Fruits', icon: '🌿', desc: 'Forge your first root', check: s => (s.roots || 0) >= 1 },
   { id: 'prestige5', name: 'Reformed', icon: '🔄', desc: 'Prestige 5 times', check: s => (s.prestiges || 0) >= 5 },
   { id: 'fig1', name: 'Gardener', icon: '🍯', desc: 'Harvest your first fig', check: s => (s.figs?.level || 0) >= 1 },
   { id: 'vine1', name: 'Vinedresser', icon: '🍇', desc: 'Harvest your first vine', check: s => (s.vineyard?.level || 0) >= 1 },
   { id: 'spark1', name: 'Ascendant', icon: '💫', desc: 'Earn your first Aliyah spark', check: s => sparksEarned(s.lifetimeOhr || 0) >= 1 },
-  { id: 'exile1', name: 'Return', icon: '⛓️', desc: 'Complete an exile run', check: s => (s.exilesCompleted || 0) >= 1 },
+  { id: 'vow1', name: 'Covenant Keeper', icon: '⛓️', desc: 'Complete a vow run (exile or shemittah)', check: s => (s.exilesCompleted || 0) >= 1 },
   { id: 'own22', name: 'Full Aleph-Bet', icon: '🔠', desc: 'Own every letter', check: s => LETTERS.every((_, i) => (s.owned?.[i] || 0) > 0) },
+  // Hidden deeds: concealed (❓) until earned — discovery is the reward.
+  { id: 'breadth10', name: 'Well-Rounded', icon: '🍲', desc: 'Study 10 different letters', hidden: true, check: s => Object.values(s.owned || {}).filter(n => (n || 0) > 0).length >= 10 },
+  { id: 'crit50', name: 'Sharpshooter', icon: '🎯', desc: 'Land 50 crits', hidden: true, check: s => (s.crits || 0) >= 50 },
+  { id: 'hoarder10', name: 'Patient', icon: '🏦', desc: 'Hold 10 unspent sparks at once', hidden: true, check: s => availableSparks(s) >= 10 },
 ]
 
 export function achievementsEarned(state) {
@@ -958,6 +1020,26 @@ export function achievementsEarned(state) {
 
 export function shemenMultiplier(state) {
   return 1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT
+}
+
+/**
+ * Share card: a plain-text snapshot of the workshop for pasting into a
+ * message (study group, family chat). No backend, no accounts — the social
+ * layer without multiplayer. Pure and deterministic (no dates), so it is
+ * trivially testable.
+ */
+export function shareCard(state) {
+  const fmt = n => Math.floor(n || 0).toLocaleString('en-US')
+  const earned = achievementsEarned(state)
+  const lines = [
+    '🕯️ My EMET workshop — Aleph to Revelation',
+    `✨ ${fmt(state.lifetimeOhr)} lifetime Ohr · 🌿 ${state.roots || 0} roots · 🗿 ${totalOwned(state)} golems`,
+    `🔥 best streak ${state.bestStreak || 0} · 🌟 ${fmt(state.kavod)} Kavod`,
+    `🍯 grove lvl ${state.figs?.level || 0} · 🍇 vineyard lvl ${state.vineyard?.level || 0} · 💫 ${availableSparks(state)} sparks`,
+    `🏆 ${earned.length}/${ACHIEVEMENTS.length} achievements · 🫒 +${Math.round((shemenMultiplier(state) - 1) * 100)}% Shemen`,
+  ]
+  if (state.exile) lines.push(`⛓️ under vow (${state.exile.kind}) — study with me`)
+  return lines.join('\n')
 }
 
 // ── Daily lesson: 10 correct answers, once per day ───────────────────
@@ -1273,7 +1355,44 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   applyPrestige(exP)
   a(!exP.exile && exP.exilesCompleted === 1, 'prestiging out completes the exile')
   const exAch = defaultIdleState(); exAch.exilesCompleted = 1
-  a(achievementsEarned(exAch).some(x => x.id === 'exile1'), 'completed exile unlocks Return')
+  a(achievementsEarned(exAch).some(x => x.id === 'vow1'), 'completed vow unlocks Covenant Keeper')
+  // Shemittah
+  const sh = defaultIdleState()
+  a(startShemittah(sh, 1000) === true && sh.exile.kind === 'shemittah', 'shemittah vow takes hold')
+  a(sh.lastVowPrestige === 0, 'vow records the prestige count')
+  a(startShemittah(sh, 2000) === false && startExile(sh, [0, 1, 2]) === false, 'no second vow mid-vow')
+  a(!exileAllows(sh, 0) && !exileAllows(sh, 21), 'shemittah locks every letter')
+  a(shemittahTapMult(sh) === 2 && shemittahTapMult(defaultIdleState()) === 1, 'shemittah doubles taps, otherwise x1')
+  const shTap = applyCorrectAnswer(sh, 0, () => 0.99)
+  a(Math.abs(shTap.gained - 2.02) < 1e-9 && shTap.kavod === 1, 'shemittah doubles the tap but not the Kavod')
+  const shP = { ...defaultIdleState(), lifetimeOhr: 1e6, exile: { kind: 'shemittah', startedAt: 0 } }
+  shP.ohr = 0
+  applyPrestige(shP)
+  a(!shP.exile && shP.exilesCompleted === 1, 'prestiging out completes shemittah too')
+  const shDone = defaultIdleState()
+  startShemittah(shDone, 1000)
+  a(checkShemittah(shDone, 1000 + SHEMITTAH_HOURS * 3600 * 1000 - 1) === false && !!shDone.exile, 'shemittah holds for its hour')
+  a(checkShemittah(shDone, 1000 + SHEMITTAH_HOURS * 3600 * 1000) === true && !shDone.exile && shDone.exilesCompleted === 1, 'the rested hour completes the run')
+  // Tiered + hidden achievements
+  const tier = defaultIdleState(); tier.owned = { 0: 1000 }; tier.correct = 1000; tier.bestStreak = 50
+  a(achievementsEarned(tier).some(x => x.id === 'own1000'), 'own-1000 tier unlocks')
+  a(achievementsEarned(tier).some(x => x.id === 'correct1000'), 'correct-1000 tier unlocks')
+  a(achievementsEarned(tier).some(x => x.id === 'streak50'), 'streak-50 tier unlocks')
+  const soup = defaultIdleState(); soup.owned = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 1]))
+  a(achievementsEarned(soup).some(x => x.id === 'breadth10'), 'ten studied letters unlocks the hidden breadth deed')
+  const sharp = defaultIdleState(); sharp.crits = 50
+  a(achievementsEarned(sharp).some(x => x.id === 'crit50'), 'fifty crits unlocks the hidden sharpshooter deed')
+  const hoard = defaultIdleState(); hoard.lifetimeOhr = lifetimeForSpark(10)
+  a(achievementsEarned(hoard).some(x => x.id === 'hoarder10'), 'ten held sparks unlocks the hidden patience deed')
+  const hoard9 = defaultIdleState(); hoard9.lifetimeOhr = lifetimeForSpark(10) - 1
+  a(!achievementsEarned(hoard9).some(x => x.id === 'hoarder10'), 'nine sparks is not patience')
+  a(ACHIEVEMENTS.filter(x => x.hidden).length === 3 && ACHIEVEMENTS.length === 18, 'three hidden deeds among eighteen achievements')
+  // Share card
+  const sc = defaultIdleState(); sc.lifetimeOhr = 1234567; sc.roots = 3; sc.owned = { 0: 5 }; sc.bestStreak = 48
+  const card = shareCard(sc)
+  a(card.includes('EMET') && card.includes('3 roots') && card.includes('48'), 'share card carries the headline numbers')
+  a(!shareCard(defaultIdleState()).includes('under vow'), 'no vow line when free')
+  a(shareCard({ ...defaultIdleState(), exile: { kind: 'exile', letters: [0, 1, 2], startedAt: 0 } }).includes('under vow'), 'vow line invites others in')
   // Streak grace
   const gr = defaultIdleState()
   gr.streak = 4
@@ -1285,4 +1404,11 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const grNext = { ...gr, streak: 20 }
   applyWrongAnswer(grNext, 1000 + 86400000)
   a(grNext.streak === 10, 'grace renews the next day')
+  // Vow expiry: no trap states
+  const vx = defaultIdleState()
+  startExile(vx, [0, 1, 2], 1000)
+  a(vowReleased(vx, 1000 + VOW_MAX_HOURS * 3600 * 1000 - 1) === false && !!vx.exile, 'vow holds within 24h')
+  a(vowReleased(vx, 1000 + VOW_MAX_HOURS * 3600 * 1000 + 1) === true && !vx.exile, 'vow releases after 24h')
+  a(vx.exilesCompleted === 0, 'expiry releases uncounted (fizzle, not completion)')
+  a(vowReleased(defaultIdleState(), 99999) === false, 'nothing to release when free')
 }

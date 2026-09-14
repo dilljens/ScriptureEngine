@@ -12,9 +12,10 @@ import {
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly,
   GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
   PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
+  startShemittah, shemittahTapMult, shareCard, checkShemittah, SHEMITTAH_HOURS,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
   plantVineyard, harvestVine, vineReady, vineRemainingSec, vineyardMultiplier,
-  VINE_COUNT, VINE_MAX_LEVEL, VINE_RIPEN_HOURS,
+  VINE_COUNT, VINE_MAX_LEVEL, VINE_RIPEN_HOURS, vowReleased, VOW_MAX_HOURS,
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
@@ -125,6 +126,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       }
       spawnGoldenPrompt(next, Date.now(), Math.random, rate) // only when due + production exists
       expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
+      // Shemittah completes on its hour; an uncompletable vow releases uncounted (24h cap).
+      if (checkShemittah(next, Date.now())) {
+        commit(next); saveIdleState(next)
+        try { logEvent('vow_complete', { kind: 'shemittah' }) } catch {}
+        setBoostFlash({ text: '🌾 Shemittah complete — the land woke up. Covenant kept.' })
+        setTimeout(() => setBoostFlash(null), 4500)
+      } else if (vowReleased(next, Date.now())) {
+        commit(next); saveIdleState(next)
+        setBoostFlash({ text: '🕊️ Your vow released unfulfilled — no harm done. Vow again whenever you like.' })
+        setTimeout(() => setBoostFlash(null), 4500)
+      }
       if (++n % 5 === 0) saveIdleState(next)
       commit(next)
     }, 1000)
@@ -197,6 +209,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         plantFig(next)
       }
       plantVineyard(next)
+      vowReleased(next) // an offline-expired vow releases on return, uncounted
       if (s.pendingOffline >= 1) {
         setOfflinePopup({ earned: Math.floor(s.pendingOffline), claim: true })
         commit(next); saveIdleState(next)
@@ -270,23 +283,64 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     } catch {}
   }
 
-  const doPrestige = (intoExile = false) => {
+  const doPrestige = () => {
     const target = rootsEarned(state.lifetimeOhr || 0)
     const gained = Math.max(0, target - (state.roots || 0))
     if (gained <= 0) return
     const next = { ...state }
     applyPrestige(next)
-    let exiled = null
-    if (intoExile) {
-      exiled = rollExileLetters()
-      startExile(next, exiled)
-    }
     setState({ ...next }); saveIdleState(next)
-    try { logEvent('prestige', { gained, roots: next.roots, lifetime: Math.floor(next.lifetimeOhr || 0), prestiges: next.prestiges, exile: exiled }) } catch {}
-    setPrestigeFlash({ gained, exiled })
+    try { logEvent('prestige', { gained, roots: next.roots, lifetime: Math.floor(next.lifetimeOhr || 0), prestiges: next.prestiges }) } catch {}
+    setPrestigeFlash({ gained })
     setTimeout(() => setPrestigeFlash(null), 5000)
     setPrestigeTick(t => t + 1)
     if (onEarn) onEarn(0)
+  }
+
+  // Vow exile mid-run (no reset — production intact, growth constrained).
+  const takeExile = () => {
+    const next = { ...stateRef.current }
+    const letters = rollExileLetters()
+    if (!startExile(next, letters)) return
+    commit(next); saveIdleState(next)
+    try { logEvent('vow', { kind: 'exile', letters }) } catch {}
+    setBoostFlash({ text: `⛓️ Exile vowed — new study is ${letters.map(i => LETTERS[i]).join(' · ')} only, until your next root. Double 🌟 meanwhile.` })
+    setTimeout(() => setBoostFlash(null), 4500)
+  }
+
+  // Copy a plain-text workshop card for pasting anywhere (no backend, no accounts).
+  const shareWorkshop = () => {
+    const text = shareCard(stateRef.current)
+    const done = () => {
+      setBoostFlash({ text: '📣 Workshop card copied — paste it to your study group.' })
+      setTimeout(() => setBoostFlash(null), 4000)
+    }
+    try { logEvent('share', {}) } catch {}
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done))
+    } else fallbackCopy(text, done)
+  }
+
+  const fallbackCopy = (text, done) => {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      done()
+    } catch {}
+  }
+
+  // Vow shemittah for its hour (no reset — production intact, taps double).
+  const takeRest = () => {
+    const next = { ...stateRef.current }
+    if (!startShemittah(next)) return
+    commit(next); saveIdleState(next)
+    try { logEvent('vow', { kind: 'shemittah' }) } catch {}
+    setBoostFlash({ text: '🌾 Shemittah vowed — the land rests for one hour. No inscribing; every tap counts double.' })
+    setTimeout(() => setBoostFlash(null), 4500)
   }
 
   // Take one of the Prophet's three blessings (the choice itself never expires).
@@ -441,7 +495,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const dailyClaimed = !!state.daily?.claimed
   const graceAvailable = (state.streakGraceDay || '') !== dayKey()
   const prophetPending = state.golden?.id === 'prophet'
-  const exileLetters = state.exile?.letters || null
+  const exileLetters = state.exile?.kind === 'exile' ? state.exile.letters : null
+  const exileKind = state.exile?.kind || null
+  const vowHoursLeft = state.exile?.endsAt ? Math.max(0, Math.ceil((state.exile.endsAt - Date.now()) / 3600000)) : VOW_MAX_HOURS
 
   return (
     <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800">
@@ -462,7 +518,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''} · tap {tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)).toFixed(1)} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
+            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''} · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state)).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
             <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 {Math.floor(state.kavod || 0)}</span>
             {synPct > 0 && (
@@ -504,20 +560,25 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             {showShop ? 'Hide Letters ▲' : 'Letters ▼'}
           </button>
           {nextRoots > (state.roots || 0) && (
-            <>
-              <button onClick={() => doPrestige(false)}
-                title={exileLetters ? 'Complete your exile run: forge roots, release the vow' : 'Forge roots: reset Ohr + generators, keep roots, +10% each forever'}
-                className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-teal-600 hover:bg-teal-700 text-white animate-pulse' : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'}`}>
-                🌿 Root (+{nextRoots - (state.roots || 0)})
-              </button>
-              {!exileLetters && (
-                <button onClick={() => doPrestige(true)}
-                  title="Vow exile: forge roots AND lock study to Aleph + 2 random letters until the next root, for double 🌟 Kavod"
-                  className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-neutral-700 hover:bg-neutral-800 text-white animate-pulse' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'}`}>
-                  ⛓️ Exile
-                </button>
-              )}
-            </>
+            <button onClick={doPrestige}
+              title={exileKind ? 'Complete your vow run: forge roots, release the vow' : 'Forge roots: reset Ohr + generators, keep roots, +10% each forever'}
+              className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${prestigeReady ? 'bg-teal-600 hover:bg-teal-700 text-white animate-pulse' : 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300'}`}>
+              🌿 Root (+{nextRoots - (state.roots || 0)})
+            </button>
+          )}
+          {!exileKind && heavenlyOwned(state, 'h_legacy') && totalOwned(state) > 0 && (
+            <button onClick={takeExile}
+              title="Vow exile, any time: lock new study to Aleph + 2 letters until your next root, for double 🌟 Kavod (your workshop keeps running)"
+              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+              ⛓️ Exile
+            </button>
+          )}
+          {!exileKind && heavenlyOwned(state, 'h_legacy') && totalOwned(state) > 0 && (
+            <button onClick={takeRest}
+              title="Vow shemittah (rest hour), any time: inscribe nothing for one hour — every tap counts double"
+              className="flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer bg-lime-100 dark:bg-lime-900/30 text-lime-700 dark:text-lime-300">
+              🌾 Rest
+            </button>
           )}
         </div>
       </div>
@@ -576,10 +637,15 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           </div>
         </div>
       )}
-      {/* Exile — the active vow */}
-      {exileLetters && (
+      {/* The active vow */}
+      {exileKind === 'exile' && exileLetters && (
         <div className="mt-2 p-2 rounded-lg bg-neutral-700 text-neutral-100 text-xs text-center font-medium">
-          ⛓️ In exile: only {exileLetters.map(i => LETTERS[i]).join(' · ')} may be inscribed · double 🌟 Kavod · prestige out any time to complete the run
+          ⛓️ In exile: new study is {exileLetters.map(i => LETTERS[i]).join(' · ')} only (the workshop keeps running) · double 🌟 Kavod · prestige out any time, or release in {vowHoursLeft}h
+        </div>
+      )}
+      {exileKind === 'shemittah' && (
+        <div className="mt-2 p-2 rounded-lg bg-lime-700 text-white text-xs text-center font-medium">
+          🌾 Shemittah — the land rests for {Math.max(1, Math.ceil(((state.exile?.endsAt || 0) - Date.now()) / 60000))} more min: no inscribing · every tap counts double
         </div>
       )}
       {goldenFlash && (
@@ -628,9 +694,6 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {prestigeFlash && (
         <div className="idle-pop mt-2 p-2 rounded-lg bg-teal-600 text-white text-sm text-center font-medium">
           🌿 Root forged! +{prestigeFlash.gained} root{prestigeFlash.gained > 1 ? 's' : ''} — all Ohr production +{prestigeFlash.gained * 10}% forever.
-          {prestigeFlash.exiled && (
-            <span> ⛓️ And you walk into exile with {prestigeFlash.exiled.map(i => LETTERS[i]).join(' · ')} — +50% 🌟 until the next root.</span>
-          )}
         </div>
       )}
 
@@ -664,7 +727,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {buyHint && (
         <div className="idle-pop mt-2 p-2 rounded-lg bg-red-500 text-white text-xs text-center font-medium">
           {buyHint.locked
-            ? `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`
+            ? (exileKind === 'shemittah'
+              ? '🌾 The land rests — no inscribing until the next root. Study on: every tap counts double.'
+              : `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`)
             : `Need ${buyHint.need.toLocaleString()} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`}
         </div>
       )}
@@ -690,11 +755,12 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const afford = n > 0 && state.ohr >= spend
               const m = mastery[i] || 0
               const locked = !exileAllows(state, i)
+              const lockIcon = exileKind === 'shemittah' ? '🌾' : '⛓️'
               return (
                 <button key={i} onClick={() => buy(i)}
-                  title={locked ? `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}` : `${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
+                  title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
                   className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
-                  <div className="text-xl leading-none">{locked ? '⛓️' : L}</div>
+                  <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
                   <div className="text-[9px] font-mono text-neutral-500 tabular-nums">
                     {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
                   </div>
@@ -821,9 +887,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             <div className="flex flex-wrap gap-1">
               {ACHIEVEMENTS.map(a => {
                 const has = earnedAch.some(x => x.id === a.id)
+                const concealed = !has && a.hidden
                 return (
-                  <span key={a.id} title={`${a.name} — ${a.desc}${has ? '' : ' (locked)'}`}
-                    className={`text-sm ${has ? '' : 'opacity-30 grayscale'}`}>{a.icon}</span>
+                  <span key={a.id} title={concealed ? 'A hidden deed — its terms are secret' : `${a.name} — ${a.desc}${has ? '' : ' (locked)'}`}
+                    className={`text-sm ${has ? '' : 'opacity-30 grayscale'}`}>{concealed ? '❓' : a.icon}</span>
                 )
               })}
             </div>
@@ -962,6 +1029,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Download the full event log (JSON) for balancing">
             📊 Log
+          </button>
+          <button onClick={shareWorkshop}
+            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            title="Copy a text snapshot of your workshop for your study group (no account, nothing uploaded)">
+            📣 Share
           </button>
           <button onClick={() => setShowGolems(s => !s)}
             className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"

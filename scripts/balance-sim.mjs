@@ -1,7 +1,7 @@
 // Headless balance sim — drives the real idle-game.js pure functions with a
 // greedy "engaged player" policy and reports milestone timings.
 //
-//   node scripts/balance-sim.mjs [days] [dtSeconds]
+//   node scripts/balance-sim.mjs [days] [dtSeconds] [no-vows]
 //
 // This is an OPTIMISTIC UPPER BOUND: ~5 graded answers/min with no breaks,
 // perfect greedy buying, no distractions. Treat bot times as floor estimates —
@@ -15,6 +15,7 @@ import * as g from '../frontend/src/lib/idle-game.js'
 
 const DAYS = Number(process.argv[2] || 7)
 const DT = Number(process.argv[3] || 5) // seconds per step
+const VOWS = process.argv[4] !== 'no-vows' // pass no-vows for the unconstrained baseline
 const TOTAL = Math.floor(DAYS * 86400)
 const ANSWER_EVERY = 12 // seconds between graded answers (~5/min)
 const ACCURACY = 0.85
@@ -89,6 +90,9 @@ for (let t = 0; t < TOTAL; t += DT) {
       const us = g.availableLetterUpgrades(state, i)
       for (const u of us) if (state.ohr >= u.cost) g.buyLetterUpgrade(state, i, u.k)
     }
+    // Spend Kavod like an engaged player: keep the frenzy chained. Without
+    // this the sim prices exile's +Kavod payoff at zero (it never spends it).
+    g.buyFrenzy(state, t * 1000)
     const nh = nextHeavenly()
     if (nh && g.availableSparks(state) >= nh.cost) g.buyHeavenly(state, nh.id)
   }
@@ -103,14 +107,24 @@ for (let t = 0; t < TOTAL; t += DT) {
     }
   }
 
-  if (g.shouldPrestige(state.lifetimeOhr, state.roots || 0)) {
-    g.applyPrestige(state)
-    // Vow exile on every other prestige (after the first): the bot plays the
-    // variant the way a curious player would — often enough to price it.
-    if (!state.exile && (state.prestiges || 0) >= 1 && (state.prestiges || 0) % 2 === 1) {
-      g.startExile(state, g.rollExileLetters(rnd), t * 1000)
-    }
+  if (g.shouldPrestige(state.lifetimeOhr, state.roots || 0)) g.applyPrestige(state)
+  // Taste each vow once, with a standing workshop, AFTER the meta layer opens
+  // (first heavenly upgrade): freezing new buying during hypergrowth costs
+  // 20x, while mature economies barely notice — vows are endgame spice for
+  // committed students, not early detours. Neither may strand the run: both
+  // require a productive workshop, and an uncompletable vow releases
+  // uncounted after 24h.
+  const metaOpen = g.heavenlyOwned(state, 'h_legacy')
+  if (VOWS && metaOpen && !state.exile && (state.prestiges || 0) >= 2 && g.totalOwned(state) >= 50
+      && (state.exilesCompleted || 0) < 1) {
+    g.startExile(state, g.rollExileLetters(rnd), t * 1000)
   }
+  if (VOWS && metaOpen && !state.exile && (state.prestiges || 0) >= 3 && g.totalOwned(state) >= 10
+      && (state.exilesCompleted || 0) >= 1 && (state.exilesCompleted || 0) < 2) {
+    g.startShemittah(state, t * 1000)
+  }
+  if (g.checkShemittah(state, t * 1000)) mark('shemittah_done', t)
+  if (g.vowReleased(state, t * 1000)) mark('vow_released', t)
 
   if (g.totalOwned(state) >= 1) mark('first_letter', t)
   if ((state.roots || 0) >= 1) mark('first_root', t)
@@ -130,6 +144,6 @@ for (let t = 0; t < TOTAL; t += DT) {
 }
 
 const fmt = (s) => s === undefined ? 'never' : s < 3600 ? `${(s / 60).toFixed(0)}m` : s < 86400 ? `${(s / 3600).toFixed(1)}h` : `${(s / 86400).toFixed(1)}d`
-console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | vineyard lvl ${state.vineyard?.level} | exiles ${state.exilesCompleted || 0} | owned ${g.totalOwned(state)}`)
-for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'vineyard_1', 'vineyard_10', 'exile_done', 'life_1e6', 'life_1e9', 'life_1e12'])
+console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | vineyard lvl ${state.vineyard?.level} | vows ${state.exilesCompleted || 0} | owned ${g.totalOwned(state)}`)
+for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'vineyard_1', 'vineyard_10', 'exile_done', 'shemittah_done', 'vow_released', 'life_1e6', 'life_1e9', 'life_1e12'])
   console.log(`  ${k.padEnd(13)} ${fmt(ms[k])}`)

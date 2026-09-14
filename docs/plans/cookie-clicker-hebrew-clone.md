@@ -175,5 +175,7 @@ Goal: Clone Cookie Clicker's progression systems (mechanics only, original theme
 
 ## Engagement pass (post-plan, 2026-09-14) `[x]`
 - Prophet's Choice: 12% of golden spawns offer pick-1-of-3 blessings (gale/dew/rush + Manna Kavod + Early Harvest timer cut). Same 20s window, same fizzle rules.
-- Exile runs: optional prestige vow locking study to Aleph + 2 random letters until the next root, for double Kavod. Return achievement → Shemen. Sim prices the variant honestly (bot exiling half its prestiges runs ~2x slower to full heavenly — a real challenge tradeoff, not a tax on normal play).
+- Vow runs (both mid-run once the meta layer opens, production intact, 24h release backstop): Exile locks NEW study to Aleph + 2 letters until the next root for double Kavod; Shemittah is a fixed 1-hour sprint (no inscribing, taps x2, auto-completes). Covenant Keeper achievement → Shemen. Sim: both vows complete, heavenly_all 9.6h vs 9.1h baseline (+5%) — priced, not taxing. (A reset-paired exile cost 40x and a freeze-until-prestige shemittah trapped the run 84h in sim — both redesigned, both lessons recorded here.)
 - Streak reframe: best-streak is the hero number; once-a-day grace halves (not resets) a 10+ streak on a wrong answer. Nothing earned is ever lost.
+- Achievements 12 → 18: tiers (own/correct/streak next orders) + 3 hidden deeds (❓ until earned: breadth, sharpshooter, spark-hoarding).
+- Share cards: plain-text workshop snapshot to clipboard (no backend, no accounts) — social proof without multiplayer.
