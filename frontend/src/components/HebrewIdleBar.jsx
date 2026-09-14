@@ -9,7 +9,7 @@ import {
   loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer,
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
-  HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly,
+  HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
   GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
   PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
   startShemittah, shemittahTapMult, shareCard, checkShemittah, SHEMITTAH_HOURS,
@@ -985,31 +985,44 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               })}
             </div>
 
-            {/* Heavenly chain — Aliyah sparks, bought in order */}
+            {/* Heavenly chain — Aliyah sparks, one way per tier */}
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-                Heavenly · pay 💫 sparks ({sparks} available{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''})
+                The Ascent · pay 💫 sparks ({sparks} available{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''})
               </div>
               <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-                Bought in order. Unspent sparks give +1% Ohr each, so buying trades bonus for permanence.
+                Six stations, two ways up each — choosing one seals the other, forever. Unspent sparks give +1% Ohr each, so buying trades bonus for permanence.
               </p>
-              {HEAVENLY_UPGRADES.map(u => {
-                const ownedH = heavenlyOwned(state, u.id)
-                const unlocked = heavenlyUnlocked(state, u.id)
-                const afford = unlocked && sparks >= u.cost
+              {HEAVENLY_TIERS.map(t => {
+                const pair = HEAVENLY_UPGRADES.filter(u => u.tier === t)
+                const done = heavenlyTierOwned(state, t)
+                const open = t === 0 || heavenlyTierOwned(state, t - 1)
                 return (
-                  <button key={u.id} disabled={ownedH} onClick={() => buyHeaven(u.id)}
-                    className={`w-full min-h-[48px] mb-1 px-2.5 rounded-lg border text-left ${ownedH ? 'border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-900/20 cursor-default' : afford ? 'border-sky-300 dark:border-sky-700 bg-white dark:bg-neutral-800 cursor-pointer active:scale-[0.99]' : 'border-neutral-200 dark:border-neutral-700 opacity-60 cursor-pointer'}`}>
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="font-medium text-neutral-700 dark:text-neutral-200">
-                        {u.icon} {u.name} {ownedH ? <span className="text-green-600">✓</span> : (!unlocked && <span className="text-neutral-400">🔒</span>)}
-                      </span>
-                      <span className={`tabular-nums ${ownedH ? 'text-green-600' : 'text-sky-500'}`}>
-                        {ownedH ? 'owned' : `${u.cost} 💫`}
-                      </span>
+                  <div key={t} className="mb-1">
+                    <div className="text-[9px] uppercase tracking-wider text-neutral-400 mb-0.5">Station {t + 1}</div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {pair.map(u => {
+                        const ownedH = heavenlyOwned(state, u.id)
+                        const foregone = done && !ownedH
+                        const afford = open && !done && sparks >= u.cost
+                        return (
+                          <button key={u.id} disabled={ownedH || foregone} onClick={() => buyHeaven(u.id)}
+                            title={foregone ? `${u.name} — foregone: you ascended the other way` : u.desc}
+                            className={`min-h-[48px] px-2 rounded-lg border text-left ${ownedH ? 'border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-900/20 cursor-default' : foregone ? 'border-neutral-200 dark:border-neutral-700 opacity-40 cursor-default' : afford ? 'border-sky-300 dark:border-sky-700 bg-white dark:bg-neutral-800 cursor-pointer active:scale-[0.99]' : 'border-neutral-200 dark:border-neutral-700 opacity-60 cursor-pointer'}`}>
+                            <div className="flex justify-between items-center text-[11px]">
+                              <span className="font-medium text-neutral-700 dark:text-neutral-200">
+                                {foregone ? '✕' : u.icon} {u.name} {ownedH ? <span className="text-green-600">✓</span> : (!open && <span className="text-neutral-400">🔒</span>)}
+                              </span>
+                              <span className={`tabular-nums ${ownedH ? 'text-green-600' : 'text-sky-500'}`}>
+                                {ownedH ? 'owned' : `${u.cost} 💫`}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-neutral-500 dark:text-neutral-400">{foregone ? 'Foregone — the other way was chosen' : u.desc}</div>
+                          </button>
+                        )
+                      })}
                     </div>
-                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400">{u.desc}</div>
-                  </button>
+                  </div>
                 )
               })}
             </div>

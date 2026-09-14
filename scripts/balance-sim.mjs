@@ -45,7 +45,15 @@ function cheapest() {
   }
   return { i: best, cost: bestCost }
 }
-const nextHeavenly = () => g.HEAVENLY_UPGRADES.find(u => g.heavenlyUnlocked(state, u.id) && !g.heavenlyOwned(state, u.id))
+const nextHeavenly = () => {
+  // Left-hand path, deterministically: first incomplete tier, first option.
+  // Keeps timings comparable across runs; branch coverage lives in self-checks.
+  for (const t of g.HEAVENLY_TIERS) {
+    if (g.heavenlyTierOwned(state, t)) continue
+    return g.HEAVENLY_UPGRADES.find(u => u.tier === t)
+  }
+  return null
+}
 
 for (let t = 0; t < TOTAL; t += DT) {
   // Answers fire on their own cadence, independent of the accrual step size.

@@ -825,14 +825,40 @@ export function permEffect(perm = {}, key) {
 
 export const ALIYAH_BASE = 1e12
 export const SPARK_BONUS = 0.01
+// The Ascent: six stations, two ways up each. Enoch walked with God and was
+// taken (Gen 5.24); his tour runs treasuries of winds (1 En 18.1), portals
+// and luminaries (1 En 34, 72), the crystal throne (1 En 14.18) — with
+// Genesis anchors where they already live (primordial light, Shabbat rest,
+// first fruits, David's key). Each tier offers a genuine tradeoff (head-start
+// vs scaling, taps vs idle, burst vs steady, active vs offline), and each
+// choice is EXCLUSIVE: your heaven looks different from mine (64 heavens).
+// Costs stay Fibonacci; effects reuse the existing perm keys so every
+// consumer (permEffect and below) works unchanged.
 export const HEAVENLY_UPGRADES = [
-  { id: 'h_legacy', name: 'Legacy of the Fathers', icon: '📜', cost: 1, desc: 'Every prestige starts with +1 of your first letter', effect: { seedLetter: 1 } },
-  { id: 'h_light', name: 'Primordial Light', icon: '💡', cost: 2, desc: 'All Ohr +25%', effect: { globalMult: 0.25 } },
-  { id: 'h_wisdom', name: 'Chochmah', icon: '🧠', cost: 3, desc: 'Tap power +50%', effect: { tapMult: 0.5 } },
-  { id: 'h_rest', name: 'Shabbat Rest', icon: '🕯️', cost: 5, desc: 'Offline earnings +25%', effect: { offlineAdd: 0.25 } },
-  { id: 'h_breath', name: 'Long Breath', icon: '🌬️', cost: 8, desc: 'Frenzy lasts +30s', effect: { frenzyBonusSec: 30 } },
-  { id: 'h_key', name: 'Key of David', icon: '🗝️', cost: 13, desc: 'All Ohr +100%', effect: { globalMult: 1.0 } },
+  { id: 'h_legacy', tier: 0, cost: 1, name: 'Legacy of the Fathers', icon: '📜', desc: 'Every prestige starts with +1 of your first letter', effect: { seedLetter: 1 } },
+  { id: 'h_firstfruits', tier: 0, cost: 1, name: 'First Fruits', icon: '🌾', desc: 'All Ohr +10%, Abel’s offering first', effect: { globalMult: 0.10 } },
+  { id: 'h_light', tier: 1, cost: 2, name: 'Primordial Light', icon: '💡', desc: 'All Ohr +25%', effect: { globalMult: 0.25 } },
+  { id: 'h_luminary', tier: 1, cost: 2, name: 'Luminary Courses', icon: '🌙', desc: 'Offline earnings +50% — the moon keeps its courses while you sleep', effect: { offlineAdd: 0.50 } },
+  { id: 'h_wisdom', tier: 2, cost: 3, name: 'Chochmah', icon: '🧠', desc: 'Tap power +50%', effect: { tapMult: 0.5 } },
+  { id: 'h_watcher', tier: 2, cost: 3, name: 'Watcher', icon: '👁️', desc: '+10% crit chance — the holy ones strike suddenly', effect: { critAdd: 0.10 } },
+  { id: 'h_rest', tier: 3, cost: 5, name: 'Shabbat Rest', icon: '🕯️', desc: 'Offline earnings +25%', effect: { offlineAdd: 0.25 } },
+  { id: 'h_vigil', tier: 3, cost: 5, name: 'Night Watch', icon: '🦉', desc: 'Frenzy lasts +60s — for those who stay awake', effect: { frenzyBonusSec: 60 } },
+  { id: 'h_breath', tier: 4, cost: 8, name: 'Long Breath', icon: '🌬️', desc: 'Frenzy lasts +30s', effect: { frenzyBonusSec: 30 } },
+  { id: 'h_winds', tier: 4, cost: 8, name: 'Treasuries of Winds', icon: '🌪️', desc: 'All Ohr +50%, from the storehouses Enoch saw', effect: { globalMult: 0.50 } },
+  { id: 'h_key', tier: 5, cost: 13, name: 'Key of David', icon: '🗝️', desc: 'All Ohr +100%', effect: { globalMult: 1.0 } },
+  { id: 'h_throne', tier: 5, cost: 13, name: 'Throne Vision', icon: '🔥', desc: 'Tap power +100% and +5% crit — the crystal throne', effect: { tapMult: 1.0, critAdd: 0.05 } },
 ]
+
+export const HEAVENLY_TIERS = [0, 1, 2, 3, 4, 5]
+
+export function heavenlyTier(id) {
+  return HEAVENLY_UPGRADES.find(u => u.id === id)?.tier ?? -1
+}
+
+/** A tier is complete once either of its two ways is owned. */
+export function heavenlyTierOwned(state, t) {
+  return HEAVENLY_UPGRADES.some(u => u.tier === t && heavenlyOwned(state, u.id))
+}
 
 /** Total sparks ever earned (cube root of lifetime Ohr). */
 export function sparksEarned(lifetimeOhr) {
@@ -865,18 +891,22 @@ export function heavenlyOwned(state, id) {
   return !!(state.perm || {})[id]
 }
 
-/** Chain gate: an upgrade unlocks only once the previous one is owned. */
+/** Tier gate: tier 0 is open; a tier unlocks once the previous tier has EITHER way owned. */
 export function heavenlyUnlocked(state, id) {
-  const idx = HEAVENLY_UPGRADES.findIndex(u => u.id === id)
-  if (idx < 0) return false
-  return idx === 0 || heavenlyOwned(state, HEAVENLY_UPGRADES[idx - 1].id)
+  const t = heavenlyTier(id)
+  if (t < 0) return false
+  return t === 0 || heavenlyTierOwned(state, t - 1)
 }
 
-/** Buy a heavenly upgrade with sparks. Returns true on success. */
+/**
+ * Buy a heavenly upgrade with sparks. One way per tier — choosing locks the
+ * rival out (build identity: 64 possible heavens). Returns true on success.
+ */
 export function buyHeavenly(state, id) {
   const u = HEAVENLY_UPGRADES.find(x => x.id === id)
   if (!u || heavenlyOwned(state, id)) return false
   if (!heavenlyUnlocked(state, id)) return false
+  if (heavenlyTierOwned(state, u.tier)) return false
   if (availableSparks(state) < u.cost) return false
   state.perm = { ...(state.perm || {}), [id]: true }
   return true
@@ -1039,6 +1069,8 @@ export function shareCard(state) {
     `🏆 ${earned.length}/${ACHIEVEMENTS.length} achievements · 🫒 +${Math.round((shemenMultiplier(state) - 1) * 100)}% Shemen`,
   ]
   if (state.exile) lines.push(`⛓️ under vow (${state.exile.kind}) — study with me`)
+  const ascended = HEAVENLY_UPGRADES.filter(u => (state.perm || {})[u.id])
+  if (ascended.length) lines.push(`🌌 ascended: ${ascended.map(u => u.name).join(' · ')}`)
   return lines.join('\n')
 }
 
@@ -1212,14 +1244,18 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const hs = defaultIdleState()
   hs.lifetimeOhr = 8 * ALIYAH_BASE
   a(availableSparks(hs) === 2, 'available sparks = earned - spent')
-  a(heavenlyUnlocked(hs, 'h_legacy') && !heavenlyUnlocked(hs, 'h_light'), 'chain locked until previous owned')
+  a(heavenlyUnlocked(hs, 'h_legacy') && heavenlyUnlocked(hs, 'h_firstfruits') && !heavenlyUnlocked(hs, 'h_light'), 'tier 0 open, tier 1 locked until either way is owned')
   a(buyHeavenly(hs, 'h_light') === false, 'cannot skip the chain')
   a(buyHeavenly(hs, 'h_legacy') === true && heavenlyOwned(hs, 'h_legacy'), 'buy the first heavenly upgrade')
+  a(buyHeavenly(hs, 'h_firstfruits') === false, 'choosing locks the rival out (one way per tier)')
   a(availableSparks(hs) === 1, 'spending a spark reduces the live bonus')
-  a(heavenlyUnlocked(hs, 'h_light'), 'chain unlocks after the previous is owned')
+  a(heavenlyUnlocked(hs, 'h_light') && heavenlyUnlocked(hs, 'h_luminary'), 'tier unlocks BOTH next-tier ways')
   hs.lifetimeOhr = 27 * ALIYAH_BASE // 3 earned, 3 spent → 0 available
-  a(buyHeavenly(hs, 'h_light') === true && availableSparks(hs) === 0, 'buy the second once funded')
-  a(permEffect(hs.perm, 'globalMult') === 0.25, 'heavenly effect feeds permEffect (no dropped modifier)')
+  a(buyHeavenly(hs, 'h_luminary') === true && heavenlyTierOwned(hs, 1), 'the rival way completes the tier too')
+  a(buyHeavenly(hs, 'h_light') === false, 'tier complete means the other way is closed')
+  a(permEffect(hs.perm, 'offlineAdd') === 0.50, 'rival effect feeds permEffect (no dropped modifier)')
+  a(heavenlyTier('bogus') === -1 && !heavenlyUnlocked(hs, 'bogus'), 'unknown ids stay locked')
+  a(permEffect(hs.perm, 'globalMult') === 0, 'unbought branches grant nothing')
   a(sparkBonus(0) === 1, 'no sparks = no bonus')
   a(sparkProgress(0).next === 1 && sparkProgress(0).pct === 0, 'spark progress starts at 1, 0%')
   a(sparkProgress(ALIYAH_BASE).earned === 1 && sparkProgress(ALIYAH_BASE).next === 2, 'spark progress advances')
