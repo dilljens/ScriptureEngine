@@ -6,6 +6,10 @@ import pytest
 
 from lib.db import SCHEMA_SQL
 
+# Every test here scans the 1.6GB production DB (test_db_integrity alone is
+# ~100s — half the suite). Nightly/integration material, not per-commit.
+pytestmark = pytest.mark.slow
+
 ROOT = Path(__file__).parent.parent
 PROD_DB = ROOT / "data" / "processed" / "scripture.db"
 

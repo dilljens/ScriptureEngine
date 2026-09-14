@@ -6,12 +6,12 @@ Tests search, verse lookup, and health endpoints under concurrent load.
 Zero external dependencies — uses only Python standard library.
 
 Usage:
-    python3 tests/load_test.py                          # Default: 50 concurrent
-    python3 tests/load_test.py --concurrent 100          # 100 concurrent
-    python3 tests/load_test.py --endpoint search         # Only search
-    python3 tests/load_test.py --endpoint verse          # Only verse
-    python3 tests/load_test.py --endpoint health         # Only health
-    python3 tests/load_test.py --server http://localhost:8002  # Live server
+    python3 scripts/load_test.py                          # Default: 50 concurrent
+    python3 scripts/load_test.py --concurrent 100          # 100 concurrent
+    python3 scripts/load_test.py --endpoint search         # Only search
+    python3 scripts/load_test.py --endpoint verse          # Only verse
+    python3 scripts/load_test.py --endpoint health         # Only health
+    python3 scripts/load_test.py --server http://localhost:8002  # Live server
 """
 
 import argparse

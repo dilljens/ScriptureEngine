@@ -1,3 +1,5 @@
+import pytest
+
 from scripts.align_hebrew_vocabulary import cloze_at_word_index, lemma_parts, reconciled_gloss, unpointed
 
 
@@ -78,6 +80,7 @@ def test_get_top_words_selects_one_citation_form_per_surface():
     assert all("/" not in w["lemma"] for w in words), "prefixed rows leaked into selection"
 
 
+@pytest.mark.slow  # full-corpus aggregate over the production DB (~11s)
 def test_lexicon_frequency_is_exact_ot_aggregate():
     import sqlite3
     from pathlib import Path

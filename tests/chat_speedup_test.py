@@ -12,8 +12,10 @@ import pytest
 
 from web.routes import chat as chat_routes
 
+from tests._chat_fakes import FakeHttpClient, FakeResp
 
-# ── Fakes (mirror chat_background_jobs_test.py helpers) ──
+
+# ── Fakes (shared helpers in tests/_chat_fakes.py) ──
 
 def _sse(data) -> str:
     return "data: " + json.dumps(data)
@@ -27,42 +29,6 @@ def _complete_stream(content="final answer"):
               "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}}),
         "data: [DONE]",
     ]
-
-
-class FakeResp:
-    def __init__(self, lines, status_code=200):
-        self.status_code = status_code
-        self._lines = lines
-
-    async def aread(self):
-        return b""
-
-    def aiter_lines(self):
-        async def gen():
-            for line in self._lines:
-                yield line
-        return gen()
-
-
-class _FakeStreamCtx:
-    def __init__(self, resp):
-        self._resp = resp
-
-    async def __aenter__(self):
-        return self._resp
-
-    async def __aexit__(self, *exc):
-        return False
-
-
-class FakeHttpClient:
-    def __init__(self, responses):
-        self._responses = list(responses)
-
-    def stream(self, *args, **kwargs):
-        if not self._responses:
-            raise RuntimeError("No fake stream responses left")
-        return _FakeStreamCtx(self._responses.pop(0))
 
 
 def _body(**over):

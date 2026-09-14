@@ -61,22 +61,15 @@ fi
 
 # Database-backed tests share SQLite files; run serially to avoid xdist workers
 # racing PRAGMA journal_mode/WAL initialization during the deploy gate.
+# Slow tests (production-DB scans, minute-long traversals, sqlite_vec cases)
+# are excluded via the `slow` marker in pytest.ini; only the flaky FSRS case
+# still needs an explicit deselect.
 $PYTHON -m pytest tests/ -q --tb=short --durations=10 \
+  -m "not slow" \
   --deselect tests/test_api.py::TestHebrewRoutes::test_hebrew_fsrs_review \
-  --deselect tests/test_db_schema.py::TestIntegrity::test_db_integrity \
-  --deselect tests/test_db_schema.py::TestIntegrity::test_no_duplicate_connections \
-  --deselect tests/test_db_schema.py::TestIntegrity::test_no_orphaned_source_verses \
-  --deselect tests/test_db_schema.py::TestIntegrity::test_no_orphaned_target_verses \
-  --deselect tests/test_api.py::TestGraphRoutes::test_graph_tg_topic \
-  --deselect tests/test_api.py::TestGraphRoutes::test_graph_explore \
-  --deselect tests/test_api.py::TestGraphRoutes::test_graph_search \
-  --deselect tests/test_api.py::TestGraphRoutes::test_graph_centrality \
-  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search \
-  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_keyword \
-  --deselect tests/test_api.py::TestServerSearchRoutes::test_semantic_search_vector \
   2>&1 || {
     echo "✗ Tests failed — aborting deploy"
-    echo "  Tip: run .venv/bin/python -m pytest tests/ -q --tb=short --deselect ... to reproduce"
+    echo "  Tip: run .venv/bin/python -m pytest tests/ -q --tb=short to reproduce"
     exit 1
 }
 

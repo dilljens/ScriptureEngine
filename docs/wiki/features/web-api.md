@@ -111,8 +111,8 @@ From the external field report (`docs/inbox/proposal-api-orient.md`):
   explicitly excludes them.
 - Psalms payloads carry a `versification` note (KJV vs MT interlinear offset).
 - The `scripture_gematria` tool wrapper's transliterate kwarg drift is fixed;
-  regression coverage in `tests/test_api_orient.py`, orient behavior in
-  `tests/test_orient.py`.
+  regression coverage in `tests/test_orient.py` (field-note regressions live
+  alongside the orient contract tests).
 - `/metrics` was already implemented in code; the SPA-HTML response seen in
   the field report was stale deployment, not a missing route.
 

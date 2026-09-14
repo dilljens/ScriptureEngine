@@ -18,6 +18,10 @@ from lib.api.passage import (
 )
 from lib.connections.types import ALL_TYPES
 
+# Passage edges live only in the production DB, so these tests are
+# data-dependent by design (they fail on data drift, not code regressions).
+pytestmark = pytest.mark.slow
+
 PROD_DB_PATH = Path(__file__).parent.parent / "data" / "processed" / "scripture.db"
 
 
