@@ -101,7 +101,7 @@ export function statePerSecond(state, mastery = {}) {
   return perSecond(
     state.owned || {}, mastery, state.tracks || {}, state.words || 0, state.roots || 0,
     state.letterUpgrades || {}, state.perm || {}, availableSparks(state),
-  ) * figMultiplier(state.figs) * shemenMultiplier(state)
+  ) * figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state)
 }
 
 export function globalMultiplier(roots = 0, words = 0, tracks = {}) {
@@ -235,6 +235,7 @@ export function defaultIdleState() {
     golden: null,        // active Golden Prompt {id, expiresAt}, null when none
     nextGoldenAt: 0,     // timestamp the next prompt may spawn
     figs: { level: 0, readyAt: 0 }, // 20h retention timer (sugar-lump analogue)
+    vineyard: { level: 0, vines: [0, 0, 0] }, // 3 parallel 4h tending timers (garden analogue)
     daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
     perm: {},           // permanent Kavod upgrades -> true
@@ -739,6 +740,60 @@ export function harvestFig(state, perSec, now = Date.now()) {
   return granted
 }
 
+// ── Vineyard: the 4h tending loop (garden analogue) ────────────────
+// Figs are the day-scale retention timer (one 20h tree, 4h reward, +10%/lvl
+// to 2.0x). The vineyard is the session-scale tending loop: 3 vines ripening
+// in parallel on a 4h cycle, each harvest granting 15min of production and
+// levelling the whole vineyard (+5%/lvl to 1.5x). Same income shape as figs
+// (3×0.25h/4h ≈ +19% vs 4h/20h = +20% when perfectly tended), smaller
+// permanent — the quick small win beside the fig's slow big one. Same rules:
+// never quiz-gated (punishment ban), rewards on the effective buffed rate.
+
+export const VINE_COUNT = 3
+export const VINE_RIPEN_HOURS = 4
+export const VINE_REWARD_HOURS = 0.25
+export const VINE_MAX_LEVEL = 10
+export const VINE_LEVEL_BONUS = 0.05
+
+export function vineReady(state, i, now = Date.now()) {
+  const readyAt = state.vineyard?.vines?.[i] || 0
+  return readyAt > 0 && now >= readyAt
+}
+
+export function vineRemainingSec(state, i, now = Date.now()) {
+  return Math.max(0, Math.ceil(((state.vineyard?.vines?.[i] || 0) - now) / 1000))
+}
+
+export function vineyardMultiplier(vineyard) {
+  return 1 + Math.min(VINE_MAX_LEVEL, vineyard?.level || 0) * VINE_LEVEL_BONUS
+}
+
+/** Plant every empty vine slot. Returns the number of vines planted. */
+export function plantVineyard(state, now = Date.now()) {
+  const vines = [...(state.vineyard?.vines || [])]
+  while (vines.length < VINE_COUNT) vines.push(0)
+  let planted = 0
+  for (let i = 0; i < VINE_COUNT; i++) {
+    if (!vines[i]) { vines[i] = now + VINE_RIPEN_HOURS * 3600 * 1000; planted++ }
+  }
+  state.vineyard = { level: state.vineyard?.level || 0, vines }
+  return planted
+}
+
+/** Harvest one ripe vine: grants production, levels the vineyard, replants the slot. */
+export function harvestVine(state, i, perSec, now = Date.now()) {
+  if (!vineReady(state, i, now)) return 0
+  const level = Math.min(VINE_MAX_LEVEL, (state.vineyard?.level || 0) + 1)
+  const granted = perSec * VINE_REWARD_HOURS * 3600 * (1 + level * VINE_LEVEL_BONUS)
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  const vines = [...(state.vineyard?.vines || [])]
+  while (vines.length < VINE_COUNT) vines.push(0)
+  vines[i] = now + VINE_RIPEN_HOURS * 3600 * 1000
+  state.vineyard = { level, vines }
+  return granted
+}
+
 // ── Achievements → Shemen (oil): +4% Ohr each ────────────────────────
 // Derived from state — no extra bookkeeping, no way to lose one.
 // ("Talmidim multipliers read Shemen" from the plan is moot: there is no
@@ -755,6 +810,7 @@ export const ACHIEVEMENTS = [
   { id: 'root1', name: 'First Fruits', icon: '🌿', desc: 'Forge your first root', check: s => (s.roots || 0) >= 1 },
   { id: 'prestige5', name: 'Reformed', icon: '🔄', desc: 'Prestige 5 times', check: s => (s.prestiges || 0) >= 5 },
   { id: 'fig1', name: 'Gardener', icon: '🍯', desc: 'Harvest your first fig', check: s => (s.figs?.level || 0) >= 1 },
+  { id: 'vine1', name: 'Vinedresser', icon: '🍇', desc: 'Harvest your first vine', check: s => (s.vineyard?.level || 0) >= 1 },
   { id: 'spark1', name: 'Ascendant', icon: '💫', desc: 'Earn your first Aliyah spark', check: s => sparksEarned(s.lifetimeOhr || 0) >= 1 },
   { id: 'own22', name: 'Full Aleph-Bet', icon: '🔠', desc: 'Own every letter', check: s => LETTERS.every((_, i) => (s.owned?.[i] || 0) > 0) },
 ]
@@ -1018,4 +1074,20 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(claimDaily(dl, 10, 1000) === 0, 'daily claims once')
   recordDailyCorrect(dl, 1000 + 86400000)
   a(dl.daily.correct === 1 && !dl.daily.claimed, 'daily resets the next day')
+  // Vineyard
+  const vy = defaultIdleState()
+  a(!vineReady(vy, 0, 1000), 'no vine ready at start')
+  a(plantVineyard(vy, 1000) === VINE_COUNT && plantVineyard(vy, 2000) === 0, 'plant fills every empty slot once')
+  const vyRipe = 1000 + VINE_RIPEN_HOURS * 3600 * 1000
+  a(!vineReady(vy, 1, vyRipe - 1) && vineReady(vy, 1, vyRipe), 'vines ripen exactly at 4h, independently')
+  a(harvestVine(defaultIdleState(), 0, 10, 1000) === 0, 'cannot harvest an unripe vine')
+  const vres = harvestVine(vy, 0, 10, vyRipe)
+  a(vres === 10 * VINE_REWARD_HOURS * 3600 * (1 + VINE_LEVEL_BONUS), 'harvest grants 15min x (1 + level bonus)')
+  a(vy.vineyard.level === 1 && vy.vineyard.vines[0] > vyRipe && vineReady(vy, 1, vyRipe), 'harvest levels up, replants only that slot')
+  a(Math.abs(vineyardMultiplier({ level: 2 }) - 1.1) < 1e-9, 'vineyard level = +5% each')
+  a(vineyardMultiplier({ level: 99 }) === 1 + VINE_MAX_LEVEL * VINE_LEVEL_BONUS, 'vineyard level caps at 10 (1.5x)')
+  const vys = { ...defaultIdleState(), owned: { 0: 10 }, vineyard: { level: 4, vines: [0, 0, 0] } }
+  a(statePerSecond(vys, { 0: 1 }) > statePerSecond({ ...vys, vineyard: { level: 0, vines: [0, 0, 0] } }, { 0: 1 }), 'statePerSecond includes the vineyard bonus')
+  const vyach = defaultIdleState(); vyach.vineyard = { level: 1, vines: [0, 0, 0] }
+  a(achievementsEarned(vyach).some(x => x.id === 'vine1'), 'first-vine achievement unlocks')
 }

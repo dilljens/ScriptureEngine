@@ -33,6 +33,7 @@ let rngState = 12345
 const rnd = () => { rngState = (rngState * 1103515245 + 12345) & 0x7fffffff; return rngState / 0x7fffffff }
 
 g.plantFig(state, 0)
+g.plantVineyard(state, 0)
 
 function cheapest() {
   let best = 0, bestCost = Infinity
@@ -87,6 +88,14 @@ for (let t = 0; t < TOTAL; t += DT) {
 
   if (g.figReady(state, t * 1000)) g.harvestFig(state, g.statePerSecond(state, mastery), t * 1000)
 
+  // Vineyard tends itself perfectly: harvest every ripe vine at the buffed
+  // rate, exactly as the app's Tend button does.
+  for (let v = 0; v < g.VINE_COUNT; v++) {
+    if (g.vineReady(state, v, t * 1000)) {
+      g.harvestVine(state, v, g.statePerSecond(state, mastery) * g.buffMultiplier(state), t * 1000)
+    }
+  }
+
   if (g.shouldPrestige(state.lifetimeOhr, state.roots || 0)) g.applyPrestige(state)
 
   if (g.totalOwned(state) >= 1) mark('first_letter', t)
@@ -98,12 +107,14 @@ for (let t = 0; t < TOTAL; t += DT) {
   if (g.heavenlyOwned(state, 'h_key')) mark('heavenly_all', t)
   if ((state.figs?.level || 0) >= 1) mark('fig_1', t)
   if ((state.figs?.level || 0) >= 10) mark('fig_10', t)
+  if ((state.vineyard?.level || 0) >= 1) mark('vineyard_1', t)
+  if ((state.vineyard?.level || 0) >= 10) mark('vineyard_10', t)
   if (state.lifetimeOhr >= 1e6) mark('life_1e6', t)
   if (state.lifetimeOhr >= 1e9) mark('life_1e9', t)
   if (state.lifetimeOhr >= 1e12) mark('life_1e12', t)
 }
 
 const fmt = (s) => s === undefined ? 'never' : s < 3600 ? `${(s / 60).toFixed(0)}m` : s < 86400 ? `${(s / 3600).toFixed(1)}h` : `${(s / 86400).toFixed(1)}d`
-console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | owned ${g.totalOwned(state)}`)
-for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'life_1e6', 'life_1e9', 'life_1e12'])
+console.log(`sim ${DAYS}d (DT=${DT}s) | answers ${answers} | perSec ${g.statePerSecond(state, mastery).toFixed(1)} | lifetime ${state.lifetimeOhr.toExponential(2)} | roots ${state.roots} | sparks ${g.availableSparks(state)}/${g.sparksEarned(state.lifetimeOhr)} | fig lvl ${state.figs?.level} | vineyard lvl ${state.vineyard?.level} | owned ${g.totalOwned(state)}`)
+for (const k of ['first_letter', 'first_root', 'roots_10', 'spark_1', 'spark_3', 'heavenly_1', 'heavenly_all', 'fig_1', 'fig_10', 'vineyard_1', 'vineyard_10', 'life_1e6', 'life_1e9', 'life_1e12'])
   console.log(`  ${k.padEnd(13)} ${fmt(ms[k])}`)

@@ -12,6 +12,8 @@ import {
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly,
   GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
+  plantVineyard, harvestVine, vineReady, vineRemainingSec, vineyardMultiplier,
+  VINE_COUNT, VINE_MAX_LEVEL, VINE_RIPEN_HOURS,
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
@@ -183,6 +185,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         next.figs = { level: next.figs?.level || 0, readyAt: 0 }
         plantFig(next)
       }
+      plantVineyard(next)
       if (s.pendingOffline >= 1) {
         setOfflinePopup({ earned: Math.floor(s.pendingOffline), claim: true })
         commit(next); saveIdleState(next)
@@ -347,6 +350,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     setTimeout(() => setBoostFlash(null), 4500)
   }
 
+  // Vine harvest (pure — from the mirror, applied once). One vine at a time,
+  // tap-to-harvest like figs: never quiz-gated, rewards the buffed rate.
+  const harvestVineAt = (i) => {
+    const next = { ...stateRef.current }
+    const granted = harvestVine(next, i, statePerSecond(next, mastery) * buffMultiplier(next))
+    if (granted <= 0) return
+    commit(next); saveIdleState(next)
+    try { logEvent('vineyard', { granted: Math.floor(granted), level: next.vineyard.level, vine: i }) } catch {}
+    setBoostFlash({ text: `🍇 Vine harvested! +${Math.floor(granted).toLocaleString()} Ohr · vineyard level ${next.vineyard.level} (+${next.vineyard.level * 5}% Ohr forever).` })
+    setTimeout(() => setBoostFlash(null), 4500)
+  }
+
   const giveFeedback = (kind) => {
     setState(s => {
       const next = { ...s, difficulty: applyFeedback(s.difficulty || { bias: 0, recent: [] }, kind) }
@@ -374,6 +389,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const figPct = figIsReady ? 1 : figLevel >= 0 && state.figs?.readyAt
     ? Math.max(0, Math.min(1, 1 - figRemainingSec(state) / (FIG_RIPEN_HOURS * 3600)))
     : 0
+  const vineLevel = state.vineyard?.level || 0
+  const vines = Array.from({ length: VINE_COUNT }, (_, i) => {
+    const ready = vineReady(state, i)
+    const remaining = vineRemainingSec(state, i)
+    return {
+      i, ready, remaining,
+      hoursLeft: Math.ceil(remaining / 3600),
+      pct: ready ? 1 : state.vineyard?.vines?.[i]
+        ? Math.max(0, Math.min(1, 1 - remaining / (VINE_RIPEN_HOURS * 3600)))
+        : 0,
+    }
+  })
   const dailyOk = dailyReady(state)
   const dailyCount = Math.min(DAILY_GOAL, state.daily?.correct || 0)
   const dailyClaimed = !!state.daily?.claimed
@@ -663,6 +690,29 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
               Harvest
             </button>
+          </div>
+          {/* Vineyard — 4h tending loop, 3 parallel vines */}
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🍇</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+                <span>Vineyard <b>lvl {vineLevel}</b>{vineLevel > 0 && <span> · +{vineLevel * 5}% Ohr</span>}{vineLevel >= VINE_MAX_LEVEL && <span> · max</span>}</span>
+                <span className="tabular-nums">{vines.filter(v => v.ready).length}/{VINE_COUNT} ripe</span>
+              </div>
+              <div className="space-y-0.5 mt-0.5">
+                {vines.map(v => (
+                  <div key={v.i} className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                      <div className={`h-full rounded-full ${v.ready ? 'bg-purple-500' : 'bg-lime-500'}`} style={{ width: `${v.pct * 100}%` }} />
+                    </div>
+                    <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready}
+                      className={`shrink-0 min-h-[32px] px-2 rounded-md text-[10px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+                      {v.ready ? 'Tend' : `${v.hoursLeft}h`}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           {/* Daily lesson */}
           <div className="flex items-center gap-2">

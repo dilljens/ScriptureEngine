@@ -170,4 +170,5 @@ Goal: Clone Cookie Clicker's progression systems (mechanics only, original theme
 - Depends on: nothing
 
 ## Track E: Minigames (future) `[ ]`
-- Vineyard (Garden), Midrash (Grimoire), Sanhedrin (Pantheon), Shuk (Market) — NOT this plan. Listed so clones don't fork structure early: keep `systems/` seams in lib files.
+- ~~Vineyard (Garden)~~ `[x]` shipped 2026-09-14: 3 parallel 4h vines, 15min harvests, vineyard level 1-10 (+5%/lvl to 1.5x), Vinedresser achievement → Shemen. Sim: first harvest 4h bot, level 10 ~16h bot, no early-milestone distortion.
+- Midrash (Grimoire), Sanhedrin (Pantheon), Shuk (Market) — still future. Listed so clones don't fork structure early: keep `systems/` seams in lib files.
