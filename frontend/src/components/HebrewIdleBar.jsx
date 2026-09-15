@@ -10,7 +10,7 @@ import {
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
-  GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt,
+  GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt, GOLDEN_WINDOW_SEC,
   PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
   startShemittah, shemittahTapMult, shareCard, checkShemittah, SHEMITTAH_HOURS,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
@@ -68,9 +68,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [boostFlash, setBoostFlash] = useState(null)
   const [goldenFlash, setGoldenFlash] = useState(null)
   const [prophetPick, setProphetPick] = useState(null)
+  const [prophetSnoozed, setProphetSnoozed] = useState(false) // "decide later" — the choice never expires
   const [prestigeTick, setPrestigeTick] = useState(0)
   const [showGolems, setShowGolems] = useState(true)
-  const [lastGain, setLastGain] = useState(null) // {value, crit, kavod, n} tap floater
+  const [lastGain, setLastGain] = useState(null) // {value, crit, kavod, n} tap floater (stacked)
+  const [gains, setGains] = useState([]) // stacked tap floaters — rapid answers each pop, none dropped
   const [buyHint, setBuyHint] = useState(null) // {i, need} — unaffordable click feedback
   const [answerPulse, setAnswerPulse] = useState(null) // {n, correct} — golem reaction
   const [showUpgrades, setShowUpgrades] = useState(false)
@@ -125,7 +127,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
       spawnGoldenPrompt(next, Date.now(), Math.random, rate) // only when due + production exists
+      const hadGolden = !!s.golden
       expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
+      if (hadGolden && !next.golden) {
+        // Watchers saw the banner vanish with no explanation — say it faded, no harm.
+        setGoldenFlash({ name: '', desc: '', fizzled: true })
+        setTimeout(() => setGoldenFlash(null), 4000)
+        try { logEvent('golden_expired', {}) } catch {}
+      }
       // Shemittah completes on its hour; an uncompletable vow releases uncounted (24h cap).
       if (checkShemittah(next, Date.now())) {
         commit(next); saveIdleState(next)
@@ -175,12 +184,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         // The Prophet offers — the next answer already resolved, so the choice
         // itself never expires. Present all three blessings, player takes one.
         setProphetPick({ options: goldenRes.choice })
+        setProphetSnoozed(false)
         try { logEvent('prophet', { options: goldenRes.choice }) } catch {}
       } else if (goldenRes?.claimed) goldenInfo = { name: goldenRes.claimed.name, desc: goldenRes.claimed.desc, fizzled: false }
       else if (goldenRes?.fizzled) goldenInfo = { fizzled: true }
       saveIdleState(next)
       commit(next)
-      if (gainInfo) setLastGain(gainInfo)
+      if (gainInfo) {
+        setLastGain(gainInfo)
+        const id = Date.now() + Math.random()
+        setGains(g => [...g.slice(-4), { ...gainInfo, id }])
+        setTimeout(() => setGains(g => g.filter(x => x.id !== id)), 1500)
+      }
       if (goldenInfo) {
         setGoldenFlash(goldenInfo)
         setTimeout(() => setGoldenFlash(null), 4000)
@@ -286,7 +301,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const doPrestige = () => {
     const target = rootsEarned(state.lifetimeOhr || 0)
     const gained = Math.max(0, target - (state.roots || 0))
-    if (gained <= 0) return
+    if (gained <= 0) {
+      // The button only shows when nextRoots > roots, but a stale render can
+      // still land here — never swallow the click silently.
+      const need = Math.floor((goals?.root?.need || 0))
+      setBoostFlash({ text: need > 0 ? `🌿 Not yet — ${need.toLocaleString()} lifetime Ohr for root #${goals?.root?.next}. Keep studying.` : '🌿 Not yet — keep studying and the next root will come.' })
+      setTimeout(() => setBoostFlash(null), 4000)
+      return
+    }
     const next = { ...state }
     applyPrestige(next)
     setState({ ...next }); saveIdleState(next)
@@ -409,7 +431,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   // Heavenly chain: spend Aliyah sparks (pure — computed from the mirror, applied once).
   const buyHeaven = (id) => {
     const next = { ...stateRef.current }
-    if (!buyHeavenly(next, id)) return
+    if (!buyHeavenly(next, id)) {
+      const u = HEAVENLY_UPGRADES.find(x => x.id === id)
+      const tier = u?.tier ?? 0
+      const open = tier === 0 || heavenlyTierOwned(next, tier - 1)
+      setBoostFlash({ text: !open ? `💫 Station ${tier + 1} is sealed — ascend the station before it first.` : `💫 Need ${(u?.cost || 0) - availableSparks(next)} more spark${(u?.cost || 0) - availableSparks(next) === 1 ? '' : 's'} for ${u?.name || 'this'}. Unspent sparks still earn +1% Ohr each.` })
+      setTimeout(() => setBoostFlash(null), 4000)
+      return
+    }
     commit(next); saveIdleState(next)
     try { logEvent('upgrade', { kind: 'heavenly', id }) } catch {}
     const u = HEAVENLY_UPGRADES.find(x => x.id === id)
@@ -473,7 +502,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const shemenPct = Math.round((shemenMultiplier(state) - 1) * 100)
   const earnedAch = achievementsEarned(state)
   const figIsReady = figReady(state)
-  const figHoursLeft = Math.ceil(figRemainingSec(state) / 3600)
+  // Coarse "20h left" sat static for an hour — show h+m so the timer visibly moves.
+  const fmtWait = (sec) => {
+    const s = Math.max(0, Math.ceil(sec))
+    if (s < 60) return `${s}s`
+    const m = Math.floor(s / 60)
+    if (m < 60) return `${m}m ${s % 60}s`
+    const h = Math.floor(m / 60)
+    if (h < 48) return `${h}h ${m % 60}m`
+    return `${Math.floor(h / 24)}d ${h % 24}h`
+  }
+  const figWait = fmtWait(figRemainingSec(state))
   const figLevel = state.figs?.level || 0
   const figPct = figIsReady ? 1 : figLevel >= 0 && state.figs?.readyAt
     ? Math.max(0, Math.min(1, 1 - figRemainingSec(state) / (FIG_RIPEN_HOURS * 3600)))
@@ -485,6 +524,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     return {
       i, ready, remaining,
       hoursLeft: Math.ceil(remaining / 3600),
+      wait: fmtWait(remaining),
       pct: ready ? 1 : state.vineyard?.vines?.[i]
         ? Math.max(0, Math.min(1, 1 - remaining / (VINE_RIPEN_HOURS * 3600)))
         : 0,
@@ -540,13 +580,22 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               </span>
             )}
           </div>
-          {/* Tap floater: every correct answer pops its reward */}
-          {lastGain && (
-            <span key={lastGain.n}
+          {/* Tap floaters: every correct answer pops its reward — stacked, none dropped */}
+          {gains.length > 0 ? (
+            <span className="pointer-events-none inline-flex flex-col items-end" aria-live="polite">
+              {gains.map(g => (
+                <span key={g.id}
+                  className={`idle-gain text-sm font-bold tabular-nums whitespace-nowrap ${g.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}>
+                  +{g.value.toFixed(1)} +{g.kavod}🌟{g.crit ? ' CRIT! ⚡' : ''}
+                </span>
+              ))}
+            </span>
+          ) : lastGain ? (
+            <span
               className={`idle-gain pointer-events-none text-sm font-bold tabular-nums whitespace-nowrap ${lastGain.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}>
               +{lastGain.value.toFixed(1)} +{lastGain.kavod}🌟{lastGain.crit ? ' CRIT! ⚡' : ''}
             </span>
-          )}
+          ) : null}
         </div>
         <span className="hidden sm:flex flex-1" />
         <div className="flex gap-2">
@@ -555,7 +604,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             title="Toggle letter audio">
             {state.muted ? '🔇' : '🔊'}
           </button>
-          <button onClick={() => setShowShop(s => !s)} data-testid="shop-toggle"
+          <button onClick={() => setShowShop(s => !s)} data-testid="shop-toggle" aria-expanded={showShop} aria-label={showShop ? 'Hide letter shop' : 'Show letter shop'}
             className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${totalOwned(state) === 0 ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
             {showShop ? 'Hide Letters ▲' : 'Letters ▼'}
           </button>
@@ -609,33 +658,51 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
       {/* Golden Prompt — quiz-gated buff, claimed by the next correct answer */}
       {state.golden && (goldenPrompt || prophetPending) && (
-        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium flex items-center gap-2">
-          <span className="text-lg">{prophetPending ? '🔮' : goldenPrompt.icon}</span>
-          <span className="flex-1">
-            {prophetPending
-              ? <span><b>The Prophet visits!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → choose 1 of 3 blessings</span>
-              : <span><b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}</span>}
-          </span>
+        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium" role="status" aria-live="polite">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{prophetPending ? '🔮' : goldenPrompt.icon}</span>
+            <span className="flex-1">
+              {prophetPending
+                ? <span><b>The Prophet visits!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → choose 1 of 3 blessings</span>
+                : <span><b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}</span>}
+            </span>
+          </div>
+          <div className="h-1 rounded-full bg-white/30 overflow-hidden mt-1.5" aria-hidden="true">
+            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(1, goldenSecs / GOLDEN_WINDOW_SEC)) * 100}%` }} />
+          </div>
         </div>
       )}
       {/* Prophet's Choice — the decision after the claim */}
-      {prophetPick && (
-        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
+      {prophetPick && !prophetSnoozed && (
+        <div role="dialog" aria-label="The Prophet offers — choose one blessing, or decide later"
+          onKeyDown={(e) => { if (e.key === 'Escape') setProphetSnoozed(true) }}
+          className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
           <div className="mb-1.5 text-center"><b>🔮 The Prophet offers — take one blessing:</b></div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {prophetPick.options.map(id => {
               const b = PROPHET_BLESSINGS.find(x => x.id === id) || { name: id, desc: '', icon: '✨' }
               return (
                 <button key={id} onClick={() => takeBlessing(id)}
+                  aria-label={`Take blessing: ${b.name} — ${b.desc}`}
                   className="min-h-[52px] p-1.5 rounded-lg bg-white/15 hover:bg-white/25 active:scale-95 cursor-pointer text-center">
                   <div className="text-lg leading-none">{b.icon}</div>
-                  <div className="text-[11px] font-bold">{b.name}</div>
-                  <div className="text-[9px] opacity-90 leading-tight">{b.desc}</div>
+                  <div className="text-xs font-bold">{b.name}</div>
+                  <div className="text-[10px] opacity-90 leading-tight">{b.desc}</div>
                 </button>
               )
             })}
           </div>
+          <button onClick={() => setProphetSnoozed(true)}
+            className="mt-1.5 w-full min-h-[44px] rounded-lg bg-white/15 hover:bg-white/25 text-xs font-medium cursor-pointer">
+            Decide later — the Prophet waits
+          </button>
         </div>
+      )}
+      {prophetPick && prophetSnoozed && (
+        <button onClick={() => setProphetSnoozed(false)}
+          className="mt-2 w-full min-h-[44px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
+          🔮 The Prophet waits — choose your blessing
+        </button>
       )}
       {/* The active vow */}
       {exileKind === 'exile' && exileLetters && (
@@ -645,7 +712,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       )}
       {exileKind === 'shemittah' && (
         <div className="mt-2 p-2 rounded-lg bg-lime-700 text-white text-xs text-center font-medium">
-          🌾 Shemittah — the land rests for {Math.max(1, Math.ceil(((state.exile?.endsAt || 0) - Date.now()) / 60000))} more min: no inscribing · every tap counts double
+          🌾 Shemittah — the land rests for {fmtWait(((state.exile?.endsAt || 0) - Date.now()) / 1000)} more: no inscribing · every tap counts double
         </div>
       )}
       {goldenFlash && (
@@ -750,15 +817,15 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {showShop && (
         <>
           <div className="mt-2 flex items-center gap-1.5">
-            <span className="text-[10px] text-neutral-500 dark:text-neutral-400">Buy:</span>
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Buy:</span>
             {BULK_MODES.map(m => (
-              <button key={m} onClick={() => setBulk(m)}
-                className={`min-h-[36px] px-3 rounded-lg text-xs font-medium cursor-pointer ${bulk === m ? 'bg-amber-500 text-white' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}>
+              <button key={m} onClick={() => setBulk(m)} aria-pressed={bulk === m} aria-label={`Buy amount: ${m === 'max' ? 'maximum affordable' : `${m} at a time`}`}
+                className={`min-h-[44px] px-3 rounded-lg text-xs font-medium cursor-pointer ${bulk === m ? 'bg-amber-500 text-white' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}>
                 {m === 'max' ? 'Max' : `x${m}`}
               </button>
             ))}
             <span className="flex-1" />
-            <span className="text-[10px] text-neutral-400 tabular-nums">{totalOwned(state)} owned</span>
+            <span className="text-[11px] text-neutral-500 tabular-nums">{totalOwned(state)} owned</span>
           </div>
           <div className="mt-1.5 grid grid-cols-6 sm:grid-cols-11 gap-1.5">
             {LETTERS.map((L, i) => {
@@ -770,13 +837,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const lockIcon = exileKind === 'shemittah' ? '🌾' : '⛓️'
               return (
                 <button key={i} onClick={() => buy(i)}
+                  aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L}, owned ${owned}, costs ${spend} Ohr, mastery ${Math.round(m * 100)} percent, synergy times ${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
                   title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
                   className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
-                  <div className="text-[9px] font-mono text-neutral-500 tabular-nums">
+                  <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
                     {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
                   </div>
-                  {m >= 0.8 && <div className="text-[8px] text-green-600">●</div>}
+                  {m >= 0.8 && <div className="text-[10px] text-green-600" aria-hidden="true">●<span className="sr-only">mastered</span></div>}
                 </button>
               )
             })}
@@ -786,7 +854,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
       {/* Quests — the short-term loop */}
       <div className="mt-2 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-        <button onClick={() => setShowQuests(s => !s)}
+        <button onClick={() => setShowQuests(s => !s)} aria-expanded={showQuests} aria-label={showQuests ? 'Hide quests' : 'Show quests'}
           className="w-full min-h-[44px] px-2.5 flex items-center gap-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 cursor-pointer">
           <span>📜 Quests</span>
           {unclaimedQuests > 0 && (
@@ -805,7 +873,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               return (
                 <div key={q.id} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+                    <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                       <span className={claimed ? 'line-through opacity-60' : ''}>{q.name} · {q.desc}</span>
                       <span className="tabular-nums shrink-0 ml-2">
                         {val >= 1000 ? Math.floor(val).toLocaleString() : Math.floor(val)}/{q.goal >= 1000 ? q.goal.toLocaleString() : q.goal}
@@ -816,10 +884,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                     </div>
                   </div>
                   {claimed ? (
-                    <span className="text-green-600 text-sm shrink-0">✓</span>
+                    <span className="text-green-600 text-sm shrink-0" aria-label={`Quest complete: ${q.name}`}>✓</span>
                   ) : done ? (
-                    <button onClick={() => claimQuestReward(q.id)}
-                      className="idle-pop shrink-0 min-h-[36px] px-3 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold cursor-pointer">
+                    <button onClick={() => claimQuestReward(q.id)} aria-label={`Claim quest reward: ${q.name}, +${q.reward.toLocaleString()} Ohr`}
+                      className="idle-pop shrink-0 min-h-[44px] px-3 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold cursor-pointer">
                       +{q.reward.toLocaleString()}
                     </button>
                   ) : null}
@@ -837,15 +905,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           <div className="flex items-center gap-2">
             <span className="text-lg">{figIsReady ? '🍯' : '🌱'}</span>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                 <span>Fig <b>lvl {figLevel}</b>{figLevel > 0 && <span> · +{figLevel * 10}% Ohr</span>}{figLevel >= FIG_MAX_LEVEL && <span> · max</span>}</span>
-                <span className="tabular-nums">{figIsReady ? 'ripe!' : state.figs?.readyAt ? `${figHoursLeft}h left` : 'planting…'}</span>
+                <span className="tabular-nums">{figIsReady ? 'ripe!' : state.figs?.readyAt ? `${figWait} left` : 'planting…'}</span>
               </div>
               <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
                 <div className={`h-full rounded-full ${figIsReady ? 'bg-amber-500' : 'bg-lime-500'}`} style={{ width: `${figPct * 100}%` }} />
               </div>
             </div>
             <button onClick={harvest} disabled={!figIsReady} data-testid="fig-harvest"
+              title={figIsReady ? 'Fig is ripe — harvest now' : `Fig ripening — ${figWait} left`}
+              aria-label={figIsReady ? `Harvest ripe fig, grove level ${figLevel}` : `Fig not ready, ${figWait} remaining`}
               className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
               Harvest
             </button>
@@ -854,7 +924,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           <div className="flex items-center gap-2">
             <span className="text-lg">🍇</span>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                 <span>Vineyard <b>lvl {vineLevel}</b>{vineLevel > 0 && <span> · +{vineLevel * 5}% Ohr</span>}{vineLevel >= VINE_MAX_LEVEL && <span> · max</span>}</span>
                 <span className="tabular-nums">{vines.filter(v => v.ready).length}/{VINE_COUNT} ripe</span>
               </div>
@@ -865,8 +935,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                       <div className={`h-full rounded-full ${v.ready ? 'bg-purple-500' : 'bg-lime-500'}`} style={{ width: `${v.pct * 100}%` }} />
                     </div>
                     <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready} data-testid={`vine-tend-${v.i}`}
-                      className={`shrink-0 min-h-[32px] px-2 rounded-md text-[10px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
-                      {v.ready ? 'Tend' : `${v.hoursLeft}h`}
+                      title={v.ready ? `Vine ${v.i + 1} ripe — tend now` : state.vineyard?.vines?.[v.i] ? `Vine ${v.i + 1} ripening — ${v.wait} left` : `Vine ${v.i + 1} sowing…`}
+                      aria-label={v.ready ? `Tend ripe vine ${v.i + 1}` : `Vine ${v.i + 1} not ready, ${v.wait} remaining`}
+                      className={`shrink-0 min-h-[44px] px-2 rounded-md text-[11px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+                      {v.ready ? 'Tend' : (state.vineyard?.vines?.[v.i] ? v.wait : 'sowing…')}
                     </button>
                   </div>
                 ))}
@@ -877,7 +949,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           <div className="flex items-center gap-2">
             <span className="text-lg">📅</span>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                 <span>Daily lesson · answer {DAILY_GOAL} correctly</span>
                 <span className="tabular-nums">{dailyCount}/{DAILY_GOAL}{dailyClaimed ? ' · done ✓' : ''}</span>
               </div>
@@ -886,6 +958,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               </div>
             </div>
             <button onClick={claimDailyReward} disabled={!dailyOk} data-testid="daily-claim"
+              title={dailyClaimed ? 'Daily claimed — come back tomorrow' : dailyOk ? 'Daily complete — claim your hour of Ohr' : `Daily lesson — ${DAILY_GOAL - dailyCount} correct answers to go`}
+              aria-label={dailyClaimed ? 'Daily reward already claimed' : dailyOk ? 'Claim daily reward' : `Daily reward not ready, ${DAILY_GOAL - dailyCount} answers remaining`}
               className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${dailyOk ? 'idle-pop bg-green-500 hover:bg-green-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
               {dailyClaimed ? '✓' : 'Claim'}
             </button>
@@ -912,7 +986,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
       {/* Upgrades — the choice axis. Letter ×2s (Ohr) + permanents (Kavod). */}
       <div className="mt-2 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-        <button onClick={() => setShowUpgrades(s => !s)}
+        <button onClick={() => setShowUpgrades(s => !s)} aria-expanded={showUpgrades} aria-label={showUpgrades ? 'Hide upgrades' : 'Show upgrades'}
           className="w-full min-h-[44px] px-2.5 flex items-center gap-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 cursor-pointer">
           <span>⬆️ Upgrades</span>
           {(() => {
@@ -950,7 +1024,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   return (
                     <button key={r.id} onClick={() => {
                       const next = { ...state }
-                      if (!buyLetterUpgrade(next, r.i, r.k)) return
+                      if (!buyLetterUpgrade(next, r.i, r.k)) {
+                        setBoostFlash({ text: `Need ${(r.cost - state.ohr).toLocaleString()} more ✨ Ohr for ${r.L} ×2 — answer a question or let your golems mine.` })
+                        setTimeout(() => setBoostFlash(null), 4000)
+                        return
+                      }
                       setState(next); saveIdleState(next)
                       try { logEvent('upgrade', { kind: 'letter', letter: r.i, tier: r.k, cost: r.cost }) } catch {}
                     }}
@@ -978,7 +1056,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 return (
                   <button key={u.id} disabled={ownedP} onClick={() => {
                     const next = { ...state }
-                    if (!buyPerm(next, u.id)) return
+                    if (!buyPerm(next, u.id)) {
+                      setBoostFlash({ text: `Need ${(u.cost - (state.kavod || 0)).toLocaleString()} more 🌟 Kavod for ${u.name} — Kavod comes only from correct answers.` })
+                      setTimeout(() => setBoostFlash(null), 4000)
+                      return
+                    }
                     setState(next); saveIdleState(next)
                     try { logEvent('upgrade', { kind: 'perm', id: u.id, cost: u.cost }) } catch {}
                   }}
@@ -1011,7 +1093,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 const open = t === 0 || heavenlyTierOwned(state, t - 1)
                 return (
                   <div key={t} className="mb-1">
-                    <div className="text-[9px] uppercase tracking-wider text-neutral-400 mb-0.5">Station {t + 1}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-0.5">Station {t + 1}</div>
                     <div className="grid grid-cols-2 gap-1">
                       {pair.map(u => {
                         const ownedH = heavenlyOwned(state, u.id)
@@ -1051,32 +1133,32 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         <span className="flex-1" />
         <div className="flex gap-1.5" role="group" aria-label="Difficulty feedback">
           <button onClick={() => { try { exportLog() } catch {} }}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Download the full event log (JSON) for balancing">
             📊 Log
           </button>
           <button onClick={shareWorkshop}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Copy a text snapshot of your workshop for your study group (no account, nothing uploaded)">
             📣 Share
           </button>
           <button onClick={() => setShowGolems(s => !s)}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Show or hide the golem workshop">
             {showGolems ? '🫥 Hide golems' : '🗿 Show golems'}
           </button>
           <button onClick={() => giveFeedback('easier')}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Make it easier (cheaper letters, bigger taps, more time)">
             😅 Too hard
           </button>
           <button onClick={() => giveFeedback('just-right')}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Feels right">
             🙂 OK
           </button>
           <button onClick={() => giveFeedback('harder')}
-            className="min-h-[36px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
+            className="min-h-[44px] px-2.5 rounded-lg text-xs border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer active:scale-95"
             title="Make it harder (pricier letters, smaller taps, tighter timers)">
             😌 Too easy
           </button>
@@ -1089,7 +1171,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           {feedbackFlash === 'just-right' && '✓ Locked in — auto-tuning continues in the background.'}
         </div>
       )}
-      <div className="mt-1 text-[10px] text-neutral-400 dark:text-neutral-500">
+      <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
         Answer → tap Ohr → buy letters → quests → roots. Green dot = mastered (0.8+). ⚡ = breadth bonus (each letter you own lifts all the others). The game watches your accuracy and adjusts — the pace buttons steer it.
       </div>
     </div>
