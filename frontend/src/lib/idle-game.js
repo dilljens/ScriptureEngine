@@ -573,7 +573,7 @@ export function buffMultiplier(state, now = Date.now()) {
 // instead of clicking fast (DESIGN.md: no reflex gates). Wrong or late FIZZLES —
 // nothing is ever drained (punishment ban).
 
-export const GOLDEN_WINDOW_SEC = 20
+export const GOLDEN_WINDOW_SEC = 30
 export const GOLDEN_INTERVAL_SEC = [60, 180]
 
 export const GOLDEN_PROMPTS = [
@@ -588,7 +588,7 @@ function goldenByKind(kind) {
 
 // ── Prophet's Choice: the rare pick-1-of-3 visitation ──────────────
 // Golden Prompts are always-take surprises; the Prophet adds the one thing
-// surprises lack — a decision. Three blessings, one choice, same 20s window,
+// surprises lack — a decision. Three blessings, one choice, same 30s window,
 // same fizzle rules (wrong/expired = nothing lost).
 
 export const PROPHET_CHANCE = 0.12   // share of spawns that arrive as the Prophet
@@ -1522,7 +1522,7 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const gp = defaultIdleState()
   a(gp.golden === null && gp.nextGoldenAt === 0, 'no golden prompt at start')
   a(spawnGoldenPrompt(gp, 1000, () => 0.5) !== null && !!gp.golden, 'first prompt spawns when due')
-  a(goldenRemainingSec(gp, 1000) === GOLDEN_WINDOW_SEC, 'claim window is 20s')
+  a(goldenRemainingSec(gp, 1000) === GOLDEN_WINDOW_SEC, 'claim window is 30s')
   const gRes = resolveGoldenPrompt(gp, true, 2000, 0)
   a(gRes.claimed && !gRes.fizzled, 'correct answer claims the prompt')
   a(gp.golden === null && gp.nextGoldenAt > 2000, 'prompt cleared + next one scheduled')

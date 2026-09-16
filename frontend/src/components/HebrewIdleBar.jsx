@@ -753,11 +753,16 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {/* Golden Prompt — the prompt asks its own letter question, right here.
           Three modes, never mixed scripts: name (see glyph → pick name),
           glyph (see name → pick glyph), audio (hear it → pick glyph).
-          Correct in 20s wins the buff (or the Prophet's choice); wrong or
+          Correct in 30s wins the buff (or the Prophet's choice); wrong or
           late fizzles, never drains. */}
       {state.golden && (goldenPrompt || prophetPending) && state.golden.quiz && (
         <div role="dialog" aria-label={prophetPending ? 'The Prophet visits — answer to choose your blessing' : `Golden Prompt — answer to win ${goldenPrompt?.desc || 'a blessing'}`}
-          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-2.5 rounded-xl shadow-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium">
+          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-3 rounded-xl shadow-[0_0_36px_rgba(250,204,21,0.65)] ring-4 ring-yellow-200 dark:ring-yellow-700 bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-base font-medium">
+          {goldenSecs <= 10 && (
+            <div className="animate-pulse mb-1.5 text-center text-sm font-bold" aria-live="polite">
+              ⏳ Hurry — {goldenSecs}s left!
+            </div>
+          )}
           <div className="flex items-center gap-2">
             {state.golden.quiz.kind === 'word' && (
               <span className="flex-1">
@@ -841,7 +846,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {prophetPick && !prophetSnoozed && (
         <div role="dialog" aria-label="The Prophet offers — choose one blessing, or decide later"
           onKeyDown={(e) => { if (e.key === 'Escape') setProphetSnoozed(true) }}
-          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-2.5 rounded-xl shadow-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
+          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-3 rounded-xl shadow-[0_0_36px_rgba(167,139,250,0.65)] ring-4 ring-violet-200 dark:ring-violet-700 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
           <div className="mb-1.5 text-center"><b>🔮 The Prophet offers — take one blessing:</b></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {prophetPick.options.map(id => {
