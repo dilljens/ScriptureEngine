@@ -95,6 +95,15 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     } catch {}
   }, [showShop, showQuests, showUpgrades, showGolems, bulk])
 
+  // Top-500 words for the translation tier (fetched once; spawn reads the ref).
+  const topWordsRef = useRef(null)
+  useEffect(() => {
+    fetch('/api/v1/hebrew/top-words?limit=500')
+      .then(r => r.json())
+      .then(d => { if (d.ok) topWordsRef.current = d.data.words || [] })
+      .catch(() => {})
+  }, [])
+
   // Map curriculum mastery onto letter indices. Consonant nodes in level
   // order map 1:1 onto the 22-letter roster; unknown letters = 0 mastery.
   const mastery = useMemo(() => {
@@ -166,7 +175,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         ohr: s.ohr + gain,
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
-      spawnGoldenPrompt(next, Date.now(), Math.random, rate, { mastery, bias: s.difficulty?.bias || 0 }) // only when due + production exists
+      spawnGoldenPrompt(next, Date.now(), Math.random, rate, { mastery, bias: s.difficulty?.bias || 0, topWords: topWordsRef.current || [] }) // only when due + production exists
       const hadGolden = !!s.golden
       expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
       if (hadGolden && !next.golden) {
@@ -750,7 +759,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         <div role="dialog" aria-label={prophetPending ? 'The Prophet visits — answer to choose your blessing' : `Golden Prompt — answer to win ${goldenPrompt?.desc || 'a blessing'}`}
           className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-2.5 rounded-xl shadow-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium">
           <div className="flex items-center gap-2">
-            {(state.golden.quiz.qtype || 'name') === 'name' && (
+            {state.golden.quiz.kind === 'word' && (
+              <span className="flex-1">
+                {state.golden.quiz.direction === 'en-he'
+                  ? <span><b>📖 Translate!</b> "{state.golden.quiz.gloss}" in Hebrew? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>
+                  : <span><b>📖 Translate!</b> What does <b className="text-lg">{state.golden.quiz.hebrew}</b> mean? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>}
+              </span>
+            )}
+            {state.golden.quiz.kind !== 'word' && (state.golden.quiz.qtype || 'name') === 'name' && (
               <><span className="text-2xl" aria-hidden="true">{LETTERS[state.golden.quiz.letter]}</span>
               <span className="flex-1">
                 {prophetPending
@@ -780,7 +796,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5">
-            {(state.golden.quiz.qtype || 'name') === 'name'
+            {state.golden.quiz.kind === 'word'
+              ? state.golden.quiz.options.map((opt, oi) => (
+                <button key={oi} onClick={() => answerQuiz(oi)}
+                  aria-label={`Answer: ${opt}`}
+                  data-testid={`golden-word-${oi}`}
+                  className={`min-h-[44px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 cursor-pointer ${state.golden.quiz.direction === 'en-he' ? 'text-xl' : 'text-sm font-bold'}`}>
+                  <span dir="auto">{opt}</span>
+                </button>
+              ))
+              : null}
+            {state.golden.quiz.kind !== 'word' && (state.golden.quiz.qtype || 'name') === 'name'
               ? state.golden.quiz.options.map((opt, oi) => (
                 <button key={opt} onClick={() => answerQuiz(oi)}
                   aria-label={`Answer: ${LETTER_NAMES[opt]}`}
@@ -789,7 +815,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   {LETTER_NAMES[opt]}
                 </button>
               ))
-              : state.golden.quiz.options.map((opt, oi) => (
+              : state.golden.quiz.kind !== 'word'
+              ? state.golden.quiz.options.map((opt, oi) => (
                 <button key={opt} onClick={() => answerQuiz(oi)}
                   disabled={state.golden.quiz.qtype === 'audio' && !quizAudio?.url && !quizAudio?.failed}
                   aria-label={`Answer: letter option ${oi + 1}`}
@@ -797,7 +824,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   className="min-h-[52px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 disabled:opacity-50 text-2xl cursor-pointer">
                   {LETTERS[opt]}
                 </button>
-              ))}
+              ))
+              : null}
           </div>
           {state.quizDeck && (
             <div className="mt-1 text-[11px] text-white/90">

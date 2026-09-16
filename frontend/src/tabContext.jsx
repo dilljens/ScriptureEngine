@@ -469,10 +469,10 @@ export function TabProvider({ children }) {
     ? currentWorkspace.tabs.find(t => t.id === state.activeTab) || currentWorkspace.tabs[0]
     : null
 
-  // Current view level
+  // Current view level — reading + essays + studies + solo views all ladder to tiles
   const viewLevel = currentTab?.view || 'chapter'
-  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : null
-  const viewDown = viewLevel === 'tiles' ? 'library' : viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'book' : viewLevel === 'book' ? 'chapter' : null
+  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : viewLevel === 'wiki' ? 'articles' : viewLevel === 'articles' ? 'tiles' : viewLevel === 'study' ? 'studies' : viewLevel === 'studies' ? 'tiles' : (viewLevel === 'hebrew' && currentTab?.viewRef) ? 'hebrew' : ['hebrew', 'learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study'].includes(viewLevel) ? 'tiles' : null
+  const viewDown = viewLevel === 'tiles' ? 'library' : viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'book' : viewLevel === 'book' ? 'chapter' : viewLevel === 'articles' ? 'wiki' : viewLevel === 'studies' ? 'study' : null
   const isLibraryView = viewLevel === 'library'
 
   // Is the current view a chapter (showing verses)?

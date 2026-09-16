@@ -3606,3 +3606,33 @@ def search_grammar_reference(q: str = "", section: str = "", paragraph_id: int =
     conn.close()
     return {"ok": True, "data": {"results": [dict(r) for r in rows], "total": len(rows),
                                   "sections": ["Écriture", "Morphologie", "Syntaxe", "Introduction"]}}
+
+
+# ── Top-500 words/roots (built by scripts/build_top500.py) ──────────────────
+_TOP500 = None
+
+
+def _top500():
+    global _TOP500
+    if _TOP500 is None:
+        path = BASE_DIR / "data" / "top500.json"
+        try:
+            _TOP500 = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _TOP500 = {"words": [], "roots": [], "meta": {}}
+    return _TOP500
+
+
+@router.get("/api/v1/hebrew/top-words")
+def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 0):
+    """500 most common Hebrew words by corpus frequency (gloss + root + SBL translit)."""
+    words = [w for w in _top500().get("words", []) if w.get("frequency", 0) >= min_frequency]
+    total = len(words)
+    return {"ok": True, "data": {"words": words[offset:offset + limit], "total": total}}
+
+
+@router.get("/api/v1/hebrew/top-roots")
+def get_hebrew_top_roots(limit: int = 50, offset: int = 0):
+    """500 most common Hebrew roots by summed lemma frequency, with examples."""
+    roots = _top500().get("roots", [])
+    return {"ok": True, "data": {"roots": roots[offset:offset + limit], "total": len(roots)}}

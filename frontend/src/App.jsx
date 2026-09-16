@@ -358,8 +358,23 @@ const [showAssessment, setShowAssessment] = useState(false)
         return
       }
       updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+    } else if (viewLevel === 'wiki') {
+      // Essay detail -> essay list
+      updateTab(currentTab.id, { view: 'articles', viewRef: null, label: '📜 Essays' })
+    } else if (viewLevel === 'articles') {
+      updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+    } else if (viewLevel === 'study') {
+      updateTab(currentTab.id, { view: 'studies', viewRef: null, label: '📖 Studies' })
+    } else if (viewLevel === 'studies') {
+      updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+    } else if (viewLevel === 'hebrew') {
+      // Lesson -> curriculum; curriculum -> tiles
+      if (viewRef) updateTab(currentTab.id, { viewRef: null, label: 'Biblical Hebrew' })
+      else updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
+    } else if (['learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study'].includes(viewLevel)) {
+      updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
     }
-  }, [currentTab?.id, viewLevel, book, nav, bookData, updateTab, isDc, collection, studyWeek, setCollection, setStudyWeek])
+  }, [currentTab?.id, viewLevel, viewRef, book, nav, bookData, updateTab, isDc, collection, studyWeek, setCollection, setStudyWeek])
 
   const goDownLevel = useCallback(() => {
     if (!currentTab?.id) return
@@ -383,12 +398,92 @@ const [showAssessment, setShowAssessment] = useState(false)
       }
     } else if (viewLevel === 'book') {
       goToChapter(currentTab.id, book, chapter, `${bookTitle} ${chapter}`)
+    } else if (viewLevel === 'articles') {
+      // Down from essay list opens the first essay
+      fetch('/api/v1/wiki/browse/doctrine').then(r => r.json()).then(d => {
+        const list = d?.data?.articles || []
+        if (list.length > 0) updateTab(currentTab.id, { view: 'wiki', viewRef: list[0].id, label: `📜 ${list[0].id}` })
+      }).catch(() => {})
+    } else if (viewLevel === 'studies') {
+      // Down from studies list opens the first study
+      import('./api').then(({ listPublishedStudies }) => listPublishedStudies(100, 0).then(r => {
+        const list = r?.ok ? (r.data || []) : []
+        if (list.length > 0) {
+          const s = list[0]
+          updateTab(currentTab.id, { view: 'study', viewRef: s.slug, label: s.title || `Study: ${s.slug}` })
+        }
+      }).catch(() => {}))
     }
   }, [currentTab?.id, viewLevel, viewRef, bookData, book, chapter, nav, updateTab, goToChapter, bookTitle, isDc])
 
-  // Navigate between works (left/right in work or library view)
+  // ── Prev/next essay (left/right in articles/wiki views) ──
+  const goEssay = useCallback(async (dir) => {
+    if (!currentTab?.id) return
+    try {
+      const r = await fetch('/api/v1/wiki/browse/doctrine')
+      const d = await r.json()
+      const list = d?.data?.articles || []
+      if (list.length === 0) return
+      if (viewLevel === 'articles') {
+        const target = dir < 0 ? list[list.length - 1] : list[0]
+        updateTab(currentTab.id, { view: 'wiki', viewRef: target.id, label: `📜 ${target.id}` })
+        return
+      }
+      // viewLevel === 'wiki'
+      const idx = list.findIndex(a => a.id === viewRef)
+      const next = idx < 0 ? (dir < 0 ? list[list.length - 1] : list[0]) : list[idx + dir]
+      if (next) updateTab(currentTab.id, { view: 'wiki', viewRef: next.id, label: `📜 ${next.id}` })
+    } catch { /* no-op: leave tab where it is */ }
+  }, [currentTab?.id, viewLevel, viewRef, updateTab])
+  const goPrevEssay = useCallback(() => goEssay(-1), [goEssay])
+  const goNextEssay = useCallback(() => goEssay(1), [goEssay])
+
+  // ── Prev/next study (left/right in studies/study views) ──
+  const goStudy = useCallback(async (dir) => {
+    if (!currentTab?.id) return
+    try {
+      const { listPublishedStudies } = await import('./api')
+      const r = await listPublishedStudies(100, 0)
+      const list = r?.ok ? (r.data || []) : []
+      if (list.length === 0) return
+      if (viewLevel === 'studies') {
+        const s = dir < 0 ? list[list.length - 1] : list[0]
+        updateTab(currentTab.id, { view: 'study', viewRef: s.slug, label: s.title || `Study: ${s.slug}` })
+        return
+      }
+      const idx = list.findIndex(s => (s.slug || s.id) === viewRef)
+      const next = idx < 0 ? (dir < 0 ? list[list.length - 1] : list[0]) : list[idx + dir]
+      if (next) updateTab(currentTab.id, { view: 'study', viewRef: next.slug, label: next.title || `Study: ${next.slug}` })
+    } catch { /* no-op */ }
+  }, [currentTab?.id, viewLevel, viewRef, updateTab])
+  const goPrevStudy = useCallback(() => goStudy(-1), [goStudy])
+  const goNextStudy = useCallback(() => goStudy(1), [goStudy])
+
+  // ── Unified left/right dispatcher so header + mobile + keyboard agree ──
+  // Reading: chapter/book/work. Essays: articles/wiki cycle essays.
+  // Studies: studies/study cycle studies. Everything else: history back/forward.
+  const goPrevAtLevel = useCallback(() => {
+    if (isChapterView) return goPrevChapter()
+    if (viewLevel === 'book') return goPrevBookStay()
+    if (viewLevel === 'work' || viewLevel === 'library') return goPrevWork()
+    if (viewLevel === 'articles' || viewLevel === 'wiki') return goPrevEssay()
+    if (viewLevel === 'studies' || viewLevel === 'study') return goPrevStudy()
+    return doHistoryBack()
+  }, [isChapterView, viewLevel, goPrevChapter, goPrevBookStay, goPrevWork, goPrevEssay, goPrevStudy, doHistoryBack])
+  const goNextAtLevel = useCallback(() => {
+    if (isChapterView) return goNextChapter()
+    if (viewLevel === 'book') return goNextBookStay()
+    if (viewLevel === 'work' || viewLevel === 'library') return goNextWork()
+    if (viewLevel === 'articles' || viewLevel === 'wiki') return goNextEssay()
+    if (viewLevel === 'studies' || viewLevel === 'study') return goNextStudy()
+    return doHistoryForward()
+  }, [isChapterView, viewLevel, goNextChapter, goNextBookStay, goNextWork, goNextEssay, goNextStudy, doHistoryForward])
+
+  // Navigate between works (left/right in work or library view only — guarded
+  // so non-reading tabs with a non-work viewRef can't hijack to works[0])
   const goPrevWork = useCallback(() => {
     if (!bookData?.works || !currentTab?.id) return
+    if (viewLevel !== 'work' && viewLevel !== 'library') return
     const list = bookData.works
     const idx = list.findIndex(w => w.id === viewRef)
     if (idx > 0) {
@@ -407,6 +502,7 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   const goNextWork = useCallback(() => {
     if (!bookData?.works || !currentTab?.id) return
+    if (viewLevel !== 'work' && viewLevel !== 'library') return
     const list = bookData.works
     const idx = list.findIndex(w => w.id === viewRef)
     if (idx < list.length - 1) {
@@ -477,17 +573,15 @@ const [showAssessment, setShowAssessment] = useState(false)
       if (e.key === '/') { e.preventDefault(); setShowCommand(true); return }
       if (e.key === 'Escape') { setShowChat(false); setShowHistory(false); setShowCommand(false); setShowSettings(false); setShowCheatsheet(false); setRenamingWs(null); return }
 
-      // Arrow navigation — these are hardcoded since they map to physical arrow keys
-      if (isChapterView) { if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevChapter() }; if (e.key === 'ArrowRight') { e.preventDefault(); goNextChapter() } }
-      else if (viewLevel === 'book') { if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevBookStay() }; if (e.key === 'ArrowRight') { e.preventDefault(); goNextBookStay() } }
-      else if (viewLevel === 'work') { if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevWork() }; if (e.key === 'ArrowRight') { e.preventDefault(); goNextWork() } }
-      else if (viewLevel === 'library') { if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevWork() }; if (e.key === 'ArrowRight') { e.preventDefault(); goNextWork() }; if (e.key === 'Enter') { e.preventDefault(); goDownLevel() } }
-      else if (viewLevel === 'work') { if (e.key === 'Enter') { e.preventDefault(); goDownLevel() } }
+      // Arrow navigation — unified dispatcher so all tab types work, not just reading
+      if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevAtLevel(); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); goNextAtLevel(); }
+      else if (e.key === 'Enter' && (viewLevel === 'library' || viewLevel === 'work' || viewLevel === 'tiles' || viewLevel === 'articles' || viewLevel === 'studies')) { e.preventDefault(); goDownLevel() }
       if (matchesHotkey(e, 'goUp')) { e.preventDefault(); goUpLevel() }
       if (matchesHotkey(e, 'goDown')) { e.preventDefault(); goDownLevel() }
     }
     window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey)
-  }, [chapter, isChapterView, viewLevel, goPrevChapter, goNextChapter, goPrevBookStay, goNextBookStay, goUpLevel, goDownLevel, goPrevWork, goNextWork, doHistoryBack, doHistoryForward, toggleDarkMode, changeFontSize, openTab, book, matchesHotkey, toggleDispatch])
+  }, [chapter, isChapterView, viewLevel, goPrevAtLevel, goNextAtLevel, goUpLevel, goDownLevel, doHistoryBack, doHistoryForward, toggleDarkMode, changeFontSize, openTab, book, matchesHotkey, toggleDispatch])
 
   const currentWorkTitle = nav?.flat[nav.idx]?.workTitle || ''; const currentBookTitle = nav?.flat[nav.idx]?.bookTitle || book
 
@@ -825,15 +919,15 @@ const [showAssessment, setShowAssessment] = useState(false)
             </h1>
 
             {/* Left arrow — previous at current level */}
-            <button onClick={isChapterView ? goPrevChapter : viewLevel === 'book' ? goPrevBookStay : goPrevWork}
+            <button onClick={goPrevAtLevel}
               className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
-              title={`Previous ${viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : 'chapter'} (←)`}>
+              title={`Previous ${viewLevel === 'library' || viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : viewLevel === 'articles' || viewLevel === 'wiki' ? 'essay' : viewLevel === 'studies' || viewLevel === 'study' ? 'study' : isChapterView ? 'chapter' : 'page'} (←)`}>
               <ChevronLeft />
             </button>
             {/* Right arrow — next at current level */}
-            <button onClick={isChapterView ? goNextChapter : viewLevel === 'book' ? goNextBookStay : goNextWork}
+            <button onClick={goNextAtLevel}
               className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
-              title={`Next ${viewLevel === 'library' ? 'work' : viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : 'chapter'} (→)`}>
+              title={`Next ${viewLevel === 'library' || viewLevel === 'work' ? 'work' : viewLevel === 'book' ? 'book' : viewLevel === 'articles' || viewLevel === 'wiki' ? 'essay' : viewLevel === 'studies' || viewLevel === 'study' ? 'study' : isChapterView ? 'chapter' : 'page'} (→)`}>
               <ChevronRight />
             </button>
           </div>
@@ -914,12 +1008,12 @@ const [showAssessment, setShowAssessment] = useState(false)
             title="Up a level">
             <ChevronUp />
           </button>
-          <button onClick={isChapterView ? goPrevChapter : viewLevel === 'book' ? goPrevBookStay : goPrevWork}
+          <button onClick={goPrevAtLevel}
             className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
             title="Previous">
             <ChevronLeft />
           </button>
-          <button onClick={isChapterView ? goNextChapter : viewLevel === 'book' ? goNextBookStay : goNextWork}
+          <button onClick={goNextAtLevel}
             className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
             title="Next">
             <ChevronRight />

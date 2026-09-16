@@ -684,7 +684,14 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
     return state.golden
   }
   const p = pickGoldenPrompt(rng)
-  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz: makeGoldenQuiz(state, rng, extra, now) }
+  // Highest tier: word-translation questions (EN↔HE) once the letters are
+  // established. Judged by exact match — deterministic, offline, instant;
+  // no LLM judge (latency/cost/nondeterminism for a solved problem).
+  const words = wordCandidates(state, extra.topWords || [])
+  const quiz = words.length && rng() < WORD_QUIZ_SHARE
+    ? makeWordQuiz(words, rng, extra.topWords || [])
+    : makeGoldenQuiz(state, rng, extra, now)
+  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz }
   const [lo, hi] = GOLDEN_INTERVAL_SEC
   state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
   return state.golden
@@ -804,7 +811,71 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
   else if (bias < -0.05) qtype = r < 0.5 ? 'glyph' : 'audio'
   else qtype = r < 0.4 ? 'name' : r < 0.7 ? 'glyph' : 'audio'
   state.lastQuizLetter = letter
-  return { letter, options, qtype }
+  return { kind: 'letter', letter, options, qtype }
+}
+
+// ── Word tier: EN↔HE translation from the top-500 ─────────────────────────
+// Unlock rule: a word opens when every letter of its bare form is owned —
+// learning buys vocabulary. The tier itself opens at WORD_UNLOCK_OWNED
+// total letters. Choice-based with exact-match judging (no LLM).
+
+export const WORD_UNLOCK_OWNED = 10
+export const WORD_QUIZ_SHARE = 0.35
+const FINAL_TO_BASE = { 'ך': 11, 'ם': 12, 'ן': 13, 'ף': 16, 'ץ': 17 }
+
+/** Letters of a bare word that the workshop does NOT own yet. */
+export function wordLockedLetters(word, owned = {}) {
+  const missing = []
+  for (const ch of word.bare || '') {
+    let idx = LETTERS.indexOf(ch)
+    if (idx < 0 && FINAL_TO_BASE[ch] !== undefined) idx = FINAL_TO_BASE[ch]
+    if (idx < 0) continue // punctuation/unknown — never blocks
+    if (!(owned[idx] > 0) && !missing.includes(idx)) missing.push(idx)
+  }
+  return missing
+}
+
+/** Top-500 words the player can currently be quizzed on (empty below tier). */
+export function wordCandidates(state, topWords = []) {
+  if (totalOwned(state) < WORD_UNLOCK_OWNED) return []
+  const owned = state.owned || {}
+  return topWords.filter(w => w.bare && w.gloss && wordLockedLetters(w, owned).length === 0)
+}
+
+/** EN→HE or HE→EN choice quiz, 6 single-script options, exact-match judged. */
+export function makeWordQuiz(candidates, rng = Math.random, foilPool = []) {
+  const word = candidates[Math.floor(rng() * candidates.length)]
+  const direction = rng() < 0.5 ? 'en-he' : 'he-en'
+  const answer = direction === 'en-he' ? word.hebrew : word.gloss
+  // Foils come from the full word list (locked words make fine wrong answers),
+  // so a small unlocked set can never starve the option count.
+  const foils = (foilPool.length ? foilPool : candidates).filter(w => w.rank !== word.rank)
+  const options = [answer]
+  let guard = 0
+  while (options.length < QUIZ_OPTIONS && guard++ < 300) {
+    const cand = foils[Math.floor(rng() * foils.length)]
+    if (!cand) break
+    const val = direction === 'en-he' ? cand.hebrew : cand.gloss
+    if (val && !options.includes(val)) options.push(val)
+  }
+  // Deterministic fill over distinct foil values (constant seeds terminate).
+  const seenVals = new Set(options)
+  for (const cand of foils) {
+    if (options.length >= QUIZ_OPTIONS) break
+    const val = direction === 'en-he' ? cand.hebrew : cand.gloss
+    if (val && !seenVals.has(val)) { seenVals.add(val); options.push(val) }
+  }
+  // Last resort (degenerate pool): repeat-proof numbered suffix on the answer
+  // script — terminates unconditionally, never mixes scripts.
+  for (let k = 2; options.length < QUIZ_OPTIONS; k++) {
+    const val = `${answer} (${k})`
+    if (!seenVals.has(val)) { seenVals.add(val); options.push(val) }
+  }
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[options[i], options[j]] = [options[j], options[i]]
+  }
+  return { kind: 'word', direction, hebrew: word.hebrew, bare: word.bare, gloss: word.gloss, rank: word.rank, translit: word.translit || word.transliteration || '', options, answer }
 }
 
 /**
@@ -817,10 +888,13 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   if (!g) return null
   const expired = now > g.expiresAt
   const quiz = g.quiz
-  const correct = !expired && quiz && quiz.options[choiceIdx] === quiz.letter
+  const answer = quiz ? (quiz.answer ?? quiz.letter) : undefined
+  const correct = !expired && quiz && quiz.options[choiceIdx] === answer
   state.golden = null
   if (expired) return { fizzled: true, reason: 'expired' }
-  if (quiz) recordGoldenAnswer(state, quiz.letter, !!correct, now)
+  // Letter quizzes feed the spaced-repetition deck; word quizzes grant the
+  // buff the same way (their own progression layer comes later).
+  if (quiz && typeof quiz.letter === 'number') recordGoldenAnswer(state, quiz.letter, !!correct, now)
   if (!correct) return { fizzled: true, reason: 'wrong' }
   if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
@@ -1544,6 +1618,31 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const gq5 = defaultIdleState()
   gq5.golden = { id: 'prophet', expiresAt: 99999, options: ['gale', 'dew', 'rush'], quiz: { letter: 0, options: [0, 1, 2] } }
   a((answerGoldenQuiz(gq5, 0, 1000, 0).choice || []).length === 3, 'prophet quiz opens the blessing choice')
+  // Word tier: EN↔HE from the top-500, unlocked letter by letter
+  const SAMPLE_WORDS = [
+    { rank: 1, hebrew: 'אֵת', bare: 'את', gloss: 'Direct object marker', transliteration: 'ʾēṯ' },
+    { rank: 2, hebrew: 'בְּרֵאשִׁית', bare: 'בראשית', gloss: 'In the beginning', transliteration: 'bərēʾšîṯ' },
+    { rank: 3, hebrew: 'אָמַר', bare: 'אמר', gloss: 'He said', transliteration: 'ʾāmar' },
+    { rank: 4, hebrew: 'יוֹם', bare: 'יום', gloss: 'Day', transliteration: 'yôm' },
+    { rank: 5, hebrew: 'אֶרֶץ', bare: 'ארץ', gloss: 'Land', transliteration: 'ʾereṣ' },
+    { rank: 6, hebrew: 'הָיָה', bare: 'היה', gloss: 'He was', transliteration: 'hāyâ' },
+    { rank: 7, hebrew: 'אֱלֹהִים', bare: 'אלהים', gloss: 'God', transliteration: 'ʾĕlōhîm' },
+  ]
+  const gwPoor = defaultIdleState()
+  gwPoor.owned = { 0: 1 }
+  a(wordCandidates(gwPoor, SAMPLE_WORDS).length === 0, 'word tier locked below 10 letters')
+  const gwRich = defaultIdleState()
+  gwRich.owned = { 0: 5, 1: 1, 19: 1, 4: 1, 9: 1, 20: 1, 12: 1, 5: 1, 13: 1, 15: 1, 17: 1, 11: 1 }
+  const cands = wordCandidates(gwRich, SAMPLE_WORDS)
+  a(cands.length > 0 && cands.every(w => wordLockedLetters(w, gwRich.owned).length === 0), 'words open when all their letters are owned')
+  a(wordLockedLetters(SAMPLE_WORDS[1], { 0: 1 }).length > 0, 'missing letters block the word')
+  const wq = makeWordQuiz(cands, () => 0.1, SAMPLE_WORDS)
+  a(wq.options.length === 6 && new Set(wq.options).size === 6, 'word quiz has 6 distinct options')
+  a(wq.options.includes(wq.answer), 'word quiz includes the answer')
+  const gwA = defaultIdleState()
+  const ai = wq.options.indexOf(wq.answer)
+  gwA.golden = { id: 'dew', expiresAt: 99999, quiz: wq }
+  a(answerGoldenQuiz(gwA, ai, 1000, 10).claimed?.id === 'dew', 'right word answer claims the buff')
   // Figs
   const fg = defaultIdleState()
   a(!figReady(fg, 1000), 'no fig ready at start')

@@ -229,6 +229,19 @@ test('golden glyph question asks for the letter shape', async ({ page }) => {
   await expect(page.locator('text=/x7/').first()).toBeVisible({ timeout: 15000 })
 })
 
+test('golden word question translates EN to HE', async ({ page }) => {
+  const now = Date.now()
+  const seed = {
+    ...richSeed(),
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { kind: 'word', direction: 'en-he', hebrew: 'יוֹם', bare: 'יום', gloss: 'Day', rank: 4, translit: 'yôm', options: ['יוֹם', 'אֶרֶץ', 'אָמַר', 'הָיָה', 'אֱלֹהִים', 'אֵת'], answer: 'יוֹם' } },
+  }
+  await gotoEmet(page, seed)
+  await expect(page.locator('text=Translate!').first()).toBeVisible()
+  // Single-script answers: all six options are Hebrew, no transliteration mixed in.
+  await page.getByTestId('golden-word-0').click()
+  await expect(page.locator('text=/x7/').first()).toBeVisible({ timeout: 15000 })
+})
+
 test('streak grace halves instead of resetting', async ({ page }) => {
   const seed = { ...richSeed(), streak: 20, streakGraceDay: '' }
   await gotoEmet(page, seed)
