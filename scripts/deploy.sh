@@ -26,6 +26,11 @@ fi
 
 set -euo pipefail
 
+# Per-stage timing: every deploy logs how long each part took, so the gate
+# can be tuned with data instead of guesses. Marks print as `⏱ T+Ns — label`.
+DEPLOY_T0=$SECONDS
+mark() { echo "  ⏱ T+$(($SECONDS - DEPLOY_T0))s — $1"; }
+
 # CI/agent shells may not source the interactive fnm setup, while Playwright
 # and Vite need Node. Initialize fnm non-interactively when node is absent.
 if ! command -v node >/dev/null 2>&1; then
@@ -54,6 +59,7 @@ echo "[0/5] Frontend build (first — a failed build must not leave the pytest"
 # ALWAYS runs, even FRONTEND_ONLY — this is the artifact being deployed.
 NODE_OPTIONS="--max-old-space-size=8192${NODE_OPTIONS:+ $NODE_OPTIONS}" \
     npm run build --prefix frontend
+mark "frontend build done"
 
 echo "[1/5] Python test suite..."
 # Skip flaky/slow tests:
@@ -88,6 +94,7 @@ $PYTHON -m pytest tests/ -q --tb=short --durations=10 \
     exit 1
   }
 fi
+mark "pytest gate done"
 
 echo "[2/5] Graph regression check..."
 if [ "${SKIP_BACKEND:-0}" = "1" ]; then
@@ -98,12 +105,14 @@ python3 scripts/test_graph_regression.py || {
     exit 1
 }
 fi
+mark "graph regression done"
 
 echo "[3/5] DB integrity check..."
 sqlite3 data/processed/scripture.db "SELECT COUNT(*) FROM sqlite_master;" | grep -q "^[1-9]" || {
     echo "✗ DB quick integrity check failed — sqlite_master empty"
     exit 1
 }
+mark "db integrity done"
 
 echo "[4/5] API contract snapshot..."
 if [ "${SKIP_BACKEND:-0}" = "1" ]; then
@@ -114,6 +123,7 @@ python3 -m pytest tests/test_openapi_snapshot.py -q --tb=short || {
     exit 1
 }
 fi
+mark "openapi snapshot done"
 
 echo "[5/5] Frontend E2E tests..."
 if [ "${SKIP_E2E:-0}" = "1" ]; then
@@ -131,6 +141,7 @@ cd frontend
 }
 cd ..
 fi
+mark "e2e suite done"
 
 # 2. Rsync frontend dist + API code
 echo "Syncing frontend..."
@@ -179,6 +190,7 @@ ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scrip
 echo "Syncing Caddy site config..."
 rsync -avz scripts/caddy-scriptureengine.conf "$HOST:/opt/sololedger/deploy/sites/scriptureengine.conf"
 ssh "$HOST" "docker exec ferrum-caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null && docker exec ferrum-caddy caddy reload --config /etc/caddy/Caddyfile"
+mark "rsync + caddy done"
 
 # 3. Install Python dependencies on remote
 # Ubuntu 24.04 system Python is externally-managed (PEP 668) — the VPS runs
@@ -189,6 +201,7 @@ if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
 else
 ssh "$HOST" "cd $REMOTE_DIR && pip install --break-system-packages -r web/requirements.txt 2>&1 | tail -5"
 fi
+mark "pip install done"
 
 # 4. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
@@ -202,6 +215,7 @@ ssh "$HOST" "test -f $REMOTE_DIR/.env || echo 'DATABASE_PATH=data/processed/scri
 # 6. Restart API server
 echo "Restarting API server..."
 ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl restart scripture-api"
+mark "restart done — total deploy time"
 
 echo "=== Done ==="
 echo "Frontend: https://scriptureengine.org"
