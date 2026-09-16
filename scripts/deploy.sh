@@ -47,22 +47,23 @@ echo "=== ScriptureEngine Deployment ==="
 # 1. Pre-deploy validation gate
 echo "=== Pre-deploy Validation ==="
 
-echo "[1/5] Python test suite..."
-if [ "${SKIP_BACKEND:-0}" = "1" ]; then
-    echo "  (skipped — SKIP_BACKEND/FRONTEND_ONLY)"
-else
-# Skip flaky/slow tests:
-#   - hebrew_fsrs_review: MEM_DB lock contention
-#   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
-#   - test_graph_tg_topic, test_graph_explore: 60-80s graph traversals (redundant with step 2/5 regression check)
-PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
-
 echo "[0/5] Frontend build (first — a failed build must not leave the pytest"
 #      gate without a dist/, and an OOM here must not cost a full test run)
 # Vite builds have died with "Ineffective mark-compacts near heap limit"
 # under the default V8 old-space cap while the same build passed standalone.
+# ALWAYS runs, even FRONTEND_ONLY — this is the artifact being deployed.
 NODE_OPTIONS="--max-old-space-size=8192${NODE_OPTIONS:+ $NODE_OPTIONS}" \
     npm run build --prefix frontend
+
+echo "[1/5] Python test suite..."
+# Skip flaky/slow tests:
+#   - hebrew_fsrs_review: MEM_DB lock contention
+#   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
+#   - test_graph_tg_topic, test_graph_explore: 60-80s graph traversals (redundant with step 2/5 regression check)
+if [ "${SKIP_BACKEND:-0}" = "1" ]; then
+    echo "  (skipped — SKIP_BACKEND/FRONTEND_ONLY)"
+else
+PYTHON=.venv/bin/python3; [ -x "$PYTHON" ] || PYTHON=python3
 
 # The suite MUST run against the small fixture DB. conftest.py silently falls
 # back to the 1.4GB production scripture.db when data/test/test.db is absent,
