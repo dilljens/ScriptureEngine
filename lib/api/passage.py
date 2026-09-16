@@ -92,28 +92,30 @@ def get_passage_connections(conn, start, end, min_density=0.0):
 
 def get_chapter_connections(conn, book, chapter):
     """Get all passage-level connections involving an entire chapter."""
-    ch_start = f"{book}.{chapter}.1"
-    # Use last verse of chapter
-    row = conn.execute("""
-        SELECT id FROM verses
-        WHERE SUBSTR(id, 1, INSTR(id, '.') - 1) = ?
-          AND CAST(SUBSTR(id, INSTR(id, '.') + 1, INSTR(SUBSTR(id, INSTR(id, '.') + 1), '.') - 1) AS INTEGER) = ?
-        ORDER BY id DESC LIMIT 1
-    """, (book, chapter)).fetchone()
-
-    if not row:
+    # Verse ids via the (book_id, chapter) index — no string surgery.
+    verse_rows = conn.execute(
+        "SELECT id FROM verses WHERE book_id = ? AND chapter = ? ORDER BY verse",
+        (book, chapter)).fetchall()
+    if not verse_rows:
         return {"error": f"No verses found for {book}.{chapter}"}
-
-    ch_end = row["id"]
-    ch_start_full = f"{book}.{chapter}.1"
+    verse_ids = [r["id"] for r in verse_rows]
+    ch_start_full, ch_end = verse_ids[0], verse_ids[-1]
     connections = get_passage_connections(conn, ch_start_full, ch_end)
 
-    # Count verse-level connections involving this chapter
+    # Count verse-level connections with indexed prefix ranges, not a
+    # SUBSTR-over-every-row scan (that was 8+s on 1.3M rows). No book_id
+    # contains '.', so `{book}.{chapter}.` is an unambiguous prefix, and
+    # '/' is '.'+1, so [prefix, prefix-next) matches exactly that prefix.
+    # UNION over id preserves OR semantics (a row matching both sides
+    # counts once) while each branch uses its own source/target index.
+    lo, hi = f"{book}.{chapter}.", f"{book}.{chapter}/"
     verse_count = conn.execute("""
-        SELECT COUNT(*) FROM connections
-        WHERE SUBSTR(source_verse, 1, INSTR(SUBSTR(source_verse, INSTR(source_verse, '.') + 1), '.') + INSTR(source_verse, '.')) = ?
-           OR SUBSTR(target_verse, 1, INSTR(SUBSTR(target_verse, INSTR(target_verse, '.') + 1), '.') + INSTR(target_verse, '.')) = ?
-    """, (f"{book}.{chapter}.", f"{book}.{chapter}.")).fetchone()[0]
+        SELECT COUNT(*) FROM (
+            SELECT id FROM connections WHERE source_verse >= ? AND source_verse < ?
+            UNION
+            SELECT id FROM connections WHERE target_verse >= ? AND target_verse < ?
+        )
+    """, (lo, hi, lo, hi)).fetchone()[0]
 
     return {
         "chapter": f"{book}.{chapter}",
