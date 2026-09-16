@@ -300,6 +300,15 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
     setAnswers(prev => ({ ...prev, [idx]: value }))
   }
 
+  // Multiple-choice submits on selection — one tap, no Submit button.
+  // Text input and mental-recall keep their explicit submit paths.
+  const chooseAndSubmit = (i) => {
+    if (submittedRef.current[idx] !== undefined) return
+    answersRef.current = { ...answersRef.current, [idx]: i }
+    setAnswers(prev => ({ ...prev, [idx]: i }))
+    submitAnswer()
+  }
+
   if (loading) return (
     <div className="max-w-2xl mx-auto px-6 py-12 text-center">
       <div className="animate-pulse space-y-4">
@@ -453,7 +462,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
             {!isMental && currentAnswerMode === ANSWER_MODES.CHOICE_INDEX && current.options?.length > 0 && (
               <div className={current.type === 'true_false' ? 'flex gap-3' : 'space-y-2'}>
                 {current.options.map((opt, i) => (
-                  <button key={i} onClick={() => setAnswer(i)}
+                  <button key={i} onClick={() => chooseAndSubmit(i)}
                     className={`${current.type === 'true_false' ? 'flex-1' : 'w-full text-left'} px-4 py-3 rounded-lg text-sm border transition-all cursor-pointer ${
                       answers[idx] === i
                         ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
@@ -521,7 +530,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
             className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
             {submitted[idx] === null ? 'Checking…' : idx < questions.length - 1 ? 'Next Question →' : 'See Results'}
           </button>
-        ) : !isMental ? (
+        ) : !isMental && currentAnswerMode !== ANSWER_MODES.CHOICE_INDEX ? (
           <button onClick={submitAnswer} disabled={!answered}
             className={`flex-1 py-3 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
               answered

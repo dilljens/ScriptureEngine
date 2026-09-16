@@ -215,6 +215,20 @@ test('golden popup quiz fizzles on a wrong answer', async ({ page }) => {
   await expect(page.locator('text=Golden Prompt!')).toHaveCount(0, { timeout: 15000 })
 })
 
+test('golden glyph question asks for the letter shape', async ({ page }) => {
+  const now = Date.now()
+  const seed = {
+    ...richSeed(),
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2], qtype: 'glyph' } },
+  }
+  await gotoEmet(page, seed)
+  // Transliterated prompt, Hebrew answers — single script on each side.
+  await expect(page.locator('text=Which letter is').first()).toBeVisible()
+  await expect(page.locator('text=Dalet').first()).toBeVisible()
+  await page.getByTestId('golden-opt-3').click()
+  await expect(page.locator('text=/x7/').first()).toBeVisible({ timeout: 15000 })
+})
+
 test('streak grace halves instead of resetting', async ({ page }) => {
   const seed = { ...richSeed(), streak: 20, streakGraceDay: '' }
   await gotoEmet(page, seed)

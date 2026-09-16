@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  LETTERS, LETTER_NAMES, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
+  LETTERS, LETTER_NAMES, GEMATRIA, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
   rootsEarned, shouldPrestige, offlineEarnings, totalOwned,
   QUESTS, questComplete, claimQuest, checkStreakMilestone, nextGoals,
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
   LETTER_UPGRADE_TIERS, availableLetterUpgrades, buyLetterUpgrade, letterMultiplier,
-  KAVOD_UPGRADES, buyPerm, hasPerm, synergyMultiplier, workshopSynergy,
+  KAVOD_UPGRADES, buyPerm, hasPerm, synergyMultiplier, workshopSynergy, letterRate,
   loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer,
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
@@ -55,11 +55,22 @@ export function reportIdleAnswer(correct, responseMs, meta = {}) {
 
 const BULK_MODES = ['1', '10', 'max']
 
+const UI_KEY = 'hebrew-idle-ui-v1'
+function loadUiPrefs() {
+  try {
+    const raw = localStorage.getItem(UI_KEY)
+    if (raw) return { showShop: true, showQuests: true, showUpgrades: false, showGolems: true, bulk: '1', ...JSON.parse(raw) }
+  } catch {}
+  return { showShop: null, showQuests: true, showUpgrades: false, showGolems: true, bulk: '1' }
+}
+
 export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [state, setState] = useState(loadIdleState)
-  const [showShop, setShowShop] = useState(() => totalOwned(loadIdleState()) === 0)
-  const [showQuests, setShowQuests] = useState(true)
-  const [bulk, setBulk] = useState('1')
+  // UI prefs persist separately from game state — the shop stays as you left it.
+  const [uiPrefs] = useState(loadUiPrefs)
+  const [showShop, setShowShop] = useState(() => uiPrefs.showShop ?? totalOwned(loadIdleState()) === 0)
+  const [showQuests, setShowQuests] = useState(() => uiPrefs.showQuests)
+  const [bulk, setBulk] = useState(() => BULK_MODES.includes(uiPrefs.bulk) ? uiPrefs.bulk : '1')
   const [offlinePopup, setOfflinePopup] = useState(null)
   const [prestigeFlash, setPrestigeFlash] = useState(null)
   const [feedbackFlash, setFeedbackFlash] = useState(null)
@@ -69,13 +80,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [goldenFlash, setGoldenFlash] = useState(null)
   const [prophetPick, setProphetPick] = useState(null)
   const [prophetSnoozed, setProphetSnoozed] = useState(false) // "decide later" — the choice never expires
+  const [quizAudio, setQuizAudio] = useState(null) // {url} | {failed:true} — listening-question audio
   const [prestigeTick, setPrestigeTick] = useState(0)
-  const [showGolems, setShowGolems] = useState(true)
+  const [showGolems, setShowGolems] = useState(() => uiPrefs.showGolems)
   const [lastGain, setLastGain] = useState(null) // {value, crit, kavod, n} tap floater (stacked)
   const [gains, setGains] = useState([]) // stacked tap floaters — rapid answers each pop, none dropped
   const [buyHint, setBuyHint] = useState(null) // {i, need} — unaffordable click feedback
   const [answerPulse, setAnswerPulse] = useState(null) // {n, correct} — golem reaction
-  const [showUpgrades, setShowUpgrades] = useState(false)
+  const [showUpgrades, setShowUpgrades] = useState(() => uiPrefs.showUpgrades)
+  // Persist UI prefs — the shop stays exactly as you left it.
+  useEffect(() => {
+    try {
+      localStorage.setItem(UI_KEY, JSON.stringify({ showShop, showQuests, showUpgrades, showGolems, bulk }))
+    } catch {}
+  }, [showShop, showQuests, showUpgrades, showGolems, bulk])
 
   // Map curriculum mastery onto letter indices. Consonant nodes in level
   // order map 1:1 onto the 22-letter roster; unknown letters = 0 mastery.
@@ -91,6 +109,28 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   }, [curriculum])
 
   // Authoritative state mirror. React StrictMode double-invokes setState
+  // updaters in dev, so updaters must be PURE. Anything with a side effect
+  // (random crit roll, localStorage save, parent callback) is computed here
+  // from the mirror and applied once, outside the updater.
+  // Listening questions: fetch the letter audio when the popup opens. If it
+  // fails, the popup falls back to showing the transliterated name.
+  useEffect(() => {
+    const q = state.golden?.quiz
+    if (!q || q.qtype !== 'audio') { setQuizAudio(null); return }
+    let cancelled = false
+    setQuizAudio(null)
+    fetch(`/api/v1/hebrew/audio/${encodeURIComponent(LETTERS[q.letter])}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelled) return
+        const url = d?.data?.audio_url || d?.audio_url
+        setQuizAudio(url ? { url } : { failed: true })
+        if (url) new Audio(url).play().catch(() => {})
+      })
+      .catch(() => { if (!cancelled) setQuizAudio({ failed: true }) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.golden])
   // updaters in dev, so updaters must be PURE. Anything with a side effect
   // (random crit roll, localStorage save, parent callback) is computed here
   // from the mirror and applied once, outside the updater.
@@ -521,6 +561,12 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     return `${Math.floor(h / 24)}d ${h % 24}h`
   }
   const figWait = fmtWait(figRemainingSec(state))
+  const fmtRate = (v) => {
+    if (!(v > 0)) return '0'
+    if (v < 10) return v.toFixed(1)
+    if (v < 1000) return Math.floor(v).toLocaleString()
+    return `${(v / 1000).toFixed(1)}k`
+  }
   const figLevel = state.figs?.level || 0
   const figPct = figIsReady ? 1 : figLevel >= 0 && state.figs?.readyAt
     ? Math.max(0, Math.min(1, 1 - figRemainingSec(state) / (FIG_RIPEN_HOURS * 3600)))
@@ -539,6 +585,41 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     }
   })
   const dailyOk = dailyReady(state)
+  // Toasts float top-center as an overlay stack — transient flashes must
+  // never push the shop or HUD around (no layout shift, ever).
+  const toasts = [
+    boostFlash && { id: 'boost', cls: 'bg-orange-500', text: boostFlash.text },
+    goldenFlash && {
+      id: 'golden', cls: goldenFlash.fizzled ? 'bg-neutral-500' : 'bg-yellow-500',
+      text: goldenFlash.fizzled ? '🌫️ The prompt faded — no harm done. Another will come.' : `✨ ${goldenFlash.name} — ${goldenFlash.desc}!`,
+    },
+    prestigeFlash && {
+      id: 'prestige', cls: 'bg-teal-600',
+      text: `🌿 You erase the א — +${prestigeFlash.gained} root${prestigeFlash.gained > 1 ? 's' : ''} (+${prestigeFlash.gained * 10}% Ohr forever).`,
+    },
+    milestoneFlash && {
+      id: 'milestone', cls: 'bg-orange-500',
+      text: `🔥 ${milestoneFlash.milestone} streak! +${milestoneFlash.bonus.toLocaleString()} Ohr burst.`,
+    },
+    questFlash && {
+      id: 'quest', cls: 'bg-green-600',
+      text: `✅ Quest complete: ${questFlash.name} (+${questFlash.reward.toLocaleString()} Ohr)`,
+    },
+    buyHint && {
+      id: 'buyhint', cls: 'bg-red-500',
+      text: buyHint.locked
+        ? (exileKind === 'shemittah'
+          ? '🌾 The land rests — no inscribing until the next root. Study on: every tap counts double.'
+          : `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`)
+        : `Need ${buyHint.need.toLocaleString()} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`,
+    },
+    feedbackFlash && {
+      id: 'feedback', cls: 'bg-neutral-600',
+      text: feedbackFlash === 'easier' ? '✓ Eased — letters cheaper, taps bigger, timers longer.'
+        : feedbackFlash === 'harder' ? '✓ Spicier — letters pricier, taps smaller, timers tighter.'
+        : '✓ Locked in — auto-tuning continues in the background.',
+    },
+  ].filter(Boolean)
   const dailyCount = Math.min(DAILY_GOAL, state.daily?.correct || 0)
   const dailyClaimed = !!state.daily?.claimed
   const graceAvailable = (state.streakGraceDay || '') !== dayKey()
@@ -658,35 +739,65 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           ⏳ +1h now · {warpPrice} 🌟
         </button>
       </div>
-      {boostFlash && (
-        <div className="idle-pop mt-2 p-2 rounded-lg bg-orange-500 text-white text-sm text-center font-medium">
-          {boostFlash.text}
-        </div>
-      )}
+      {/* Toasts live in the overlay stack at the end — nothing flashes in-flow. */}
 
       {/* Golden Prompt — the prompt asks its own letter question, right here.
+          Three modes, never mixed scripts: name (see glyph → pick name),
+          glyph (see name → pick glyph), audio (hear it → pick glyph).
           Correct in 20s wins the buff (or the Prophet's choice); wrong or
           late fizzles, never drains. */}
       {state.golden && (goldenPrompt || prophetPending) && state.golden.quiz && (
-        <div role="dialog" aria-label={prophetPending ? 'The Prophet visits — name the letter to choose your blessing' : `Golden Prompt — name the letter to win ${goldenPrompt?.desc || 'a blessing'}`}
-          className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium">
+        <div role="dialog" aria-label={prophetPending ? 'The Prophet visits — answer to choose your blessing' : `Golden Prompt — answer to win ${goldenPrompt?.desc || 'a blessing'}`}
+          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-2.5 rounded-xl shadow-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium">
           <div className="flex items-center gap-2">
-            <span className="text-2xl" aria-hidden="true">{LETTERS[state.golden.quiz.letter]}</span>
-            <span className="flex-1">
-              {prophetPending
-                ? <span><b>🔮 The Prophet visits!</b> Name this letter within {goldenSecs}s → choose 1 of 3 blessings</span>
-                : <span><b>✨ Golden Prompt!</b> Name this letter within {goldenSecs}s → {goldenPrompt?.desc}</span>}
-            </span>
+            {(state.golden.quiz.qtype || 'name') === 'name' && (
+              <><span className="text-2xl" aria-hidden="true">{LETTERS[state.golden.quiz.letter]}</span>
+              <span className="flex-1">
+                {prophetPending
+                  ? <span><b>🔮 The Prophet visits!</b> Name this letter within {goldenSecs}s → choose 1 of 3 blessings</span>
+                  : <span><b>✨ Golden Prompt!</b> Name this letter within {goldenSecs}s → {goldenPrompt?.desc}</span>}
+              </span></>
+            )}
+            {state.golden.quiz.qtype === 'glyph' && (
+              <span className="flex-1">
+                {prophetPending
+                  ? <span><b>🔮 The Prophet visits!</b> Which letter is <b>{LETTER_NAMES[state.golden.quiz.letter]}</b>? Pick it within {goldenSecs}s → choose 1 of 3 blessings</span>
+                  : <span><b>✨ Golden Prompt!</b> Which letter is <b>{LETTER_NAMES[state.golden.quiz.letter]}</b>? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>}
+              </span>
+            )}
+            {state.golden.quiz.qtype === 'audio' && (
+              <><button onClick={() => { if (quizAudio?.url) new Audio(quizAudio.url).play().catch(() => {}) }}
+                  disabled={!quizAudio?.url}
+                  aria-label="Replay the letter sound"
+                  className="shrink-0 min-h-[44px] min-w-[44px] rounded-lg bg-white/20 hover:bg-white/30 disabled:opacity-50 text-xl cursor-pointer">
+                  🔊
+                </button>
+              <span className="flex-1">
+                {quizAudio?.failed
+                  ? <span><b>✨ Golden Prompt!</b> Which letter is <b>{LETTER_NAMES[state.golden.quiz.letter]}</b>? Pick it within {goldenSecs}s → {prophetPending ? 'choose 1 of 3 blessings' : goldenPrompt?.desc}</span>
+                  : <span><b>🔊 Listen!</b> Which letter did you hear? Pick it within {goldenSecs}s → {prophetPending ? 'choose 1 of 3 blessings' : goldenPrompt?.desc}</span>}
+              </span></>
+            )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5">
-            {state.golden.quiz.options.map((opt, oi) => (
-              <button key={opt} onClick={() => answerQuiz(oi)}
-                aria-label={`Answer: ${LETTER_NAMES[opt]}`}
-                data-testid={`golden-opt-${opt}`}
-                className="min-h-[44px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-sm font-bold cursor-pointer">
-                {LETTER_NAMES[opt]}
-              </button>
-            ))}
+            {(state.golden.quiz.qtype || 'name') === 'name'
+              ? state.golden.quiz.options.map((opt, oi) => (
+                <button key={opt} onClick={() => answerQuiz(oi)}
+                  aria-label={`Answer: ${LETTER_NAMES[opt]}`}
+                  data-testid={`golden-opt-${opt}`}
+                  className="min-h-[44px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-sm font-bold cursor-pointer">
+                  {LETTER_NAMES[opt]}
+                </button>
+              ))
+              : state.golden.quiz.options.map((opt, oi) => (
+                <button key={opt} onClick={() => answerQuiz(oi)}
+                  disabled={state.golden.quiz.qtype === 'audio' && !quizAudio?.url && !quizAudio?.failed}
+                  aria-label={`Answer: letter option ${oi + 1}`}
+                  data-testid={`golden-opt-${opt}`}
+                  className="min-h-[52px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 disabled:opacity-50 text-2xl cursor-pointer">
+                  {LETTERS[opt]}
+                </button>
+              ))}
           </div>
           {state.quizDeck && (
             <div className="mt-1 text-[11px] text-white/90">
@@ -702,7 +813,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {prophetPick && !prophetSnoozed && (
         <div role="dialog" aria-label="The Prophet offers — choose one blessing, or decide later"
           onKeyDown={(e) => { if (e.key === 'Escape') setProphetSnoozed(true) }}
-          className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
+          className="idle-pop fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] p-2.5 rounded-xl shadow-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium">
           <div className="mb-1.5 text-center"><b>🔮 The Prophet offers — take one blessing:</b></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {prophetPick.options.map(id => {
@@ -726,7 +837,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       )}
       {prophetPick && prophetSnoozed && (
         <button onClick={() => setProphetSnoozed(false)}
-          className="mt-2 w-full min-h-[44px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
+          className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[min(94vw,32rem)] min-h-[44px] rounded-xl shadow-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
           🔮 The Prophet waits — choose your blessing
         </button>
       )}
@@ -741,13 +852,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           🌾 Shemittah — the land rests for {fmtWait(((state.exile?.endsAt || 0) - Date.now()) / 1000)} more: no inscribing · every tap counts double
         </div>
       )}
-      {goldenFlash && (
-        <div className={`idle-pop mt-2 p-2 rounded-lg text-white text-sm text-center font-medium ${goldenFlash.fizzled ? 'bg-neutral-500' : 'bg-yellow-500'}`}>
-          {goldenFlash.fizzled
-            ? '🌫️ The prompt faded — no harm done. Another will come.'
-            : `✨ ${goldenFlash.name} — ${goldenFlash.desc}!`}
-        </div>
-      )}
+      {/* Golden result flashes live in the overlay toast stack. */}
 
       {/* The legend — why golems: one word, one book, one eraser */}
       <details className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-600 dark:text-neutral-300">
@@ -795,24 +900,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           </div>
         )}
       </div>
-
-      {prestigeFlash && (
-        <div className="idle-pop mt-2 p-2 rounded-lg bg-teal-600 text-white text-sm text-center font-medium">
-          🌿 You erase the א — אמת becomes מת. The golems return to clay; their gathered truth remains: +{prestigeFlash.gained} root{prestigeFlash.gained > 1 ? 's' : ''} (+{prestigeFlash.gained * 10}% Ohr forever).
-        </div>
-      )}
-
-      {milestoneFlash && (
-        <div className="idle-pop mt-2 p-2 rounded-lg bg-orange-500 text-white text-sm text-center font-medium">
-          🔥 {milestoneFlash.milestone} streak! +{milestoneFlash.bonus.toLocaleString()} Ohr burst.
-        </div>
-      )}
-
-      {questFlash && (
-        <div className="idle-pop mt-2 p-2 rounded-lg bg-green-600 text-white text-sm text-center font-medium">
-          ✅ Quest complete: {questFlash.name} (+{questFlash.reward.toLocaleString()} Ohr)
-        </div>
-      )}
+      {/* Prestige/milestone/quest flashes live in the overlay toast stack. */}
 
       {/* Offline: tap-to-claim, never silent */}
       {(offlinePopup || (state.pendingOffline || 0) >= 1) && (
@@ -829,15 +917,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
-      {buyHint && (
-        <div className="idle-pop mt-2 p-2 rounded-lg bg-red-500 text-white text-xs text-center font-medium">
-          {buyHint.locked
-            ? (exileKind === 'shemittah'
-              ? '🌾 The land rests — no inscribing until the next root. Study on: every tap counts double.'
-              : `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`)
-            : `Need ${buyHint.need.toLocaleString()} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`}
-        </div>
-      )}
+      {/* Buy hints live in the overlay toast stack. */}
 
       {/* Letter shop — 6 cols on phones (big touch targets), 11 on sm+ */}
       {showShop && (
@@ -863,12 +943,15 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const lockIcon = exileKind === 'shemittah' ? '🌾' : '⛓️'
               return (
                 <button key={i} onClick={() => buy(i)}
-                  aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L}, owned ${owned}, costs ${spend} Ohr, mastery ${Math.round(m * 100)} percent, synergy times ${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
-                  title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}`}
-                  className={`min-h-[52px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
+                  aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L} (${LETTER_NAMES[i]}, gematria ${GEMATRIA[i]}), owned ${owned}, costs ${spend} Ohr${owned > 0 ? `, earns ${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
+                  title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} ${LETTER_NAMES[i]} · gematria ${GEMATRIA[i]} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}${owned > 0 ? ` · +${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
+                  className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
                   <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
                     {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
+                  </div>
+                  <div className="text-[10px] font-mono text-amber-600 dark:text-amber-400 tabular-nums">
+                    {owned > 0 ? `+${fmtRate(letterRate(state, mastery, i))}/s` : `=${GEMATRIA[i]}`}
                   </div>
                   {m >= 0.8 && <div className="text-[10px] text-green-600" aria-hidden="true">●<span className="sr-only">mastered</span></div>}
                 </button>
@@ -1047,6 +1130,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 }
                 return rows.map(r => {
                   const afford = state.ohr >= r.cost
+                  const nowRate = letterRate(state, mastery, r.i)
                   return (
                     <button key={r.id} onClick={() => {
                       const next = { ...state }
@@ -1064,6 +1148,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                           {r.L} ×2 output <span className="text-neutral-400">· owns {r.owned}</span>
                         </span>
                         <span className="tabular-nums text-neutral-500">{r.cost.toLocaleString()} ✨</span>
+                      </div>
+                      <div className="text-[10px] tabular-nums text-amber-600 dark:text-amber-400">
+                        Effect: +{fmtRate(nowRate)}/s → +{fmtRate(nowRate * 2)}/s
                       </div>
                     </button>
                   )
@@ -1190,16 +1277,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           </button>
         </div>
       </div>
-      {feedbackFlash && (
-        <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-          {feedbackFlash === 'easier' && '✓ Eased — letters cheaper, taps bigger, timers longer.'}
-          {feedbackFlash === 'harder' && '✓ Spicier — letters pricier, taps smaller, timers tighter.'}
-          {feedbackFlash === 'just-right' && '✓ Locked in — auto-tuning continues in the background.'}
-        </div>
-      )}
+      {/* Difficulty feedback confirmations live in the overlay toast stack. */}
       <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
         Answer → tap Ohr → buy letters → quests → roots. Green dot = mastered (0.8+). ⚡ = breadth bonus (each letter you own lifts all the others). The game watches your accuracy and adjusts — the pace buttons steer it.
       </div>
+      {/* Overlay toast stack — transient flashes float top-center, never in-flow. */}
+      {toasts.length > 0 && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1.5 items-center pointer-events-none w-[min(94vw,32rem)]" aria-live="polite">
+          {toasts.map(t => (
+            <div key={t.id} className={`idle-pop w-full p-2 rounded-xl shadow-xl text-white text-sm text-center font-medium ${t.cls}`}>
+              {t.text}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

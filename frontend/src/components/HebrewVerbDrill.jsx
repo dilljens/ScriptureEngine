@@ -57,10 +57,14 @@ export default function HebrewVerbDrill({ onNavigate }) {
   const handleSelect = (opt) => {
     if (submitted) return
     setSelected(opt)
+    // Multiple-choice submits on selection — no second tap. Open questions
+    // still use the Submit button below.
+    if (current?.type !== 'open' && current?.options) void handleSubmit(opt)
   }
 
-  const handleSubmit = async () => {
-    if (selected === null || submitted) return
+  const handleSubmit = async (explicitAnswer) => {
+    const ans = explicitAnswer !== undefined ? explicitAnswer : selected
+    if (ans === null || submitted) return
     setSubmitted(true)
     setGrading(true)
     try {
@@ -68,7 +72,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          node_id: current.node_id, question: current.question, answer: selected,
+          node_id: current.node_id, question: current.question, answer: ans,
         }),
       })
       const d = await r.json()
@@ -216,9 +220,9 @@ export default function HebrewVerbDrill({ onNavigate }) {
             </div>
           )}
 
-          {/* Submit button */}
-          {!submitted && !isOpen && (
-            <button onClick={handleSubmit} disabled={selected === null}
+          {/* Submit button — open (typed) questions only; MC submits on tap */}
+          {!submitted && isOpen && (
+            <button onClick={() => handleSubmit()} disabled={selected === null}
               className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               Submit
             </button>

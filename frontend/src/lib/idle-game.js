@@ -20,6 +20,12 @@ export const LETTER_NAMES = [
   'Kaf', 'Lamed', 'Mem', 'Nun', 'Samekh', 'Ayin', 'Pe', 'Tsade', 'Qof', 'Resh', 'Shin', 'Tav',
 ]
 
+/** Standard gematria (mispar hechrechi): the numeric value of each letter. */
+export const GEMATRIA = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400,
+]
+
 /** Seed Ohr so a brand-new or freshly-prestiged workshop can always buy a first letter. */
 export const STARTING_OHR = 50
 
@@ -108,6 +114,23 @@ export function statePerSecond(state, mastery = {}) {
     state.owned || {}, mastery, state.tracks || {}, state.words || 0, state.roots || 0,
     state.letterUpgrades || {}, state.perm || {}, availableSparks(state),
   ) * figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state)
+}
+
+/**
+ * This letter's current Ohr/sec contribution — the exact term perSecond sums.
+ * Powers the shop tile's "+X/s" effect preview (what buying more buys).
+ */
+export function letterRate(state = {}, mastery = {}, i = 0) {
+  const n = (state.owned || {})[i] || 0
+  if (!n) return 0
+  const m = mastery[i] ?? 0
+  const readingMult = 1 + ((state.tracks || {}).reading || 0) * 0.10
+  const global = globalMultiplier(state.roots || 0, state.words || 0, state.tracks || {})
+    * (1 + permEffect(state.perm || {}, 'globalMult'))
+  const tail = figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state)
+  return baseRate(i) * n * (0.5 + m) * letterMultiplier(state.letterUpgrades || {}, i)
+    * synergyMultiplier(state.owned || {}, mastery, i)
+    * readingMult * global * sparkBonus(availableSparks(state)) * tail
 }
 
 export function globalMultiplier(roots = 0, words = 0, tracks = {}) {
@@ -668,12 +691,16 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
 }
 
 /**
- * Build the popup quiz for a Golden Prompt: name the shown glyph, 6 options.
+ * Build the popup quiz for a Golden Prompt: 6 options, three question types.
+ * - name:  shown the GLYPH, pick its transliterated name (recognition, easiest)
+ * - glyph: shown the NAME, pick the actual glyph (recall, harder)
+ * - audio: hear the letter, pick the glyph (listening, hardest — no visual cue)
  * Anki-style daily deck: each day brings QUIZ_NEW_PER_DAY unseen letters plus
  * reviews due from spaced repetition; correct answers stretch the interval
  * (1d → 3d → 7d → 14d), wrong answers come back in 10 minutes.
- * Adaptive: struggling players (bias > 0) get high-mastery confidence
- * questions; cruising players get low-mastery targets with confusable foils.
+ * Adaptive: struggling players (bias > 0) get name questions on high-mastery
+ * letters; cruising players get glyph/audio on weak letters with confusable
+ * foils. Never repeats the previous letter while alternatives exist.
  * Pure data — the HUD renders and answers it.
  */
 export const QUIZ_OPTIONS = 6
@@ -728,7 +755,11 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
   const { mastery = {}, bias = 0 } = extra
   const dueNow = Object.keys(d.due || {}).map(Number).filter(l => d.due[l] <= now)
   const fresh = [...(d.newLetters || [])]
-  const pool = [...dueNow, ...fresh]
+  let pool = [...dueNow, ...fresh]
+  // Never quiz the same letter twice in a row while alternatives exist.
+  if (pool.length > 1 && pool.includes(state.lastQuizLetter)) {
+    pool = pool.filter(l => l !== state.lastQuizLetter)
+  }
   if (!pool.length) {
     for (let i = 0; i < LETTERS.length; i++) {
       if ((state?.owned?.[i] || 0) > 0) pool.push(i)
@@ -742,8 +773,9 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
   else letter = pool[Math.floor(rng() * pool.length)]
   // Foils: hard mode leads with the target's confusables, then rng, then a
   // deterministic walk (a constant test seed must never spin forever).
+  const hard = bias < -0.05
   const options = [letter]
-  if (bias < -0.05) {
+  if (hard) {
     for (const cand of CONFUSABLES[letter] || []) {
       if (options.length >= QUIZ_OPTIONS) break
       if (!options.includes(cand)) options.push(cand)
@@ -763,7 +795,16 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
     const j = Math.floor(rng() * (i + 1))
     ;[options[i], options[j]] = [options[j], options[i]]
   }
-  return { letter, options }
+  // Question type follows the same adaptivity: recognition when struggling,
+  // recall or listening when cruising. The HUD upgrades glyph→audio only if
+  // the letter audio actually loads; otherwise the name stays visible.
+  let qtype
+  const r = rng()
+  if (bias > 0.05) qtype = 'name'
+  else if (bias < -0.05) qtype = r < 0.5 ? 'glyph' : 'audio'
+  else qtype = r < 0.4 ? 'name' : r < 0.7 ? 'glyph' : 'audio'
+  state.lastQuizLetter = letter
+  return { letter, options, qtype }
 }
 
 /**
@@ -1450,12 +1491,19 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(gq.quizDeck.day === dayKey(1000), 'deck stamped with today')
   // Adaptive: struggling → high-mastery confidence pick; cruising → weak + confusables
   const gqE = defaultIdleState()
-  const qE = makeGoldenQuiz(gqE, () => 0.5, { mastery: { 0: 0.9, 1: 0.1 }, bias: 0.5 })
+  const qE = makeGoldenQuiz(gqE, () => 0.5, { mastery: { 0: 0.9, 1: 0.1 }, bias: 0.5 }, 1000)
   a(qE.letter === 0, 'struggling players get high-mastery questions')
+  a(qE.qtype === 'name', 'struggling players get recognition questions')
   const gqH = defaultIdleState()
   const qH = makeGoldenQuiz(gqH, () => 0.5, { mastery: { 0: 0.9, 1: 0.05, 2: 0.5 }, bias: -0.5 }, 1000)
   a(qH.letter === 1, 'cruising players get low-mastery questions')
   a(qH.options.includes(5), 'hard mode foils with the confusable (bet→vav)')
+  a(qH.qtype === 'glyph' || qH.qtype === 'audio', 'cruising players get recall questions')
+  // No immediate repeats while alternatives exist
+  const gqN = defaultIdleState()
+  const qN1 = makeGoldenQuiz(gqN, () => 0, {}, 1000)
+  const qN2 = makeGoldenQuiz(gqN, () => 0, {}, 1000)
+  a(qN2.letter !== qN1.letter, 'same letter never quizzed twice in a row')
   // Spaced repetition: correct stretches, wrong returns in minutes
   const gqR = defaultIdleState()
   recordGoldenAnswer(gqR, 3, true, 1000)
@@ -1482,6 +1530,17 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   gq4.golden = { id: 'gale', expiresAt: 5000, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq4, 0, 99999, 0).reason === 'expired', 'late quiz answer fizzles')
   a(answerGoldenQuiz(defaultIdleState(), 0, 1000, 0) === null, 'no quiz answer when none pending')
+  a(GEMATRIA.length === 22 && GEMATRIA[0] === 1 && GEMATRIA[21] === 400, 'gematria table covers all 22 letters')
+  a(letterRate(defaultIdleState(), {}, 0) === 0, 'unowned letter contributes nothing')
+  {
+    const ls = defaultIdleState()
+    ls.owned = { 0: 5, 3: 2 }
+    const mast = { 0: 0.9, 3: 0.2 }
+    let sum = 0
+    for (let i = 0; i < 22; i++) sum += letterRate(ls, mast, i)
+    a(Math.abs(sum - statePerSecond(ls, mast)) < 1e-6, 'letter rates sum to the workshop rate')
+    a(letterRate(ls, mast, 0) > letterRate(ls, mast, 3), 'more owned + mastered earns more')
+  }
   const gq5 = defaultIdleState()
   gq5.golden = { id: 'prophet', expiresAt: 99999, options: ['gale', 'dew', 'rush'], quiz: { letter: 0, options: [0, 1, 2] } }
   a((answerGoldenQuiz(gq5, 0, 1000, 0).choice || []).length === 3, 'prophet quiz opens the blessing choice')
