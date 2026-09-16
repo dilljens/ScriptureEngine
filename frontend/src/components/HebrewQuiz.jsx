@@ -118,6 +118,10 @@ export async function submitHebrewProgressDetailed(progress) {
 
 export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson, nodeId, mode = 'mc' }) {
   const isMental = mode === 'mental'
+  // Two quiz options (general entry only): General Review follows the FSRS
+  // schedule; Next Lesson teaches one card then asks 2 different questions.
+  const [quizKind, setQuizKind] = useState('general')
+  const [card, setCard] = useState(null)
   const [questions, setQuestions] = useState([])
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState({})
@@ -151,7 +155,9 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
 
   const quizUrl = nodeId
     ? `/api/v1/hebrew/lesson/${encodeURIComponent(nodeId)}/quiz?count=${count}&mode=${mode}`
-    : `/api/v1/hebrew/quiz?count=${count}`
+    : quizKind === 'next'
+      ? '/api/v1/hebrew/next-lesson'
+      : `/api/v1/hebrew/quiz?count=${count}&mode=review`
 
   useEffect(() => {
     let cancelled = false
@@ -167,6 +173,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         if (cancelled) return
         if (d.ok && d.data?.questions?.length > 0) {
           setQuestions(d.data.questions)
+          setCard(d.data.card || null)
           startRef.current = Date.now()
         } else {
           setError('No questions available. Study some lessons first!')
@@ -401,6 +408,37 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
+      {/* Quiz mode: General Review follows FSRS; Next Lesson teaches one card. */}
+      {!nodeId && (
+        <div className="flex gap-1.5 mb-4" role="group" aria-label="Quiz mode">
+          {([['general', '🔁 General Review', 'Whatever FSRS says is due next'],
+             ['next', '➡️ Next Lesson', 'One new card, then 2 questions']]).map(([m, label, hint]) => (
+            <button key={m} title={hint} aria-pressed={quizKind === m}
+              onClick={() => {
+                if (quizKind === m || loading && questions.length === 0) return
+                setQuizKind(m); setCard(null); setQuestions([]); setIdx(0)
+                setAnswers({}); answersRef.current = {}; setSubmitted({}); submittedRef.current = {}
+                setResults({ correct: 0, total: 0 }); setDone(false); setMissedItems([])
+                setFeedback({}); setError(null); setLoading(true)
+              }}
+              className={`flex-1 min-h-[44px] px-3 rounded-lg text-xs font-medium cursor-pointer ${quizKind === m ? 'bg-indigo-600 text-white' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Next-lesson card: one card's worth of info before its 2 questions. */}
+      {card && (
+        <div className="mb-4 p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+          <div className="text-[10px] uppercase tracking-wider text-indigo-500 dark:text-indigo-400 font-semibold mb-1">
+            New card · {card.category}
+          </div>
+          <div className="text-base font-bold text-neutral-800 dark:text-neutral-100">{card.title}</div>
+          {card.description && (
+            <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-1 leading-relaxed">{card.description}</p>
+          )}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={onBack} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">← Back</button>

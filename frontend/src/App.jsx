@@ -459,26 +459,6 @@ const [showAssessment, setShowAssessment] = useState(false)
   const goPrevStudy = useCallback(() => goStudy(-1), [goStudy])
   const goNextStudy = useCallback(() => goStudy(1), [goStudy])
 
-  // ── Unified left/right dispatcher so header + mobile + keyboard agree ──
-  // Reading: chapter/book/work. Essays: articles/wiki cycle essays.
-  // Studies: studies/study cycle studies. Everything else: history back/forward.
-  const goPrevAtLevel = useCallback(() => {
-    if (isChapterView) return goPrevChapter()
-    if (viewLevel === 'book') return goPrevBookStay()
-    if (viewLevel === 'work' || viewLevel === 'library') return goPrevWork()
-    if (viewLevel === 'articles' || viewLevel === 'wiki') return goPrevEssay()
-    if (viewLevel === 'studies' || viewLevel === 'study') return goPrevStudy()
-    return doHistoryBack()
-  }, [isChapterView, viewLevel, goPrevChapter, goPrevBookStay, goPrevWork, goPrevEssay, goPrevStudy, doHistoryBack])
-  const goNextAtLevel = useCallback(() => {
-    if (isChapterView) return goNextChapter()
-    if (viewLevel === 'book') return goNextBookStay()
-    if (viewLevel === 'work' || viewLevel === 'library') return goNextWork()
-    if (viewLevel === 'articles' || viewLevel === 'wiki') return goNextEssay()
-    if (viewLevel === 'studies' || viewLevel === 'study') return goNextStudy()
-    return doHistoryForward()
-  }, [isChapterView, viewLevel, goNextChapter, goNextBookStay, goNextWork, goNextEssay, goNextStudy, doHistoryForward])
-
   // Navigate between works (left/right in work or library view only — guarded
   // so non-reading tabs with a non-work viewRef can't hijack to works[0])
   const goPrevWork = useCallback(() => {
@@ -517,6 +497,27 @@ const [showAssessment, setShowAssessment] = useState(false)
       })
     }
   }, [bookData, currentTab?.id, viewRef, viewLevel, updateTab])
+
+  // ── Unified left/right dispatcher so header + mobile + keyboard agree ──
+  // Reading: chapter/book/work. Essays: articles/wiki cycle essays.
+  // Studies: studies/study cycle studies. Everything else: history back/forward.
+  // Declared after go*Work so deps arrays don't use-before-declare.
+  const goPrevAtLevel = useCallback(() => {
+    if (isChapterView) return goPrevChapter()
+    if (viewLevel === 'book') return goPrevBookStay()
+    if (viewLevel === 'work' || viewLevel === 'library') return goPrevWork()
+    if (viewLevel === 'articles' || viewLevel === 'wiki') return goPrevEssay()
+    if (viewLevel === 'studies' || viewLevel === 'study') return goPrevStudy()
+    return doHistoryBack()
+  }, [isChapterView, viewLevel, goPrevChapter, goPrevBookStay, goPrevWork, goPrevEssay, goPrevStudy, doHistoryBack])
+  const goNextAtLevel = useCallback(() => {
+    if (isChapterView) return goNextChapter()
+    if (viewLevel === 'book') return goNextBookStay()
+    if (viewLevel === 'work' || viewLevel === 'library') return goNextWork()
+    if (viewLevel === 'articles' || viewLevel === 'wiki') return goNextEssay()
+    if (viewLevel === 'studies' || viewLevel === 'study') return goNextStudy()
+    return doHistoryForward()
+  }, [isChapterView, viewLevel, goNextChapter, goNextBookStay, goNextWork, goNextEssay, goNextStudy, doHistoryForward])
 
   // ── Keyboard handler ──
   useEffect(() => {

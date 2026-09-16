@@ -1896,20 +1896,28 @@ def _distractor_pool(conn, node_id, correct, limit=12):
     return pool[:limit]
 
 
+def _is_hebrew_script(s):
+    """True when the answer is Hebrew-script (glyph options stay glyph-only)."""
+    return bool(s) and bool(re.search(r"[\u0590-\u05FF]", str(s)))
+
+
 def _to_mc_question(conn, q, node, n_options=MC_OPTION_COUNT):
     """Rewrite a question as N-option multiple choice. Returns None when there
     aren't enough distinct distractors, so the caller can drop it rather than
-    ship a degenerate 2-option question."""
+    ship a degenerate 2-option question. Distractors are filtered to the
+    correct answer's script — Hebrew and transliteration never mix."""
     correct = q.pop("_correct", None)
     if correct is None or correct == "":
         return None
-    opts = [o for o in (q.get("options") or []) if o and o != correct]
+    want_hebrew = _is_hebrew_script(correct)
+    opts = [o for o in (q.get("options") or []) if o and o != correct
+            and _is_hebrew_script(o) == want_hebrew]
     if correct not in opts:
         opts.insert(0, correct)
     for d in _distractor_pool(conn, node["id"], correct, n_options * 3):
         if len(opts) >= n_options:
             break
-        if d not in opts:
+        if d and d not in opts and _is_hebrew_script(d) == want_hebrew:
             opts.append(d)
     if len(opts) < n_options:
         return None
@@ -2046,6 +2054,89 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         "node_title": node["title"],
         "category": node["category"],
         "total": len(questions),
+    }}
+
+
+@router.get("/api/v1/hebrew/next-lesson")
+def get_hebrew_next_lesson(user_id: str = "default", session_token: str = "",
+                           authorization: str = Header("")):
+    """Next-lesson quiz: one card's worth of new material, then 2 questions.
+
+    Picks the lowest-level node the learner hasn't mastered (mastery < 0.8
+    or never practiced). Returns the card (title/category/description) plus
+    exactly 2 multiple-choice questions with DIFFERENT answers in DIFFERENT
+    scripts where the node allows it — HE→EN plus EN→HE. Grammar nodes get
+    two different items (rule vs example) instead. Options are always
+    single-script (Hebrew and transliteration never mix).
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"card": None, "questions": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    node = conn.execute("""
+        SELECT n.id, n.title, n.level, n.category, n.description,
+               p.mastery
+        FROM hebrew_nodes n
+        LEFT JOIN hebrew_progress p
+          ON p.node_id = n.id AND p.user_id = ?
+        WHERE p.mastery IS NULL OR p.mastery < 0.8
+        ORDER BY n.level ASC, p.mastery ASC NULLS FIRST, n.id ASC
+        LIMIT 1
+    """, (user_id,)).fetchone()
+    if not node:
+        conn.close()
+        return {"ok": True, "data": {"card": None, "questions": []}}
+    node = dict(node)
+    items = conn.execute("""
+        SELECT id, question_type, question_text, options_json, correct_answer, difficulty
+        FROM hebrew_practice_items
+        WHERE node_id = ?
+    """, (node["id"],)).fetchall()
+    # Partition by answer script: one Hebrew-answered + one Latin-answered
+    # question when possible (bidirectional by construction).
+    heb_items, lat_items, other = [], [], []
+    for it in items:
+        ca = (it["correct_answer"] or "").strip()
+        if not ca:
+            continue
+        (heb_items if _is_hebrew_script(ca) else lat_items).append(it)
+    picks = []
+    if heb_items and lat_items:
+        picks = [sorted(heb_items, key=lambda r: r["difficulty"] or 0.5)[0],
+                 sorted(lat_items, key=lambda r: r["difficulty"] or 0.5)[0]]
+    else:
+        # Grammar or single-script nodes: two items, different answers,
+        # different types preferred.
+        seen_answers, seen_types = set(), set()
+        for it in sorted(items, key=lambda r: r["difficulty"] or 0.5):
+            ca = (it["correct_answer"] or "").strip()
+            if not ca or ca in seen_answers or it["question_type"] in seen_types:
+                continue
+            seen_answers.add(ca)
+            seen_types.add(it["question_type"])
+            picks.append(it)
+            if len(picks) == 2:
+                break
+        if len(picks) < 2:
+            for it in sorted(items, key=lambda r: r["difficulty"] or 0.5):
+                ca = (it["correct_answer"] or "").strip()
+                if ca and ca not in seen_answers:
+                    picks.append(it)
+                    break
+    questions = []
+    for it in picks[:2]:
+        q = _practice_to_quiz_question(it, node)
+        q["_correct"] = it["correct_answer"]
+        converted = _to_mc_question(conn, q, node)
+        if converted is not None:
+            converted.pop("_correct", None)
+            questions.append(converted)
+    conn.close()
+    return {"ok": True, "data": {
+        "card": {"node_id": node["id"], "title": node["title"],
+                 "category": node["category"], "description": node["description"] or ""},
+        "questions": questions,
     }}
 
 
@@ -3024,12 +3115,14 @@ def grade_hebrew_verb_drill(body: dict, authorization: str = Header("")):
 @router.get("/api/v1/hebrew/quiz")
 def get_hebrew_quiz(
     count: int = 8, user_id: str = "default", session_token: str = "",
-    authorization: str = Header("")
+    authorization: str = Header(""), mode: str = "recent",
 ):
     """Generate a cumulative interleaved quiz from recently studied material.
 
     Selects practice items from the most recently studied nodes across
     multiple categories, no two consecutive questions from the same category.
+    mode=review sources nodes from the FSRS schedule instead (due first,
+    most overdue first) — the General Review path.
     """
     user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
@@ -3038,17 +3131,38 @@ def get_hebrew_quiz(
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
 
-    # Get recently practiced nodes (up to 20) with some history
-    recent = conn.execute("""
-        SELECT p.node_id, p.mastery, p.last_practiced
-        FROM hebrew_progress p
-        JOIN hebrew_nodes n ON n.id = p.node_id
-        WHERE p.user_id = ? AND p.last_practiced IS NOT NULL
-          AND (n.category = 'word' OR n.category = 'grammar'
-               OR n.category = 'verb' OR n.category = 'phrase')
-        ORDER BY p.last_practiced DESC
-        LIMIT 20
-    """, (user_id,)).fetchall()
+    if mode == "review":
+        # FSRS-driven: nodes with any due review row first (most overdue
+        # first), then new/unseen nodes, then the rest by recency.
+        recent = conn.execute("""
+            SELECT p.node_id, p.mastery, p.last_practiced
+            FROM hebrew_progress p
+            JOIN hebrew_nodes n ON n.id = p.node_id
+            LEFT JOIN (
+                SELECT node_id, MIN(due) AS mindue
+                FROM hebrew_review_state WHERE user_id = ? GROUP BY node_id
+            ) s ON s.node_id = p.node_id
+            WHERE p.user_id = ? AND (n.category = 'word' OR n.category = 'grammar'
+                  OR n.category = 'verb' OR n.category = 'phrase'
+                  OR n.category = 'letter' OR n.category = 'consonant'
+                  OR n.category = 'root')
+            ORDER BY CASE WHEN s.mindue IS NULL OR s.mindue <= datetime('now')
+                          THEN 0 ELSE 1 END,
+                     s.mindue ASC, p.last_practiced DESC
+            LIMIT 20
+        """, (user_id, user_id)).fetchall()
+    else:
+        # Get recently practiced nodes (up to 20) with some history
+        recent = conn.execute("""
+            SELECT p.node_id, p.mastery, p.last_practiced
+            FROM hebrew_progress p
+            JOIN hebrew_nodes n ON n.id = p.node_id
+            WHERE p.user_id = ? AND p.last_practiced IS NOT NULL
+              AND (n.category = 'word' OR n.category = 'grammar'
+                   OR n.category = 'verb' OR n.category = 'phrase')
+            ORDER BY p.last_practiced DESC
+            LIMIT 20
+        """, (user_id,)).fetchall()
 
     # Fallback: if not enough practiced nodes, include unlocked nodes
     if len(recent) < 4:

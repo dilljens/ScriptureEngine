@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  LETTERS, LETTER_NAMES, GEMATRIA, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
+  LETTERS, LETTER_NAMES, LETTER_SYMBOLS, GEMATRIA, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
   rootsEarned, shouldPrestige, offlineEarnings, totalOwned,
   QUESTS, questComplete, claimQuest, checkStreakMilestone, nextGoals,
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
@@ -976,8 +976,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const lockIcon = exileKind === 'shemittah' ? '🌾' : '⛓️'
               return (
                 <button key={i} onClick={() => buy(i)}
-                  aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L} (${LETTER_NAMES[i]}, gematria ${GEMATRIA[i]}), owned ${owned}, costs ${spend} Ohr${owned > 0 ? `, earns ${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
-                  title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} ${LETTER_NAMES[i]} · gematria ${GEMATRIA[i]} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}${owned > 0 ? ` · +${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
+                  aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L} (${LETTER_NAMES[i]}, "${LETTER_SYMBOLS[i]}", gematria ${GEMATRIA[i]}), owned ${owned}, costs ${spend} Ohr${owned > 0 ? `, earns ${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
+                  title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} ${LETTER_NAMES[i]} · "${LETTER_SYMBOLS[i]}" · gematria ${GEMATRIA[i]} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}${owned > 0 ? ` · +${fmtRate(letterRate(state, mastery, i))}/s` : ''}`}
                   className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
                   <div className="text-[10px] font-mono text-neutral-500 tabular-nums">

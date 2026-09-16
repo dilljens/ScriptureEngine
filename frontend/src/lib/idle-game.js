@@ -20,6 +20,12 @@ export const LETTER_NAMES = [
   'Kaf', 'Lamed', 'Mem', 'Nun', 'Samekh', 'Ayin', 'Pe', 'Tsade', 'Qof', 'Resh', 'Shin', 'Tav',
 ]
 
+/** Traditional letter meanings (ox, house, camel…) for tooltips and teaching. */
+export const LETTER_SYMBOLS = [
+  'ox', 'house', 'camel', 'door', 'behold', 'hook', 'weapon', 'fence', 'serpent', 'hand',
+  'palm', 'goad', 'water', 'fish', 'support', 'eye', 'mouth', 'fishhook', 'back of head', 'head', 'tooth', 'mark',
+]
+
 /** Standard gematria (mispar hechrechi): the numeric value of each letter. */
 export const GEMATRIA = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
