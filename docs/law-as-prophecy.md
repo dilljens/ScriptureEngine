@@ -46,6 +46,28 @@ Spring fulfilled in order (the day-precision of the spring feasts is the Sunday 
 
 Every sacrifice predicts by substitution; every purity law by separation-then-return; every surplus detail — eighth day, outside camp, paired birds — by meaning.
 
+## Tabernacle Furniture, Priestly Garments, and the Day
+
+**Lampstand** — beaten pure gold, seven lamps giving light "over against it" (:verse[exo.25.31-37]). Light positioned, not ambient: illumination has a direction. *ALLUDED — "I am the light of the world" (:verse[john.8.12]); the seven churches as lampstands (:verse[rev.1.20]).* The stand's work is holding light where God points it; inference beyond that is ours, flagged as such.
+
+**Table of shewbread** — bread "before me alway" (:verse[exo.25.30]). Perpetual fellowship set out, twelve tribes faced across it. *ALLUDED — "I am the living bread which came down from heaven" (:verse[john.6.51]); the table's constancy, not its menu, is the text's point.*
+
+**Altar of incense** — Aaron burns sweet incense morning and evening when he dresses the lamps (:verse[exo.30.7-8]). Prayer timed to tending: intercession and illumination serviced together. *QUOTED in symbol — golden vials "which are the prayers of saints" (:verse[rev.5.8]); incense offered "with the prayers of all saints" (:verse[rev.8.3-4]).*
+
+**Veil and ark** — the veil hangs to bring the ark within (:verse[exo.26.33]); above the mercy seat, between cherubim, "there I will meet with thee" (:verse[exo.25.22]). Meeting has an address. *QUOTED event — the veil rent top to bottom at the death (:verse[matt.27.51]); EXPOUNDED — the way consecrated "through the veil, that is to say, his flesh" (:verse[heb.10.19-20]).* What the veil concealed, the body opened.
+
+**Ephod and memorial stones** — onyx stones graven with tribal names set on the shoulders "for stones of memorial" (:verse[exo.28.9-12]). Bearing precedes blessing: the people ride into presence on strength not their own. *UNQUOTED as statute; fulfilled in pattern — the Servant bearing, the Shepherd carrying.*
+
+**Breastpiece, Urim and Thummim** — judgment worn "upon Aaron's heart, when he goeth in" (:verse[exo.28.29-30]). Decision and affection co-located: verdicts carried where love lives. The Urim's mechanism is unexplained in the text — say so; no mechanics are inferred here.
+
+**Bells and pomegranates** — golden bells alternating pomegranates on the robe's hem, "his sound shall be heard when he goeth in... and when he cometh out, that he die not" (:verse[exo.28.33-35]). Mediation with life at stake, announced coming and going. *UNQUOTED; the pattern — a heard entry securing life — belongs to the one Mediator.*
+
+**Mitre plate** — pure gold graven "HOLINESS TO THE LORD" (:verse[exo.28.36-38]), borne on the forehead to "bear the iniquity of the holy things." Consecration worn facing forward; even Israel's offerings need a bearer. "For glory and for beauty" (:verse[exo.28.2]) governs the whole wardrobe: atonement dressed, not merely done.
+
+**The Day of Atonement, in full** — the feasts section states it; here it is enacted. Two goats, one lot: lots cast, "one lot for the LORD, and the other lot for the scapegoat" (:verse[lev.16.8]). The slain goat's blood goes within the veil, sprinkled on and before the mercy seat (:verse[lev.16.14-15]) — *EXPOUNDED: the high priest enters "alone once every year, not without blood" (:verse[heb.9.7]), but Christ "by his own blood... entered in once... having obtained eternal redemption" (:verse[heb.9.11-12]).* Then the live goat: both hands laid on, "all the iniquities... and all their transgressions in all their sins" confessed over it, sent "by the hand of a fit man into the wilderness" (:verse[lev.16.21-22]) — sin both covered (blood) and carried away (goat). *ALLUDED — "Behold the Lamb of God, which taketh away the sin of the world" (:verse[john.1.29]).* The people afflict their souls while it happens, and "on that day shall the priest make an atonement for you, to cleanse you" (:verse[lev.16.29-30]). Azazel: the Hebrew leaves open scapegoat-rendering versus proper-name reading; the essay claims only what both readings share — removal, not merely covering. The national layer stands as stated above (:verse[zech.12.10]; :verse[zech.13.1]).
+
+Furniture holds presence, garments bear people, the Day enacts removal: the house, the priest, and the calendar converge on one work.
+
 ## Sabbaths, Jubilee, and Social Laws
 
 **Weekly Sabbath** — creation's rest (:verse[exo.20.8-11]) and exodus rest (:verse[deu.5.12-15]) in one day. *EXPOUNDED — "there remaineth therefore a rest" (:verse[heb.4.1-11], quoting :verse[psa.95.7-11]); "The sabbath was made for man... the Son of man is Lord also of the sabbath" (:verse[mark.2.27-28]); shadow, body Christ's (:verse[col.2.16-17]).*

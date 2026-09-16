@@ -172,11 +172,12 @@ test('prophet choice grants the picked blessing', async ({ page }) => {
   const seed = {
     ...richSeed(),
     kavod: 120,
-    golden: { id: 'prophet', expiresAt: now + 60000, options: ['dew', 'manna', 'early'] },
+    golden: { id: 'prophet', expiresAt: now + 60000, options: ['dew', 'manna', 'early'], quiz: { letter: 0, options: [0, 1, 2] } },
   }
   await gotoEmet(page, seed)
   await expect(page.locator('text=The Prophet visits!').first()).toBeVisible()
-  await answer(page, true)
+  // Answer the popup quiz itself (Aleph = option testid golden-opt-0).
+  await page.getByTestId('golden-opt-0').click()
   await expect(page.locator('text=take one blessing').first()).toBeVisible({ timeout: 5000 })
   // Manna grants exactly MANNA_KAVOD (30) on top of whatever the claiming
   // answer itself earned — read state before/after, not an absolute number.
@@ -186,6 +187,32 @@ test('prophet choice grants the picked blessing', async ({ page }) => {
     const kavodAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('hebrew-idle-v1')).kavod)
     expect(kavodAfter).toBe(kavodBefore + 30)
   }).toPass({ timeout: 10000 })
+})
+
+test('golden popup quiz grants the buff on a right answer', async ({ page }) => {
+  const now = Date.now()
+  const seed = {
+    ...richSeed(),
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3] } },
+  }
+  await gotoEmet(page, seed)
+  await expect(page.locator('text=Golden Prompt!').first()).toBeVisible()
+  // Bet = option testid golden-opt-1; the x7 gale shows in the HUD rate line.
+  await page.getByTestId('golden-opt-1').click()
+  await expect(page.locator('text=/x7/').first()).toBeVisible({ timeout: 15000 })
+})
+
+test('golden popup quiz fizzles on a wrong answer', async ({ page }) => {
+  const now = Date.now()
+  const seed = {
+    ...richSeed(),
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3] } },
+  }
+  await gotoEmet(page, seed)
+  await expect(page.locator('text=Golden Prompt!').first()).toBeVisible()
+  // Gimel is wrong (Bet asked) — prompt fizzles, nothing granted, dialog closes.
+  await page.getByTestId('golden-opt-2').click()
+  await expect(page.locator('text=Golden Prompt!')).toHaveCount(0, { timeout: 15000 })
 })
 
 test('streak grace halves instead of resetting', async ({ page }) => {

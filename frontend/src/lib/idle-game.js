@@ -14,6 +14,12 @@ export const LETTERS = [
   'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ', 'ק', 'ר', 'ש', 'ת',
 ]
 
+/** Spoken names for the Golden Prompt popup quiz (glyph → name, 3 options). */
+export const LETTER_NAMES = [
+  'Aleph', 'Bet', 'Gimel', 'Dalet', 'He', 'Vav', 'Zayin', 'Chet', 'Tet', 'Yod',
+  'Kaf', 'Lamed', 'Mem', 'Nun', 'Samekh', 'Ayin', 'Pe', 'Tsade', 'Qof', 'Resh', 'Shin', 'Tav',
+]
+
 /** Seed Ohr so a brand-new or freshly-prestiged workshop can always buy a first letter. */
 export const STARTING_OHR = 50
 
@@ -648,16 +654,81 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   // of one fixed prompt — the surprise system with an actual decision in it.
   if (rng() < PROPHET_CHANCE) {
     const options = sampleBlessings(rng)
-    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options }
+    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options, quiz: makeGoldenQuiz(state, rng) }
     const [lo, hi] = GOLDEN_INTERVAL_SEC
     state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
     return state.golden
   }
   const p = pickGoldenPrompt(rng)
-  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000 }
+  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz: makeGoldenQuiz(state, rng) }
   const [lo, hi] = GOLDEN_INTERVAL_SEC
   state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
   return state.golden
+}
+
+/**
+ * Build the popup quiz for a Golden Prompt: name the shown glyph, 3 options.
+ * Quizzes owned letters when the workshop has any (relevance), else any of
+ * the 22. Pure data — the HUD renders and answers it.
+ */
+export function makeGoldenQuiz(state, rng = Math.random) {
+  const owned = []
+  for (let i = 0; i < LETTERS.length; i++) {
+    if ((state?.owned?.[i] || 0) > 0) owned.push(i)
+  }
+  const pool = owned.length ? owned : LETTERS.map((_, i) => i)
+  const letter = pool[Math.floor(rng() * pool.length)]
+  const options = [letter]
+  // rng-driven distractors first; deterministic walk as fallback so a
+  // constant test seed (or pathological rng) can never spin forever.
+  let guard = 0
+  while (options.length < 3 && guard++ < 50) {
+    const cand = Math.floor(rng() * LETTERS.length)
+    if (!options.includes(cand)) options.push(cand)
+  }
+  for (let k = 1; options.length < 3; k++) {
+    const cand = (letter + k) % LETTERS.length
+    if (!options.includes(cand)) options.push(cand)
+  }
+  // Fisher–Yates with the same rng (deterministic under test seeds).
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[options[i], options[j]] = [options[j], options[i]]
+  }
+  return { letter, options }
+}
+
+/**
+ * Answer the popup quiz. Correct inside the window → buff (or Prophet
+ * choice); wrong or expired → fizzle, nothing lost. Same reward shape as
+ * resolveGoldenPrompt so the HUD treats both alike.
+ */
+export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0) {
+  const g = state.golden
+  if (!g) return null
+  const expired = now > g.expiresAt
+  const quiz = g.quiz
+  const correct = !expired && quiz && quiz.options[choiceIdx] === quiz.letter
+  state.golden = null
+  if (!correct) return { fizzled: true, reason: expired ? 'expired' : 'wrong' }
+  if (g.id === 'prophet') return { choice: [...(g.options || [])] }
+  const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
+  if (!p) return { fizzled: true, reason: 'unknown' }
+  if (p.kind === 'mult') {
+    state.buffs = { ...(state.buffs || {}), galeEndsAt: now + p.seconds * 1000 }
+    return { claimed: p, granted: 0 }
+  }
+  if (p.kind === 'tap') {
+    state.buffs = { ...(state.buffs || {}), tapEndsAt: now + p.seconds * 1000 }
+    return { claimed: p, granted: 0 }
+  }
+  if (p.kind === 'hours') {
+    const granted = perSec * 3600 * (p.hours || 0)
+    state.ohr += granted
+    state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+    return { claimed: p, granted }
+  }
+  return { fizzled: true, reason: 'unknown' }
 }
 
 /** Clear a prompt whose claim window elapsed (fizzle — nothing lost). */
@@ -1299,6 +1370,27 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   spawnGoldenPrompt(gp7, 1000, () => 0.5)
   a(expireGoldenPrompt(gp7, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000) === true && gp7.golden === null, 'expired prompt auto-clears')
   a(expireGoldenPrompt(defaultIdleState(), 1000) === false, 'nothing to expire when none pending')
+  // Popup quiz: the prompt asks its own letter question
+  const gq = defaultIdleState()
+  gq.owned = { 0: 1, 5: 2 }
+  const quiz = makeGoldenQuiz(gq, () => 0.5)
+  a(quiz.options.length === 3 && new Set(quiz.options).size === 3, 'quiz has 3 distinct options')
+  a(quiz.options.includes(quiz.letter), 'quiz includes the correct letter')
+  a([0, 5].includes(quiz.letter), 'quiz prefers owned letters')
+  const gq2 = defaultIdleState()
+  gq2.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11] } }
+  a(answerGoldenQuiz(gq2, 0, 1000, 0).claimed?.id === 'gale', 'right option claims the buff')
+  a(gq2.golden === null, 'quiz answer clears the prompt')
+  const gq3 = defaultIdleState()
+  gq3.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11] } }
+  a(answerGoldenQuiz(gq3, 2, 1000, 0).fizzled === true, 'wrong option fizzles, never drains')
+  const gq4 = defaultIdleState()
+  gq4.golden = { id: 'gale', expiresAt: 5000, quiz: { letter: 3, options: [3, 7, 11] } }
+  a(answerGoldenQuiz(gq4, 0, 99999, 0).reason === 'expired', 'late quiz answer fizzles')
+  a(answerGoldenQuiz(defaultIdleState(), 0, 1000, 0) === null, 'no quiz answer when none pending')
+  const gq5 = defaultIdleState()
+  gq5.golden = { id: 'prophet', expiresAt: 99999, options: ['gale', 'dew', 'rush'], quiz: { letter: 0, options: [0, 1, 2] } }
+  a((answerGoldenQuiz(gq5, 0, 1000, 0).choice || []).length === 3, 'prophet quiz opens the blessing choice')
   // Figs
   const fg = defaultIdleState()
   a(!figReady(fg, 1000), 'no fig ready at start')

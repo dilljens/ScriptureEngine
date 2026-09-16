@@ -126,6 +126,26 @@ The prophets see Him before He comes, naming His work with unusual precision —
 
 Quotation fixes referents; allusion extends them (49:6 to Paul, 55:3 to :verse[acts.13.34]); silence leaves the Davidic-covenant wing, Daniel 9, Zechariah 3/6/13:1, Micah 7, and :verse[hos.13.4] open — His by content, awaiting citation.
 
+## The Angel of the LORD
+
+A figure distinct from the Lord who speaks as the Lord in first person: to Hagar, "I will multiply thy seed exceedingly" (:verse[gen.16.10]) — a promise only God makes, from a mouth called Angel; staying Abraham's knife, "seeing thou hast not withheld thy son, thine only son from me" (:verse[gen.22.11-12]) — *from me*, yet the speaker is introduced as Angel; at the bush, "I am the God of thy father" (:verse[exo.3.6]), and Moses hides his face "for he was afraid to look upon God"; to Manoah, a name "secret" — wonderful (:verse[judg.13.18]), ascending in the altar flame. *UNQUOTED throughout as formal citation; the reasoning is theophanic — one who both is sent and speaks as Sender.* The catalog claims a pattern (sent Speaker bearing the Name), not a verse the apostles pinned.
+
+## Jonah, deepened
+
+The catalog's Jonah entry (:verse[jonah.1.17]; :verse[matt.12.40]) states the sign; the rest of the book extends it. Nineveh repents at preaching and is spared (Jonah 3) — *QUOTED in application: "The men of Nineveh shall rise in judgment... because they repented at the preaching of Jonas; and, behold, a greater than Jonas is here" (:verse[matt.12.41]).* The sting lands on Israel: Gentile sailors and Ninevites respond while the prophet sulks over a gourd. Typology with an edge — the sign authenticates, the response indicts.
+
+## Psalms: three quoted verses the catalog missed
+
+**Psalm 69:4** — "They that hate me without a cause are more than the hairs of mine head" (:verse[psa.69.4]). *QUOTED — "They hated me without a cause" (:verse[john.15.25]).* Causeless hatred as messianic credential, fixed by the Lord's own mouth.
+
+**Psalm 69:9b** — "The reproaches of them that reproached thee fell on me" (with the zeal of :verse[psa.69.9] already entered above). *QUOTED — "even Christ pleased not himself; but, as it is written, The reproaches of them that reproached thee fell on me" (:verse[rom.15.3]).* Paul reads the psalm's reproach-bearing as Christ's ethic and example.
+
+**Psalm 22:22** — "I will declare thy name unto my brethren: in the midst of the congregation will I praise thee" (:verse[psa.22.22]). *QUOTED — "I will declare thy name unto my brethren, in the midst of the church will I sing praise unto thee" (:verse[heb.2.12]).* The psalm does not end at the cross: forsaken (v1), pierced (v16), divided garments (v18) — then vindicated praise among brethren. Hebrews plants the risen Christ inside the congregation singing.
+
+## Appendix: texts not claimed
+
+Honesty requires the negative catalog. **Esther** names neither God nor Christ; no entry is forced — providence without citation stays outside. **Song of Songs** is claimed by some as Christ-and-church allegory; the essay declines: with no quotation and no unmistakable content, allegorical reading is devotion, not anchoring. **Proverbs 8** (Wisdom possessed, master workman — entered above at :verse[prov.8.22-31]) stays ALLUDED at most: Arius weaponized "possessed me" into creaturehood, Nicea answered without making the text Christological by decree. Echoes in :verse[john.1.3], :verse[col.1.16], :verse[heb.1.2] are real and noted; quotation is absent and the essay will not supply it. What is not shown is not denied — only not catalogued.
+
 ## Reading rule
 
 Never use an unquoted text to displace a quoted one; never let quoted texts close the canon of what may yet be cited. The apostles quoted what their hour required and left the rest — Davidic reign, Daniel's program, Zechariah's fountain, Micah's sea-depth pardon — for latter-day witnesses (Abinadi, Nephi, Moroni, D&C 113) and for readers willing to do what Luke 24 models: begin at Moses, pass through all the prophets, and find Him.

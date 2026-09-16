@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
-  LETTERS, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
+  LETTERS, LETTER_NAMES, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
   rootsEarned, shouldPrestige, offlineEarnings, totalOwned,
   QUESTS, questComplete, claimQuest, checkStreakMilestone, nextGoals,
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
@@ -10,7 +10,7 @@ import {
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
-  GOLDEN_PROMPTS, spawnGoldenPrompt, resolveGoldenPrompt, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt, GOLDEN_WINDOW_SEC,
+  GOLDEN_PROMPTS, spawnGoldenPrompt, answerGoldenQuiz, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, expireGoldenPrompt, GOLDEN_WINDOW_SEC,
   PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
   startShemittah, shemittahTapMult, shareCard, checkShemittah, SHEMITTAH_HOURS,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
@@ -175,19 +175,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           setTimeout(() => setBoostFlash(null), 4500)
         }
       }
-      // Golden Prompt resolves on this very answer: correct in-window wins, else fizzle.
-      // Rewards use the same effective rate as Time Warp/HUD (buffs included) so
-      // a Gale doesn't make the Dew worth 1/7 of the warp.
-      const goldenRes = resolveGoldenPrompt(next, !!correct, Date.now(), rate * buffMultiplier(next))
-      let goldenInfo = null
-      if (goldenRes?.choice) {
-        // The Prophet offers — the next answer already resolved, so the choice
-        // itself never expires. Present all three blessings, player takes one.
-        setProphetPick({ options: goldenRes.choice })
-        setProphetSnoozed(false)
-        try { logEvent('prophet', { options: goldenRes.choice }) } catch {}
-      } else if (goldenRes?.claimed) goldenInfo = { name: goldenRes.claimed.name, desc: goldenRes.claimed.desc, fizzled: false }
-      else if (goldenRes?.fizzled) goldenInfo = { fizzled: true }
+      // Golden Prompts are answered in their own popup quiz now, not here:
+      // study answers tap Ohr, tune difficulty, and keep streaks — they never
+      // claim or fizzle prompts.
       saveIdleState(next)
       commit(next)
       if (gainInfo) {
@@ -195,11 +185,6 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         const id = Date.now() + Math.random()
         setGains(g => [...g.slice(-4), { ...gainInfo, id }])
         setTimeout(() => setGains(g => g.filter(x => x.id !== id)), 1500)
-      }
-      if (goldenInfo) {
-        setGoldenFlash(goldenInfo)
-        setTimeout(() => setGoldenFlash(null), 4000)
-        try { logEvent('golden', goldenInfo) } catch {}
       }
       setAnswerPulse({ n: Date.now(), correct: !!correct })
       if (milestoneInfo) {
@@ -363,6 +348,29 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     try { logEvent('vow', { kind: 'shemittah' }) } catch {}
     setBoostFlash({ text: '🌾 Shemittah vowed — the land rests for one hour. No inscribing; every tap counts double.' })
     setTimeout(() => setBoostFlash(null), 4500)
+  }
+
+  // Answer the Golden Prompt's own popup quiz (the prompt asks; no study needed).
+  const answerQuiz = (choiceIdx) => {
+    const next = { ...stateRef.current }
+    const rate = statePerSecond(next, mastery) * buffMultiplier(next)
+    const res = answerGoldenQuiz(next, choiceIdx, Date.now(), rate)
+    if (!res) return
+    commit(next); saveIdleState(next)
+    if (res.choice) {
+      // The Prophet offers — the quiz is passed, so the choice never expires.
+      setProphetPick({ options: res.choice })
+      try { logEvent('prophet', { options: res.choice }) } catch {}
+    } else if (res.claimed) {
+      setGoldenFlash({ name: res.claimed.name, desc: res.claimed.desc, fizzled: false })
+      setTimeout(() => setGoldenFlash(null), 4000)
+      try { logEvent('golden', { id: res.claimed.id, granted: Math.floor(res.granted || 0) }) } catch {}
+    } else if (res.fizzled) {
+      setGoldenFlash({ name: '', desc: '', fizzled: true })
+      setTimeout(() => setGoldenFlash(null), 4000)
+      try { logEvent('golden', { fizzled: true, reason: res.reason }) } catch {}
+    }
+    if (onEarn && res.granted > 0) onEarn(res.granted)
   }
 
   // Take one of the Prophet's three blessings (the choice itself never expires).
@@ -656,16 +664,29 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
-      {/* Golden Prompt — quiz-gated buff, claimed by the next correct answer */}
-      {state.golden && (goldenPrompt || prophetPending) && (
-        <div className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium" role="status" aria-live="polite">
+      {/* Golden Prompt — the prompt asks its own letter question, right here.
+          Correct in 20s wins the buff (or the Prophet's choice); wrong or
+          late fizzles, never drains. */}
+      {state.golden && (goldenPrompt || prophetPending) && state.golden.quiz && (
+        <div role="dialog" aria-label={prophetPending ? 'The Prophet visits — name the letter to choose your blessing' : `Golden Prompt — name the letter to win ${goldenPrompt?.desc || 'a blessing'}`}
+          className="idle-pop mt-2 p-2.5 rounded-lg bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-medium">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{prophetPending ? '🔮' : goldenPrompt.icon}</span>
+            <span className="text-2xl" aria-hidden="true">{LETTERS[state.golden.quiz.letter]}</span>
             <span className="flex-1">
               {prophetPending
-                ? <span><b>The Prophet visits!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → choose 1 of 3 blessings</span>
-                : <span><b>Golden Prompt!</b> Answer the next question <b>correctly</b> within {goldenSecs}s → {goldenPrompt.desc}</span>}
+                ? <span><b>🔮 The Prophet visits!</b> Name this letter within {goldenSecs}s → choose 1 of 3 blessings</span>
+                : <span><b>✨ Golden Prompt!</b> Name this letter within {goldenSecs}s → {goldenPrompt?.desc}</span>}
             </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mt-1.5">
+            {state.golden.quiz.options.map((opt, oi) => (
+              <button key={opt} onClick={() => answerQuiz(oi)}
+                aria-label={`Answer: ${LETTER_NAMES[opt]}`}
+                data-testid={`golden-opt-${opt}`}
+                className="min-h-[44px] px-2 rounded-lg bg-white/20 hover:bg-white/30 active:scale-95 text-sm font-bold cursor-pointer">
+                {LETTER_NAMES[opt]}
+              </button>
+            ))}
           </div>
           <div className="h-1 rounded-full bg-white/30 overflow-hidden mt-1.5" aria-hidden="true">
             <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(1, goldenSecs / GOLDEN_WINDOW_SEC)) * 100}%` }} />
