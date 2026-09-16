@@ -1,0 +1,7 @@
+# Text corpora — NOT code. Do not parse into the code graph.
+# Search these with uki (FTS5 + semantic), not cm.
+# Rationale: cm runs tree-sitter over them and banks parse_partial
+# garbage nodes, and re-parses ~60MB of content on every re-index.
+# Rule: cm indexes code; uki indexes text.
+data/texts/
+research/
