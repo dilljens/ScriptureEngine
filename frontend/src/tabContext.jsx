@@ -420,7 +420,7 @@ export function TabProvider({ children }) {
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: label || '📜 Articles',
+          label: label || '📜 Essays',
           view: 'articles',
         })
       }

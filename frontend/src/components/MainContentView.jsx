@@ -179,7 +179,7 @@ export default function MainContentView(props) {
   // Articles view — the hand-written in-depth studies
   if (viewLevel === 'articles') {
     return (
-      <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading articles…</div>}>
+      <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading essays…</div>}>
         <ArticlesView
           onOpenArticle={(id) => updateTab(currentTab?.id, { view: 'wiki', viewRef: id, label: `📜 ${id}` })}
         />

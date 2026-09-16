@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 
 /**
- * ArticlesView — the hand-written, in-depth articles, kept separate from the
+ * ArticlesView — the hand-written, in-depth essays, kept separate from the
  * auto-generated wiki entity stubs (Adam, Moses, …). Those entities are ~700
  * chars of generated summary; these are substantive pieces (11k–52k chars).
  * Mixing them made the real work impossible to find.
  *
  * Reads article_type='doctrine' from /api/v1/wiki/browse/doctrine and opens the
- * full article in the wiki viewer.
+ * full essay in the wiki viewer.
  */
 export default function ArticlesView({ onOpenArticle }) {
   const [articles, setArticles] = useState(null)
@@ -17,7 +17,7 @@ export default function ArticlesView({ onOpenArticle }) {
     let cancelled = false
     fetch('/api/v1/wiki/browse/doctrine')
       .then(r => r.json())
-      .then(d => { if (!cancelled) { if (d.ok) setArticles(d.data.articles || []); else setError('Could not load articles') } })
+      .then(d => { if (!cancelled) { if (d.ok) setArticles(d.data.articles || []); else setError('Could not load essays') } })
       .catch(e => { if (!cancelled) setError(e.message) })
     return () => { cancelled = true }
   }, [])
@@ -40,14 +40,14 @@ export default function ArticlesView({ onOpenArticle }) {
   )
   if (articles.length === 0) return (
     <div className="max-w-3xl mx-auto px-4 py-10 text-sm text-neutral-500 dark:text-neutral-400">
-      No articles yet.
+      No essays yet.
     </div>
   )
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="mb-5">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📜 Articles</h2>
+        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📜 Essays</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           In-depth studies — written and cross-referenced, not auto-generated summaries.
         </p>
