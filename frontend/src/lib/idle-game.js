@@ -245,6 +245,7 @@ export function defaultIdleState() {
     golden: null,        // active Golden Prompt {id, expiresAt}, null when none
     nextGoldenAt: 0,     // timestamp the next prompt may spawn
     figs: { level: 0, readyAt: 0 }, // 20h retention timer (sugar-lump analogue)
+    quizDeck: null, // Anki-style daily quiz set {day, newLetters, due, seen, stats} — built on first quiz
     vineyard: { level: 0, vines: [0, 0, 0] }, // 3 parallel 4h tending timers (garden analogue)
     daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
@@ -646,7 +647,7 @@ export function pickGoldenPrompt(rng = Math.random) {
 }
 
 /** Spawn a prompt when none is pending, the interval elapsed, and production exists. */
-export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, perSec = 1) {
+export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, perSec = 1, extra = {}) {
   if (state.golden) return null
   if (perSec <= 0) return null // nothing to multiply yet — never hand out a value-less prompt
   if (now < (state.nextGoldenAt || 0)) return null
@@ -654,39 +655,106 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   // of one fixed prompt — the surprise system with an actual decision in it.
   if (rng() < PROPHET_CHANCE) {
     const options = sampleBlessings(rng)
-    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options, quiz: makeGoldenQuiz(state, rng) }
+    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options, quiz: makeGoldenQuiz(state, rng, extra, now) }
     const [lo, hi] = GOLDEN_INTERVAL_SEC
     state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
     return state.golden
   }
   const p = pickGoldenPrompt(rng)
-  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz: makeGoldenQuiz(state, rng) }
+  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz: makeGoldenQuiz(state, rng, extra, now) }
   const [lo, hi] = GOLDEN_INTERVAL_SEC
   state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
   return state.golden
 }
 
 /**
- * Build the popup quiz for a Golden Prompt: name the shown glyph, 3 options.
- * Quizzes owned letters when the workshop has any (relevance), else any of
- * the 22. Pure data — the HUD renders and answers it.
+ * Build the popup quiz for a Golden Prompt: name the shown glyph, 6 options.
+ * Anki-style daily deck: each day brings QUIZ_NEW_PER_DAY unseen letters plus
+ * reviews due from spaced repetition; correct answers stretch the interval
+ * (1d → 3d → 7d → 14d), wrong answers come back in 10 minutes.
+ * Adaptive: struggling players (bias > 0) get high-mastery confidence
+ * questions; cruising players get low-mastery targets with confusable foils.
+ * Pure data — the HUD renders and answers it.
  */
-export function makeGoldenQuiz(state, rng = Math.random) {
-  const owned = []
-  for (let i = 0; i < LETTERS.length; i++) {
-    if ((state?.owned?.[i] || 0) > 0) owned.push(i)
+export const QUIZ_OPTIONS = 6
+export const QUIZ_NEW_PER_DAY = 3
+export const QUIZ_REVIEW_DAYS = [1, 3, 7, 14]
+export const QUIZ_WRONG_MIN = 10
+// Mirrors the curriculum confusability seed (hebrew_confusability): pairs
+// learners actually mix up. Hard-mode foils come from here first.
+export const CONFUSABLES = {
+  0: [15], 15: [0],   // aleph / ayin
+  1: [5], 5: [1],     // bet / vav
+  4: [7], 7: [4],     // he / chet
+  8: [21], 21: [8],   // tet / tav
+  14: [20], 20: [14], // samekh / shin
+}
+
+export function ensureQuizDeck(state, now = Date.now(), rng = Math.random) {
+  const day = dayKey(now)
+  if (state.quizDeck && state.quizDeck.day === day) return state.quizDeck
+  // New day: carry reviews (due map + per-letter streaks), deal fresh letters.
+  const prev = state.quizDeck
+  const due = { ...(prev?.due || {}) }
+  const stats = { ...(prev?.stats || {}) }
+  const seen = new Set([...Object.keys(due).map(Number), ...Object.keys(stats).map(Number)]);
+  const fresh = []
+  for (let i = 0; i < LETTERS.length && fresh.length < QUIZ_NEW_PER_DAY; i++) {
+    if (!seen.has(i)) fresh.push(i)
   }
-  const pool = owned.length ? owned : LETTERS.map((_, i) => i)
-  const letter = pool[Math.floor(rng() * pool.length)]
+  state.quizDeck = { day, newLetters: fresh, due, stats, reviewedToday: 0 }
+  return state.quizDeck
+}
+
+/** File one quiz answer into the spaced-repetition deck. */
+export function recordGoldenAnswer(state, letter, correct, now = Date.now()) {
+  const d = ensureQuizDeck(state, now)
+  d.reviewedToday = (d.reviewedToday || 0) + 1
+  d.newLetters = (d.newLetters || []).filter(x => x !== letter)
+  if (correct) {
+    const streak = (d.stats[letter] || 0) + 1
+    d.stats[letter] = streak
+    const step = QUIZ_REVIEW_DAYS[Math.min(streak - 1, QUIZ_REVIEW_DAYS.length - 1)]
+    d.due[letter] = now + step * 86400000
+  } else {
+    d.stats[letter] = 0
+    d.due[letter] = now + QUIZ_WRONG_MIN * 60000
+  }
+  return d
+}
+
+export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.now()) {
+  const d = ensureQuizDeck(state, now, rng)
+  const { mastery = {}, bias = 0 } = extra
+  const dueNow = Object.keys(d.due || {}).map(Number).filter(l => d.due[l] <= now)
+  const fresh = [...(d.newLetters || [])]
+  const pool = [...dueNow, ...fresh]
+  if (!pool.length) {
+    for (let i = 0; i < LETTERS.length; i++) {
+      if ((state?.owned?.[i] || 0) > 0) pool.push(i)
+    }
+  }
+  if (!pool.length) for (let i = 0; i < LETTERS.length; i++) pool.push(i)
+  const m = l => mastery[l] || 0
+  let letter
+  if (bias > 0.05) letter = pool.reduce((a, b) => (m(a) >= m(b) ? a : b))
+  else if (bias < -0.05) letter = pool.reduce((a, b) => (m(a) <= m(b) ? a : b))
+  else letter = pool[Math.floor(rng() * pool.length)]
+  // Foils: hard mode leads with the target's confusables, then rng, then a
+  // deterministic walk (a constant test seed must never spin forever).
   const options = [letter]
-  // rng-driven distractors first; deterministic walk as fallback so a
-  // constant test seed (or pathological rng) can never spin forever.
+  if (bias < -0.05) {
+    for (const cand of CONFUSABLES[letter] || []) {
+      if (options.length >= QUIZ_OPTIONS) break
+      if (!options.includes(cand)) options.push(cand)
+    }
+  }
   let guard = 0
-  while (options.length < 3 && guard++ < 50) {
+  while (options.length < QUIZ_OPTIONS && guard++ < 200) {
     const cand = Math.floor(rng() * LETTERS.length)
     if (!options.includes(cand)) options.push(cand)
   }
-  for (let k = 1; options.length < 3; k++) {
+  for (let k = 1; options.length < QUIZ_OPTIONS; k++) {
     const cand = (letter + k) % LETTERS.length
     if (!options.includes(cand)) options.push(cand)
   }
@@ -710,7 +778,9 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   const quiz = g.quiz
   const correct = !expired && quiz && quiz.options[choiceIdx] === quiz.letter
   state.golden = null
-  if (!correct) return { fizzled: true, reason: expired ? 'expired' : 'wrong' }
+  if (expired) return { fizzled: true, reason: 'expired' }
+  if (quiz) recordGoldenAnswer(state, quiz.letter, !!correct, now)
+  if (!correct) return { fizzled: true, reason: 'wrong' }
   if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
   if (!p) return { fizzled: true, reason: 'unknown' }
@@ -1370,22 +1440,46 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   spawnGoldenPrompt(gp7, 1000, () => 0.5)
   a(expireGoldenPrompt(gp7, 1000 + (GOLDEN_WINDOW_SEC + 1) * 1000) === true && gp7.golden === null, 'expired prompt auto-clears')
   a(expireGoldenPrompt(defaultIdleState(), 1000) === false, 'nothing to expire when none pending')
-  // Popup quiz: the prompt asks its own letter question
+  // Popup quiz: the prompt asks its own letter question (6 options, Anki deck)
   const gq = defaultIdleState()
   gq.owned = { 0: 1, 5: 2 }
-  const quiz = makeGoldenQuiz(gq, () => 0.5)
-  a(quiz.options.length === 3 && new Set(quiz.options).size === 3, 'quiz has 3 distinct options')
+  const quiz = makeGoldenQuiz(gq, () => 0.5, {}, 1000)
+  a(quiz.options.length === 6 && new Set(quiz.options).size === 6, 'quiz has 6 distinct options')
   a(quiz.options.includes(quiz.letter), 'quiz includes the correct letter')
-  a([0, 5].includes(quiz.letter), 'quiz prefers owned letters')
+  a(!!gq.quizDeck && gq.quizDeck.newLetters.length === 3, 'first quiz deals a 3-letter daily set')
+  a(gq.quizDeck.day === dayKey(1000), 'deck stamped with today')
+  // Adaptive: struggling → high-mastery confidence pick; cruising → weak + confusables
+  const gqE = defaultIdleState()
+  const qE = makeGoldenQuiz(gqE, () => 0.5, { mastery: { 0: 0.9, 1: 0.1 }, bias: 0.5 })
+  a(qE.letter === 0, 'struggling players get high-mastery questions')
+  const gqH = defaultIdleState()
+  const qH = makeGoldenQuiz(gqH, () => 0.5, { mastery: { 0: 0.9, 1: 0.05, 2: 0.5 }, bias: -0.5 }, 1000)
+  a(qH.letter === 1, 'cruising players get low-mastery questions')
+  a(qH.options.includes(5), 'hard mode foils with the confusable (bet→vav)')
+  // Spaced repetition: correct stretches, wrong returns in minutes
+  const gqR = defaultIdleState()
+  recordGoldenAnswer(gqR, 3, true, 1000)
+  a(gqR.quizDeck.due[3] === 1000 + 86400000, 'correct schedules review in 1d')
+  recordGoldenAnswer(gqR, 3, true, 1000)
+  a(gqR.quizDeck.due[3] === 1000 + 3 * 86400000, 'second correct stretches to 3d')
+  recordGoldenAnswer(gqR, 4, false, 1000)
+  a(gqR.quizDeck.due[4] === 1000 + 10 * 60000, 'wrong returns in 10 minutes')
+  // Day rollover: fresh letters dealt, reviews carried
+  const gqD = defaultIdleState()
+  recordGoldenAnswer(gqD, 0, true, 1000)
+  ensureQuizDeck(gqD, 1000 + 86400000 + 1)
+  a(gqD.quizDeck.day === dayKey(1000 + 86400000 + 1), 'deck rolls to the new day')
+  a(gqD.quizDeck.due[0] === 1000 + 86400000, 'reviews carry across days')
+  a(gqD.quizDeck.newLetters.length === 3 && !gqD.quizDeck.newLetters.includes(0), 'seen letters are not re-dealt')
   const gq2 = defaultIdleState()
-  gq2.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11] } }
+  gq2.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq2, 0, 1000, 0).claimed?.id === 'gale', 'right option claims the buff')
   a(gq2.golden === null, 'quiz answer clears the prompt')
   const gq3 = defaultIdleState()
-  gq3.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11] } }
+  gq3.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq3, 2, 1000, 0).fizzled === true, 'wrong option fizzles, never drains')
   const gq4 = defaultIdleState()
-  gq4.golden = { id: 'gale', expiresAt: 5000, quiz: { letter: 3, options: [3, 7, 11] } }
+  gq4.golden = { id: 'gale', expiresAt: 5000, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq4, 0, 99999, 0).reason === 'expired', 'late quiz answer fizzles')
   a(answerGoldenQuiz(defaultIdleState(), 0, 1000, 0) === null, 'no quiz answer when none pending')
   const gq5 = defaultIdleState()

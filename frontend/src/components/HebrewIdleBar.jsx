@@ -126,7 +126,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         ohr: s.ohr + gain,
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
-      spawnGoldenPrompt(next, Date.now(), Math.random, rate) // only when due + production exists
+      spawnGoldenPrompt(next, Date.now(), Math.random, rate, { mastery, bias: s.difficulty?.bias || 0 }) // only when due + production exists
       const hadGolden = !!s.golden
       expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
       if (hadGolden && !next.golden) {
@@ -678,7 +678,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 : <span><b>✨ Golden Prompt!</b> Name this letter within {goldenSecs}s → {goldenPrompt?.desc}</span>}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mt-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5">
             {state.golden.quiz.options.map((opt, oi) => (
               <button key={opt} onClick={() => answerQuiz(oi)}
                 aria-label={`Answer: ${LETTER_NAMES[opt]}`}
@@ -688,6 +688,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               </button>
             ))}
           </div>
+          {state.quizDeck && (
+            <div className="mt-1 text-[11px] text-white/90">
+              Today's set: {(state.quizDeck.newLetters || []).length} new · {Object.keys(state.quizDeck.due || {}).length} in rotation · {state.quizDeck.reviewedToday || 0} reviewed
+            </div>
+          )}
           <div className="h-1 rounded-full bg-white/30 overflow-hidden mt-1.5" aria-hidden="true">
             <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(1, goldenSecs / GOLDEN_WINDOW_SEC)) * 100}%` }} />
           </div>

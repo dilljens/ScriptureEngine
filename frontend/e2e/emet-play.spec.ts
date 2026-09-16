@@ -172,7 +172,7 @@ test('prophet choice grants the picked blessing', async ({ page }) => {
   const seed = {
     ...richSeed(),
     kavod: 120,
-    golden: { id: 'prophet', expiresAt: now + 60000, options: ['dew', 'manna', 'early'], quiz: { letter: 0, options: [0, 1, 2] } },
+    golden: { id: 'prophet', expiresAt: now + 60000, options: ['dew', 'manna', 'early'], quiz: { letter: 0, options: [0, 1, 2, 3, 4, 5] } },
   }
   await gotoEmet(page, seed)
   await expect(page.locator('text=The Prophet visits!').first()).toBeVisible()
@@ -193,7 +193,7 @@ test('golden popup quiz grants the buff on a right answer', async ({ page }) => 
   const now = Date.now()
   const seed = {
     ...richSeed(),
-    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3] } },
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3, 4, 5, 6] } },
   }
   await gotoEmet(page, seed)
   await expect(page.locator('text=Golden Prompt!').first()).toBeVisible()
@@ -206,7 +206,7 @@ test('golden popup quiz fizzles on a wrong answer', async ({ page }) => {
   const now = Date.now()
   const seed = {
     ...richSeed(),
-    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3] } },
+    golden: { id: 'gale', expiresAt: now + 60000, quiz: { letter: 1, options: [1, 2, 3, 4, 5, 6] } },
   }
   await gotoEmet(page, seed)
   await expect(page.locator('text=Golden Prompt!').first()).toBeVisible()
