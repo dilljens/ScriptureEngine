@@ -690,13 +690,31 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
     return state.golden
   }
   const p = pickGoldenPrompt(rng)
-  // Highest tier: word-translation questions (EN↔HE) once the letters are
-  // established. Judged by exact match — deterministic, offline, instant;
-  // no LLM judge (latency/cost/nondeterminism for a solved problem).
-  const words = wordCandidates(state, extra.topWords || [])
-  const quiz = words.length && rng() < WORD_QUIZ_SHARE
-    ? makeWordQuiz(words, rng, extra.topWords || [])
-    : makeGoldenQuiz(state, rng, extra, now)
+  // Highest tier: word/root translation (EN↔HE) once 100 words + 100 roots
+  // are known and grammar is studied. 90% reviews known words (due first),
+  // 10% stretches into new ones; roots mix in at ROOT_QUIZ_SHARE.
+  const topW = extra.topWords || []
+  const topR = extra.topRoots || []
+  const known = wordCandidates(state, topW, topR, extra.gramMastery || {}, extra.gramCategories || {})
+  let quiz = null
+  if (known.length && rng() < WORD_QUIZ_SHARE) {
+    const kroots = knownRoots(state, topW, topR)
+    if (kroots.length && rng() < ROOT_QUIZ_SHARE) {
+      quiz = makeRootQuiz(kroots, topR, rng)
+    } else {
+      const deck = ensureQuizDeck(state, now)
+      const stats = deck.wordStats || {}
+      const freshW = known.filter(w => !stats[w.rank]?.seen)
+      let pool = known
+      if (freshW.length && rng() >= WORD_KNOWN_SHARE) pool = freshW
+      else {
+        const dueW = known.filter(w => stats[w.rank]?.seen && (stats[w.rank]?.due || 0) <= now)
+        if (dueW.length) pool = dueW
+      }
+      quiz = makeWordQuiz(pool, rng, topW)
+    }
+  }
+  if (!quiz) quiz = makeGoldenQuiz(state, rng, extra, now)
   state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz }
   const [lo, hi] = GOLDEN_INTERVAL_SEC
   state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
@@ -742,7 +760,12 @@ export function ensureQuizDeck(state, now = Date.now(), rng = Math.random) {
   for (let i = 0; i < LETTERS.length && fresh.length < QUIZ_NEW_PER_DAY; i++) {
     if (!seen.has(i)) fresh.push(i)
   }
-  state.quizDeck = { day, newLetters: fresh, due, stats, reviewedToday: 0 }
+  state.quizDeck = {
+    day, newLetters: fresh, due, stats,
+    wordStats: { ...(prev?.wordStats || {}) },
+    rootStats: { ...(prev?.rootStats || {}) },
+    reviewedToday: 0,
+  }
   return state.quizDeck
 }
 
@@ -760,6 +783,48 @@ export function recordGoldenAnswer(state, letter, correct, now = Date.now()) {
     d.stats[letter] = 0
     d.due[letter] = now + QUIZ_WRONG_MIN * 60000
   }
+  return d
+}
+
+/**
+ * Word/root answers feed their own SRS tracks (per-rank / per-root streaks).
+ * Correct stretches the interval, wrong returns in 10 minutes — partial
+ * correctness is exactly what the deck records: every word and root carries
+ * its own streak, so strong words graduate while weak ones keep coming back.
+ */
+export function recordWordAnswer(state, rank, correct, now = Date.now()) {
+  const d = ensureQuizDeck(state, now)
+  d.reviewedToday = (d.reviewedToday || 0) + 1
+  d.wordStats = d.wordStats || {}
+  const s = d.wordStats[rank] || { streak: 0, due: 0, seen: 0 }
+  s.seen += 1
+  if (correct) {
+    s.streak += 1
+    const step = QUIZ_REVIEW_DAYS[Math.min(s.streak - 1, QUIZ_REVIEW_DAYS.length - 1)]
+    s.due = now + step * 86400000
+  } else {
+    s.streak = 0
+    s.due = now + QUIZ_WRONG_MIN * 60000
+  }
+  d.wordStats[rank] = s
+  return d
+}
+
+export function recordRootAnswer(state, root, correct, now = Date.now()) {
+  const d = ensureQuizDeck(state, now)
+  d.reviewedToday = (d.reviewedToday || 0) + 1
+  d.rootStats = d.rootStats || {}
+  const s = d.rootStats[root] || { streak: 0, due: 0, seen: 0 }
+  s.seen += 1
+  if (correct) {
+    s.streak += 1
+    const step = QUIZ_REVIEW_DAYS[Math.min(s.streak - 1, QUIZ_REVIEW_DAYS.length - 1)]
+    s.due = now + step * 86400000
+  } else {
+    s.streak = 0
+    s.due = now + QUIZ_WRONG_MIN * 60000
+  }
+  d.rootStats[root] = s
   return d
 }
 
@@ -820,13 +885,18 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
   return { kind: 'letter', letter, options, qtype }
 }
 
-// ── Word tier: EN↔HE translation from the top-500 ─────────────────────────
-// Unlock rule: a word opens when every letter of its bare form is owned —
-// learning buys vocabulary. The tier itself opens at WORD_UNLOCK_OWNED
-// total letters. Choice-based with exact-match judging (no LLM).
+// ── Word/root tier: EN↔HE translation from the top-500 ───────────────────
+// Unlock: 100 known words + 100 known roots + studied grammar. A word is
+// known when every letter is owned (readable); a root is known when 2+ of
+// its example words are known. Past the gate, 90% of questions review known
+// words (due first) and 10% stretch into new ones. Judged by exact match —
+// deterministic, offline, instant; no LLM judge.
 
-export const WORD_UNLOCK_OWNED = 10
+export const WORD_KNOWN_TARGET = 100
+export const ROOT_KNOWN_TARGET = 100
+export const WORD_KNOWN_SHARE = 0.9
 export const WORD_QUIZ_SHARE = 0.35
+export const ROOT_QUIZ_SHARE = 0.15
 const FINAL_TO_BASE = { 'ך': 11, 'ם': 12, 'ן': 13, 'ף': 16, 'ץ': 17 }
 
 /** Letters of a bare word that the workshop does NOT own yet. */
@@ -841,11 +911,51 @@ export function wordLockedLetters(word, owned = {}) {
   return missing
 }
 
-/** Top-500 words the player can currently be quizzed on (empty below tier). */
-export function wordCandidates(state, topWords = []) {
-  if (totalOwned(state) < WORD_UNLOCK_OWNED) return []
+/** Top-500 words the player currently knows (readable = all letters owned). */
+export function knownWords(state, topWords = []) {
   const owned = state.owned || {}
   return topWords.filter(w => w.bare && w.gloss && wordLockedLetters(w, owned).length === 0)
+}
+
+function rankSet(topWords) {
+  const m = {}
+  for (const w of topWords || []) m[w.lemma] = w.rank
+  return m
+}
+
+/** Roots with 2+ known example words (examples resolved through top-500 ranks). */
+export function knownRoots(state, topWords = [], topRoots = []) {
+  const known = new Set(knownWords(state, topWords).map(w => w.rank))
+  const byRank = rankSet(topWords)
+  const out = []
+  for (const r of topRoots || []) {
+    const hits = (r.examples || []).filter(l => known.has(byRank[l])).length
+    if (hits >= 2) out.push(r)
+  }
+  return out
+}
+
+/** Grammar studied: mastered grammar/syntax/verb curriculum nodes. */
+export function grammarStudied(mastery = {}, categories = {}) {
+  let n = 0
+  for (const [k, v] of Object.entries(mastery)) {
+    const c = categories[k]
+    if ((c === 'grammar' || c === 'syntax' || c === 'verb') && (v || 0) >= 0.8) n++
+  }
+  return n
+}
+
+/** Tier gate: 100 known words + 100 known roots + studied grammar. */
+export function translationUnlocked(state, topWords = [], topRoots = [], mastery = {}, categories = {}) {
+  return knownWords(state, topWords).length >= WORD_KNOWN_TARGET
+    && knownRoots(state, topWords, topRoots).length >= ROOT_KNOWN_TARGET
+    && grammarStudied(mastery, categories) >= 1
+}
+
+/** Translation candidates: 90% known words (the known set passed in). */
+export function wordCandidates(state, topWords = [], topRoots = [], mastery = {}, categories = {}) {
+  if (!translationUnlocked(state, topWords, topRoots, mastery, categories)) return []
+  return knownWords(state, topWords)
 }
 
 /** EN→HE or HE→EN choice quiz, 6 single-script options, exact-match judged. */
@@ -884,6 +994,37 @@ export function makeWordQuiz(candidates, rng = Math.random, foilPool = []) {
   return { kind: 'word', direction, hebrew: word.hebrew, bare: word.bare, gloss: word.gloss, rank: word.rank, translit: word.translit || word.transliteration || '', options, answer }
 }
 
+/** Root↔gloss choice quiz from known roots (same 6-option, exact-match shape). */
+export function makeRootQuiz(knownR, allRoots = [], rng = Math.random) {
+  const root = knownR[Math.floor(rng() * knownR.length)]
+  const direction = rng() < 0.5 ? 'en-he' : 'he-en'
+  const answer = direction === 'en-he' ? root.root : root.gloss
+  const foils = (allRoots.length ? allRoots : knownR).filter(r => r.root !== root.root)
+  const options = [answer]
+  let guard = 0
+  while (options.length < QUIZ_OPTIONS && guard++ < 300) {
+    const cand = foils[Math.floor(rng() * foils.length)]
+    if (!cand) break
+    const val = direction === 'en-he' ? cand.root : cand.gloss
+    if (val && !options.includes(val)) options.push(val)
+  }
+  const seenVals = new Set(options)
+  for (const cand of foils) {
+    if (options.length >= QUIZ_OPTIONS) break
+    const val = direction === 'en-he' ? cand.root : cand.gloss
+    if (val && !seenVals.has(val)) { seenVals.add(val); options.push(val) }
+  }
+  for (let k = 2; options.length < QUIZ_OPTIONS; k++) {
+    const val = `${answer} (${k})`
+    if (!seenVals.has(val)) { seenVals.add(val); options.push(val) }
+  }
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[options[i], options[j]] = [options[j], options[i]]
+  }
+  return { kind: 'root', direction, root: root.root, gloss: root.gloss, options, answer }
+}
+
 /**
  * Answer the popup quiz. Correct inside the window → buff (or Prophet
  * choice); wrong or expired → fizzle, nothing lost. Same reward shape as
@@ -898,9 +1039,14 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   const correct = !expired && quiz && quiz.options[choiceIdx] === answer
   state.golden = null
   if (expired) return { fizzled: true, reason: 'expired' }
-  // Letter quizzes feed the spaced-repetition deck; word quizzes grant the
-  // buff the same way (their own progression layer comes later).
-  if (quiz && typeof quiz.letter === 'number') recordGoldenAnswer(state, quiz.letter, !!correct, now)
+  // Letter quizzes feed the letter deck; words and roots feed their own SRS
+  // tracks — partial correctness is the point: strong items graduate while
+  // weak ones keep coming back, each on its own streak.
+  if (quiz) {
+    if (quiz.kind === 'word' && quiz.rank) recordWordAnswer(state, quiz.rank, !!correct, now)
+    else if (quiz.kind === 'root' && quiz.root) recordRootAnswer(state, quiz.root, !!correct, now)
+    else if (typeof quiz.letter === 'number') recordGoldenAnswer(state, quiz.letter, !!correct, now)
+  }
   if (!correct) return { fizzled: true, reason: 'wrong' }
   if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
@@ -1624,31 +1770,59 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const gq5 = defaultIdleState()
   gq5.golden = { id: 'prophet', expiresAt: 99999, options: ['gale', 'dew', 'rush'], quiz: { letter: 0, options: [0, 1, 2] } }
   a((answerGoldenQuiz(gq5, 0, 1000, 0).choice || []).length === 3, 'prophet quiz opens the blessing choice')
-  // Word tier: EN↔HE from the top-500, unlocked letter by letter
+  // Word/root tier: 100 known words + 100 known roots + studied grammar
   const SAMPLE_WORDS = [
-    { rank: 1, hebrew: 'אֵת', bare: 'את', gloss: 'Direct object marker', transliteration: 'ʾēṯ' },
-    { rank: 2, hebrew: 'בְּרֵאשִׁית', bare: 'בראשית', gloss: 'In the beginning', transliteration: 'bərēʾšîṯ' },
-    { rank: 3, hebrew: 'אָמַר', bare: 'אמר', gloss: 'He said', transliteration: 'ʾāmar' },
-    { rank: 4, hebrew: 'יוֹם', bare: 'יום', gloss: 'Day', transliteration: 'yôm' },
-    { rank: 5, hebrew: 'אֶרֶץ', bare: 'ארץ', gloss: 'Land', transliteration: 'ʾereṣ' },
-    { rank: 6, hebrew: 'הָיָה', bare: 'היה', gloss: 'He was', transliteration: 'hāyâ' },
-    { rank: 7, hebrew: 'אֱלֹהִים', bare: 'אלהים', gloss: 'God', transliteration: 'ʾĕlōhîm' },
+    { rank: 1, lemma: 'L1', hebrew: 'אֵת', bare: 'את', gloss: 'Direct object marker', transliteration: 'ʾēṯ' },
+    { rank: 2, lemma: 'L2', hebrew: 'בְּרֵאשִׁית', bare: 'בראשית', gloss: 'In the beginning', transliteration: 'bərēʾšîṯ' },
+    { rank: 3, lemma: 'L3', hebrew: 'אָמַר', bare: 'אמר', gloss: 'He said', transliteration: 'ʾāmar' },
+    { rank: 4, lemma: 'L4', hebrew: 'יוֹם', bare: 'יום', gloss: 'Day', transliteration: 'yôm' },
+    { rank: 5, lemma: 'L5', hebrew: 'אֶרֶץ', bare: 'ארץ', gloss: 'Land', transliteration: 'ʾereṣ' },
+    { rank: 6, lemma: 'L6', hebrew: 'הָיָה', bare: 'היה', gloss: 'He was', transliteration: 'hāyâ' },
+    { rank: 7, lemma: 'L7', hebrew: 'אֱלֹהִים', bare: 'אלהים', gloss: 'God', transliteration: 'ʾĕlōhîm' },
   ]
+  const SAMPLE_ROOTS = [
+    { root: 'אמר', gloss: 'say', examples: ['L3', 'L9'] },
+    { root: 'יום', gloss: 'day', examples: ['L4', 'L8'] },
+  ]
+  const GRAM = { mastery: { g1: 0.9 }, categories: { g1: 'grammar' } }
   const gwPoor = defaultIdleState()
   gwPoor.owned = { 0: 1 }
-  a(wordCandidates(gwPoor, SAMPLE_WORDS).length === 0, 'word tier locked below 10 letters')
+  a(wordCandidates(gwPoor, SAMPLE_WORDS, SAMPLE_ROOTS, {}, {}).length === 0, 'word tier locked below 100 known')
+  a(translationUnlocked(gwPoor, SAMPLE_WORDS, SAMPLE_ROOTS, {}, {}) === false, 'tier gate closed when nothing known')
+  // Rich workshop: all sample letters owned → all 7 words known; roots need
+  // 2 known examples each — L3/L9 and L4/L8 are half outside the sample.
   const gwRich = defaultIdleState()
   gwRich.owned = { 0: 5, 1: 1, 19: 1, 4: 1, 9: 1, 20: 1, 12: 1, 5: 1, 13: 1, 15: 1, 17: 1, 11: 1 }
-  const cands = wordCandidates(gwRich, SAMPLE_WORDS)
-  a(cands.length > 0 && cands.every(w => wordLockedLetters(w, gwRich.owned).length === 0), 'words open when all their letters are owned')
+  a(knownWords(gwRich, SAMPLE_WORDS).length === 5, 'known words are the readable ones')
+  a(knownRoots(gwRich, SAMPLE_WORDS, SAMPLE_ROOTS).length === 0, 'roots need 2 known examples')
   a(wordLockedLetters(SAMPLE_WORDS[1], { 0: 1 }).length > 0, 'missing letters block the word')
-  const wq = makeWordQuiz(cands, () => 0.1, SAMPLE_WORDS)
+  a(grammarStudied({}, {}) === 0 && grammarStudied(GRAM.mastery, GRAM.categories) === 1, 'grammar gate counts mastered grammar')
+  // Unlock opens with scale: simulate 100 known via owned-everything + big lists
+  const gwFull = defaultIdleState()
+  const big = []
+  for (let i = 0; i < 120; i++) big.push({ rank: 100 + i, lemma: 'LX' + i, hebrew: 'א', bare: 'א', gloss: 'g' + i, transliteration: 'x' })
+  gwFull.owned = { 0: 3 }
+  const bigRoots = []
+  for (let i = 0; i < 100; i++) bigRoots.push({ root: 'R' + i, gloss: 'rg' + i, examples: ['LX' + i, 'LX' + ((i + 1) % 120)] })
+  a(translationUnlocked(gwFull, big, bigRoots, GRAM.mastery, GRAM.categories) === true, 'tier opens at 100/100 + grammar')
+  const wq = makeWordQuiz(knownWords(gwFull, big), () => 0.1, big)
   a(wq.options.length === 6 && new Set(wq.options).size === 6, 'word quiz has 6 distinct options')
   a(wq.options.includes(wq.answer), 'word quiz includes the answer')
   const gwA = defaultIdleState()
   const ai = wq.options.indexOf(wq.answer)
   gwA.golden = { id: 'dew', expiresAt: 99999, quiz: wq }
   a(answerGoldenQuiz(gwA, ai, 1000, 10).claimed?.id === 'dew', 'right word answer claims the buff')
+  // Word/root SRS: partial correctness lives per item
+  const gwS = defaultIdleState()
+  recordWordAnswer(gwS, 5, true, 1000)
+  recordWordAnswer(gwS, 5, true, 1000)
+  a(gwS.quizDeck.wordStats[5].due === 1000 + 3 * 86400000, 'word correct stretches 1d then 3d')
+  recordWordAnswer(gwS, 6, false, 1000)
+  a(gwS.quizDeck.wordStats[6].due === 1000 + 10 * 60000, 'word wrong returns in 10 min')
+  recordRootAnswer(gwS, 'אמר', true, 1000)
+  a(gwS.quizDeck.rootStats['אמר'].streak === 1, 'root answers tracked separately')
+  const rq = makeRootQuiz([{ root: 'אמר', gloss: 'say', examples: [] }], [{ root: 'אמר', gloss: 'say' }, { root: 'יום', gloss: 'day' }, { root: 'ארץ', gloss: 'land' }, { root: 'היה', gloss: 'be' }, { root: 'אלה', gloss: 'god' }, { root: 'דעת', gloss: 'know' }, { root: 'שמע', gloss: 'hear' }], () => 0.1)
+  a(rq.options.length === 6 && rq.options.includes(rq.answer), 'root quiz is 6 distinct with the answer')
   // Figs
   const fg = defaultIdleState()
   a(!figReady(fg, 1000), 'no fig ready at start')

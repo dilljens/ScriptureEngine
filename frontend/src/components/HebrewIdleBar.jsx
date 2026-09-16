@@ -95,14 +95,33 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     } catch {}
   }, [showShop, showQuests, showUpgrades, showGolems, bulk])
 
-  // Top-500 words for the translation tier (fetched once; spawn reads the ref).
+  // Top-500 words/roots for the translation tier (fetched once; spawn reads refs).
   const topWordsRef = useRef(null)
+  const topRootsRef = useRef(null)
   useEffect(() => {
     fetch('/api/v1/hebrew/top-words?limit=500')
       .then(r => r.json())
       .then(d => { if (d.ok) topWordsRef.current = d.data.words || [] })
       .catch(() => {})
+    fetch('/api/v1/hebrew/top-roots?limit=500')
+      .then(r => r.json())
+      .then(d => { if (d.ok) topRootsRef.current = d.data.roots || [] })
+      .catch(() => {})
   }, [])
+
+  // Grammar studied (for the translation gate): mastered grammar/syntax/verb nodes.
+  const gramInfo = useMemo(() => {
+    const m = {}, c = {}
+    try {
+      for (const n of curriculum?.nodes || []) {
+        if (n.category === 'grammar' || n.category === 'syntax' || n.category === 'verb') {
+          m[n.id] = n.mastery || 0
+          c[n.id] = n.category
+        }
+      }
+    } catch {}
+    return { m, c }
+  }, [curriculum])
 
   // Map curriculum mastery onto letter indices. Consonant nodes in level
   // order map 1:1 onto the 22-letter roster; unknown letters = 0 mastery.
@@ -175,7 +194,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         ohr: s.ohr + gain,
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
-      spawnGoldenPrompt(next, Date.now(), Math.random, rate, { mastery, bias: s.difficulty?.bias || 0, topWords: topWordsRef.current || [] }) // only when due + production exists
+      spawnGoldenPrompt(next, Date.now(), Math.random, rate, { mastery, bias: s.difficulty?.bias || 0, topWords: topWordsRef.current || [], topRoots: topRootsRef.current || [], gramMastery: gramInfo.m, gramCategories: gramInfo.c }) // only when due + production exists
       const hadGolden = !!s.golden
       expireGoldenPrompt(next) // a missed window fizzles so the next one can spawn
       if (hadGolden && !next.golden) {
@@ -771,7 +790,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   : <span><b>📖 Translate!</b> What does <b className="text-lg">{state.golden.quiz.hebrew}</b> mean? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>}
               </span>
             )}
-            {state.golden.quiz.kind !== 'word' && (state.golden.quiz.qtype || 'name') === 'name' && (
+            {state.golden.quiz.kind === 'root' && (
+              <span className="flex-1">
+                {state.golden.quiz.direction === 'en-he'
+                  ? <span><b>🌱 Root!</b> Which root means "{state.golden.quiz.gloss}"? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>
+                  : <span><b>🌱 Root!</b> What does the root <b className="text-lg">{state.golden.quiz.root}</b> mean? Pick it within {goldenSecs}s → {goldenPrompt?.desc}</span>}
+              </span>
+            )}
+            {state.golden.quiz.kind !== 'word' && state.golden.quiz.kind !== 'root' && (state.golden.quiz.qtype || 'name') === 'name' && (
               <><span className="text-2xl" aria-hidden="true">{LETTERS[state.golden.quiz.letter]}</span>
               <span className="flex-1">
                 {prophetPending
@@ -801,7 +827,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-1.5">
-            {state.golden.quiz.kind === 'word'
+            {(state.golden.quiz.kind === 'word' || state.golden.quiz.kind === 'root')
               ? state.golden.quiz.options.map((opt, oi) => (
                 <button key={oi} onClick={() => answerQuiz(oi)}
                   aria-label={`Answer: ${opt}`}
@@ -811,7 +837,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 </button>
               ))
               : null}
-            {state.golden.quiz.kind !== 'word' && (state.golden.quiz.qtype || 'name') === 'name'
+            {state.golden.quiz.kind !== 'word' && state.golden.quiz.kind !== 'root' && (state.golden.quiz.qtype || 'name') === 'name'
               ? state.golden.quiz.options.map((opt, oi) => (
                 <button key={opt} onClick={() => answerQuiz(oi)}
                   aria-label={`Answer: ${LETTER_NAMES[opt]}`}
@@ -820,7 +846,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   {LETTER_NAMES[opt]}
                 </button>
               ))
-              : state.golden.quiz.kind !== 'word'
+              : state.golden.quiz.kind !== 'word' && state.golden.quiz.kind !== 'root'
               ? state.golden.quiz.options.map((opt, oi) => (
                 <button key={opt} onClick={() => answerQuiz(oi)}
                   disabled={state.golden.quiz.qtype === 'audio' && !quizAudio?.url && !quizAudio?.failed}
