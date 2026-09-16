@@ -12,6 +12,17 @@
 #
 # Usage:
 #   ./scripts/deploy.sh
+#
+# Fast paths (env — default behavior is unchanged):
+#   SKIP_E2E=1      — skip step 5/5 Playwright suite (the long pole, ~5-15 min)
+#   SKIP_BACKEND=1  — skip pytest / graph / openapi gates (backend untouched)
+#   FRONTEND_ONLY=1 — both of the above, plus skip data rsync and pip install.
+#                     Use when the change is frontend-only: no web/, lib/,
+#                     data/, or requirements changes.
+if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
+    SKIP_BACKEND=1
+    SKIP_E2E=1
+fi
 
 set -euo pipefail
 
@@ -37,6 +48,9 @@ echo "=== ScriptureEngine Deployment ==="
 echo "=== Pre-deploy Validation ==="
 
 echo "[1/5] Python test suite..."
+if [ "${SKIP_BACKEND:-0}" = "1" ]; then
+    echo "  (skipped — SKIP_BACKEND/FRONTEND_ONLY)"
+else
 # Skip flaky/slow tests:
 #   - hebrew_fsrs_review: MEM_DB lock contention
 #   - test_db_integrity: 72s full PRAGMA (redundant with step 3/5 quick_check)
@@ -71,13 +85,18 @@ $PYTHON -m pytest tests/ -q --tb=short --durations=10 \
     echo "✗ Tests failed — aborting deploy"
     echo "  Tip: run .venv/bin/python -m pytest tests/ -q --tb=short to reproduce"
     exit 1
-}
+  }
+fi
 
 echo "[2/5] Graph regression check..."
+if [ "${SKIP_BACKEND:-0}" = "1" ]; then
+    echo "  (skipped — SKIP_BACKEND/FRONTEND_ONLY)"
+else
 python3 scripts/test_graph_regression.py || {
     echo "✗ Graph regression detected — aborting deploy"
     exit 1
 }
+fi
 
 echo "[3/5] DB integrity check..."
 sqlite3 data/processed/scripture.db "SELECT COUNT(*) FROM sqlite_master;" | grep -q "^[1-9]" || {
@@ -86,13 +105,19 @@ sqlite3 data/processed/scripture.db "SELECT COUNT(*) FROM sqlite_master;" | grep
 }
 
 echo "[4/5] API contract snapshot..."
+if [ "${SKIP_BACKEND:-0}" = "1" ]; then
+    echo "  (skipped — SKIP_BACKEND/FRONTEND_ONLY)"
+else
 python3 -m pytest tests/test_openapi_snapshot.py -q --tb=short || {
     echo "✗ API contract changed — update snapshot or fix endpoints"
     exit 1
 }
+fi
 
 echo "[5/5] Frontend E2E tests..."
-
+if [ "${SKIP_E2E:-0}" = "1" ]; then
+    echo "  (skipped — SKIP_E2E/FRONTEND_ONLY)"
+else
 cd frontend
 # Playwright's webServer handles both API and Vite startup
 # Run the core desktop suite, including the deterministic SSE regression.
@@ -104,6 +129,7 @@ cd frontend
     exit 1
 }
 cd ..
+fi
 
 # 2. Rsync frontend dist + API code
 echo "Syncing frontend..."
@@ -123,11 +149,15 @@ rsync -avz --delete \
 	lib/ "$HOST:$REMOTE_DIR/lib/"
 
 echo "Syncing data files..."
+if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
+    echo "  (skipped — FRONTEND_ONLY)"
+else
 rsync -avz --delete \
 	--exclude audio \
 	--exclude '*.wav' \
 	--exclude '*.mp3' \
 	data/ "$HOST:$REMOTE_DIR/data/"
+fi
 
 # Sync audio alignments separately (small JSON files, not the raw audio)
 if [ -d data/audio/alignments ]; then
@@ -153,7 +183,11 @@ ssh "$HOST" "docker exec ferrum-caddy caddy validate --config /etc/caddy/Caddyfi
 # Ubuntu 24.04 system Python is externally-managed (PEP 668) — the VPS runs
 # the API on system python3, so --break-system-packages is required there.
 echo "Installing Python dependencies..."
+if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
+    echo "  (skipped — FRONTEND_ONLY)"
+else
 ssh "$HOST" "cd $REMOTE_DIR && pip install --break-system-packages -r web/requirements.txt 2>&1 | tail -5"
+fi
 
 # 4. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
