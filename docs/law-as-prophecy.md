@@ -8,7 +8,7 @@
 
 **Unleavened Bread — Nisan 15-21.** Seven days, leaven removed, "bread of affliction" eaten in haste (:verse[lev.23.6-8]; :verse[exo.12.15-20]; :verse[deu.16.3]). *ALLUDED — "let us keep the feast, not with old leaven... but with the unleavened bread of sincerity and truth" (:verse[1cor.5.8]).* Christ the sinless one; His people purge sin after accepting the Lamb.
 
-**Firstfruits — morrow after the Sabbath.** The waved sheaf consecrating the harvest, none eaten until offered (:verse[lev.23.9-14]). *QUOTED conceptually — "now is Christ risen... the firstfruits of them that slept... Christ the firstfruits; afterward they that are Christ's at his coming" (:verse[1cor.15.20], :verse[1cor.15.23]).* What remains: the general resurrection (:verse[1cor.15.52-54]; :verse[dc88.88.96-98]).
+**Firstfruits — morrow after the Sabbath** (Lev. 23:11 — the Sadducees read "Sabbath" as the weekly Sabbath, fixing Sunday; the Pharisees read it as Nisan 15, fixing Nisan 16; the essay follows the Sunday reading without adjudicating). The waved sheaf consecrating the harvest, none eaten until offered (:verse[lev.23.9-14]). *QUOTED conceptually — "now is Christ risen... the firstfruits of them that slept... Christ the firstfruits; afterward they that are Christ's at his coming" (:verse[1cor.15.20], :verse[1cor.15.23]).* What remains: the general resurrection (:verse[1cor.15.52-54]; :verse[dc88.88.96-98]).
 
 **Weeks/Pentecost — fifty days later.** Two leavened wave loaves, full public gathering (:verse[lev.23.15-21]; :verse[deu.16.9-12]). *QUOTED for the event — the Spirit poured out with tongues of fire (:verse[acts.2.1-4]), "this is that which was spoken by the prophet Joel" (:verse[acts.2.16-17]; :verse[joel.2.28-32]).* The two leavened loaves are honestly puzzling: either the church still imperfect yet accepted, or Jew and Gentile in one harvest (:verse[acts.2.5-11]). Timing and outpouring are text; the loaves are inference.
 
@@ -18,13 +18,13 @@
 
 **Tabernacles — Tishri 15-22.** Booths, rejoicing, eighth-day assembly (:verse[lev.23.33-43]; :verse[neh.8.14-17]). *ALLUDED via feast background — "If any man thirst, let him come unto me" on the great day (:verse[john.7.37-38], feast named :verse[john.7.2]); "I am the light of the world" amid its lights (:verse[john.8.12]).* What remains: all nations keeping Tabernacles in the kingdom (:verse[zech.14.16-19]). (The "four cups" alignment is Mishnah-era custom, not Torah text — tradition, flagged as such.)
 
-Spring fulfilled in order and on the days; fall stands as His return calendar.
+Spring fulfilled in order (the day-precision of the spring feasts is the Sunday reading above; Gospel chronology is debated, so "on the days" claims the pattern, not a settled calendar proof; fall stands as His return calendar.
 
 ## Sacrifices and Purity as Acted Prediction
 
 **Burnt offering** — male without blemish, wholly consumed, "a sweet savour" (:verse[lev.1.9], :verse[lev.1.13], :verse[lev.1.17]). Total consecration. *QUOTED concept — "an offering and a sacrifice to God for a sweetsmelling savour" (:verse[eph.5.2]).*
 
-**Peace offering** — God the fat, priest breast and shoulder, offerer eating before the Lord (Lev. 3; :verse[lev.7.11-18]). Atonement issuing in communion. *ALLUDED — "we being many are one bread" (:verse[1cor.10.16-18]); the risen Lord's bread and wine "in remembrance of me" (:verse[3ne.18.7], 11).*
+**Peace offering** — God the fat, priest breast and shoulder, offerer eating before the Lord (Lev. 3; :verse[lev.7.11-18]). A fellowship meal attached to atonement — a communion analogy, not Lev 3's own doctrine. *ALLUDED — "we being many are one bread" (:verse[1cor.10.16-18]), which argues Lord's Supper versus idol-feasts rather than expounding Leviticus; the risen Lord's bread and wine "in remembrance of me" (:verse[3ne.18.7], 11).*
 
 **Sin offering** — for unwitting sins, blood applied by status, nearer God for greater guilt (:verse[lev.4.2], :verse[lev.4.13], :verse[lev.4.22], :verse[lev.4.27]). Graded accountability. *ALLUDED — degrees of stripes by knowledge (:verse[luke.12.47-48]); "where there is no law... no punishment," mercies delivering the lawless (:verse[2ne.9.25-26]; :verse[alma.42.17-21]).*
 

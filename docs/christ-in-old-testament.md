@@ -1,4 +1,4 @@
-# Christ in the Old Testament: Every Reference to Him and His Atonement
+# Christ in the Old Testament: A Catalog of Him and His Atonement
 
 *Beginning at Moses and all the prophets, He expounded unto them in all the scriptures the things concerning Himself (:verse[luke.24.27]). This article gathers what those scriptures contain — the passages, what each shows of Christ and His atoning work, and how firmly each is anchored.*
 
@@ -12,7 +12,7 @@ One more distinction runs through the whole: **Savior-role** texts (atone, ranso
 
 The books of Moses do not merely anticipate Christ at isolated points; they establish the ritual and narrative grammar by which His Atonement can afterward be understood. Lamb, blood, veil, mercy-seat, mediator — these are Torah words before they are creedal words.
 
-**1. The seed of the woman (:verse[gen.3.15]).** To the serpent the Lord declares, "it shall bruise thy head, and thou shalt bruise his heel." A single human offspring suffers a heel-wound while inflicting a mortal head-wound upon the serpent: a suffering yet victorious Redeemer. *ALLUDED — :verse[rom.16.20]; UNQUOTED as formal citation.*
+**1. The seed of the woman (:verse[gen.3.15]).** To the serpent the Lord declares, "it shall bruise thy head, and thou shalt bruise his heel." A single human offspring suffers a heel-wound while inflicting a mortal head-wound upon the serpent: a suffering yet victorious Redeemer. (*Zera'* is a collective noun — "seed" as offspring-lines; the singular referent comes by later anchoring, not by Hebrew grammar alone.) *ALLUDED — :verse[rom.16.20]; UNQUOTED as formal citation.*
 
 **2. The offering of Isaac (Gen. 22).** Abraham lays "the wood" upon Isaac (:verse[gen.22.6]), who asks "where is the lamb?" — "God will provide himself a lamb" (:verse[gen.22.7-8]). A ram is "offered up... in the stead of his son" (:verse[gen.22.13]), and the place is named Jehovah-jireh, "in the mount of the Lord it shall be seen" (:verse[gen.22.14]) — Moriah, later the temple mount (:verse[2chr.3.1]). Father giving His Only Son, substitution by a provided victim, resurrection hope. *ALLUDED — :verse[heb.11.17-19] ("in a figure"); UNQUOTED as direct type.*
 
@@ -48,7 +48,7 @@ No portion of the Old Testament is more fully claimed by the New than the Psalte
 
 **:verse[psa.31.5]** — committed spirit. *QUOTED — :verse[luke.23.46].*
 
-**:verse[psa.34.20]** — bones kept unbroken, the Paschal Lamb preserved. *QUOTED — :verse[john.19.36].*
+**:verse[psa.34.20]** — bones kept unbroken, the Paschal Lamb preserved. *ALLUDED — :verse[john.19.36]; the verse's own context is the righteous sufferer generally (Ps 34), while John's "a bone of him shall not be broken" cites Passover law first of all (:verse[exo.12.46]; :verse[num.9.12]).*
 
 **:verse[psa.109.8]; 69:25** — office and habitation of the betrayer. *QUOTED — :verse[acts.1.20].*
 
@@ -110,7 +110,7 @@ The prophets see Him before He comes, naming His work with unusual precision —
 
 **:verse[dan.7.13-14]** — Son of Man receiving dominion. *QUOTED — :verse[matt.26.64].* The saints' share (7:18, 27), UNQUOTED. **:verse[dan.9.24-27]** — finish transgression, reconciliation, anointing; "cut off, but not for himself." *UNQUOTED — the atonement's program verse.*
 
-**:verse[hos.6.1-3]** — torn yet healed, raised the third day; possibly the "scriptures" of :verse[1cor.15.4]. *ALLUDED at most.* **:verse[hos.11.1]** — Son called from Egypt. *QUOTED — :verse[matt.2.15].* **:verse[hos.13.4]** — no saviour beside Me. *UNQUOTED.* **:verse[hos.13.14]** — ransom from grave. *Used — :verse[1cor.15.55].*
+**:verse[hos.6.1-3]** — torn yet healed, raised the third day: a corporate-resurrection text ("raise *us* up"), not an individual-messiah prediction, and Hos 6:4 immediately rebukes the repentance as a morning cloud. Any link to the "scriptures" of :verse[1cor.15.4] is inference at most. *UNQUOTED as resurrection prophecy.* **:verse[hos.11.1]** — Son called from Egypt. *QUOTED — :verse[matt.2.15].* **:verse[hos.13.4]** — no saviour beside Me. *UNQUOTED.* **:verse[hos.13.14]** — ransom from grave. *Used — :verse[1cor.15.55].*
 
 **:verse[joel.2.28-32]** — poured Spirit, deliverance. *QUOTED — :verse[acts.2.17-21]; recited by Moroni (:verse[jsh.1.41]) as yet to be fulfilled.*
 

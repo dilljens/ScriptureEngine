@@ -14,7 +14,7 @@ Jesus gives the same text a striking endorsement. To the Nephites he gives a com
 
 The question that guides this article is the one Isaiah and the temple liturgy share: what changes in a person and a people so that they can endure and enjoy the presence of God rather than flee from it?
 
-Scripture answers consistently. Without holiness no one shall see the Lord (:verse[heb.12.14]). Those who ascend the hill of the Lord are those with innocent hands and a pure heart (:verse[psa.24.3-4]). Every soul who forsakes sin, comes unto Christ, calls on his name, obeys his voice, and keeps his commandments shall see his face (:verse[dc93.93.1]). Sanctified minds become single to God, and in time the veil is unveiled (:verse[dc88.88.68]).
+Scripture answers consistently. Without holiness no one shall see the Lord (:verse[heb.12.14]). Those who ascend the hill of the Lord are those with innocent hands and a pure heart (:verse[psa.24.3-4]). Every soul who forsakes sin, comes unto Christ, calls on his name, obeys his voice, and keeps his commandments shall see his face (:verse[dc93.93.1]) — a real promise, not a technique: conditioned on sanctification and transfiguration (:verse[moses.1.11]; :verse[dc67.67.11]), never automatic, never on demand. Sanctified minds become single to God, and in time the veil is unveiled (:verse[dc88.88.68]).
 
 ## How to read Isaiah for sanctification
 
@@ -181,15 +181,15 @@ Isaiah does not teach technique for compelling visits. He teaches formation for 
 
 The end is not ecstasy but residence. A holy mountain without hurt, a highway where the unclean do not pass yet wayfarers do not err, a feast with veil destroyed, watchmen seeing eye to eye, and the Holy One in the midst. In Nephi's words, those who see these words may lift up their hearts and rejoice. In the Lord's words through Joseph Smith, the sanctified and single shall see him unveiled. The work, in every dispensation, is the same: become clean, contrite, and gathered enough to remain.
 
-## What review found missing — seven load-bearing themes
+## Seven load-bearing themes
 
-A later review of the full project found seven themes that must be stated to keep the ascent from becoming mere effort or private experience.
+Seven themes keep the ascent from becoming mere effort or private experience.
 
 Grace creates capacity, not only rewards it. Nephi holds both saved by grace after all that can be done, Moroni holds both deny ungodliness and love God wholly, then grace sufficient to be perfected and sanctified spotless, and the Doctrine and Covenants holds both justification and sanctification through grace unto sainthood (:verse[2ne.25.23]; :verse[moro.10.32-33]; :verse[dc20.20.31-34]). Surrender brings willingness; grace provides water, blood, fire, and oil.
 
 Justice explains why holiness is required. Law demands separation, and mercy cannot rob justice except through one who subjects flesh to Spirit and intercedes (:verse[alma.42.13-24]; :verse[2ne.9.19-26]; :verse[mosiah.15.9]). Washing is therefore rescue rather than improvement. Without a Satisfier, trembling would end in consuming fire rather than indwelling.
 
-Ordinances mark the straight and narrow path. Isaiah trains affections, but priesthood ordinances confer the power of godliness by which the face is seen (:verse[dc84.84.19-24]). The sequence corresponds across the ascent: washing toward baptism, burning toward the Holy Ghost, awakening and garments toward further endowment, tent enlargement and new name toward sealing and the narrow way's end (Isaiah 1; 4; 6; 52; 54; 62; :verse[2ne.31.17-20]; :verse[matt.7.13-14]; :verse[moses.6.60-61]).
+Ordinances mark the straight and narrow path. Isaiah trains affections, but priesthood ordinances confer the power of godliness by which the face is seen (:verse[dc84.84.19-24]). The sequence corresponds across the ascent — washing toward baptism, burning toward the Holy Ghost, awakening and garments toward further endowment, tent enlargement and new name toward sealing and the narrow way's end (Isaiah 1; 4; 6; 52; 54; 62; :verse[2ne.31.17-20]; :verse[matt.7.13-14]; :verse[moses.6.60-61]) — read typologically: the correspondence is inference from the pattern, not Isaiah's stated intent.
 
 A note on terms: this article uses "straight and narrow path" — Nephi's phrase for the way that leads to eternal life through faith, repentance, baptism, the Holy Ghost, and enduring to the end (:verse[2ne.31.17-20]) — rather than "covenant path," which does not occur as a phrase in scripture. Covenant language is kept where scripture uses it: covenant people, covenant clothing, new and everlasting covenant.
 
@@ -199,11 +199,11 @@ Zion is communal. No private perfection suffices, for all are the work of his ha
 
 Prisoners include the dead. The Servant opens eyes and brings the bound from prison, Christ opens the same between death and resurrection, and Elijah welds ancestors to descendants (:verse[isa.49.9]; :verse[isa.61.1]; :verse[1pet.3.19-20]; :verse[1pet.4.6]; :verse[dc128.128.15-18]; 138). Ascent therefore carries names in both directions, for the living and the dead.
 
-The end is named and opposition is expected. The sanctified may receive the Second Comforter, Christ manifesting himself to those who love and keep, and all shall stand resurrected before the bar, the contrite entering rest (:verse[john.14.16-23]; :verse[dc130.130.3]; :verse[2ne.9.14-16]; :verse[alma.12.34-37]). Between now and then, opposition proves agency and the furnace chooses, while quiet confidence remains strength (:verse[2ne.2.11]; :verse[isa.48.10]; :verse[isa.30.15]). Added years, prison, and Gethsemane belong to the same curriculum: presence now is earnest, fullness later.
+The end is named and opposition is expected. The sanctified may receive the Second Comforter, Christ manifesting himself to those who love and keep — a real promise, neither automatic nor on demand, conditioned on sanctification (:verse[john.14.16-23]; :verse[dc130.130.3]; :verse[2ne.9.14-16]; :verse[alma.12.34-37]). All shall stand resurrected before the bar, the contrite entering rest. Between now and then, opposition proves agency and the furnace chooses, while quiet confidence remains strength (:verse[2ne.2.11]; :verse[isa.48.10]; :verse[isa.30.15]). Added years, prison, and Gethsemane belong to the same curriculum: presence now is earnest, fullness later.
 
-## Beyond the canon: what neighboring texts add
+## Neighboring witnesses: what surrounding texts add
 
-The traditions surrounding ancient Israel preserved ascent imagery the canon assumes but rarely explains. Read with a three-bucket rule — *confirm* (same doctrine, independent voice), *illuminate* (compatible color), *sectarian* (do not import) — these texts sharpen rather than replace the scriptural account.
+The traditions surrounding ancient Israel preserved ascent imagery the canon assumes but rarely explains. They illuminate; they do not bind doctrine. Read with a three-bucket rule — *confirm* (same doctrine, independent voice), *illuminate* (compatible color), *sectarian* (do not import) — these texts sharpen rather than replace the scriptural account.
 
 The closest parallels are three. The Ascension of Isaiah (chs. 6-11) expands Isaiah 6 into a guided seven-heaven ascent with graded glory, reserved robes, and a descending Redeemer — devotional gold in a composite document with second-century Christian edges. The Songs of the Sabbath Sacrifice at Qumran offer thirteen Sabbaths of angelic priesthoods and throne-chariot praise, notably found at Masada as well as Qumran, suggesting wider circulation: earliest Jewish mysticism was congregational, earthly choir singing with angels, a direct precedent for the united prayer of 3 Nephi 19 and the D&C 109 dedication. The Odes of Solomon give the strongest presence-texts outside canon — paradise given now, rest from above, sun-face dispelling darkness, the soul "carried like a child by its mother" — best read alongside 3 Nephi 17's children and Psalm 131, with the caution that some odes lack an explicit atonement framework.
 
