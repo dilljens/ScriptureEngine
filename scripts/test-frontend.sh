@@ -30,42 +30,42 @@ check_port() {
 
 echo -e "${YELLOW}Checking servers...${NC}"
 
-# Check Python API (port 8002)
-if check_port 8002; then
-  echo -e "  ${GREEN}✓${NC} Python API on :8002"
+# Check Python API (port 5174)
+if check_port 5174; then
+  echo -e "  ${GREEN}✓${NC} Python API on :5174"
 else
-  echo -e "  ${YELLOW}Starting Python API on :8002...${NC}"
+  echo -e "  ${YELLOW}Starting Python API on :5174...${NC}"
   cd "$PROJECT_ROOT"
-  .venv/bin/uvicorn web.server:app --port 8002 --host 127.0.0.1 &
+  .venv/bin/uvicorn web.server:app --port 5174 --host 127.0.0.1 &
   API_PID=$!
   echo -n "  Waiting for API..."
   for i in $(seq 1 30); do
-    if check_port 8002; then echo -e " ${GREEN}ready${NC}"; break; fi
+    if check_port 5174; then echo -e " ${GREEN}ready${NC}"; break; fi
     sleep 1; echo -n "."
   done
   echo ""
-  if ! check_port 8002; then
+  if ! check_port 5174; then
     echo -e "  ${RED}✗ API failed to start${NC}"
     kill $API_PID 2>/dev/null || true
     exit 1
   fi
 fi
 
-# Check Vite (port 5173)
-if check_port 5173; then
-  echo -e "  ${GREEN}✓${NC} Vite on :5173"
+# Check Vite (port 5175)
+if check_port 5175; then
+  echo -e "  ${GREEN}✓${NC} Vite on :5175"
 else
-  echo -e "  ${YELLOW}Starting Vite on :5173...${NC}"
+  echo -e "  ${YELLOW}Starting Vite on :5175...${NC}"
   cd "$FRONTEND_DIR"
-  npx vite --port 5173 --host 127.0.0.1 &
+  npx vite --port 5175 --host 127.0.0.1 &
   VITE_PID=$!
   echo -n "  Waiting for Vite..."
   for i in $(seq 1 30); do
-    if check_port 5173; then echo -e " ${GREEN}ready${NC}"; break; fi
+    if check_port 5175; then echo -e " ${GREEN}ready${NC}"; break; fi
     sleep 1; echo -n "."
   done
   echo ""
-  if ! check_port 5173; then
+  if ! check_port 5175; then
     echo -e "  ${RED}✗ Vite failed to start${NC}"
     kill $VITE_PID 2>/dev/null || true
     exit 1

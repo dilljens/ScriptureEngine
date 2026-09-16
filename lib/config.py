@@ -22,15 +22,17 @@ MEMORIZE_DB_PATH = Path(os.environ["MEMORIZE_DB_PATH"]) if os.environ.get("MEMOR
 TEST_DB_PATH = DATA_DIR / "test" / "test.db"
 
 # ── Server ────────────────────────────────────────────────────────────
-API_PORT = int(os.environ.get("PORT", "8002"))
+# Leased pool ports (owner scriptureengine): API 5174, frontend 5175.
+# NOTE: :5173 is the Axe Viewer — never claim it here.
+API_PORT = int(os.environ.get("PORT", "5174"))
 GO_SRS_PORT = int(os.environ.get("GO_SRS_PORT", "8090"))
-FRONTEND_DEV_PORTS = [5173, 5176]
+FRONTEND_DEV_PORTS = [5175]
 
 # ── CORS ───────────────────────────────────────────────────────────────
 CORS_ORIGINS = [
     o.strip() for o in os.environ.get(
         "CORS_ORIGINS",
-        "http://localhost:5173,http://localhost:5176,http://localhost:3000",
+        "http://localhost:5175,http://localhost:5174,http://localhost:3000",
     ).split(",") if o.strip()
 ]
 

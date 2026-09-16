@@ -1007,7 +1007,7 @@ def _grade_answer_impl(body: GradingRequest, authorization: str = ""):
 
     # Fetch user progress context if user_id provided
     user_context = ""
-    _api_base = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
+    _api_base = os.environ.get("SCRIPTURE_API_URL", "http://localhost:5174")
     if progress_user:
         try:
             import requests as _req

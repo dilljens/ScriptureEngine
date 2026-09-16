@@ -13,7 +13,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:5176',
+    baseURL: 'http://127.0.0.1:5175',
     headless: true,
     viewport: { width: 1280, height: 800 },
     trace: 'retain-on-failure',
@@ -42,15 +42,15 @@ export default defineConfig({
   // Playwright manages the Vite dev server + Python API backend
   webServer: [
     {
-      command: 'python3 -m uvicorn web.server:app --port 8002 --host 127.0.0.1',
-      url: 'http://127.0.0.1:8002/api/v1/info',
+      command: 'python3 -m uvicorn web.server:app --port 5174 --host 127.0.0.1',
+      url: 'http://127.0.0.1:5174/api/v1/info',
       reuseExistingServer: true,
       timeout: 30000,
       cwd: '/home/dillon/_code/ScriptureEngine',
     },
     {
-      command: 'npx vite --port 5176 --host 127.0.0.1',
-      url: 'http://127.0.0.1:5176',
+      command: 'npx vite --port 5175 --host 127.0.0.1',
+      url: 'http://127.0.0.1:5175',
       reuseExistingServer: true,
       timeout: 30000,
       cwd: '/home/dillon/_code/ScriptureEngine/frontend',

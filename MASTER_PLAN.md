@@ -103,9 +103,9 @@ This file is the **top-level system status** — what's done, what's remaining, 
 
 | Service | Port | Status |
 |---------|------|--------|
-| FastAPI (dev) | 8002 | ✅ |
+| FastAPI (dev) | 5174 | ✅ |
 | FastAPI (prod) | 8000 | ✅ |
 | Go SRS | 8090 | ✅ |
-| Vite frontend (dev) | 5176 | ✅ |
-| Vite frontend (prod) | 5173 | ✅ |
+| Vite frontend (dev) | 5175 | ✅ |
+| Vite frontend (prod) | scriptureengine.org | ✅ |
 | Production | scriptureengine.org | ✅ |

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5176,
+    port: 5175,
     proxy: {
       '/api/memorize': {
         target: 'http://localhost:8090',
@@ -12,7 +12,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/memorize/, ''),
       },
       '/api': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:5174',
         changeOrigin: true,
       },
     },

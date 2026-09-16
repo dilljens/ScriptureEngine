@@ -1416,12 +1416,10 @@ def _compute_cost(usage: dict, model: str = "") -> dict:
 ALLOWED_ORIGINS = {
     "https://scriptureengine.org",
     "https://www.scriptureengine.org",
-    "http://localhost:5173",   # dev Vite frontend
-    "http://localhost:5176",   # dev Vite frontend (Playwright)
-    "http://localhost:8002",   # local API dev
-    "http://127.0.0.1:5173",   # dev Vite frontend (loopback)
-    "http://127.0.0.1:5176",   # dev Vite frontend (Playwright)
-    "http://127.0.0.1:8002",   # local API dev
+    "http://localhost:5175",   # dev Vite frontend (leased port)
+    "http://localhost:5174",   # local API dev (leased port)
+    "http://127.0.0.1:5175",   # dev Vite frontend (loopback)
+    "http://127.0.0.1:5174",   # local API dev (loopback)
 }
 
 

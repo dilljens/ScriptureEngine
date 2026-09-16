@@ -13,7 +13,7 @@
 |------|-------|
 | **Connection Graph** | 1.77M connections, 11 layers, 100+ types, 53 generators |
 | **Database** | SQLite, 1.2GB, WAL mode, 71+ tables |
-| **Backend** | FastAPI + Uvicorn (port 8002), 146 endpoints, 12 route modules |
+| **Backend** | FastAPI + Uvicorn (port 5174), 146 endpoints, 12 route modules |
 | **Frontend** | React 19 + Vite 6 + Tailwind 3, 56 components |
 | **Go SRS** | Port 8090, FSRS-5, FIRe, 30 tests |
 | **MCP** | 52 tools via JSON-RPC stdio server |

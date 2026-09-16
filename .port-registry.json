@@ -3,14 +3,9 @@
   "description": "Biblical text analysis and knowledge engine",
   "services": {
     "api-server": {
-      "port": 8000,
+      "port": 5174,
       "protocol": "http",
-      "description": "Python uvicorn web API"
-    },
-    "api-server-alt": {
-      "port": 8002,
-      "protocol": "http",
-      "description": "Python uvicorn API (alternate instance)"
+      "description": "Python uvicorn web API (leased pool port, owner scriptureengine)"
     },
     "go-srs": {
       "port": 8090,
@@ -18,14 +13,9 @@
       "description": "Go SRS server"
     },
     "vite-frontend": {
-      "port": 5173,
+      "port": 5175,
       "protocol": "http",
-      "description": "Vite dev server for frontend"
-    },
-    "vite-frontend-alt": {
-      "port": 5176,
-      "protocol": "http",
-      "description": "Vite dev server (alternate)"
+      "description": "Vite dev server for frontend (leased pool port, owner scriptureengine)"
     }
   }
 }

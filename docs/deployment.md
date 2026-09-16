@@ -42,15 +42,15 @@ lexicon entries, FTS indexes). Compressed it's 206MB — too large for regular g
 ### Minimum to get the API running:
 ```bash
 bash scripts/setup.sh                    # venv + deps + DB
-.venv/bin/uvicorn web.server:app --reload --port 8002
-# Open http://localhost:8002/docs
+.venv/bin/uvicorn web.server:app --reload --port 5174
+# Open http://localhost:5174/docs
 ```
 
 ### Full frontend:
 ```bash
 bash scripts/setup.sh
 cd frontend && npm install && npx vite dev
-# Open http://localhost:5173
+# Open http://localhost:5175
 ```
 
 ## Architecture

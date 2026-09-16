@@ -11,7 +11,7 @@ git clone https://github.com/dilljens/ScriptureEngine.git
 cd ScriptureEngine
 bash scripts/setup.sh         # venv + deps + DB download
 ./run.sh web                  # Start API server on port 8000
-# Open http://localhost:8002/docs
+# Open http://localhost:5174/docs
 ```
 
 ## Stats

@@ -27,7 +27,7 @@
   - 15 study-specific tools (create, edit, export, publish, fork, import)
   - 10 graph traversal tools (path, reachable, hubs, entities, etc.)
 - **MCP server**: `mcp_server.py` (stdio JSON-RPC, supports v2024-11-05 + v2025-03-26)
-- **HTTP API**: `web/server.py` (FastAPI + uvicorn, port 8002)
+- **HTTP API**: `web/server.py` (FastAPI + uvicorn, port 5174)
 - **Study API endpoints**: 15+ HTTP routes for studies
 - **Conversation API**: 280+ sessions, full CRUD, ref extraction, connection promotion
 - **Codebase knowledge graph**: 3,950 nodes, 7,752 edges (auto-synced via git polling)
@@ -128,8 +128,8 @@
 
 - Wiki: `docs/wiki/_index.md`
 - Production: https://scriptureengine.org
-- Web API: http://localhost:8002/docs
-- Frontend: http://localhost:5176 (dev) / https://scriptureengine.org (prod)
+- Web API: http://localhost:5174/docs
+- Frontend: http://localhost:5175 (dev) / https://scriptureengine.org (prod)
 - DB: `data/processed/scripture.db`
 - Run: `./run.sh web`, `./run.sh info`, `./run.sh test`
 - Deploy: `./scripts/deploy.sh`

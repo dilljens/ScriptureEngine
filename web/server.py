@@ -6,8 +6,8 @@ Loads all connection data into RAM at startup for sub-ms responses.
 Auto-generates OpenAPI docs at /docs.
 
 Usage:
-  cd web && uvicorn server:app --reload --port 8002
-  # Open http://localhost:8002/docs for interactive API browser
+  cd web && uvicorn server:app --reload --port 5174
+  # Open http://localhost:5174/docs for interactive API browser
 """
 
 import json
@@ -102,7 +102,7 @@ app = FastAPI(
 
 # CORS: restrict to configured origins (comma-separated in CORS_ORIGINS env var)
 # Defaults to localhost dev origins; never "*" in production with credentials
-_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5176,http://localhost:3000")
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5175,http://localhost:5174,http://localhost:3000")
 _cors_origin_list = [o.strip() for o in _cors_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,

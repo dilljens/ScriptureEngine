@@ -18,7 +18,7 @@ import time
 import urllib.error
 import urllib.request
 
-BASE = os.environ.get("SCRIPTURE_API_URL", "http://localhost:8002")
+BASE = os.environ.get("SCRIPTURE_API_URL", "http://localhost:5174")
 API_BASE = f"{BASE}/api/v1"
 AGENT_BASE = f"{BASE}/api/v1/agent"
 
