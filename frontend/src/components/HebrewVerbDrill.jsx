@@ -3,6 +3,7 @@ import { preprocess, openVerseRef, createComponents } from '../lib/scripture-mar
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import { reportIdleAnswer } from './HebrewIdleBar'
 
 /**
  * HebrewVerbDrill — interactive verb conjugation drills.
@@ -30,6 +31,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
   const [category, setCategory] = useState('all')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const qStartRef = useRef(Date.now()) // question-shown time → honest responseMs for the idle answer bus
 
   const loadDrills = useCallback(async (cat) => {
     setLoading(true)
@@ -48,6 +50,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
   }, [])
 
   useEffect(() => { loadDrills(category) }, [category, loadDrills])
+  useEffect(() => { qStartRef.current = Date.now() }, [qIdx, drills])
 
   const current = drills[qIdx]
 
@@ -72,6 +75,13 @@ export default function HebrewVerbDrill({ onNavigate }) {
       if (d.ok) {
         setGrade(d.data)
         setScore(prev => ({ correct: prev.correct + (d.data.correct ? 1 : 0), total: prev.total + 1 }))
+        // Feed the idle answer bus (tap Ohr + golden-prompt claims). Grading
+        // stays server-side; this is economy only.
+        if (typeof d.data.correct === 'boolean') {
+          reportIdleAnswer(d.data.correct, Date.now() - qStartRef.current, {
+            source: 'verb-drill', nodeId: current?.node_id,
+          })
+        }
       } else {
         setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }))
       }

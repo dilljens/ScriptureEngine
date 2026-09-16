@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
 import CardRenderer from './CardRenderer'
 import HebrewQuiz, { submitHebrewProgress } from './HebrewQuiz'
+import { reportIdleAnswer } from './HebrewIdleBar'
 import { stripMorphSeparators } from '../lib/hebrew-utils'
 import {
   ANSWER_MODES,
@@ -356,6 +357,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   const [showQuiz, setShowQuiz] = useState(false)
   const [wordImage, setWordImage] = useState(null) // {image_url, attribution}
   const audioRef = useRef(null)
+  const answerAtRef = useRef({}) // card.id → answer-submitted time, for honest idle-bus responseMs
   // Practice flow: 'staged' (recognition → recall → production with pass gates)
   // or 'quick' (single-pass flashcards). Choice persists per learner.
   const [practiceMode, setPracticeMode] = useState(() => {
@@ -426,6 +428,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
         correct: null,
       },
     }))
+    answerAtRef.current[card.id] = Date.now()
   }, [])
 
   // Confidence follows objective grading; it does not determine correctness.
@@ -450,6 +453,12 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
           ...previous,
           [card.id]: { ...state, correct: authoritativeCorrect, serverCorrect: authoritativeCorrect },
         }
+      })
+      // Feed the idle answer bus (tap Ohr + golden-prompt claims). Grading
+      // stays server-side; this is economy only.
+      const ms = Date.now() - (answerAtRef.current[card.id] || Date.now())
+      reportIdleAnswer(authoritativeCorrect, ms, {
+        source: 'lesson', nodeId: card.data?.node_id || nodeId,
       })
     }
     return authoritativeCorrect
@@ -497,7 +506,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
   // the flashcard flow).
   const handleStagedGrade = useCallback(async (card, answer) => {
     if (card.data?.question_id === undefined || card.data?.question_id === null) return null
-    return submitHebrewProgress({
+    const res = await submitHebrewProgress({
       node_id: card.data?.node_id || nodeId,
       user_id: 'default',
       session_token: currentSessionToken(),
@@ -505,6 +514,18 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
       answer: answer ?? '',
       answer_mode: card.data.answer_mode || answerModeForQuestion(card.data),
     })
+    // Same idle-bus feed as flashcards, but only with a real answer timestamp
+    // (never a fake 0ms — that would warp difficulty).
+    if (typeof res === 'boolean') {
+      const at = answerAtRef.current[card.id]
+      if (at) {
+        reportIdleAnswer(res, Date.now() - at, {
+          source: 'lesson-staged', nodeId: card.data?.node_id || nodeId,
+        })
+        delete answerAtRef.current[card.id]
+      }
+    }
+    return res
   }, [nodeId])
 
   if (loading) return (
