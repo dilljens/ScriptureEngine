@@ -2146,6 +2146,35 @@ def _to_mental_question(q):
     q["answer"] = correct or ""
     return q
 
+
+def _type_weakness(conn, user_id, node_ids):
+    """Per-(node, question_type) accuracy from recent attempt events.
+
+    The adaptive signal behind quiz selection: returns {(node_id, qtype):
+    accuracy 0..1}. Absent = unseen (treat as highest priority). Empty dict
+    when the table is missing or the learner has no history — callers fall
+    back to difficulty order, never crash.
+    """
+    if not node_ids:
+        return {}
+    try:
+        qmarks = ",".join("?" for _ in node_ids)
+        rows = conn.execute(f"""
+            SELECT e.node_id, pi.question_type,
+                   SUM(e.correct) AS c, COUNT(*) AS n
+            FROM (SELECT node_id, question_id, correct
+                  FROM hebrew_attempt_events
+                  WHERE user_id = ? ORDER BY id DESC LIMIT 2000) e
+            JOIN hebrew_practice_items pi ON pi.id = e.question_id
+            WHERE e.node_id IN ({qmarks})
+            GROUP BY e.node_id, pi.question_type
+        """, (user_id, *node_ids)).fetchall()
+        return {(r["node_id"], r["question_type"]): (r["c"] / r["n"] if r["n"] else 1.0)
+                for r in rows}
+    except Exception:
+        log.warning("silent_exception", exc_info=True)
+        return {}
+
 @router.get("/api/v1/hebrew/lesson/{node_id}/quiz")
 def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default", mode: str = "mc"):
     """Per-lesson quiz: this lesson's practice items interleaved by difficulty,
@@ -2219,10 +2248,14 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
 
     # Micro-scaffolding order: recognition (MC) first, production (typing) last.
     # Distractors go last so the learner's own skill is assessed first.
+    # Within a scaffold group the algorithm orders by type weakness — unseen
+    # types first (exposure), then lowest accuracy from attempt history.
     order = {"multiple_choice": 0, "true_false": 0, "letter_recognition": 0, "classification": 0,
              "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
              "letter_name": 2, "typing": 3}
-    questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), q["difficulty"]))
+    _weak = _type_weakness(conn, user_id, [node_id])
+    _wkey = lambda q: -1.0 if (node_id, q["type"]) not in _weak else _weak[(node_id, q["type"])]
+    questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), _wkey(q), q["difficulty"]))
 
     # Guarantee bidirectional production practice. A session that is all
     # multiple-choice trains option-elimination (recognition), not recall —
@@ -2240,7 +2273,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         reserve_ids = {q["question_id"] for q in reserve}
         fill = [q for q in (recognised + produced) if q["question_id"] not in reserve_ids]
         selected = (fill[:max(0, count - len(reserve))] + reserve + distractors)[:count]
-        selected.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), q["difficulty"]))
+        selected.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), _wkey(q), q["difficulty"]))
     else:
         selected = questions[:count]
     # Mode transform. 'mc' = easier (N-option multiple choice, server-graded);
@@ -3490,6 +3523,13 @@ def get_hebrew_quiz(
         """, (user_id,)).fetchall()
         recent.extend(unlocked)
 
+    # Adaptive item pick: per-(node, question_type) accuracy from the
+    # learner's own attempt history. Unseen types first (exposure), then
+    # weakest accuracy (Math Academy weakest-first), then easiest. The
+    # algorithm — not RANDOM() — decides what the learner is given.
+    weak = _type_weakness(conn, user_id,
+                          [r["node_id"] for r in recent[:15] if r["node_id"]])
+
     # Collect practice items from these nodes
     all_questions = []
     node_categories = {}
@@ -3502,15 +3542,19 @@ def get_hebrew_quiz(
             continue
         node_categories[nid] = cat['category']
 
-        # Get 2 practice items per node
+        # All eligible items, adaptively ranked — weakest type first.
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
             WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze')
-            ORDER BY RANDOM() LIMIT 2
         """, (nid,)).fetchall()
+        items.sort(key=lambda it: (
+            0 if (nid, it["question_type"]) not in weak
+            else 1 + weak[(nid, it["question_type"])],
+            it["difficulty"] or 0.5,
+        ))
 
-        for item in items:
+        for item in items[:2]:
             options = _public_options(json.loads(item['options_json']) if item['options_json'] else [])
             all_questions.append({
                 "node_id": nid,

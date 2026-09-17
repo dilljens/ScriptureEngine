@@ -780,11 +780,11 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   const known = wordCandidates(state, topW, topR, extra.gramMastery || {}, extra.gramCategories || {})
   let quiz = null
   if (known.length && rng() < WORD_QUIZ_SHARE) {
+    const deck = ensureQuizDeck(state, now)
     const kroots = knownRoots(state, topW, topR)
     if (kroots.length && rng() < ROOT_QUIZ_SHARE) {
-      quiz = makeRootQuiz(kroots, topR, rng)
+      quiz = makeRootQuiz(kroots, topR, rng, deck.rootStats || {})
     } else {
-      const deck = ensureQuizDeck(state, now)
       const stats = deck.wordStats || {}
       const freshW = known.filter(w => !stats[w.rank]?.seen)
       let pool = known
@@ -793,7 +793,7 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
         const dueW = known.filter(w => stats[w.rank]?.seen && (stats[w.rank]?.due || 0) <= now)
         if (dueW.length) pool = dueW
       }
-      quiz = makeWordQuiz(pool, rng, topW)
+      quiz = makeWordQuiz(pool, rng, topW, stats)
     }
   }
   if (!quiz) quiz = makeGoldenQuiz(state, rng, extra, now)
@@ -812,7 +812,8 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
  * (1d → 3d → 7d → 14d), wrong answers come back in 10 minutes.
  * Adaptive: struggling players (bias > 0) get name questions on high-mastery
  * letters; cruising players get glyph/audio on weak letters with confusable
- * foils. Never repeats the previous letter while alternatives exist.
+ * foils; neutral players get the deck-weakest letter (failed → unseen →
+ * lowest streak). Never repeats the previous letter while alternatives exist.
  * Pure data — the HUD renders and answers it.
  */
 export const QUIZ_OPTIONS = 6
@@ -929,7 +930,19 @@ export function makeGoldenQuiz(state, rng = Math.random, extra = {}, now = Date.
   let letter
   if (bias > 0.05) letter = pool.reduce((a, b) => (m(a) >= m(b) ? a : b))
   else if (bias < -0.05) letter = pool.reduce((a, b) => (m(a) <= m(b) ? a : b))
-  else letter = pool[Math.floor(rng() * pool.length)]
+  else {
+    // Neutral: the deck decides — weakest Anki streak first (failed/due →
+    // unseen → lowest streak), random within the weakest tier for variety.
+    const weakRank = l => {
+      const s = d.stats?.[l]
+      if (s === 0 && (d.due?.[l] || 0) <= now) return 0
+      if (s === undefined) return fresh.includes(l) ? 1 : 2
+      return 3 + s
+    }
+    const best = Math.min(...pool.map(weakRank))
+    const weak = pool.filter(l => weakRank(l) === best)
+    letter = weak[Math.floor(rng() * weak.length)]
+  }
   // Foils: hard mode leads with the target's confusables, then rng, then a
   // deterministic walk (a constant test seed must never spin forever).
   const hard = bias < -0.05
@@ -1216,9 +1229,20 @@ export function wordCandidates(state, topWords = [], topRoots = [], mastery = {}
   return knownWords(state, topWords)
 }
 
-/** EN→HE or HE→EN choice quiz, 6 single-script options, exact-match judged. */
-export function makeWordQuiz(candidates, rng = Math.random, foilPool = []) {
-  const word = candidates[Math.floor(rng() * candidates.length)]
+/** EN→HE or HE→EN choice quiz, 6 single-script options, exact-match judged.
+ *  The deck decides the word: failed streaks first, then unseen, then the
+ *  lowest streak — random within the weakest tier. Direction stays random so
+ *  both directions get practiced. */
+export function makeWordQuiz(candidates, rng = Math.random, foilPool = [], stats = {}) {
+  const weakRank = w => {
+    const s = stats[w.rank]
+    if (s && s.seen > 0 && s.streak === 0) return 0
+    if (!s || !s.seen) return 1
+    return 2 + s.streak
+  }
+  const best = Math.min(...candidates.map(weakRank))
+  const weak = candidates.filter(w => weakRank(w) === best)
+  const word = weak[Math.floor(rng() * weak.length)]
   const direction = rng() < 0.5 ? 'en-he' : 'he-en'
   const answer = direction === 'en-he' ? word.hebrew : word.gloss
   // Foils come from the full word list (locked words make fine wrong answers),
@@ -1252,9 +1276,18 @@ export function makeWordQuiz(candidates, rng = Math.random, foilPool = []) {
   return { kind: 'word', direction, hebrew: word.hebrew, bare: word.bare, gloss: word.gloss, rank: word.rank, translit: word.translit || word.transliteration || '', options, answer }
 }
 
-/** Root↔gloss choice quiz from known roots (same 6-option, exact-match shape). */
-export function makeRootQuiz(knownR, allRoots = [], rng = Math.random) {
-  const root = knownR[Math.floor(rng() * knownR.length)]
+/** Root↔gloss choice quiz from known roots (same 6-option, exact-match shape).
+ *  Deck-weakest root first, same tier rule as words. */
+export function makeRootQuiz(knownR, allRoots = [], rng = Math.random, stats = {}) {
+  const weakRank = r => {
+    const s = stats[r.root]
+    if (s && s.seen > 0 && s.streak === 0) return 0
+    if (!s || !s.seen) return 1
+    return 2 + s.streak
+  }
+  const best = Math.min(...knownR.map(weakRank))
+  const weak = knownR.filter(r => weakRank(r) === best)
+  const root = weak[Math.floor(rng() * weak.length)]
   const direction = rng() < 0.5 ? 'en-he' : 'he-en'
   const answer = direction === 'en-he' ? root.root : root.gloss
   const foils = (allRoots.length ? allRoots : knownR).filter(r => r.root !== root.root)
@@ -2476,6 +2509,18 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const qN1 = makeGoldenQuiz(gqN, () => 0, {}, 1000)
   const qN2 = makeGoldenQuiz(gqN, () => 0, {}, 1000)
   a(qN2.letter !== qN1.letter, 'same letter never quizzed twice in a row')
+  // Deck-weakest pick: the failed letter beats unseen, unseen beats streaked
+  const gqW = defaultIdleState()
+  gqW.owned = { 0: 1, 1: 1, 2: 1 }
+  recordGoldenAnswer(gqW, 1, false, 1000)
+  const qW = makeGoldenQuiz(gqW, () => 0.99, {}, 1000 + 11 * 60000)
+  a(qW.letter === 1, 'neutral bias quizzes the failed letter first')
+  const wW1 = { rank: 1, hebrew: 'א', bare: 'א', gloss: 'g1' }
+  const wW2 = { rank: 2, hebrew: 'ב', bare: 'ב', gloss: 'g2' }
+  const wqW = makeWordQuiz([wW1, wW2], () => 0.99, [], { 1: { streak: 0, due: 0, seen: 3 }, 2: { streak: 5, due: 99999, seen: 9 } })
+  a(wqW.rank === 1, 'word quiz picks the failed word first')
+  const rqW = makeRootQuiz([{ root: 'R1', gloss: 'a' }, { root: 'R2', gloss: 'b' }], [], () => 0.99, { R2: { streak: 0, due: 0, seen: 2 } })
+  a(rqW.root === 'R2', 'root quiz picks the failed root first')
   // Spaced repetition: correct stretches, wrong returns in minutes
   const gqR = defaultIdleState()
   recordGoldenAnswer(gqR, 3, true, 1000)
