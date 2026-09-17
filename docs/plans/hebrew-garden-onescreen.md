@@ -70,3 +70,14 @@ Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that 
 - HUD feast chip (live/countdown) + info modal; Enoch 364-day tie-in documented for the Luminaries follow-up
 - Fixed en route: purim edit ate the answer-path `hours` guard (restored)
 - Verify: 309 self-checks, 54 backend tests, esbuild clean, vite build green
+
+## Track J: Scribe autobuy (spending automated, learning never) `[x]`
+- Double gate: first forged root globally + mastery 0.8+ per letter ("a letter you've taught inscribes itself"); 50 Kavod ×1.6 each — automation bought with knowledge
+- One-unit drip per tick (never drains the saving bank); global ON/OFF; exile-aware; quill hire buttons on mastered tiles + 📜 badges
+- 11 new self-checks (319 total); e2e buy-button order preserved
+- Verify: 319 self-checks, esbuild clean, vite build green
+- FEASTS table (8 moedim with meaning/scriptures/vocab), Intl Hebrew-calendar detection verified vs real 2026 dates, 13 new self-checks (309 total)
+- Effects: mercy windows (Passover/YK 60s), Shavuot grammar ×2, Trumpets/Hanukkah/Shemini spawn quickening, Sukkot garden ×2, Purim +5 🌟/claim
+- HUD feast chip (live/countdown) + info modal; Enoch 364-day tie-in documented for the Luminaries follow-up
+- Fixed en route: purim edit ate the answer-path `hours` guard (restored)
+- Verify: 309 self-checks, 54 backend tests, esbuild clean, vite build green

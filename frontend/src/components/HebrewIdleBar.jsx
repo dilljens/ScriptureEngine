@@ -19,7 +19,7 @@ import {
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
-import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast } from '../lib/idle-game'
+import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast, scribeUnlocked, scribeCost, hireScribe, autoBuyTick, scribeCount } from '../lib/idle-game'
 import FeastModal from './FeastModal'
 import GardenPanel from './GardenPanel'
 import WatchmenPanel from './WatchmenPanel'
@@ -249,6 +249,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         ohr: s.ohr + gain,
         lifetimeOhr: (s.lifetimeOhr || 0) + gain,
       }
+      // Scribes: mastered letters drip one unit per tick when affordable.
+      // Runs before the skip check — a buy is movement worth rendering.
+      const bought = autoBuyTick(next, next.difficulty, sageEffects(next).cost)
       // Word quizzes unlock mid-game (100+ readable words) — start the
       // 1000-row download only once the workshop is broad enough to use it.
       if (totalOwned(s) >= 5 || (s.roots || 0) > 0) ensureTopLists()
@@ -273,10 +276,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         setTimeout(() => setBoostFlash(null), 4500)
       }
       // Perf: skip the render when nothing moved — zero production, no
-      // golden change. New players and capped workshops idle at ~0 renders/s.
+      // golden change, no scribe buys. New players idle at ~0 renders/s.
       const goldenChanged = (hadGolden !== !!next.golden) || !!next.golden
-      if (gain === 0 && !goldenChanged) return
-      if (++n % 5 === 0) saveIdleState(next)
+      if (gain === 0 && !goldenChanged && bought === 0) return
+      if (bought > 0) saveSoon(next)
+      else if (++n % 5 === 0) saveIdleState(next)
       commit(next)
     }, 1000)
     return () => { clearInterval(t); saveIdleState(stateRef.current) }
@@ -408,6 +412,19 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const playLetterAudio = async (i) => {
     // Perf (Track D2): pooled URL cache + shared element (see audio-pool).
     try { await playHebrewAudio(LETTERS[i]) } catch {}
+  }
+
+  // Scribes: hire a self-buyer for a MASTERED letter (learning stays manual —
+  // the quill only appears at 0.8+ and after the first root).
+  const hire = (i) => {
+    const next = { ...state }
+    if (!hireScribe(next, i)) {
+      setBoostFlash({ text: `Need ${scribeCost(state)} 🌟 Kavod for a ${LETTERS[i]} scribe — Kavod comes only from correct answers.` })
+      setTimeout(() => setBoostFlash(null), 4000)
+      return
+    }
+    setState(next); saveIdleState(next)
+    try { logEvent('scribe', { letter: i, cost: scribeCost(state) }) } catch {}
   }
 
   const doPrestige = () => {
@@ -1171,7 +1188,19 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             ))}
             <span className="flex-1" />
             <span className="text-[11px] text-neutral-500 tabular-nums">{totalOwned(state)} owned</span>
+            {scribeCount(state) > 0 && (
+              <button onClick={() => { const next = { ...state, autobuy: !state.autobuy }; setState(next); saveIdleState(next) }}
+                aria-pressed={state.autobuy !== false} title="Scribes auto-buy one unit per tick for mastered letters"
+                className={`min-h-[44px] px-3 rounded-lg text-xs font-medium cursor-pointer ${state.autobuy !== false ? 'bg-indigo-500 text-white' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}>
+                📜 {state.autobuy !== false ? 'ON' : 'OFF'}
+              </button>
+            )}
           </div>
+          {!scribeUnlocked(state) && (
+            <div className="mt-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+              📜 Scribes unlock at your first forged root — mastered letters will inscribe themselves (learning itself is never automated).
+            </div>
+          )}
           <div className="mt-1.5 grid grid-cols-6 sm:grid-cols-11 gap-1.5">
             {LETTERS.map((L, i) => {
               const owned = state.owned[i] || 0
@@ -1180,8 +1209,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               const m = mastery[i] || 0
               const locked = !exileAllows(state, i)
               const lockIcon = exileKind === 'shemittah' ? '🌾' : '⛓️'
+              const scribed = !!state.scribes?.[i]
+              const canHire = !scribed && scribeUnlocked(state) && m >= 0.8
               return (
-                <button key={i} onClick={() => buy(i)}
+                <div key={i} className="relative">
+                <button onClick={() => buy(i)}
                   aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L} (${LETTER_NAMES[i]}, "${LETTER_SYMBOLS[i]}", gematria ${GEMATRIA[i]}), owned ${owned}, costs ${spend} Ohr${owned > 0 ? `, earns ${fmtRate(letterRate(state, mastery, i, gramMult))}/s` : ''}`}
                   title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} ${LETTER_NAMES[i]} · "${LETTER_SYMBOLS[i]}" · gematria ${GEMATRIA[i]} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}${owned > 0 ? ` · +${fmtRate(letterRate(state, mastery, i, gramMult))}/s` : ''}`}
                   className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
@@ -1194,6 +1226,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   </div>
                   {m >= 0.8 && <div className="text-[10px] text-green-600" aria-hidden="true">●<span className="sr-only">mastered</span></div>}
                 </button>
+                {scribed && (
+                  <span title="Scribed — buys itself when affordable" className="absolute top-0.5 right-0.5 text-[10px] pointer-events-none" aria-hidden="true">📜</span>
+                )}
+                {canHire && (
+                  <button onClick={() => hire(i)}
+                    aria-label={`Hire a scribe for ${L} — ${scribeCost(state)} Kavod. Mastered letters buy themselves.`}
+                    title={`Hire scribe (${scribeCost(state)} 🌟): ${L} buys itself when affordable`}
+                    className="absolute top-0 right-0 min-w-[28px] min-h-[28px] rounded-bl-lg rounded-tr-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs cursor-pointer active:scale-95">
+                    📜
+                  </button>
+                )}
+                </div>
               )
             })}
           </div>

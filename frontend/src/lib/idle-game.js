@@ -300,6 +300,8 @@ export function defaultIdleState() {
     garden: { plots: [null, null, null, null, null, null] }, // Root Garden: 6 plots of growing roots
     watchmen: { seats: {}, cooldowns: {} }, // Seated watchmen (Honor/Wisdom/Learning) + swap cooldowns
     shuk: { holdings: {}, debtUntil: 0, loanCooldownUntil: 0 }, // market stalls + credit state
+    scribes: {},     // letterIndex -> true: mastered letters that buy themselves
+    autobuy: true,   // global scribe switch (pause without firing anyone)
     daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
     perm: {},           // permanent Kavod upgrades -> true
@@ -2075,6 +2077,63 @@ export function feastSpawnFactor(now = Date.now()) {
   return f
 }
 
+// ── Scribes: letter autobuy (automation as earned convenience) ─────────
+// DESIGN.md promised autobuy "later": here it is, gated twice. Global
+// unlock at the first forged root (you proved the buying loop once);
+// per-letter hire needs MASTERY 0.8+ (checked in the HUD — a letter you've
+// fully taught inscribes itself). Scribes cost Kavod, escalating: automation
+// is bought with KNOWLEDGE, never time. Never touches answers/reviews —
+// learning integrity is non-negotiable.
+// Behavior: one unit per tick per scribed letter when affordable (a gentle
+// drip that never drains the bank you're saving for Tav).
+
+export const SCRIBE_BASE_COST = 50
+export const SCRIBE_COST_GROWTH = 1.6
+
+/** Global unlock: autobuy exists once you've completed the arc once. */
+export function scribeUnlocked(state) {
+  return (state.roots || 0) > 0
+}
+
+export function scribeCount(state) {
+  return Object.keys(state.scribes || {}).length
+}
+
+/** Next scribe costs 50 Kavod × 1.6^hired. */
+export function scribeCost(state) {
+  return Math.ceil(SCRIBE_BASE_COST * Math.pow(SCRIBE_COST_GROWTH, scribeCount(state)))
+}
+
+/** Hire a scribe for a letter (mastery checked by the caller). False when locked/dup/broke. */
+export function hireScribe(state, i) {
+  if (!scribeUnlocked(state)) return false
+  if (state.scribes?.[i]) return false
+  const cost = scribeCost(state)
+  if ((state.kavod || 0) < cost) return false
+  state.kavod -= cost
+  state.scribes = { ...(state.scribes || {}), [i]: true }
+  return true
+}
+
+/**
+ * One autobuy pass: every scribed (and vow-allowed) letter buys a single
+ * unit when affordable. Returns units bought. Pure over state + cost inputs.
+ */
+export function autoBuyTick(state, diff = null, costMult = 1) {
+  if (!state.autobuy || !scribeUnlocked(state)) return 0
+  let bought = 0
+  for (const key of Object.keys(state.scribes || {})) {
+    const i = Number(key)
+    if (!Number.isInteger(i) || !exileAllows(state, i)) continue
+    const c = generatorCost(i, state.owned[i] || 0, diff, costMult)
+    if ((state.ohr || 0) < c) continue
+    state.ohr -= c
+    state.owned = { ...(state.owned || {}), [i]: (state.owned[i] || 0) + 1 }
+    bought++
+  }
+  return bought
+}
+
 // ── Achievements → Shemen (oil): +4% Ohr each ────────────────────────
 // Derived from state — no extra bookkeeping, no way to lose one.
 // ("Talmidim multipliers read Shemen" from the plan is moot: there is no
@@ -2761,4 +2820,20 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(takeShukLoan(ln, 10, 2000) === 0, 'no second loan while indebted')
   a(shukDebt(ln, 1000 + SHUK_DEBT_HOURS * 3600 * 1000 + 1) === 1, 'debt clears after 4h')
   a(takeShukLoan(ln, 10, 1000 + SHUK_DEBT_HOURS * 3600 * 1000 + 2) === 0, 'cooldown outlives the debt')
+  // Scribe autobuy
+  const sb = defaultIdleState()
+  a(scribeUnlocked(sb) === false, 'scribes locked before the first root')
+  a(hireScribe(sb, 0) === false, 'cannot hire while locked')
+  sb.roots = 1
+  sb.kavod = 1000
+  a(scribeCost(sb) === SCRIBE_BASE_COST, 'first scribe costs 50 Kavod')
+  a(hireScribe(sb, 0) === true && sb.scribes[0] === true, 'hire spends Kavod, seats scribe')
+  a(hireScribe(sb, 0) === false, 'no double-hire')
+  a(scribeCost(sb) === Math.ceil(SCRIBE_BASE_COST * SCRIBE_COST_GROWTH), 'second scribe costs ×1.6')
+  a(autoBuyTick({ ...sb, autobuy: false }) === 0, 'global switch pauses scribes')
+  const sb2 = { ...defaultIdleState(), roots: 1, ohr: 1e9, scribes: { 0: true, 21: true }, autobuy: true }
+  a(autoBuyTick(sb2) === 2 && sb2.owned[0] === 1 && sb2.owned[21] === 1, 'one drip per scribed letter per tick')
+  a(autoBuyTick({ ...sb2, ohr: 0 }) === 0, 'broke scribes wait')
+  const sb3 = { ...defaultIdleState(), roots: 0, ohr: 1e9, scribes: { 0: true }, autobuy: true }
+  a(autoBuyTick(sb3) === 0 && sb3.owned[0] === undefined, 'locked scribes never buy')
 }
