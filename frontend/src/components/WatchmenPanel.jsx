@@ -61,6 +61,9 @@ export default function WatchmenPanel({ state, onUpdate }) {
 
   return (
     <div>
+      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-2 text-center italic">
+        “I have set watchmen upon thy walls” — Is. 62:6
+      </p>
       <div className="grid grid-cols-3 gap-1.5">
         {WATCH_SEATS.map(seat => {
           const watch = WATCHMEN.find(s => s.id === seats[seat.id])
@@ -73,6 +76,9 @@ export default function WatchmenPanel({ state, onUpdate }) {
               <div className="text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 truncate">
                 {watch ? watch.name : seat.name}
               </div>
+              {watch?.hebrew && (
+                <div className="text-[11px] font-serif text-neutral-500 dark:text-neutral-400 leading-tight" dir="rtl">{watch.hebrew}</div>
+              )}
               <div className="text-[9px] text-neutral-400 tabular-nums">
                 ×{seat.mult}{cd > 0 ? ` · ${fmtCooldown(cd)}` : ''}
               </div>
@@ -98,6 +104,7 @@ export default function WatchmenPanel({ state, onUpdate }) {
                   className="w-full px-2.5 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-left cursor-pointer hover:border-violet-400 active:scale-[0.99] min-h-[44px]">
                   <div className="text-xs font-medium text-neutral-700 dark:text-neutral-200">
                     <span className="mr-1">{s.icon}</span>{s.name}
+                    {s.hebrew && <span className="ml-1.5 font-serif text-neutral-500" dir="rtl">{s.hebrew}</span>}
                     {seatedElsewhere && <span className="ml-1 text-[9px] text-neutral-400">(moves seat)</span>}
                   </div>
                   <div className="text-[10px] text-neutral-500 dark:text-neutral-400">{s.desc}</div>

@@ -345,7 +345,7 @@ export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const fx = watchEffects(state)
   const { value: raw, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
   // Shemittah sprint: every tap counts double. Exile: Kavod doubles instead.
-  // Seated watchmen tune both (Hillel/Shammai/Elijah taps, Akiva Kavod).
+  // Seated watchmen tune both (Jeremiah/Ezekiel/Elijah taps, Moses Kavod).
   const value = raw * shemittahTapMult(state) * fx.tap
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
@@ -1786,12 +1786,12 @@ export const WATCH_SEATS = [
 ]
 export const WATCH_SWAP_COOLDOWN_MS = 4 * 3600 * 1000
 export const WATCHMEN = [
-  { id: 'rashi', name: 'Rashi', icon: '📖', desc: '+10% Ohr · +10% letter costs', fx: { global: 0.10, cost: 0.10 } },
-  { id: 'hillel', name: 'Hillel', icon: '🕊️', desc: '+15% tap value · −5% Ohr', fx: { tap: 0.15, global: -0.05 } },
-  { id: 'shammai', name: 'Shammai', icon: '⚖️', desc: '−10% letter costs · −5% tap value', fx: { cost: -0.10, tap: -0.05 } },
-  { id: 'akiva', name: 'Akiva', icon: '🔥', desc: '+20% Kavod from answers · −5% Ohr', fx: { kavod: 0.20, global: -0.05 } },
-  { id: 'miriam', name: 'Miriam', icon: '🌊', desc: '+15% Shemen effect · +5% letter costs', fx: { milk: 0.15, cost: 0.05 } },
-  { id: 'elijah', name: 'Elijah', icon: '⚡', desc: '+15% offline earnings · −5% tap value', fx: { offline: 0.15, tap: -0.05 } },
+  { id: 'isaiah', name: 'Isaiah', icon: '📖', hebrew: 'ישעיה', desc: '+10% Ohr · +10% letter costs', fx: { global: 0.10, cost: 0.10 } },
+  { id: 'jeremiah', name: 'Jeremiah', icon: '🕊️', hebrew: 'ירמיהו', desc: '+15% tap value · −5% Ohr', fx: { tap: 0.15, global: -0.05 } },
+  { id: 'ezekiel', name: 'Ezekiel', icon: '⚖️', hebrew: 'יחזקאל', desc: '−10% letter costs · −5% tap value', fx: { cost: -0.10, tap: -0.05 } },
+  { id: 'moses', name: 'Moses', icon: '🔥', hebrew: 'משה', desc: '+20% Kavod from answers · −5% Ohr', fx: { kavod: 0.20, global: -0.05 } },
+  { id: 'daniel', name: 'Daniel', icon: '🦁', hebrew: 'דניאל', desc: '+15% Shemen effect · +5% letter costs', fx: { milk: 0.15, cost: 0.05 } },
+  { id: 'elijah', name: 'Elijah', icon: '⚡', hebrew: 'אליהו', desc: '+15% offline earnings · −5% tap value', fx: { offline: 0.15, tap: -0.05 } },
 ]
 
 /** Combined watch multipliers {global, cost, tap, kavod, offline, milk} (all 1 when empty). */
@@ -2564,20 +2564,20 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const se = defaultIdleState()
   const fx0 = watchEffects(se)
   a(Object.values(fx0).every(v => v === 1), 'empty watchmen is neutral')
-  a(seatWatchman(se, 'honor', 'rashi', 1000) === true, 'seat Rashi with honor')
+  a(seatWatchman(se, 'honor', 'isaiah', 1000) === true, 'seat Isaiah with honor')
   a(Math.abs(watchEffects(se).global - 1.10) < 1e-9, 'honor seat ×1.0: +10% Ohr')
-  a(seatWatchman(se, 'honor', 'hillel', 2000) === false, 'cooling seat refuses')
-  a(seatWatchman(se, 'wisdom', 'hillel', 2000) === true, 'second seat takes Hillel')
+  a(seatWatchman(se, 'honor', 'jeremiah', 2000) === false, 'cooling seat refuses')
+  a(seatWatchman(se, 'wisdom', 'jeremiah', 2000) === true, 'second seat takes Jeremiah')
   a(Math.abs(watchEffects(se).tap - (1 + 0.15 * 0.6)) < 1e-9, 'wisdom seat ×0.6: +9% tap')
-  a(seatWatchman(se, 'learning', 'hillel', 2000) === true && !se.watchmen.seats.wisdom, 'one watchman sits once (moves seats)')
-  a(seatWatchman(se, 'nope', 'rashi', 99999999) === false && seatWatchman(se, 'honor', 'bogus', 99999999) === false, 'bad seat/watch refuse')
+  a(seatWatchman(se, 'learning', 'jeremiah', 2000) === true && !se.watchmen.seats.wisdom, 'one watchman sits once (moves seats)')
+  a(seatWatchman(se, 'nope', 'isaiah', 99999999) === false && seatWatchman(se, 'honor', 'bogus', 99999999) === false, 'bad seat/watch refuse')
   a(watchCooldownLeft(se, 'honor', 1000 + WATCH_SWAP_COOLDOWN_MS + 1) === 0, 'cooldown expires after 4h')
   const scx = defaultIdleState()
   scx.owned = { 0: 10 }
-  seatWatchman(scx, 'honor', 'akiva', 0)
+  seatWatchman(scx, 'honor', 'moses', 0)
   const before = scx.kavod || 0
   applyCorrectAnswer(scx, 1, () => 0.99)
-  a(scx.kavod - before >= 1, 'Akiva Kavod bonus flows through answers')
+  a(scx.kavod - before >= 1, 'Moses Kavod bonus flows through answers')
   // Shuk market
   a(shukPrice('oil', 10, 1000) === shukPrice('oil', 10, 1000), 'prices are deterministic')
   a(shukPrice('bogus', 10, 1000) === 0 && shukPrice('oil', 0, 1000) === 0, 'unknown goods and zero rate price at 0')

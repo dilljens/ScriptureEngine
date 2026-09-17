@@ -54,6 +54,10 @@ Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that 
 ## Track G: Watchmen rename `[x]`
 - Sages → Watchmen (Is. 62:6): WATCHMEN/WATCH_SEATS/watchEffects/seatWatchman, WatchmenPanel, 👁️ Watch tab; six proper-name figures kept; sanhedrin→watchmen state key with one-release fallback
 
+## Track G2: Major Prophets watchmen `[x]`
+- Catalog rewritten: Isaiah 📖, Jeremiah 🕊️, Ezekiel ⚖️, Moses 🔥, Daniel 🦁, Elijah ⚡ (4 majors + 2 greatest, per user pick); same balanced numbers, Hebrew names shown, Is. 62:6 epigraph
+- Verify: 296 self-checks, esbuild clean, vite build green
+
 ## Track H: Per-root FSRS (top-100) `[x]`
 - seed_hebrew_roots --top-roots: gap-fill generated lessons from top500 (96 new, 113 root nodes total, L4-6, idempotent)
 - hebrew_node_map indexes lesson `root` field; shared _attach_srs_status helper; top-roots?with_status=1 resolves root_ ids by PK (no LIKE)
