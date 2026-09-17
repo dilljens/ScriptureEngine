@@ -139,7 +139,7 @@ ROOT_LESSONS = [
 ]
 
 
-def main(db_path=MEM_DB):
+def main(db_path=MEM_DB, top_roots=100):
     conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys=OFF")
     conn.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_hebrew_practice_unique
@@ -227,14 +227,126 @@ def main(db_path=MEM_DB):
         print(f"  UPSERTED {lid}: {title}")
 
     conn.commit()
+
+    # ── Top-frequency roots from top500.json (gap-fill only) ─────────────
+    # Hand-written ROOT_LESSONS above keep their rich content (existing node
+    # ids are skipped, never overwritten). Ranks beyond the hand list get
+    # generated lessons so per-root FSRS can schedule them. Level follows
+    # wordTier() in frontend/src/lib/idle-game.js.
+    added = seed_top_roots(conn, top_roots)
+    new_nodes += added[0]
+    new_items += added[1]
+    new_edges += added[2]
+
+    conn.commit()
     conn.close()
 
     print(f"\n✓ Done! Created {new_nodes} root lessons, {new_items} items, {new_edges} edges")
+
+
+def tier_level(rank):
+    """Frequency rank → curriculum level (mirrors wordTier)."""
+    if rank < 50: return 4
+    if rank < 150: return 5
+    if rank < 300: return 6
+    return 7
+
+
+def seed_top_roots(conn, count=100):
+    """Seed generated lessons for the top-N top500 roots missing nodes.
+
+    Returns (new_nodes, new_items, new_edges). Idempotent: skips existing
+    `root_<root>` ids AND roots whose surfaces collide with existing lessons.
+    """
+    top_path = Path(__file__).parent.parent / "data" / "top500.json"
+    try:
+        top = json.loads(top_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print("  top500.json unavailable — skipping top-root seeding")
+        return (0, 0, 0)
+    words = top.get("words", [])
+    by_lemma = {}
+    for w in words:
+        if w.get("lemma") not in by_lemma and w.get("hebrew"):
+            by_lemma[w["lemma"]] = (w["hebrew"], w.get("gloss") or "")
+    existing = {r[0] for r in conn.execute(
+        "SELECT id FROM hebrew_nodes WHERE category='root'").fetchall()}
+    new_nodes = new_items = new_edges = 0
+    for r in (top.get("roots", []) or [])[:count]:
+        root = (r.get("root") or "").strip()
+        if not root:
+            continue
+        lid = f"root_{root}"
+        if lid in existing:
+            continue
+        rank = r.get("rank") or 0
+        level = tier_level(max(0, rank - 1))
+        gloss = (r.get("gloss") or "").split(".")[0][:80] or "root"
+        derived = []
+        for lemma in (r.get("examples") or [])[:4]:
+            if lemma in by_lemma:
+                derived.append(by_lemma[lemma])
+        if not derived:
+            continue  # no attestable surfaces — not learnable yet
+        title = f"Root {root} — {gloss}"
+        desc = f"The root {root} means '{gloss}'. Derived words: " + ", ".join(
+            f"{w} ({g})" for w, g in derived)[:200]
+        conn.execute(
+            "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'root', ?)",
+            (lid, title, level, desc))
+        if conn.execute("SELECT changes()").fetchone()[0] == 0:
+            continue
+        new_nodes += 1
+        content = {
+            "node_id": lid,
+            "title": title,
+            "root": root,
+            "category": "root",
+            "level": level,
+            "hebrew": root,
+            "gloss": gloss,
+            "explanation": f"The root {root} means '{gloss}'.",
+            "derived_words": [{"word": w, "gloss": g} for w, g in derived],
+            "key_points": [
+                f"Root {root} = {gloss}",
+                f"Derives {len(derived)}+ common words",
+            ],
+            "generated": True,
+        }
+        conn.execute(
+            """INSERT INTO hebrew_lessons (node_id, content_json) VALUES (?, ?)
+               ON CONFLICT(node_id) DO UPDATE SET content_json=excluded.content_json,
+               version=hebrew_lessons.version+1, updated_at=datetime('now')
+               WHERE hebrew_lessons.content_json<>excluded.content_json""",
+            (lid, json.dumps(content, ensure_ascii=False)))
+
+        def add(q, opts, ans, qtype="multiple_choice", lid=lid):
+            opts_j = json.dumps(opts, ensure_ascii=False) if opts else ""
+            conn.execute(
+                "DELETE FROM hebrew_practice_items WHERE node_id=? AND question_type=? AND question_text=? AND correct_answer<>?",
+                (lid, qtype, q, ans))
+            conn.execute("INSERT OR IGNORE INTO hebrew_practice_items (node_id, question_type, question_text, options_json, correct_answer, difficulty) VALUES (?,?,?,?,?,?)",
+                        (lid, qtype, q, opts_j, ans, 0.5))
+            return 1
+
+        others = [x.get("gloss", "").split(".")[0] for x in (top.get("roots", []) or [])[:count]
+                  if x.get("root") != root and x.get("gloss")]
+        distract = [o for o in others if o != gloss][:3]
+        new_items += add(f"What does the root {root} mean?", [gloss, *distract], gloss)
+        new_items += add(f"Which word derives from root {root}?",
+                         [w for w, _g in derived] or ["word"], derived[0][0])
+        conn.execute("INSERT OR IGNORE INTO hebrew_edges (source_id, target_id, edge_type) VALUES ('root_concept', ?, 'prerequisite')", (lid,))
+        new_edges += 1
+        existing.add(lid)
+    print(f"  top-roots gap-fill: {new_nodes} nodes, {new_items} items")
+    return (new_nodes, new_items, new_edges)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", type=Path, default=MEM_DB)
+    parser.add_argument("--top-roots", type=int, default=100,
+                        help="Gap-fill generated lessons for top-N top500 roots (default 100)")
     args = parser.parse_args()
-    main(args.db)
+    main(args.db, args.top_roots)

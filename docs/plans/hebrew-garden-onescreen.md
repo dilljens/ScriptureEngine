@@ -50,3 +50,12 @@ Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that 
 - Learn on credit: +1h now, −25% 4h, 24h cooldown; debt flows through the combo multiplier
 - ShukPanel + 🧺 tab (7-tab bottom bar, compact labels); 12 new self-checks (296 total)
 - Verify: esbuild clean, 13 backend tests pass, vite build green
+
+## Track G: Watchmen rename `[x]`
+- Sages → Watchmen (Is. 62:6): WATCHMEN/WATCH_SEATS/watchEffects/seatWatchman, WatchmenPanel, 👁️ Watch tab; six proper-name figures kept; sanhedrin→watchmen state key with one-release fallback
+
+## Track H: Per-root FSRS (top-100) `[x]`
+- seed_hebrew_roots --top-roots: gap-fill generated lessons from top500 (96 new, 113 root nodes total, L4-6, idempotent)
+- hebrew_node_map indexes lesson `root` field; shared _attach_srs_status helper; top-roots?with_status=1 resolves root_ ids by PK (no LIKE)
+- Roots Tiles grades noded roots through real FSRS (Know=Good/Skip=Again) with FSRS tile visuals; reps kept for synergy flow
+- Verify: 296 self-checks, 21 backend tests, top-roots status resolves, vite build green

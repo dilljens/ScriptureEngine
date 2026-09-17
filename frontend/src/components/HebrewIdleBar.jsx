@@ -19,9 +19,9 @@ import {
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
-import { grammarTrackBonus, gardenPlots, gardenReady, sageEffects } from '../lib/idle-game'
+import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects } from '../lib/idle-game'
 import GardenPanel from './GardenPanel'
-import SagesPanel from './SagesPanel'
+import WatchmenPanel from './WatchmenPanel'
 import ShukPanel from './ShukPanel'
 import { fetchAudioUrl, playUrl, playHebrewAudio } from '../lib/audio-pool'
 import GolemCanvas from './GolemCanvas'
@@ -61,11 +61,11 @@ export function reportIdleAnswer(correct, responseMs, meta = {}) {
 const BULK_MODES = ['1', '10', 'max']
 
 const UI_KEY = 'hebrew-idle-ui-v1'
-const IDLE_TABS = ['letters', 'garden', 'sages', 'shuk', 'boosts', 'quests', 'upgrades']
+const IDLE_TABS = ['letters', 'garden', 'watch', 'shuk', 'boosts', 'quests', 'upgrades']
 const TAB_META = {
   letters: { icon: 'א', label: 'Letters' },
   garden: { icon: '🌱', label: 'Garden' },
-  sages: { icon: '🎓', label: 'Sages' },
+  watch: { icon: '👁️', label: 'Watch' },
   shuk: { icon: '🧺', label: 'Shuk' },
   boosts: { icon: '🌬️', label: 'Boosts' },
   quests: { icon: '📜', label: 'Quests' },
@@ -344,7 +344,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       const elapsed = (Date.now() - (s.lastSeen || Date.now())) / 1000
       if (elapsed > 60) {
         const atDisconnect = statePerSecond(next, mastery, gramMult)
-        const earned = offlineEarnings(atDisconnect, elapsed, next.tracks, next.roots, next.perm) * sageEffects(next).offline
+        const earned = offlineEarnings(atDisconnect, elapsed, next.tracks, next.roots, next.perm) * watchEffects(next).offline
         if (earned >= 1) {
           const capHrs = (next.roots || 0) >= 10 ? 24 : 12
           const hrs = (Math.min(elapsed, capHrs * 3600) / 3600).toFixed(1)
@@ -371,13 +371,13 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
   const buyAmount = (i) => {
     const owned = state.owned[i] || 0
-    const sageCost = sageEffects(state).cost
+    const watchCost = watchEffects(state).cost
     if (bulk === 'max') {
-      const { n, spend } = maxBuyable(i, owned, state.ohr, diff, sageCost)
+      const { n, spend } = maxBuyable(i, owned, state.ohr, diff, watchCost)
       return { n, spend }
     }
     const n = parseInt(bulk, 10)
-    return { n, spend: bulkCost(i, owned, n, diff, sageCost) }
+    return { n, spend: bulkCost(i, owned, n, diff, watchCost) }
   }
 
   const buy = (i) => {
@@ -742,7 +742,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           </div>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''}{shofarMultiplier(state) > 1 ? ` x${shofarMultiplier(state).toFixed(1)} 📯` : ''}{activeBuffCount(state) > 1 ? ` COMBO x${activeBuffCount(state)}` : ''} · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state) * sageEffects(state).tap).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
+            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''}{shofarMultiplier(state) > 1 ? ` x${shofarMultiplier(state).toFixed(1)} 📯` : ''}{activeBuffCount(state) > 1 ? ` COMBO x${activeBuffCount(state)}` : ''} · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state) * watchEffects(state).tap).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
             <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 <span key={Math.floor(state.kavod || 0)} className="idle-pop inline-block">{Math.floor(state.kavod || 0)}</span></span>
             {synPct > 0 && (
@@ -1118,10 +1118,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
-      {/* Sages tab — Sanhedrin loadout minigame */}
-      {activeTab === 'sages' && (
+      {/* Watch tab — watchmen loadout minigame */}
+      {activeTab === 'watch' && (
         <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
-          <SagesPanel state={state} onUpdate={(next) => { commit(next); saveIdleState(next) }} />
+          <WatchmenPanel state={state} onUpdate={(next) => { commit(next); saveIdleState(next) }} />
         </div>
       )}
 

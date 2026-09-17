@@ -764,7 +764,7 @@ def hebrew_node_map(conn):
                 c = json.loads(content_json or "{}")
             except (TypeError, json.JSONDecodeError):
                 continue
-            for key in (c.get("hebrew"), c.get("glyph"), c.get("bare")):
+            for key in (c.get("hebrew"), c.get("glyph"), c.get("bare"), c.get("root")):
                 if key and key not in m:
                     m[key] = node_id
         _HEBREW_NODE_MAP.update(count=count, map=m)
@@ -3948,47 +3948,13 @@ def _top500():
     return _TOP500
 
 
-@router.get("/api/v1/hebrew/top-words")
-def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 0,
-                          with_status: bool = False, user_id: str = "default",
-                          session_token: str = "", authorization: str = Header("")):
-    """500 most common Hebrew words by corpus frequency (gloss + root + SBL translit).
+def _attach_srs_status(conn, user_id: str, items: list, node_ids: list, now=None):
+    """Attach Anki-style SRS status to top-words/top-roots page items.
 
-    with_status=1 joins per-word Anki-style SRS status (see WORD_MATURE_INTERVAL_DAYS):
-    node_id, mastery, interval_days, due, due_in_days, retrievability, mastered
-    (mastered = interval >= 21d, i.e. Anki "mature"). Unstudied words report
-    interval 0 / mastered False. Powers the 50-at-once Word Tiles screen.
+    Two batched queries (progress + review state) for the whole page, then
+    per-item interval math. mastered = interval >= WORD_MATURE_INTERVAL_DAYS.
     """
-    words = [w for w in _top500().get("words", []) if w.get("frequency", 0) >= min_frequency]
-    total = len(words)
-    page = words[offset:offset + limit]
-    if not with_status:
-        return {"ok": True, "data": {"words": page, "total": total}}
-    if not MEM_DB.exists():
-        return {"ok": True, "data": {
-            "words": [{**w, "node_id": "", "mastery": 0.0, "interval_days": 0,
-                       "due": None, "due_in_days": 0.0, "retrievability": 1.0,
-                       "mastered": False} for w in page], "total": total}}
-    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
-    conn = sqlite3.connect(str(MEM_DB))
-    conn.row_factory = sqlite3.Row
-    ensure_hebrew_schema_once()
-    now = datetime.datetime.now()
-    # Perf: resolve all node_ids through the cached hebrew map (no per-word
-    # LIKE scans), then TWO batched queries for progress + review state
-    # instead of ~3 per word.
-    node_map = hebrew_node_map(conn)
-    node_ids = []
-    for w in page:
-        nid = ""
-        for key in (w.get("hebrew"), w.get("bare")):
-            if key and key in node_map:
-                nid = node_map[key]
-                break
-        if not nid:
-            hebrew = w.get("hebrew") or w.get("bare") or ""
-            nid = resolve_hebrew_node(conn, hebrew) if hebrew else ""
-        node_ids.append(nid)
+    now = now or datetime.datetime.now()
     mastery_by: dict = {}
     states_by: dict = {}
     uniq = sorted({n for n in node_ids if n})
@@ -4005,7 +3971,7 @@ def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 
         ).fetchall():
             states_by.setdefault(s["node_id"], []).append(s)
     out = []
-    for w, node_id in zip(page, node_ids):
+    for w, node_id in zip(items, node_ids):
         mastery, interval_days, due, due_in_days, ret, mastered = 0.0, 0, None, 0.0, 1.0, False
         if node_id:
             mastery = mastery_by.get(node_id, 0.0)
@@ -4035,13 +4001,85 @@ def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 
                     "interval_days": interval_days, "due": due,
                     "due_in_days": due_in_days, "retrievability": ret,
                     "mastered": mastered})
+    return out
+
+
+@router.get("/api/v1/hebrew/top-words")
+def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 0,
+                          with_status: bool = False, user_id: str = "default",
+                          session_token: str = "", authorization: str = Header("")):
+    """500 most common Hebrew words by corpus frequency (gloss + root + SBL translit).
+
+    with_status=1 joins per-word Anki-style SRS status (see WORD_MATURE_INTERVAL_DAYS):
+    node_id, mastery, interval_days, due, due_in_days, retrievability, mastered
+    (mastered = interval >= 21d, i.e. Anki "mature"). Unstudied words report
+    interval 0 / mastered False. Powers the 50-at-once Word Tiles screen.
+    """
+    words = [w for w in _top500().get("words", []) if w.get("frequency", 0) >= min_frequency]
+    total = len(words)
+    page = words[offset:offset + limit]
+    if not with_status:
+        return {"ok": True, "data": {"words": page, "total": total}}
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {
+            "words": [{**w, "node_id": "", "mastery": 0.0, "interval_days": 0,
+                       "due": None, "due_in_days": 0.0, "retrievability": 1.0,
+                       "mastered": False} for w in page], "total": total}}
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once()
+    # Perf: resolve all node_ids through the cached hebrew map (no per-word
+    # LIKE scans); status itself is one shared batched helper.
+    node_map = hebrew_node_map(conn)
+    node_ids = []
+    for w in page:
+        nid = ""
+        for key in (w.get("hebrew"), w.get("bare")):
+            if key and key in node_map:
+                nid = node_map[key]
+                break
+        if not nid:
+            hebrew = w.get("hebrew") or w.get("bare") or ""
+            nid = resolve_hebrew_node(conn, hebrew) if hebrew else ""
+        node_ids.append(nid)
+    out = _attach_srs_status(conn, user_id, page, node_ids)
     conn.close()
     return {"ok": True, "data": {"words": out, "total": total,
                                  "mature_interval_days": WORD_MATURE_INTERVAL_DAYS}}
 
 
 @router.get("/api/v1/hebrew/top-roots")
-def get_hebrew_top_roots(limit: int = 50, offset: int = 0):
-    """500 most common Hebrew roots by summed lemma frequency, with examples."""
+def get_hebrew_top_roots(limit: int = 50, offset: int = 0,
+                          with_status: bool = False, user_id: str = "default",
+                          session_token: str = "", authorization: str = Header("")):
+    """500 most common Hebrew roots by summed lemma frequency, with examples.
+
+    with_status=1 joins the same Anki-style SRS status as top-words, resolved
+    through `root_<root>` nodes (hand-written + top-100 gap-fill seeds).
+    Roots without nodes report interval 0 / mastered False.
+    """
     roots = _top500().get("roots", [])
-    return {"ok": True, "data": {"roots": roots[offset:offset + limit], "total": len(roots)}}
+    page = roots[offset:offset + limit]
+    if not with_status:
+        return {"ok": True, "data": {"roots": page, "total": len(roots)}}
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {
+            "roots": [{**r, "node_id": "", "mastery": 0.0, "interval_days": 0,
+                       "due": None, "due_in_days": 0.0, "retrievability": 1.0,
+                       "mastered": False} for r in page], "total": len(roots)}}
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once()
+    # Root ids are deterministic (`root_<root>`): one exact PK lookup for the
+    # page, no LIKE scans at all.
+    want = [f"root_{(r.get('root') or '').strip()}" for r in page]
+    have = {row[0] for row in conn.execute(
+        f"SELECT id FROM hebrew_nodes WHERE id IN ({','.join('?' for _ in want)})",
+        want).fetchall()} if want else set()
+    node_ids = [w if w in have else "" for w in want]
+    out = _attach_srs_status(conn, user_id, page, node_ids)
+    conn.close()
+    return {"ok": True, "data": {"roots": out, "total": len(roots),
+                                 "mature_interval_days": WORD_MATURE_INTERVAL_DAYS}}

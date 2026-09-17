@@ -51,7 +51,7 @@ export function baseCost(i) {
   return Math.floor(10 * Math.pow(4.2, i / 3))
 }
 
-/** Cost of next generator given owned count. Cookie 1.15 law × difficulty × sages. */
+/** Cost of next generator given owned count. Cookie 1.15 law × difficulty × watchmen. */
 export function generatorCost(i, owned, diff = null, costMult = 1) {
   const { costMult: diffMult } = difficultyScalars(diff || {})
   return Math.max(1, Math.ceil(baseCost(i) * Math.pow(1.15, owned) * diffMult * costMult))
@@ -126,7 +126,7 @@ export function statePerSecond(state, mastery = {}, gramMult = 1) {
     state.letterUpgrades || {}, state.perm || {}, availableSparks(state),
     state.masteredWords || [], matureRootCount(state),
   ) * figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state) * gramMult
-    * sageEffects(state).global
+    * watchEffects(state).global
 }
 
 /**
@@ -145,7 +145,7 @@ export function letterRate(state = {}, mastery = {}, i = 0, gramMult = 1) {
     * synergyMultiplier(state.owned || {}, mastery, i)
     * letterWordMultiplier(i, state.masteredWords || [], mastery)
     * readingMult * global * sparkBonus(availableSparks(state)) * tail * gramMult
-    * sageEffects(state).global
+    * watchEffects(state).global
 }
 
 /** Per mature root: +5% to the word term (roots bootstrap vocabulary). */
@@ -298,7 +298,7 @@ export function defaultIdleState() {
     quizDeck: null, // Anki-style daily quiz set {day, newLetters, due, seen, stats} — built on first quiz
     vineyard: { level: 0, vines: [0, 0, 0] }, // 3 parallel 4h tending timers (garden analogue)
     garden: { plots: [null, null, null, null, null, null] }, // Root Garden: 6 plots of growing roots
-    sanhedrin: { seats: {}, cooldowns: {} }, // Seated sages (Honor/Wisdom/Learning) + swap cooldowns
+    watchmen: { seats: {}, cooldowns: {} }, // Seated watchmen (Honor/Wisdom/Learning) + swap cooldowns
     shuk: { holdings: {}, debtUntil: 0, loanCooldownUntil: 0 }, // market stalls + credit state
     daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
@@ -342,10 +342,10 @@ export function saveIdleState(s) {
 /** Apply one correct answer: tap + streak + Kavod. Returns {gained, crit, kavod}. */
 export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const streak = (state.streak || 0) + 1
-  const fx = sageEffects(state)
+  const fx = watchEffects(state)
   const { value: raw, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
   // Shemittah sprint: every tap counts double. Exile: Kavod doubles instead.
-  // Seated sages tune both (Hillel/Shammai/Elijah taps, Akiva Kavod).
+  // Seated watchmen tune both (Hillel/Shammai/Elijah taps, Akiva Kavod).
   const value = raw * shemittahTapMult(state) * fx.tap
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
@@ -1772,20 +1772,20 @@ export function harvestGardenRoot(state, i, perSec, now = Date.now(), rng = Math
   return { granted, kavod, mutated, neighbor: mutated ? neighbor : null, root: plot.root }
 }
 
-// ── Sanhedrin: the second minigame (Cookie-Clicker Pantheon, sages) ────
-// Seat three sages out of six. Seats scale the effect (Honor ×1.0, Wisdom
-// ×0.6, Learning ×0.3); every sage has a gift and a price, so the loadout
+// ── Watch: the second minigame (Cookie-Clicker Pantheon, watchmen) ────
+// Seat three watchmen out of six. Seats scale the effect (Honor ×1.0, Wisdom
+// ×0.6, Learning ×0.3); every watchman has a gift and a price, so the loadout
 // is buildcraft, not a checklist. Swapping a seat starts a 4h cooldown on
-// that seat. Effects flow through sageEffects(state) into production, costs,
+// that seat. Effects flow through watchEffects(state) into production, costs,
 // taps, Kavod, offline and Shemen — one choke point, no signature sprawl.
 
-export const SANHEDRIN_SEATS = [
+export const WATCH_SEATS = [
   { id: 'honor', name: 'Seat of Honor', mult: 1.0 },
   { id: 'wisdom', name: 'Seat of Wisdom', mult: 0.6 },
   { id: 'learning', name: 'Seat of Learning', mult: 0.3 },
 ]
-export const SAGE_SWAP_COOLDOWN_MS = 4 * 3600 * 1000
-export const SAGES = [
+export const WATCH_SWAP_COOLDOWN_MS = 4 * 3600 * 1000
+export const WATCHMEN = [
   { id: 'rashi', name: 'Rashi', icon: '📖', desc: '+10% Ohr · +10% letter costs', fx: { global: 0.10, cost: 0.10 } },
   { id: 'hillel', name: 'Hillel', icon: '🕊️', desc: '+15% tap value · −5% Ohr', fx: { tap: 0.15, global: -0.05 } },
   { id: 'shammai', name: 'Shammai', icon: '⚖️', desc: '−10% letter costs · −5% tap value', fx: { cost: -0.10, tap: -0.05 } },
@@ -1794,36 +1794,39 @@ export const SAGES = [
   { id: 'elijah', name: 'Elijah', icon: '⚡', desc: '+15% offline earnings · −5% tap value', fx: { offline: 0.15, tap: -0.05 } },
 ]
 
-/** Combined sage multipliers {global, cost, tap, kavod, offline, milk} (all 1 when empty). */
-export function sageEffects(state) {
+/** Combined watch multipliers {global, cost, tap, kavod, offline, milk} (all 1 when empty). */
+export function watchEffects(state) {
   const out = { global: 1, cost: 1, tap: 1, kavod: 1, offline: 1, milk: 1 }
-  const seats = state.sanhedrin?.seats || {}
-  for (const seat of SANHEDRIN_SEATS) {
-    const sage = SAGES.find(s => s.id === seats[seat.id])
-    if (!sage) continue
-    for (const [k, v] of Object.entries(sage.fx)) {
+  // Backward compat: saves from the Sanhedrin era keep `sanhedrin`.
+  const seats = state.watchmen?.seats || state.sanhedrin?.seats || {}
+  for (const seat of WATCH_SEATS) {
+    const watch = WATCHMEN.find(s => s.id === seats[seat.id])
+    if (!watch) continue
+    for (const [k, v] of Object.entries(watch.fx)) {
       if (out[k] !== undefined) out[k] *= (1 + v * seat.mult)
     }
   }
   return out
 }
 
-/** Seat a sage (or replace). One sage sits once; the seat cools 4h. False when locked/cooling. */
-export function swapSage(state, seatId, sageId, now = Date.now()) {
-  const seat = SANHEDRIN_SEATS.find(s => s.id === seatId)
-  if (!seat || !SAGES.some(s => s.id === sageId)) return false
-  const cd = state.sanhedrin?.cooldowns || {}
+/** Seat a watchman (or replace). One watchman sits once; the seat cools 4h. False when locked/cooling. */
+export function seatWatchman(state, seatId, watchId, now = Date.now()) {
+  const seat = WATCH_SEATS.find(s => s.id === seatId)
+  if (!seat || !WATCHMEN.some(s => s.id === watchId)) return false
+  const prev = state.watchmen || state.sanhedrin || {}
+  const cd = prev.cooldowns || {}
   if ((cd[seatId] || 0) > now) return false
-  const seats = { ...(state.sanhedrin?.seats || {}) }
-  for (const k of Object.keys(seats)) if (seats[k] === sageId) delete seats[k]
-  seats[seatId] = sageId
-  state.sanhedrin = { seats, cooldowns: { ...cd, [seatId]: now + SAGE_SWAP_COOLDOWN_MS } }
+  const seats = { ...(prev.seats || {}) }
+  for (const k of Object.keys(seats)) if (seats[k] === watchId) delete seats[k]
+  seats[seatId] = watchId
+  state.watchmen = { seats, cooldowns: { ...cd, [seatId]: now + WATCH_SWAP_COOLDOWN_MS } }
   return true
 }
 
 /** Cooldown ms remaining on a seat (0 = swappable). */
-export function sageCooldownLeft(state, seatId, now = Date.now()) {
-  return Math.max(0, (state.sanhedrin?.cooldowns?.[seatId] || 0) - now)
+export function watchCooldownLeft(state, seatId, now = Date.now()) {
+  const cd = state.watchmen?.cooldowns || state.sanhedrin?.cooldowns || {}
+  return Math.max(0, (cd[seatId] || 0) - now)
 }
 
 // ── Shuk: the third minigame (Cookie-Clicker Stock Market, stalls) ─────
@@ -1963,7 +1966,7 @@ export function achievementsEarned(state) {
 }
 
 export function shemenMultiplier(state) {
-  return (1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT) * sageEffects(state).milk
+  return (1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT) * watchEffects(state).milk
 }
 
 /**
@@ -2557,21 +2560,21 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const allLetters = Object.fromEntries(LETTERS.map((_, k) => [k, 1]))
   a(readableRoots(allLetters, ['אמר', { root: 'דבר' }]).length === 2, 'all readable when all letters owned')
   a(readableRoots({}, ['אמר']).length === 0, 'nothing readable with no letters')
-  // Sanhedrin sages
+  // Watchmen
   const se = defaultIdleState()
-  const fx0 = sageEffects(se)
-  a(Object.values(fx0).every(v => v === 1), 'empty sanhedrin is neutral')
-  a(swapSage(se, 'honor', 'rashi', 1000) === true, 'seat Rashi with honor')
-  a(Math.abs(sageEffects(se).global - 1.10) < 1e-9, 'honor seat ×1.0: +10% Ohr')
-  a(swapSage(se, 'honor', 'hillel', 2000) === false, 'cooling seat refuses')
-  a(swapSage(se, 'wisdom', 'hillel', 2000) === true, 'second seat takes Hillel')
-  a(Math.abs(sageEffects(se).tap - (1 + 0.15 * 0.6)) < 1e-9, 'wisdom seat ×0.6: +9% tap')
-  a(swapSage(se, 'learning', 'hillel', 2000) === true && !se.sanhedrin.seats.wisdom, 'one sage sits once (moves seats)')
-  a(swapSage(se, 'nope', 'rashi', 99999999) === false && swapSage(se, 'honor', 'bogus', 99999999) === false, 'bad seat/sage refuse')
-  a(sageCooldownLeft(se, 'honor', 1000 + SAGE_SWAP_COOLDOWN_MS + 1) === 0, 'cooldown expires after 4h')
+  const fx0 = watchEffects(se)
+  a(Object.values(fx0).every(v => v === 1), 'empty watchmen is neutral')
+  a(seatWatchman(se, 'honor', 'rashi', 1000) === true, 'seat Rashi with honor')
+  a(Math.abs(watchEffects(se).global - 1.10) < 1e-9, 'honor seat ×1.0: +10% Ohr')
+  a(seatWatchman(se, 'honor', 'hillel', 2000) === false, 'cooling seat refuses')
+  a(seatWatchman(se, 'wisdom', 'hillel', 2000) === true, 'second seat takes Hillel')
+  a(Math.abs(watchEffects(se).tap - (1 + 0.15 * 0.6)) < 1e-9, 'wisdom seat ×0.6: +9% tap')
+  a(seatWatchman(se, 'learning', 'hillel', 2000) === true && !se.watchmen.seats.wisdom, 'one watchman sits once (moves seats)')
+  a(seatWatchman(se, 'nope', 'rashi', 99999999) === false && seatWatchman(se, 'honor', 'bogus', 99999999) === false, 'bad seat/watch refuse')
+  a(watchCooldownLeft(se, 'honor', 1000 + WATCH_SWAP_COOLDOWN_MS + 1) === 0, 'cooldown expires after 4h')
   const scx = defaultIdleState()
   scx.owned = { 0: 10 }
-  swapSage(scx, 'honor', 'akiva', 0)
+  seatWatchman(scx, 'honor', 'akiva', 0)
   const before = scx.kavod || 0
   applyCorrectAnswer(scx, 1, () => 0.99)
   a(scx.kavod - before >= 1, 'Akiva Kavod bonus flows through answers')

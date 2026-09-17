@@ -156,8 +156,9 @@ export default function WordTilesView({ initialWords = [], kind = 'words', onClo
         setLoading(false)
         return
       }
+      const q = await userSuffix()
       const [rr, tw] = await Promise.all([
-        fetch(`/api/v1/hebrew/top-roots?limit=${DECK}&offset=${off}`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`/api/v1/hebrew/top-roots?limit=${DECK}&offset=${off}&with_status=1${q}`, { headers: authHeaders() }).then(r => r.json()),
         topLite.length ? null : fetch('/api/v1/hebrew/top-words?limit=500', { headers: authHeaders() }).then(r => r.json()),
       ])
       if (tw?.ok) setTopLite(tw.data.words || [])
@@ -221,15 +222,25 @@ export default function WordTilesView({ initialWords = [], kind = 'words', onClo
       }
       const rep = aux.reps[r.root] || { k: 0, s: 0 }
       const net = rep.k - rep.s
+      // FSRS status wins when the root has a node (113 seeded); example +
+      // rep signals cover the rest.
+      const fsrs = r.node_id ? {
+        mastered: isWordMastered(r),
+        known: isWordMastered(r) || (r.mastery || 0) > 0,
+      } : null
       return {
         key: `root-${r.rank}`,
         hebrew: r.root,
         gloss: r.gloss,
+        node_id: r.node_id || '',
+        interval_days: r.interval_days || 0,
+        due_in_days: r.due_in_days,
+        mastery: r.mastery || 0,
         examples,
         hits,
         reps: net,
-        known: hits >= 2,
-        mature: net >= ROOT_MATURE_REPS,
+        known: fsrs ? fsrs.known : hits >= 2,
+        mature: fsrs ? fsrs.mastered : net >= ROOT_MATURE_REPS,
       }
     })
   }, [isRoots, roots, aux])
@@ -321,12 +332,33 @@ export default function WordTilesView({ initialWords = [], kind = 'words', onClo
     if (!tile || grading) return
     setGrading(true)
     const t0 = Date.now()
+    // Real FSRS when the root has a node (Know=Good, Skip=Again); the rep
+    // keeps local synergy flowing either way.
+    let data = null
+    try {
+      const token = currentSessionToken()
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      const body = tile.node_id
+        ? { node_id: tile.node_id, rating: known ? 3 : 1, session_token: token || undefined }
+        : { hebrew: tile.hebrew, rating: known ? 3 : 1, session_token: token || undefined }
+      const r = await fetch('/api/v1/hebrew/fsrs/review', { method: 'POST', headers, body: JSON.stringify(body) })
+      const d = await r.json().catch(() => ({}))
+      data = d.data || null
+    } catch {}
     try {
       const s = loadIdleState()
       recordRootStudy(s, tile.hebrew, known)
       saveIdleState(s)
     } catch {}
     reportIdleAnswer(known, Date.now() - t0, { source: 'root-tiles', hebrew: tile.hebrew })
+    if (data) {
+      const interval_days = data.interval ?? tile.interval_days ?? 0
+      setRoots(prev => prev.map(rr =>
+        rr.root === tile.hebrew
+          ? { ...rr, node_id: data.node_id || rr.node_id, mastery: data.mastery ?? rr.mastery,
+              interval_days, due: data.due || rr.due, mastered: interval_days >= WORD_MATURE_INTERVAL_DAYS }
+          : rr))
+    }
     setAuxTick(t => t + 1)
     setRevealed(false)
     setSelected(null)
@@ -372,7 +404,7 @@ export default function WordTilesView({ initialWords = [], kind = 'words', onClo
       </div>
       {isRoots ? (
         <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-3">
-          Deck {deckIdx + 1}/{deckCount} · {stats.mature}/{stats.total} mature here · {stats.known} readable · Mature = {ROOT_MATURE_REPS} net knows.
+          Deck {deckIdx + 1}/{deckCount} · {stats.mature}/{stats.total} mature here · {stats.known} readable · Noded roots schedule FSRS like words (✓ = 21+d); the rest mature at {ROOT_MATURE_REPS} net knows.
           Mature roots give +5% word income each (word↔root synergy).
         </p>
       ) : (
@@ -398,12 +430,14 @@ export default function WordTilesView({ initialWords = [], kind = 'words', onClo
         {(isRoots ? orderedRoots : ordered).map(w => {
           const key = isRoots ? w.key : (w.rank ?? w.hebrew)
           const active = selected === key
+          const style = !isRoots ? tileStyle(w) : (w.node_id ? tileStyle(w) : rootTileStyle(w))
+          const status = !isRoots ? statusLine(w) : (w.node_id ? statusLine(w) : rootStatusLine(w))
           return (
             <button key={key} onClick={() => { setSelected(key); setRevealed(false) }}
-              className={`p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer hover:ring-2 hover:ring-indigo-400 ${(isRoots ? rootTileStyle(w) : tileStyle(w))} ${active ? 'ring-2 ring-indigo-500' : ''}`}>
+              className={`p-2.5 rounded-xl border-2 text-center transition-all cursor-pointer hover:ring-2 hover:ring-indigo-400 ${style} ${active ? 'ring-2 ring-indigo-500' : ''}`}>
               <div className="text-xl font-serif leading-snug" dir="rtl">{w.hebrew}</div>
               <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{w.gloss || '—'}</div>
-              <div className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">{isRoots ? rootStatusLine(w) : statusLine(w)}</div>
+              <div className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-0.5">{status}</div>
             </button>
           )
         })}
