@@ -93,15 +93,16 @@ export default function HebrewModePicker({ mode, onMode, activeGameId, onGame })
         ))}
       </div>
 
-      {/* Game shelf — only in game mode */}
+      {/* Game shelf — only in game mode. One screen on phones: with a single
+          playable game the shelf is desktop-only (switching is moot). */}
       {mode === 'game' && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+        <div className="mt-2 hidden sm:grid gap-2 sm:grid-cols-3">
           {HEBREW_GAMES.map(g => {
             const locked = !g.available || !g.Component
             const active = activeGameId === g.id && !locked
             return (
               <button key={g.id} disabled={locked} onClick={() => setGame(g.id)}
-                className={`min-h-[64px] p-2.5 rounded-xl border-2 text-left transition-colors ${locked
+                className={`${locked ? 'hidden sm:block ' : ''}min-h-[64px] p-2.5 rounded-xl border-2 text-left transition-colors ${locked
                   ? 'border-dashed border-neutral-200 dark:border-neutral-700 opacity-60 cursor-not-allowed'
                   : active
                     ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 cursor-pointer'

@@ -49,7 +49,6 @@ export const DEFAULT_HOTKEYS = {
   togglePlaces: 'Shift+Ctrl+0',
   toggleIsaiah: 'Ctrl+I',
   goUp: 'ArrowUp',
-  goDown: 'ArrowDown',
 }
 
 const SettingsContext = createContext(null)

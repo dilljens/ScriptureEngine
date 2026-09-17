@@ -11,7 +11,6 @@ const HOTKEY_LIST = [
   { action: 'fontDown', label: 'Decrease font size' },
   { action: 'newTab', label: 'New tab' },
   { action: 'goUp', label: 'Zoom out (chapter→book→work)' },
-  { action: 'goDown', label: 'Zoom in (work→book→chapter)' },
   { action: 'prevChapter', label: 'Previous chapter' },
   { action: 'nextChapter', label: 'Next chapter' },
   { action: 'toggleSynonymous', label: 'Toggle: Synonymous' },

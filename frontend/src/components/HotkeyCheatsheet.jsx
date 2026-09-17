@@ -1,7 +1,7 @@
 import React from 'react'
 
 const GROUPS = [
-  { title: 'Navigation', actions: ['goUp', 'goDown', 'prevChapter', 'nextChapter', 'historyBack', 'historyForward'] },
+  { title: 'Navigation', actions: ['goUp', 'prevChapter', 'nextChapter', 'historyBack', 'historyForward'] },
   { title: 'Tabs', actions: ['newTab'] },
   { title: 'Display', actions: ['darkMode', 'fontUp', 'fontDown'] },
   { title: 'Tools', actions: ['search', 'command', 'chat', 'settingsPanel'] },
@@ -12,7 +12,7 @@ const GROUPS = [
 ]
 
 const LABELS = {
-  goUp: 'Zoom out', goDown: 'Zoom in', prevChapter: 'Prev chapter', nextChapter: 'Next chapter',
+  goUp: 'Zoom out', prevChapter: 'Prev chapter', nextChapter: 'Next chapter',
   historyBack: 'History back', historyForward: 'History forward', newTab: 'New tab',
   darkMode: 'Toggle dark mode', fontUp: 'Increase font', fontDown: 'Decrease font',
   search: 'Search scriptures', command: 'Command palette', chat: 'Chat panel',

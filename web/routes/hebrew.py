@@ -592,6 +592,13 @@ def _ensure_all_hebrew_tables(conn):
             UNIQUE(user_id, connection_key)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_idle_state (
+            user_id TEXT PRIMARY KEY,
+            state_json TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
 
 
 def _ensure_hot_indexes(conn):
@@ -2164,7 +2171,16 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         FROM hebrew_practice_items
         WHERE node_id=?
     """, (node_id,)).fetchall()
-    for item in items:
+    # One question per answer: a node must never quiz the same answer twice
+    # (letter nodes historically seeded 4+ same-answer variants). Keep the
+    # easiest item per answer so H→EN + EN→HE pairs survive.
+    seen_answers = set()
+    for item in sorted(items, key=lambda r: r["difficulty"] or 0.5):
+        ca = (item["correct_answer"] or "").strip()
+        if ca and ca in seen_answers:
+            continue
+        if ca:
+            seen_answers.add(ca)
         q = _practice_to_quiz_question(item, node)
         q["_correct"] = item["correct_answer"]
         questions.append(q)
@@ -3092,6 +3108,67 @@ def get_hebrew_bootstrap(user_id: str = "default", session_token: str = "",
         "prefs": prf["data"] if prf.get("ok") else None,
         "queue": que["data"] if que.get("ok") else None,
     }}
+
+
+# ── Idle-game cross-device sync ──────────────────────────────────────────
+# The idle workshop (Ohr, golems, Kavod, upgrades, minigames) lives in
+# browser localStorage; mastery/FSRS already sync via user_id. These two
+# endpoints make localStorage roam: last-write-wins by server updated_at.
+# Pull on mount adopts the server copy only when strictly newer than the
+# local lastSeen; pushes stamp server time. Two devices racing: last push
+# wins (documented v1, no merge).
+
+IDLE_STATE_MAX_BYTES = 500 * 1024
+
+
+@router.get("/api/v1/hebrew/idle-state")
+def get_hebrew_idle_state(user_id: str = "default", session_token: str = "",
+                          authorization: str = Header("")):
+    """Fetch this user's synced idle workshop (or {state: null})."""
+    user_id = _require_hebrew_user(user_id, session_token or _session_token_from_header(authorization))
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"state": None, "updated_at": None}}
+    conn = sqlite3.connect(str(MEM_DB))
+    ensure_hebrew_schema_once(conn)
+    row = conn.execute(
+        "SELECT state_json, updated_at FROM hebrew_idle_state WHERE user_id=?",
+        (user_id,)).fetchone()
+    conn.close()
+    if not row:
+        return {"ok": True, "data": {"state": None, "updated_at": None}}
+    try:
+        state = json.loads(row[0])
+    except (TypeError, json.JSONDecodeError):
+        state = None
+    return {"ok": True, "data": {"state": state, "updated_at": row[1]}}
+
+
+@router.post("/api/v1/hebrew/idle-state")
+def post_hebrew_idle_state(body: dict, authorization: str = Header("")):
+    """Store this user's idle workshop (last-write-wins)."""
+    session_token = _session_token_from_header(authorization) or (body or {}).get("session_token", "")
+    user_id = _require_hebrew_user((body or {}).get("user_id", "default"), session_token)
+    state = (body or {}).get("state")
+    if not isinstance(state, dict):
+        raise HTTPException(400, "state must be an object")
+    raw = json.dumps(state, ensure_ascii=False)
+    if len(raw.encode("utf-8")) > IDLE_STATE_MAX_BYTES:
+        raise HTTPException(413, "idle state too large")
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    ensure_hebrew_schema_once(conn)
+    conn.execute(
+        """INSERT INTO hebrew_idle_state (user_id, state_json, updated_at)
+           VALUES (?, ?, datetime('now'))
+           ON CONFLICT(user_id) DO UPDATE SET
+             state_json=excluded.state_json, updated_at=datetime('now')""",
+        (user_id, raw))
+    conn.commit()
+    row = conn.execute(
+        "SELECT updated_at FROM hebrew_idle_state WHERE user_id=?", (user_id,)).fetchone()
+    conn.close()
+    return {"ok": True, "data": {"updated_at": row[0] if row else None}}
 
 
 def _ensure_analytics_table(conn):

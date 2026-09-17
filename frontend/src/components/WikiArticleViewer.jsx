@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { getWikiArticle, getWikiBrowse } from '../api'
 import { createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
 // Perf (Track C1): cytoscape rides its own chunk — fetched only when the
 // Connection Graph section is expanded, never on initial load.

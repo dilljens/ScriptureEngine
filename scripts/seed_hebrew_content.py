@@ -849,40 +849,9 @@ def build_practice_items(nid, title, category, glyph="", desc=""):
             "difficulty": 0.3,
             "explanation": f"The letter shown is {glyph}. It belongs to the Hebrew aleph-bet."
         })
-        # Sound identification drill — stimulus is the sound description, not the answer
-        sound_desc = desc if desc and correct.lower() not in desc.lower() else glyph
-        items.append({
-            "question_type": "multiple_choice",
-            "question_text": f"Which Hebrew letter makes this sound: {sound_desc}?",
-            "options": json.dumps(opts),
-            "correct_answer": correct,
-            "difficulty": 0.4,
-            "explanation": f"The letter {title} makes this sound."
-        })
-        # Typing drill (production) — show glyph, ask for name (answerable: type "Aleph")
-        items.append({
-            "question_type": "typing",
-            "question_text": f"Type the name of this Hebrew letter: {glyph}",
-            "correct_answer": correct,
-            "difficulty": 0.4,
-            "explanation": f"The Hebrew letter {glyph} is named {correct}."
-        })
-        # Transliteration (Hebrew→English) — stimulus is the glyph
-        items.append({
-            "question_type": "transliteration",
-            "question_text": f"How is this letter transliterated: {glyph}?",
-            "correct_answer": correct,
-            "difficulty": 0.3,
-            "explanation": f"The letter {glyph} is transliterated as '{correct}'."
-        })
-        # Reverse: glyph → name (free recall)
-        items.append({
-            "question_type": "recall",
-            "question_text": f"What Hebrew letter is this: {glyph}?",
-            "correct_answer": correct,
-            "difficulty": 0.5,
-            "explanation": f"The Hebrew letter {glyph} is named {title}."
-        })
+        # EN→HE production lives in seed_hebrew_production.py ("Type the Hebrew
+        # letter that makes the … sound", answer = glyph). One H→EN item here +
+        # one EN→HE item there = the two letter questions.
 
     elif category == "vowel":
         correct = title.split("(")[0].strip()

@@ -6,7 +6,7 @@ import {
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
   LETTER_UPGRADE_TIERS, availableLetterUpgrades, buyLetterUpgrade, letterMultiplier,
   KAVOD_UPGRADES, buyPerm, hasPerm, synergyMultiplier, workshopSynergy, letterRate,
-  loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer,
+  loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer, applyTap,
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
@@ -17,7 +17,9 @@ import {
   plantVineyard, harvestVine, vineReady, vineRemainingSec, vineyardMultiplier,
   VINE_COUNT, VINE_MAX_LEVEL, VINE_RIPEN_HOURS, vowReleased, VOW_MAX_HOURS,
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
+  defaultIdleState,
 } from '../lib/idle-game'
+import { pullIdleState, pushIdleState, beaconIdleState, serverIsNewer } from '../lib/idle-sync'
 import { logEvent, exportLog } from '../lib/analytics'
 import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast, scribeUnlocked, scribeCost, hireScribe, autoBuyTick, scribeCount } from '../lib/idle-game'
 import FeastModal from './FeastModal'
@@ -103,6 +105,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [gains, setGains] = useState([]) // stacked tap floaters — rapid answers each pop, none dropped
   const [buyHint, setBuyHint] = useState(null) // {i, need} — unaffordable click feedback
   const [answerPulse, setAnswerPulse] = useState(null) // {n, correct} — golem reaction
+  const [tapFloats, setTapFloats] = useState([]) // manual golem taps — {id, x, y, value, crit}
   // Persist UI prefs — the tab stays exactly as you left it.
   useEffect(() => {
     try {
@@ -203,9 +206,38 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     const flush = () => {
       if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
       try { saveIdleState(stateRef.current) } catch {}
+      try { beaconIdleState(stateRef.current) } catch {}
     }
     window.addEventListener('pagehide', flush)
     return () => window.removeEventListener('pagehide', flush)
+  }, [])
+
+  // Cross-device sync: pull on mount (server wins only when strictly newer),
+  // push every 30s when logged in. Logged-out play stays local-only.
+  const [sync, setSync] = useState('off')
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const remote = await pullIdleState()
+      if (cancelled) return
+      if (!currentSessionToken()) { setSync('off'); return }
+      if (remote && serverIsNewer(remote.updated_at, (loadIdleState().lastSeen || 0))) {
+        const merged = { ...defaultIdleState(), ...remote.state }
+        commit(merged)
+        try { saveIdleState(merged) } catch {}
+      }
+      setSync('ok')
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    const t = setInterval(async () => {
+      if (!currentSessionToken()) { setSync('off'); return }
+      const res = await pushIdleState(stateRef.current)
+      setSync(res ? 'ok' : 'err')
+    }, 30000)
+    return () => clearInterval(t)
   }, [])
 
   const diff = state.difficulty || { bias: 0, recent: [] }
@@ -330,6 +362,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     window.addEventListener('hebrew-idle-answer', handler)
     return () => window.removeEventListener('hebrew-idle-answer', handler)
   }, [mastery, onEarn, saveSoon, gramMult])
+
+  // Manual golem tap: small Ohr (no Kavod/streak) + floater exactly at the tap point.
+  const doCanvasTap = useCallback((x, y) => {
+    const s = stateRef.current
+    const next = { ...s }
+    const rate = statePerSecond(next, mastery, gramMult)
+    const r = applyTap(next, rate)
+    saveSoon(next)
+    commit(next)
+    const id = Date.now() + Math.random()
+    setTapFloats(f => [...f.slice(-9), { id, x, y, value: r.gained, crit: r.crit }])
+    setTimeout(() => setTapFloats(f => f.filter(t => t.id !== id)), 1100)
+    setAnswerPulse({ n: Date.now(), correct: true })
+  }, [mastery, gramMult, saveSoon, commit])
 
   // Mount: plant the first fig AND settle offline earnings in ONE commit.
   // (Two separate commits here would let the later value-update clobber the
@@ -733,7 +779,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const vowHoursLeft = state.exile?.endsAt ? Math.max(0, Math.ceil((state.exile.endsAt - Date.now()) / 3600000)) : VOW_MAX_HOURS
 
   return (
-    <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 relative flex flex-col max-h-[100dvh] overflow-hidden">
+    <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 relative flex flex-col overflow-hidden max-h-[calc(100vh-6.5rem)] max-h-[calc(100dvh-6.5rem)] sm:max-h-[100dvh] sticky top-10 z-10 sm:static">
       <style>{`
         @keyframes idle-rise { 0% { opacity: 0; transform: translateY(6px) scale(0.9); } 15% { opacity: 1; transform: translateY(0) scale(1.05); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
         .idle-gain { animation: idle-rise 1.4s ease-out forwards; }
@@ -831,12 +877,19 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           ) : null}
         </div>
         <span className="hidden sm:flex flex-1" />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => setState(s => { const n = { ...s, muted: !s.muted }; saveIdleState(n); return n })}
             className="min-h-[44px] min-w-[44px] px-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 cursor-pointer"
             title="Toggle letter audio">
             {state.muted ? '🔇' : '🔊'}
           </button>
+          {sync !== 'off' && (
+            <span title={sync === 'ok' ? 'Workshop syncs to your account — same progress on phone & computer' : sync === 'busy' ? 'Syncing…' : 'Sync failed — playing local (progress stays on this device)'}
+              className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border flex items-center justify-center text-sm ${sync === 'err' ? 'border-red-300 text-red-500' : 'border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}
+              aria-live="polite">
+              {sync === 'busy' ? '☁️···' : sync === 'err' ? '☁️!' : '☁️'}
+            </span>
+          )}
           <button onClick={() => setActiveTab('letters')} data-testid="shop-toggle" aria-label="Letter shop"
             className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${totalOwned(state) === 0 ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
             Letters ▼
@@ -865,9 +918,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       </div>
 
-      {/* The horde — letters become visible golems that work for you */}
+      {/* The horde — letters become visible golems that work for you.
+          Tap them for a little Ohr; correct answers earn the big taps + Kavod. */}
       {showGolems && (
-        <GolemCanvas owned={state.owned} mastery={mastery} prestigeTick={prestigeTick} answerPulse={answerPulse} />
+        <div className="relative">
+          <GolemCanvas owned={state.owned} mastery={mastery} prestigeTick={prestigeTick} answerPulse={answerPulse} onTap={doCanvasTap} />
+          {tapFloats.map(t => (
+            <span key={t.id}
+              className={`idle-gain pointer-events-none absolute text-sm font-bold tabular-nums whitespace-nowrap ${t.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}
+              style={{ left: t.x, top: t.y, transform: 'translate(-50%, -100%)' }}
+              aria-hidden="true">
+              +{t.value.toFixed(1)}{t.crit ? ' ⚡' : ''}
+            </span>
+          ))}
+        </div>
       )}
 
       {/* The active vow */}
@@ -896,7 +960,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       </details>
 
       {/* Next goals — always answers "what am I working toward?" */}
-      <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+      <div className="mt-2 grid gap-1.5 grid-cols-2">
         {goals.gen && (
           <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
             <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
@@ -918,7 +982,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           </div>
         </div>
         {((state.roots || 0) > 0 || sparksTotal > 0) && (
-          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 sm:col-span-2">
+          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 col-span-2">
             <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
               <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {Math.floor(sparkProg.need).toLocaleString()} lifetime Ohr</span>
               <span className="tabular-nums">{Math.round(sparkProg.pct * 100)}%{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''}</span>

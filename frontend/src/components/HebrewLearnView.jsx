@@ -366,28 +366,12 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return () => clearInterval(timer)
   }, [quickMode, timeLeft])
 
-  if (loading) return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="animate-pulse space-y-4">
-        <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3" />
-        <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4" />
-        {[1,2,3,4].map(i => <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-xl" />)}
-      </div>
-    </div>
-  )
-
-  if (error) return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">Failed to load: {error}</div>
-    </div>
-  )
-
-  if (!curriculum) return null
-
-  const { nodes, total, mastered, tested_out, in_progress, locked } = curriculum
   // Perf (Track D2): grouping rebuilt only when nodes/filter change — toast,
   // prefs and queue updates re-render without touching 696 rows (memo below).
   // The 'tracks' pseudo-filter shows the grammar grid, not the lesson list.
+  // NOTE: these hooks must stay ABOVE every early return (rules of hooks) —
+  // they run on `nodes ?? []` while the curriculum is still loading.
+  const nodes = curriculum?.nodes ?? []
   const filtered = useMemo(
     () => (filter === 'all' ? nodes : filter === 'tracks' ? [] : nodes.filter(n => n.category === filter)),
     [nodes, filter])
@@ -407,6 +391,37 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     { id: 'clauses', label: 'Clauses', desc: 'syntax', icon: '⇄' },
     { id: 'nominals', label: 'Nominals', desc: 'nouns + grammar', icon: 'ד' },
   ]
+
+  // One screen on phones: land exactly on the game at open (the sticky
+  // workshop then locks to the viewport — no hunting, no page scroll).
+  // NOTE: hooks must stay ABOVE every early return (rules of hooks).
+  const gameTopRef = useRef(null)
+  useEffect(() => {
+    if (learnMode === 'game' && !showBrowseInGame && typeof window !== 'undefined' && window.innerWidth < 640) {
+      gameTopRef.current?.scrollIntoView({ block: 'start' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  if (loading) return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3" />
+        <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4" />
+        {[1,2,3,4].map(i => <div key={i} className="h-16 bg-neutral-100 dark:bg-neutral-800 rounded-xl" />)}
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">Failed to load: {error}</div>
+    </div>
+  )
+
+  if (!curriculum) return null
+
+  const { total, mastered, tested_out, in_progress, locked } = curriculum
 
   // Passage reader mode
   if (showPassageReader) {
@@ -632,7 +647,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       .sort((a, b) => a.level - b.level || a.mastery - b.mastery)[0]
     const cs = nextLesson ? (CATEGORY_STYLES[nextLesson.category] || {}) : {}
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+      <div ref={gameTopRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-6 scroll-mt-12">
         {toast && (
           <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all animate-slide-down ${
             toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-amber-600 text-white'
@@ -643,13 +658,13 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         <HebrewModePicker mode={learnMode} onMode={setLearnMode} activeGameId={activeGameId} onGame={setActiveGameId} />
         {ActiveGame ? <ActiveGame curriculum={curriculum} /> : null}
 
-        {/* The earn loop: answers are the only tap. Keeps the game self-contained. */}
+        {/* The earn loop: tap golems for a little Ohr, answer for the big taps + Kavod. */}
         <div className="mt-4 p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
           <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
             ⚡ Earn Ohr &amp; 🌟 Kavod
           </div>
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
-            Every correct answer taps Ohr and mints Kavod. Golems mine Ohr passively, but only answering earns the 🌟 that buys Frenzy and Time Warps.
+          <p className="hidden sm:block text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
+            Tap your golems for a little Ohr any time. Every correct answer taps big Ohr and mints Kavod. Golems mine Ohr passively, but only answering earns the 🌟 that buys Frenzy and Time Warps.
           </p>
           <div className="flex flex-wrap gap-2">
             {nextLesson ? (

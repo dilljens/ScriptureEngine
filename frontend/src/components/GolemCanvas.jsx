@@ -18,6 +18,7 @@ import { LETTERS } from '../lib/idle-game'
  *   mastery:    {letterIndex: 0..1}
  *   prestigeTick: number — increments to trigger a crumble/reform flourish
  *   answerPulse: {n, correct} — n changes on each graded answer
+ *   onTap:      (x, y) => void — manual tap, coords relative to the wrapper (px)
  */
 
 const MAX_GOLEMS = 44
@@ -27,7 +28,7 @@ const MAX_MOTES = 26
 const smallScreen = () => typeof window !== 'undefined'
   && window.matchMedia && window.matchMedia('(max-width: 640px)').matches
 
-export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0, answerPulse = null }) {
+export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0, answerPulse = null, onTap = null }) {
   const canvasRef = useRef(null)
   const stateRef = useRef({
     golems: [], motes: [], rings: [], lastPrestige: prestigeTick, crumble: 0,
@@ -275,8 +276,25 @@ export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0
   }, [])
 
   return (
-    <div className="relative mt-2 rounded-lg overflow-hidden border border-amber-200 dark:border-amber-800 bg-gradient-to-b from-amber-100/60 to-amber-50/30 dark:from-neutral-900 dark:to-neutral-800">
-      <canvas ref={canvasRef} className="w-full block" style={{ height: 108 }} aria-hidden="true" />
+    <div
+      className={`relative mt-2 rounded-lg overflow-hidden border border-amber-200 dark:border-amber-800 bg-gradient-to-b from-amber-100/60 to-amber-50/30 dark:from-neutral-900 dark:to-neutral-800 ${onTap ? 'cursor-pointer active:scale-[0.995] select-none' : ''}`}
+      onPointerDown={onTap ? (e) => {
+        const r = e.currentTarget.getBoundingClientRect()
+        onTap(e.clientX - r.left, e.clientY - r.top)
+      } : undefined}
+      role={onTap ? 'button' : undefined}
+      tabIndex={onTap ? 0 : undefined}
+      aria-label={onTap ? 'Tap golems for Ohr' : undefined}
+      title={onTap ? 'Tap for Ohr ✨' : undefined}
+      onKeyDown={onTap ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          const r = e.currentTarget.getBoundingClientRect()
+          onTap(r.width / 2, r.height / 2)
+        }
+      } : undefined}
+    >
+      <canvas ref={canvasRef} className="w-full block h-[76px] sm:h-[108px] pointer-events-none" aria-hidden="true" />
       {Object.keys(owned || {}).length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-[11px] text-neutral-500 dark:text-neutral-400 pointer-events-none text-center px-4">
           Your workshop is empty — inscribe a letter below to raise your first golem 👇

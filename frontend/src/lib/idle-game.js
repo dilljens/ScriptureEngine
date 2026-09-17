@@ -366,6 +366,20 @@ export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   return { gained: value, crit, streak, kavod }
 }
 
+/** Manual golem tap: small Ohr (25% of study-tap value), no Kavod, no streak.
+ *  Taps are the fidget; correct answers are the earn. Returns {gained, crit}. */
+// ponytail: flat 0.25 fraction — tune with playtest data, not more knobs.
+export function applyTap(state, perSec, rng = Math.random) {
+  const streak = state.streak || 0
+  const fx = watchEffects(state)
+  const { value: raw, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
+  const value = Math.max(0.5, raw * 0.25 * shemittahTapMult(state) * fx.tap)
+  state.taps = (state.taps || 0) + 1
+  state.ohr += value
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + value
+  return { gained: value, crit }
+}
+
 /**
  * Apply a wrong answer. Streaks break — but once a day, a streak of 10+
  * bends instead: grace keeps half (Duolingo-freeze analogue). Milestones are
@@ -2286,6 +2300,9 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(cr2.kavod === 3, 'streak 10 earns 1 + 2 = 3 Kavod')
   const critR = applyCorrectAnswer(defaultIdleState(), 0, () => 0.0)
   a(critR.crit && critR.kavod === 4, 'crit earns 1 + 3 = 4 Kavod')
+  const ts = defaultIdleState()
+  const tr = applyTap(ts, 0, () => 0.99)
+  a(!tr.crit && ts.kavod === 0 && ts.streak === 0 && ts.ohr > 0, 'tap earns Ohr only, no Kavod/streak')
   const fs = defaultIdleState()
   a(buyFrenzy(fs) === false, 'frenzy refused when broke')
   fs.kavod = 50

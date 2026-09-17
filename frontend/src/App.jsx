@@ -11,7 +11,7 @@ import SearchBar from './components/SearchBar'
 import './fonts.css'
 import { ToggleProvider, LayersPopover, useToggles, TOGGLE_DEFS } from './components/ToggleProvider'
 import {
-  ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronUp,
   ChatIcon, GridIcon, SunIcon, MoonIcon,
   GearIcon, CommandIcon, ClockIcon,
   TextSmallIcon, TextLargeIcon,
@@ -50,7 +50,7 @@ import useAgentControl from './useAgentControl'
 function AppInner() {
   const {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
-    viewLevel, viewUp, viewDown, isChapterView, isLibraryView,
+    viewLevel, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToVerse, goToBook, goToWork, openChatTab,
     moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab, openArticlesTab,
@@ -376,46 +376,6 @@ const [showAssessment, setShowAssessment] = useState(false)
     }
   }, [currentTab?.id, viewLevel, viewRef, book, nav, bookData, updateTab, isDc, collection, studyWeek, setCollection, setStudyWeek])
 
-  const goDownLevel = useCallback(() => {
-    if (!currentTab?.id) return
-    if (viewLevel === 'tiles') {
-      updateTab(currentTab.id, { view: 'library', viewRef: null, label: 'Library' })
-    } else if (viewLevel === 'library') {
-      const targetWorkId = viewRef || bookData?.works?.find(w => w.books?.some(b => b.id === book))?.id || bookData?.works?.[0]?.id || 'ot'
-      const wT = bookData?.works?.find(w => w.id === targetWorkId)?.title || targetWorkId
-      const firstBook = bookData?.works?.find(w => w.id === targetWorkId)?.books?.[0]?.id
-      updateTab(currentTab.id, {
-        view: 'work', viewRef: targetWorkId, label: wT,
-        ...(firstBook ? { book: firstBook } : {}),
-      })
-    } else if (viewLevel === 'work') {
-      if (viewRef === 'dc') {
-        // D&C: skip book level, go directly to chapter view
-        goToChapter(currentTab.id, book, chapter, `${bookTitle} ${chapter}`)
-      } else {
-        const bTitle = nav?.flat.find(n => n.bookId === book)?.bookTitle || book
-        updateTab(currentTab.id, { view: 'book', viewRef: book, label: bTitle })
-      }
-    } else if (viewLevel === 'book') {
-      goToChapter(currentTab.id, book, chapter, `${bookTitle} ${chapter}`)
-    } else if (viewLevel === 'articles') {
-      // Down from essay list opens the first essay
-      fetch('/api/v1/wiki/browse/doctrine').then(r => r.json()).then(d => {
-        const list = d?.data?.articles || []
-        if (list.length > 0) updateTab(currentTab.id, { view: 'wiki', viewRef: list[0].id, label: `📜 ${list[0].id}` })
-      }).catch(() => {})
-    } else if (viewLevel === 'studies') {
-      // Down from studies list opens the first study
-      import('./api').then(({ listPublishedStudies }) => listPublishedStudies(100, 0).then(r => {
-        const list = r?.ok ? (r.data || []) : []
-        if (list.length > 0) {
-          const s = list[0]
-          updateTab(currentTab.id, { view: 'study', viewRef: s.slug, label: s.title || `Study: ${s.slug}` })
-        }
-      }).catch(() => {}))
-    }
-  }, [currentTab?.id, viewLevel, viewRef, bookData, book, chapter, nav, updateTab, goToChapter, bookTitle, isDc])
-
   // ── Prev/next essay (left/right in articles/wiki views) ──
   const goEssay = useCallback(async (dir) => {
     if (!currentTab?.id) return
@@ -577,12 +537,10 @@ const [showAssessment, setShowAssessment] = useState(false)
       // Arrow navigation — unified dispatcher so all tab types work, not just reading
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevAtLevel(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); goNextAtLevel(); }
-      else if (e.key === 'Enter' && (viewLevel === 'library' || viewLevel === 'work' || viewLevel === 'tiles' || viewLevel === 'articles' || viewLevel === 'studies')) { e.preventDefault(); goDownLevel() }
       if (matchesHotkey(e, 'goUp')) { e.preventDefault(); goUpLevel() }
-      if (matchesHotkey(e, 'goDown')) { e.preventDefault(); goDownLevel() }
     }
     window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey)
-  }, [chapter, isChapterView, viewLevel, goPrevAtLevel, goNextAtLevel, goUpLevel, goDownLevel, doHistoryBack, doHistoryForward, toggleDarkMode, changeFontSize, openTab, book, matchesHotkey, toggleDispatch])
+  }, [chapter, isChapterView, viewLevel, goPrevAtLevel, goNextAtLevel, goUpLevel, doHistoryBack, doHistoryForward, toggleDarkMode, changeFontSize, openTab, book, matchesHotkey, toggleDispatch])
 
   const currentWorkTitle = nav?.flat[nav.idx]?.workTitle || ''; const currentBookTitle = nav?.flat[nav.idx]?.bookTitle || book
 
@@ -791,15 +749,14 @@ const [showAssessment, setShowAssessment] = useState(false)
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
       const threshold = 40
       if (Math.abs(dist - touchRef.current.dist) > threshold) {
-        if (dist > touchRef.current.dist) {
-          goDownLevel() // pinch out → zoom in
-        } else {
+        if (dist <= touchRef.current.dist) {
           goUpLevel() // pinch in → zoom out
         }
+        // pinch out → no-op (zoom-in removed)
         touchRef.current.dist = dist
       }
     }
-  }, [goDownLevel, goUpLevel])
+  }, [goUpLevel])
 
   // ── Mobile UI auto-hide on scroll ──
   const [uiVisible, setUiVisible] = useState(true)
@@ -882,11 +839,6 @@ const [showAssessment, setShowAssessment] = useState(false)
             <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
               title={`Up a level (${getHotkey('goUp') || '↑'})`}>
               <ChevronUp />
-            </button>
-            {/* Down arrow — zoom in */}
-            <button onClick={goDownLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
-              title={`Down a level (${getHotkey('goDown') || '↓'})`}>
-              <ChevronDown />
             </button>
 
             {/* Clickable breadcrumb or tab label */}
