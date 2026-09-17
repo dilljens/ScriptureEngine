@@ -105,19 +105,14 @@ def seed_production(mem_db):
                 f"The letter {clean} ({glyph}) makes the sound '{desc[:30].split(',')[0]}'")
             added += 1
 
-        # ── Vowels: write from description ──
+        # ── Vowels: write from description (EN→HE; the H→EN recall
+        # "Name this Hebrew vowel" lives in seed_hebrew_content.py) ──
         if category == "vowel" and glyph:
             add_item(cur, nid, "typing",
                 f"Type the vowel symbol that makes the '{desc[:40].split(',')[0]}' sound",
                 glyph, 0.7,
                 f"The vowel {clean} is written as {glyph}")
-
-            # Reverse: given the glyph, name the vowel
-            add_item(cur, nid, "recall",
-                f"What is the name of the vowel {glyph}?",
-                clean, 0.5,
-                f"The vowel symbol {glyph} is called {clean}")
-            added += 2
+            added += 1
 
         # ── Verbs: paradigm production ──
         if category == "verb":

@@ -182,6 +182,17 @@ echo "Syncing service config..."
 rsync -avz scripts/scripture-api.service "$HOST:$REMOTE_DIR/scripture-api.service"
 ssh "$HOST" "sudo cp $REMOTE_DIR/scripture-api.service /etc/systemd/system/scripture-api.service"
 
+# Go SRS service (FSRS-5): binary + unit. Built locally via
+# `go build -o go-srs-server ./cmd/server` in backend/go-srs.
+echo "Syncing Go SRS service..."
+if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
+    echo "  (skipped — FRONTEND_ONLY)"
+else
+rsync -avz backend/go-srs/go-srs-server "$HOST:$REMOTE_DIR/backend/go-srs/go-srs-server"
+rsync -avz scripts/go-srs.service "$HOST:$REMOTE_DIR/go-srs.service"
+ssh "$HOST" "sudo cp $REMOTE_DIR/go-srs.service /etc/systemd/system/go-srs.service"
+fi
+
 # Sync the Caddy site snippet and hot-reload ferrum-caddy (zero downtime).
 # NOTE: scriptureengine.org is fronted by Caddy in Docker, NOT nginx —
 # docs/deployment.md's nginx architecture section is stale. The canonical
@@ -205,16 +216,16 @@ mark "pip install done"
 
 # 4. Ensure systemd is aware of service changes
 echo "Reloading systemd..."
-ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api"
+ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl enable scripture-api go-srs"
 
 # 5. Ensure .env exists (service requires it for DATABASE_PATH)
 # DEEPSEEK_API_KEY is already set on the server separately
 echo "Ensuring .env..."
 ssh "$HOST" "test -f $REMOTE_DIR/.env || echo 'DATABASE_PATH=data/processed/scripture.db' | sudo tee $REMOTE_DIR/.env"
 
-# 6. Restart API server
+# 6. Restart API server (+ Go SRS, kept running for /memorize/* scheduling)
 echo "Restarting API server..."
-ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl restart scripture-api"
+ssh "$HOST" "sudo systemctl daemon-reload && sudo systemctl restart scripture-api go-srs"
 mark "restart done — total deploy time"
 
 echo "=== Done ==="

@@ -1,0 +1,19 @@
+[Unit]
+Description=ScriptureEngine Go SRS Server (FSRS-5)
+After=network.target scripture-api.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/scripture
+EnvironmentFile=/var/www/scripture/.env
+ExecStart=/var/www/scripture/backend/go-srs/go-srs-server --host 127.0.0.1 --port 8090 --db data/memorize.db
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

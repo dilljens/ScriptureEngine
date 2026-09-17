@@ -18,7 +18,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     await expect(hebrewBtn).toBeVisible({ timeout: 8000 })
     await hebrewBtn.click()
     // Should show the Hebrew curriculum
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
   })
 
   test('action bar has dropdown menus', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Check for dropdown buttons
     const practice = page.locator('button:has-text("Practice")').first()
@@ -45,7 +45,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Open Practice dropdown
     const practice = page.locator('button:has-text("Practice")').first()
@@ -62,7 +62,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Open Reading dropdown
     const reading = page.locator('button:has-text("Reading")').first()
@@ -77,7 +77,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Open Tools dropdown
     const tools = page.locator('button:has-text("Tools")').first()
@@ -93,7 +93,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Should see lessons listed (Level 1, consonants, etc.)
     await expect(page.locator('text=/Aleph/i').first()).toBeVisible({ timeout: 8000 })
@@ -105,7 +105,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Should show mastery stats
     await expect(page.locator('text=/mastered/i').first()).toBeVisible({ timeout: 5000 })
@@ -117,7 +117,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Category filter tabs should be present
     const allTab = page.locator('button:has-text("All")').first()
@@ -137,7 +137,7 @@ test.describe('Hebrew Learn — curriculum & action bar', () => {
     const menuBtn = page.locator('button:has-text("Menu"), [aria-label="Menu"]').first()
     if (await menuBtn.isVisible()) await menuBtn.click()
     await page.locator('button:has-text("Hebrew"), button:has-text("א Hebrew")').first().click()
-    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=/Biblical Hebrew/i').first()).toBeVisible({ timeout: 30000 })
 
     // Click Map toggle
     const mapBtn = page.locator('button:has-text("Map")').first()

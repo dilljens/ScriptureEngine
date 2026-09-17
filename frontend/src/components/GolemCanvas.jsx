@@ -277,7 +277,7 @@ export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0
 
   return (
     <div
-      className={`relative mt-2 rounded-lg overflow-hidden border border-amber-200 dark:border-amber-800 bg-gradient-to-b from-amber-100/60 to-amber-50/30 dark:from-neutral-900 dark:to-neutral-800 ${onTap ? 'cursor-pointer active:scale-[0.995] select-none' : ''}`}
+      className={`relative mt-2 rounded-lg overflow-hidden border border-amber-200 dark:border-amber-800 bg-gradient-to-b from-amber-100/60 to-amber-50/30 dark:from-neutral-900 dark:to-neutral-800 ${onTap ? 'cursor-pointer active:scale-[0.995] select-none focus-visible:outline-2 focus-visible:outline-amber-500' : ''}`}
       onPointerDown={onTap ? (e) => {
         const r = e.currentTarget.getBoundingClientRect()
         onTap(e.clientX - r.left, e.clientY - r.top)

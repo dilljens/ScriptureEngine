@@ -868,15 +868,9 @@ def build_practice_items(nid, title, category, glyph="", desc=""):
         random.shuffle(distractors)
         opts = [correct] + distractors[:3]
         random.shuffle(opts)
-        sound_desc = desc if desc and correct.lower() not in desc.lower() else glyph
-        items.append({
-            "question_type": "multiple_choice",
-            "question_text": f"Which Hebrew vowel makes this sound: {sound_desc}?",
-            "options": json.dumps(opts),
-            "correct_answer": correct,
-            "difficulty": 0.4,
-            "explanation": f"This describes the vowel {correct}."
-        })
+        # H→EN recognition: name the vowel from its glyph. (EN→HE production —
+        # "Type the vowel symbol…", answer = glyph — lives in
+        # seed_hebrew_production.py. One item here + one there = two questions.)
         items.append({
             "question_type": "recall",
             "question_text": f"Name this Hebrew vowel: {glyph}",

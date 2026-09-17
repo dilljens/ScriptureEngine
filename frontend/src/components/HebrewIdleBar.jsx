@@ -789,10 +789,13 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         @keyframes tap-ring-bad { 0% { box-shadow: inset 0 0 0 3px rgba(239,68,68,.8); } 100% { box-shadow: inset 0 0 0 0 rgba(239,68,68,0); } }
         .tap-flash-good { animation: tap-ring-good .5s ease-out; }
         .tap-flash-bad { animation: tap-ring-bad .5s ease-out; }
+        @media (prefers-reduced-motion: reduce) {
+          .idle-gain, .idle-pop, .tap-flash-good, .tap-flash-bad { animation: none; }
+        }
       `}</style>
-      {/* Tap feedback: every graded answer flashes this panel (green = tap
-          landed, red = missed) and pops the counters — studying IS the tap,
-          so the tap must be visible exactly where the numbers live. */}
+      {/* Tap feedback: graded answers AND golem taps flash this panel (green =
+          tap landed, red = missed) and pop the counters — the tap must be
+          visible exactly where the numbers live. */}
       {answerPulse && (
         <div key={answerPulse.n}
           className={`absolute inset-0 rounded-xl pointer-events-none ${answerPulse.correct ? 'tap-flash-good' : 'tap-flash-bad'}`}
@@ -923,6 +926,13 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {showGolems && (
         <div className="relative">
           <GolemCanvas owned={state.owned} mastery={mastery} prestigeTick={prestigeTick} answerPulse={answerPulse} onTap={doCanvasTap} />
+          {/* First-tap cue: a tappable-looking chip floating over the workshop
+              until the first tap lands — teaches the clicker without words. */}
+          {(state.taps || 0) === 0 && totalOwned(state) > 0 && (
+            <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 pointer-events-none px-2.5 py-1 rounded-full bg-amber-500 text-white text-[11px] font-bold shadow-lg animate-pulse" aria-hidden="true">
+              👆 tap the golems!
+            </span>
+          )}
           {tapFloats.map(t => (
             <span key={t.id}
               className={`idle-gain pointer-events-none absolute text-sm font-bold tabular-nums whitespace-nowrap ${t.crit ? 'text-orange-500 text-base' : 'text-green-600 dark:text-green-400'}`}
@@ -1012,7 +1022,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {/* Tap affordance: until the first tap lands, say where taps come from. */}
       {(state.taps || 0) === 0 && totalOwned(state) > 0 && (
         <div className="mt-2 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 text-xs text-green-800 dark:text-green-200">
-          <b>👆 Your tap is studying:</b> answer any question below — each correct answer pops <b>+Ohr</b> up top and flashes this panel green. Wrong answers flash red (streak only, nothing lost).
+          <b>👆 Two ways to earn:</b> tap your golems above for a little Ohr any time — each correct answer below pops <b>big +Ohr</b> up top and flashes this panel green. Wrong answers flash red (streak only, nothing lost).
         </div>
       )}
 
@@ -1280,7 +1290,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 <button onClick={() => buy(i)}
                   aria-label={`${locked ? 'Locked' : afford ? 'Buy' : 'Cannot afford'} ${L} (${LETTER_NAMES[i]}, "${LETTER_SYMBOLS[i]}", gematria ${GEMATRIA[i]}), owned ${owned}, costs ${spend} Ohr${owned > 0 ? `, earns ${fmtRate(letterRate(state, mastery, i, gramMult))}/s` : ''}`}
                   title={locked ? (exileKind === 'shemittah' ? '🌾 The land rests — no inscribing until the next root' : `⛓️ Beyond your vow — exile study is ${exileLetters.map(j => LETTERS[j]).join(' · ')}`) : `${L} ${LETTER_NAMES[i]} · "${LETTER_SYMBOLS[i]}" · gematria ${GEMATRIA[i]} · owned ${owned} · base ${baseCost(i)} · mastery ${Math.round(m * 100)}% · synergy ×${synergyMultiplier(state.owned, mastery, i).toFixed(2)}${owned > 0 ? ` · +${fmtRate(letterRate(state, mastery, i, gramMult))}/s` : ''}`}
-                  className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
+                  className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500 ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 shadow-[0_0_10px_rgba(245,158,11,0.35)] active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
                   <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
                     {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
