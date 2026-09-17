@@ -10,7 +10,7 @@ import {
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
-  GOLDEN_PROMPTS, spawnGoldenPrompt, answerGoldenQuiz, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, shofarMultiplier, activeBuffCount, expireGoldenPrompt, GOLDEN_WINDOW_SEC,
+  GOLDEN_PROMPTS, spawnGoldenPrompt, answerGoldenQuiz, goldenRemainingSec, tapBuffMultiplier, galeMultiplier, shofarMultiplier, activeBuffCount, expireGoldenPrompt, goldenWindowSec,
   PROPHET_BLESSINGS, applyProphetChoice, startExile, rollExileLetters, exileAllows, dayKey,
   startShemittah, shemittahTapMult, shareCard, checkShemittah, SHEMITTAH_HOURS,
   figReady, figRemainingSec, plantFig, harvestFig, FIG_MAX_LEVEL, FIG_RIPEN_HOURS,
@@ -19,7 +19,8 @@ import {
   ACHIEVEMENTS, achievementsEarned, shemenMultiplier, dailyReady, claimDaily, recordDailyCorrect, DAILY_GOAL,
 } from '../lib/idle-game'
 import { logEvent, exportLog } from '../lib/analytics'
-import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects } from '../lib/idle-game'
+import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast } from '../lib/idle-game'
+import FeastModal from './FeastModal'
 import GardenPanel from './GardenPanel'
 import WatchmenPanel from './WatchmenPanel'
 import ShukPanel from './ShukPanel'
@@ -94,6 +95,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [goldenFlash, setGoldenFlash] = useState(null)
   const [prophetPick, setProphetPick] = useState(null)
   const [prophetSnoozed, setProphetSnoozed] = useState(false) // "decide later" — the choice never expires
+  const [showFeast, setShowFeast] = useState(null) // {feast, daysUntil} — moed info modal
   const [quizAudio, setQuizAudio] = useState(null) // {url} | {failed:true} — listening-question audio
   const [prestigeTick, setPrestigeTick] = useState(0)
   const [showGolems, setShowGolems] = useState(() => uiPrefs.showGolems)
@@ -211,7 +213,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const acc = recentAccuracy(diff)
   // Grammar tracks income: +5% per complete track-tier (cap +50%), derived
   // from curriculum mastery — recomputed only when curriculum changes.
-  const gramMult = useMemo(() => 1 + grammarTrackBonus(curriculum?.nodes || []).bonus, [curriculum])
+  // Shavuot doubles it (Torah given); the day key refreshes across midnight.
+  const todayKey = dayKey(Date.now())
+  const gramMult = useMemo(() => (1 + grammarTrackBonus(curriculum?.nodes || []).bonus) * (isFeastDay('shavuot') ? 2 : 1), [curriculum, todayKey])
   const gramPct = Math.round((gramMult - 1) * 100)
   const perSec = statePerSecond(state, mastery, gramMult)
   const workshopSyn = workshopSynergy(state.owned, mastery)
@@ -769,6 +773,28 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                 {' '}· 🫒 +{shemenPct}%
               </span>
             )}
+            {(() => {
+              const live = activeFeasts()
+              if (live.length) {
+                const f = live[0]
+                return (
+                  <button onClick={() => setShowFeast({ feast: f, daysUntil: 0 })}
+                    title={`${f.name} is live — tap for meaning, scriptures, vocab. ${f.effect}`}
+                    className="text-amber-600 dark:text-amber-400 font-semibold cursor-pointer hover:underline">
+                    {' '}· {f.icon} {f.name}{f.len > 1 ? ` d${f.dayIndex + 1}` : ''}
+                  </button>
+                )
+              }
+              const nx = nextFeast()
+              if (!nx) return null
+              return (
+                <button onClick={() => setShowFeast({ feast: nx.feast, daysUntil: nx.daysUntil })}
+                  title={`Next moed: ${nx.feast.name} — tap for meaning, scriptures, vocab. ${nx.feast.effect}`}
+                  className="cursor-pointer hover:underline">
+                  {' '}· → {nx.feast.icon} {nx.daysUntil}d
+                </button>
+              )
+            })()}
           </div>
           {/* Tap floaters: every correct answer pops its reward — stacked, none dropped */}
           {gains.length > 0 ? (
@@ -1071,7 +1097,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           )}
           <div className="h-1 rounded-full bg-white/30 overflow-hidden mt-1.5" aria-hidden="true">
-            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(1, goldenSecs / GOLDEN_WINDOW_SEC)) * 100}%` }} />
+            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${Math.max(0, Math.min(1, goldenSecs / goldenWindowSec())) * 100}%` }} />
           </div>
         </div>
       )}
@@ -1473,6 +1499,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         })}
       </div>
       </div>
+      {/* Feast info modal — meaning, scriptures, vocab, live effect. */}
+      {showFeast && (
+        <FeastModal feast={showFeast.feast} daysUntil={showFeast.daysUntil} onClose={() => setShowFeast(null)} />
+      )}
       {/* Overlay toast stack — transient flashes float top-center, never in-flow. */}
       {toasts.length > 0 && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1.5 items-center pointer-events-none w-[min(94vw,32rem)]" aria-live="polite">

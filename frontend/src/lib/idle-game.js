@@ -740,17 +740,18 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   if (perSec <= 0) return null // nothing to multiply yet — never hand out a value-less prompt
   if (now < (state.nextGoldenAt || 0)) return null
   // Get Lucky (Cookie): while a production buff runs, the next visit comes
-  // twice as fast — combos happen naturally to the prepared.
+  // twice as fast — combos happen naturally to the prepared. Feast seasons
+  // multiply in (trumpets, Hanukkah lights, assembly joy).
   const lucky = activeBuffCount(state, now) > 0 ? 0.5 : 1
   const scheduleNext = () => {
     const [lo, hi] = GOLDEN_INTERVAL_SEC
-    state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000 * lucky
+    state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000 * lucky * feastSpawnFactor(now)
   }
   // Rare visitation: the Prophet offers a CHOICE of three blessings instead
   // of one fixed prompt — the surprise system with an actual decision in it.
   if (rng() < PROPHET_CHANCE) {
     const options = sampleBlessings(rng)
-    state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options, quiz: makeGoldenQuiz(state, rng, extra, now) }
+    state.golden = { id: 'prophet', expiresAt: now + goldenWindowSec(now) * 1000, options, quiz: makeGoldenQuiz(state, rng, extra, now) }
     scheduleNext()
     return state.golden
   }
@@ -780,7 +781,7 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
     }
   }
   if (!quiz) quiz = makeGoldenQuiz(state, rng, extra, now)
-  state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz }
+  state.golden = { id: p.id, expiresAt: now + goldenWindowSec(now) * 1000, quiz }
   scheduleNext()
   return state.golden
 }
@@ -1292,6 +1293,9 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
   if (!p) return { fizzled: true, reason: 'unknown' }
+  // Purim mishloach manot: every claimed golden pays +5 Kavod. One point
+  // covers all kinds (mult/tap/blast/hours).
+  if (isFeastDay('purim', now)) state.kavod = (state.kavod || 0) + 5
   if (p.kind === 'mult') {
     state.buffs = { ...(state.buffs || {}), galeEndsAt: now + p.seconds * 1000 }
     return { claimed: p, granted: 0 }
@@ -1334,6 +1338,9 @@ export function resolveGoldenPrompt(state, correct, now = Date.now(), perSec = 0
   if (g.id === 'prophet') return { choice: [...(g.options || [])] }
   const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
   if (!p) return { fizzled: true, reason: 'unknown' }
+  // Purim mishloach manot: every claimed golden pays +5 Kavod. One point
+  // covers all kinds (mult/tap/blast/hours).
+  if (isFeastDay('purim', now)) state.kavod = (state.kavod || 0) + 5
   if (p.kind === 'mult') {
     state.buffs = { ...(state.buffs || {}), galeEndsAt: now + p.seconds * 1000 }
     return { claimed: p, granted: 0 }
@@ -1694,17 +1701,18 @@ export function gardenPlots(state) {
   return plots.slice(0, GARDEN_PLOTS)
 }
 
-/** Growth stage 0 (sprout) / 1 (bud) / 2 (mature) by elapsed thirds. */
-export function gardenStage(plot, now = Date.now()) {
+/** Growth stage 0 (sprout) / 1 (bud) / 2 (mature) by elapsed thirds.
+ * growMs override powers feast doubling (Sukkot) without touching the base. */
+export function gardenStage(plot, now = Date.now(), growMs = GARDEN_GROW_MS) {
   if (!plot) return -1
   const el = now - (plot.plantedAt || 0)
-  if (el >= GARDEN_GROW_MS) return 2
-  if (el >= GARDEN_GROW_MS / 3 * 2) return 1
+  if (el >= growMs) return 2
+  if (el >= growMs / 3 * 2) return 1
   return 0
 }
 
-export function gardenReady(state, i, now = Date.now()) {
-  return gardenStage(gardenPlots(state)[i], now) === 2
+export function gardenReady(state, i, now = Date.now(), growMs = GARDEN_GROW_MS) {
+  return gardenStage(gardenPlots(state)[i], now, growMs) === 2
 }
 
 /** Adjacent plot indices in the 3×2 grid (no wraparound). */
@@ -1746,10 +1754,10 @@ export function plantGardenRoot(state, i, root, perSec, now = Date.now()) {
  * root; adjacent different mature roots may mutate (+Kavod, rep for the
  * neighbor). Clears the plot. Returns null unless mature.
  */
-export function harvestGardenRoot(state, i, perSec, now = Date.now(), rng = Math.random) {
+export function harvestGardenRoot(state, i, perSec, now = Date.now(), rng = Math.random, growMs = GARDEN_GROW_MS) {
   const plots = gardenPlots(state)
   const plot = plots[i]
-  if (gardenStage(plot, now) !== 2) return null
+  if (gardenStage(plot, now, growMs) !== 2) return null
   const granted = (perSec || 0) * GARDEN_REWARD_HOURS * 3600
   state.ohr += granted
   state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
@@ -1758,7 +1766,7 @@ export function harvestGardenRoot(state, i, perSec, now = Date.now(), rng = Math
   let neighbor = null
   for (const j of gardenNeighbors(i)) {
     const nb = plots[j]
-    if (nb && nb.root !== plot.root && gardenStage(nb, now) === 2) { neighbor = nb.root; break }
+    if (nb && nb.root !== plot.root && gardenStage(nb, now, growMs) === 2) { neighbor = nb.root; break }
   }
   if (neighbor && rng() < GARDEN_MUTATION_CHANCE) {
     mutated = true
@@ -1930,6 +1938,141 @@ export function takeShukLoan(state, perSec, now = Date.now()) {
     loanCooldownUntil: now + (SHUK_DEBT_HOURS * 3600 * 1000 + SHUK_LOAN_COOLDOWN_MS),
   }
   return granted
+}
+
+// ── Hebrew feasts (moedim): the seasonal layer ──────────────────────────
+// Dates come from the BUILT-IN Hebrew calendar (Intl, no deps — verified
+// against real dates: 2026-04-02 = 15 Nisan, 2026-09-12 = 1 Tishri).
+// Israel custom (single yom-tov days). Each feast teaches (info + vocab in
+// the HUD modal) AND pays (one clean mechanic each, threaded below).
+// Design role: the yearly sine wave over the whole progression arc —
+// every era of the game feels each feast differently (DESIGN.md: peaks +
+// breathers, meaning-anchored numbers).
+
+export const FEASTS = [
+  { id: 'passover', name: 'Passover', hebrew: 'פסח', icon: '🌙', month: 'Nisan', start: 15, len: 7,
+    effect: 'Golden window 30→60s (mercy)',
+    meaning: 'Liberation from Egypt; the lamb, the unleavened bread, the night of watching. Firstfruits (Nisan 16) falls inside this week.',
+    scriptures: ['Ex 12', 'Lev 23:4–8', '1 Cor 5:7'],
+    vocab: [['פֶּסַח', 'pesach', 'passover lamb'], ['מַצָּה', 'matzah', 'unleavened bread'], ['חָמֵץ', 'chametz', 'leaven'], ['בִּכּוּרִים', 'bikkurim', 'firstfruits']] },
+  { id: 'shavuot', name: 'Shavuot', hebrew: 'שבועות', icon: '🌾', month: 'Sivan', start: 6, len: 1,
+    effect: 'Grammar tracks pay ×2 (Torah given)',
+    meaning: 'Fifty days after Firstfruits: Torah at Sinai and the wheat harvest; the Spirit falls in Acts 2.',
+    scriptures: ['Ex 19–20', 'Lev 23:15–21', 'Acts 2'],
+    vocab: [['תּוֹרָה', 'torah', 'instruction'], ['שָׁבוּעוֹת', 'shavuot', 'weeks'], ['רוּחַ', 'ruach', 'spirit, wind']] },
+  { id: 'trumpets', name: 'Trumpets', hebrew: 'תרועה', icon: '📯', month: 'Tishri', start: 1, len: 2,
+    effect: 'Golden visits come 2× as fast (the shofar wakes)',
+    meaning: 'Rosh Hashanah: the shofar blast opens ten Days of Awe before Yom Kippur.',
+    scriptures: ['Lev 23:23–25', 'Num 29:1', '1 Thess 4:16'],
+    vocab: [['שׁוֹפָר', 'shofar', 'ram’s horn'], ['תְּרוּעָה', 'teruah', 'blast'], ['שָׁנָה', 'shanah', 'year']] },
+  { id: 'yomkippur', name: 'Yom Kippur', hebrew: 'כפרה', icon: '🕊️', month: 'Tishri', start: 10, len: 1,
+    effect: 'Golden window 60s, visits ×1.33 (atonement covers)',
+    meaning: 'The Day of Atonement: fasting, the scapegoat for Azazel (Lev 16 — the Enoch tie), the books closed.',
+    scriptures: ['Lev 16', 'Lev 23:26–32', 'Heb 9'],
+    vocab: [['כָּפַר', 'kaphar', 'to atone'], ['צוֹם', 'tzom', 'fast'], ['עֲזָאזֵל', 'azazel', 'scapegoat']] },
+  { id: 'sukkot', name: 'Sukkot', hebrew: 'סכות', icon: '🍋', month: 'Tishri', start: 15, len: 7,
+    effect: 'Garden grows 2× (the harvest feast)',
+    meaning: 'Booths for seven days at the ingathering; the water libation; “that your generations may know.”',
+    scriptures: ['Lev 23:33–43', 'John 7:37–38'],
+    vocab: [['סֻכָּה', 'sukkah', 'booth'], ['לוּלָב', 'lulav', 'palm branch'], ['שִׂמְחָה', 'simchah', 'joy']] },
+  { id: 'shemini', name: 'Shemini Atzeret', hebrew: 'שמיני', icon: '🎉', month: 'Tishri', start: 22, len: 1,
+    effect: 'Golden visits ×1.33 (assembly joy; Simchat Torah)',
+    meaning: 'The eighth-day assembly; rejoicing with the Torah as the yearly reading ends and begins again.',
+    scriptures: ['Lev 23:36', 'Neh 8'],
+    vocab: [['שִׂמְחַת תּוֹרָה', 'simchat torah', 'joy of Torah']] },
+  { id: 'hanukkah', name: 'Hanukkah', hebrew: 'חנכה', icon: '🕎', month: 'Kislev', start: 25, len: 8,
+    effect: 'Golden visits quicken nightly as lights increase',
+    meaning: 'Dedication: one day of oil burned eight. Mentioned at John 10:22.',
+    scriptures: ['1 Macc 4', 'John 10:22'],
+    vocab: [['חֲנֻכָּה', 'hanukkah', 'dedication'], ['נֵר', 'ner', 'lamp'], ['שֶׁמֶן', 'shemen', 'oil'], ['אוֹר', 'or', 'light']] },
+  { id: 'purim', name: 'Purim', hebrew: 'פורים', icon: '🎭', month: 'Adar', start: 14, len: 1, leapMonth: 'Adar II',
+    effect: '+5 🌟 on every golden claim (mishloach manot)',
+    meaning: 'The lots reversed (Esther): mourning turned to joy, sealed with gifts to friends.',
+    scriptures: ['Esth 9'],
+    vocab: [['פּוּר', 'pur', 'lot'], ['מְגִלָּה', 'megillah', 'scroll'], ['וְנַהֲפוֹךְ', 'venehafoch', 'it was reversed']] },
+]
+
+/** {month, day} on the Hebrew calendar (Intl, Israel custom). */
+export function hebrewMonthDay(now = Date.now()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-u-ca-hebrew', { day: 'numeric', month: 'long' }).formatToParts(new Date(now))
+    let month = '', day = 0
+    for (const p of parts) {
+      if (p.type === 'month') month = p.value
+      if (p.type === 'day') day = parseInt(p.value, 10) || 0
+    }
+    return { month, day }
+  } catch {
+    return { month: '', day: 0 }
+  }
+}
+
+/** Day index inside a feast (0-based), or -1. Hanukkah spans Kislev→Tevet. */
+export function feastDayIndex(feast, month, day) {
+  if (feast.id === 'hanukkah') {
+    if (month === 'Kislev' && day >= 25) return Math.min(7, day - 25)
+    if (month === 'Tevet' && day >= 1 && day <= 3) return Math.min(7, 5 + day) // Kislev 29/30 edge: capped, harmless
+    return -1
+  }
+  const months = feast.id === 'purim' && feast.leapMonth ? [feast.month, feast.leapMonth] : [feast.month]
+  if (!months.includes(month)) return -1
+  // Purim: Adar I 14 (leap years) is Purim Katan — not the feast.
+  if (feast.id === 'purim' && month === 'Adar I') return -1
+  const idx = day - feast.start
+  return idx >= 0 && idx < feast.len ? idx : -1
+}
+
+/** Active feasts now: [{...feast, dayIndex}]. */
+export function activeFeasts(now = Date.now()) {
+  const { month, day } = hebrewMonthDay(now)
+  if (!month) return []
+  const out = []
+  for (const f of FEASTS) {
+    const idx = feastDayIndex(f, month, day)
+    if (idx >= 0) out.push({ ...f, dayIndex: idx })
+  }
+  return out
+}
+
+/** True when feast id is active now. */
+export function isFeastDay(id, now = Date.now()) {
+  return activeFeasts(now).some(f => f.id === id)
+}
+
+// Next-feast lookup, cached per Hebrew day (scans ≤370 days ahead).
+let _feastCache = { key: '', val: null }
+export function nextFeast(now = Date.now()) {
+  const hm = hebrewMonthDay(now)
+  const key = `${hm.month} ${hm.day}`
+  if (_feastCache.key === key) return _feastCache.val
+  for (let d = 0; d < 370; d++) {
+    const t = now + d * 86400000
+    const act = activeFeasts(t)
+    if (act.length) {
+      _feastCache = { key, val: { feast: act[0], daysUntil: d } }
+      return _feastCache.val
+    }
+  }
+  _feastCache = { key, val: null }
+  return null
+}
+
+/** Golden claim window in seconds (mercy seasons widen it). */
+export function goldenWindowSec(now = Date.now()) {
+  if (isFeastDay('passover', now) || isFeastDay('yomkippur', now)) return 60
+  return GOLDEN_WINDOW_SEC
+}
+
+/** Golden spawn interval factor from the season (<1 = more visits). */
+export function feastSpawnFactor(now = Date.now()) {
+  let f = 1
+  if (isFeastDay('trumpets', now)) f = Math.min(f, 0.5)
+  if (isFeastDay('yomkippur', now)) f = Math.min(f, 0.75)
+  if (isFeastDay('shemini', now)) f = Math.min(f, 0.75)
+  if (isFeastDay('purim', now)) f = Math.min(f, 0.75)
+  const hk = activeFeasts(now).find(x => x.id === 'hanukkah')
+  if (hk) f = Math.min(f, 1 - hk.dayIndex / 16) // night 1 ≈0.94 … night 8 = 0.5
+  return f
 }
 
 // ── Achievements → Shemen (oil): +4% Ohr each ────────────────────────
@@ -2592,6 +2735,22 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const got = sellShuk(shk, 'wheat', 1, 10, 600000)
   a(got > 0 && got < spent / 2 + 1 && shk.shuk.holdings.wheat === 1, 'selling pays bid (below ask)')
   a(sellShuk(shk, 'wheat', 99, 10, 600000) > 0 && shk.shuk.holdings.wheat === 0, 'oversell clamps to holdings')
+  // Hebrew feasts (fixed 2026 dates, UTC noon to dodge zones)
+  const D = (s) => Date.parse(s + 'T12:00:00Z')
+  a(hebrewMonthDay(D('2026-04-02')).month === 'Nisan', 'Intl Hebrew calendar resolves Nisan')
+  a(isFeastDay('passover', D('2026-04-02')) && !isFeastDay('passover', D('2026-04-10')), 'Passover week detected')
+  a(isFeastDay('shavuot', D('2026-05-22')), 'Shavuot on 6 Sivan')
+  a(isFeastDay('trumpets', D('2026-09-12')), 'Trumpets on 1 Tishri')
+  a(isFeastDay('yomkippur', D('2026-09-21')), 'Yom Kippur on 10 Tishri')
+  a(isFeastDay('sukkot', D('2026-09-27')), 'Sukkot in mid-Tishri')
+  a(isFeastDay('shemini', D('2026-10-03')), 'Shemini on 22 Tishri')
+  a(isFeastDay('hanukkah', D('2026-12-05')) && isFeastDay('hanukkah', D('2026-12-08')), 'Hanukkah spans Kislev')
+  a(isFeastDay('purim', D('2026-03-03')), 'Purim on 14 Adar')
+  a(goldenWindowSec(D('2026-04-02')) === 60 && goldenWindowSec(D('2026-05-22')) === GOLDEN_WINDOW_SEC, 'mercy seasons widen the claim window')
+  a(feastSpawnFactor(D('2026-09-12')) === 0.5 && feastSpawnFactor(D('2026-05-22')) === 1, 'trumpets double visit frequency')
+  a(feastSpawnFactor(D('2026-12-05')) > feastSpawnFactor(D('2026-12-08')), 'hanukkah lights escalate nightly')
+  const nf = nextFeast(D('2026-09-10'))
+  a(nf && nf.feast.id === 'trumpets' && nf.daysUntil === 2, 'next-feast countdown finds Trumpets')
   const poor = defaultIdleState()
   a(buyShuk(poor, 'oil', 1, 10) === 0, 'broke buyers refused')
   const ln = defaultIdleState()

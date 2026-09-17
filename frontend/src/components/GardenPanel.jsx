@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import {
-  GARDEN_PLOTS,
   GARDEN_GROW_MS,
   GARDEN_COST_HOURS,
   gardenPlots,
   gardenStage,
-  gardenReady,
   gardenNeighbors,
   readableRoots,
   plantGardenRoot,
   harvestGardenRoot,
-  saveIdleState,
+  isFeastDay,
 } from '../lib/idle-game'
 
 /**
@@ -58,6 +56,8 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
 
   const plots = gardenPlots(state)
   const owned = state.owned || {}
+  // Sukkot, the harvest feast: everything grows twice as fast.
+  const growMs = isFeastDay('sukkot') ? GARDEN_GROW_MS / 2 : GARDEN_GROW_MS
   const choices = readableRoots(owned, rootNames.length ? rootNames : []).slice(0, 12)
   const cost = (perSec || 0) * GARDEN_COST_HOURS * 3600
 
@@ -70,7 +70,7 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
 
   const doHarvest = (i) => {
     const next = { ...state }
-    const res = harvestGardenRoot(next, i, perSec || 0)
+    const res = harvestGardenRoot(next, i, perSec || 0, Date.now(), Math.random, growMs)
     if (!res) return
     setFlash(
       `+${Math.floor(res.granted).toLocaleString()} ✨ +${res.kavod} 🌟 ${res.root}` +
@@ -84,12 +84,12 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
     <div>
       <div className="grid grid-cols-3 gap-1.5">
         {plots.map((plot, i) => {
-          const stage = gardenStage(plot, Date.now())
+          const stage = gardenStage(plot, Date.now(), growMs)
           const ready = stage === 2
           // Mutation hint: a different mature neighbor is adjacent.
           const neighborReady = plot && !ready && gardenNeighbors(i).some(j => {
             const nb = plots[j]
-            return nb && nb.root !== plot.root && gardenStage(nb, Date.now()) === 2
+            return nb && nb.root !== plot.root && gardenStage(nb, Date.now(), growMs) === 2
           })
           return (
             <div key={i}>
@@ -106,7 +106,7 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
                   <div className="text-2xl leading-none">{STAGE_EMOJI[Math.max(0, stage)]}</div>
                   <div className="text-sm font-serif leading-tight truncate" dir="rtl">{plot.root}</div>
                   <div className="text-[9px] text-neutral-400 tabular-nums">
-                    {ready ? 'tap to harvest' : fmtLeft(plot.plantedAt + GARDEN_GROW_MS - Date.now())}
+                    {ready ? 'tap to harvest' : fmtLeft(plot.plantedAt + growMs - Date.now())}
                     {neighborReady ? ' · 🧬' : ''}
                   </div>
                 </button>

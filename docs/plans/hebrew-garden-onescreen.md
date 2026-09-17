@@ -59,7 +59,14 @@ Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that 
 - Verify: 296 self-checks, esbuild clean, vite build green
 
 ## Track H: Per-root FSRS (top-100) `[x]`
-- seed_hebrew_roots --top-roots: gap-fill generated lessons from top500 (96 new, 113 root nodes total, L4-6, idempotent)
+- seed_hebrew_roots --top-roots gap-fills 96 generated lessons from top500 (113 root nodes total, L4-6, idempotent)
 - hebrew_node_map indexes lesson `root` field; shared _attach_srs_status helper; top-roots?with_status=1 resolves root_ ids by PK (no LIKE)
 - Roots Tiles grades noded roots through real FSRS (Know=Good/Skip=Again) with FSRS tile visuals; reps kept for synergy flow
 - Verify: 296 self-checks, 21 backend tests, top-roots status resolves, vite build green
+
+## Track I: Hebrew feasts seasonal layer `[x]`
+- FEASTS table (8 moedim with meaning/scriptures/vocab), Intl Hebrew-calendar detection verified vs real 2026 dates, 13 new self-checks (309 total)
+- Effects: mercy windows (Passover/YK 60s), Shavuot grammar ×2, Trumpets/Hanukkah/Shemini spawn quickening, Sukkot garden ×2, Purim +5 🌟/claim
+- HUD feast chip (live/countdown) + info modal; Enoch 364-day tie-in documented for the Luminaries follow-up
+- Fixed en route: purim edit ate the answer-path `hours` guard (restored)
+- Verify: 309 self-checks, 54 backend tests, esbuild clean, vite build green
