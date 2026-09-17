@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { preprocess, createComponents } from '../lib/scripture-markdown'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
 import { currentSessionToken } from '../api'
 
 /**

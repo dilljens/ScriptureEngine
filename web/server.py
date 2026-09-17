@@ -63,6 +63,13 @@ async def lifespan(app):
     _startup_debug()
     load_ram_cache()
     _build_lexicon_cache_index()
+    # Hebrew schema (tables/columns/hot-path indexes) once at startup so no
+    # request ever pays DDL. Safe no-op when the DB already has the indexes.
+    try:
+        from web.routes.hebrew import ensure_hebrew_schema_once as _ensure_hebrew
+        _ensure_hebrew()
+    except Exception as e:
+        log.warning("Hebrew schema ensure failed", error=str(e))
     # Load wiki articles into RAM cache
     _wiki_conn = get_db()
     _wiki_rows = _wiki_conn.execute("SELECT * FROM wiki_articles").fetchall()
@@ -425,6 +432,8 @@ def load_ram_cache():
     """
     import time as _time
     workers = int(os.environ.get("SCRIPTURE_WORKERS", "1"))
+    if os.environ.get("SKIP_RAM_CACHE", "").lower() not in ("", "0", "false", "no"):
+        workers = 0  # explicit alias: skip heavy caches (tests, low-RAM)
     _t0 = _time.time()
 
     log.info("Loading cache", phase="start")

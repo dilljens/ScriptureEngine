@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { firstLetterMask, PREVIEW_LEVELS } from '../lib/previewMask'
-import { preprocess, openVerseRef, createComponents } from '../lib/scripture-markdown'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
+import { ScriptureMarkdown } from '../lib/scripture-markdown'
+import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
 import {
   ANSWER_MODES,
   answerModeForQuestion,
@@ -226,13 +224,12 @@ function VocabCardRenderer({ card, showAnswer, hebrewOnly }) {
   const [audioUrl, setAudioUrl] = useState(null)
   const playAudio = (e) => {
     e?.stopPropagation?.()
-    const play = (url) => { const a = new Audio(url); a.play().catch(() => {}) }
-    if (audioUrl) { play(audioUrl); return }
+    // Perf (Track D2): pooled URL cache + shared element.
+    if (audioUrl) { playUrl(audioUrl); return }
     const hw = word || ''
     if (!hw) return
-    fetch(`/api/v1/hebrew/audio/${encodeURIComponent(hw)}`)
-      .then(r => r.json())
-      .then(d => { if (d.ok && d.data?.audio_url) { setAudioUrl(d.data.audio_url); play(d.data.audio_url) } })
+    fetchAudioUrl(hw)
+      .then(url => { if (url) { setAudioUrl(url); playUrl(url) } })
       .catch(() => {})
   }
   return (
@@ -460,9 +457,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
     return (
       <div>
         <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
-            {preprocess(question || '')}
-          </ReactMarkdown>
+          <ScriptureMarkdown>{question || ''}</ScriptureMarkdown>
         </div>
 
         {/* Source module */}
@@ -519,9 +514,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
   return (
     <div className="space-y-3">
       <div className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
-          {preprocess(question || '')}
-        </ReactMarkdown>
+        <ScriptureMarkdown>{question || ''}</ScriptureMarkdown>
       </div>
       {serverCorrect !== null && (
         <p className={`text-sm font-medium ${serverCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -570,9 +563,7 @@ function LearnQuestionRenderer({ card, showAnswer, onAnswer, answerState }) {
       )}
       {explanation && (
         <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={createComponents({ onOpenVerse: openVerseRef })}>
-            {preprocess(explanation)}
-          </ReactMarkdown>
+          <ScriptureMarkdown>{explanation}</ScriptureMarkdown>
         </div>
         )}
     </div>
@@ -597,9 +588,7 @@ function AssessmentQuestionRenderer({ card, showAnswer, onAnswer }) {
     <div>
       {/* Question text (shown on both front and back) */}
       <div className="prose prose-sm dark:prose-invert max-w-none mb-3">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-          {question || ''}
-        </ReactMarkdown>
+        <ScriptureMarkdown raw components={{}}>{question || ''}</ScriptureMarkdown>
       </div>
 
       {/* Tier/type badges */}
@@ -659,9 +648,7 @@ function AssessmentQuestionRenderer({ card, showAnswer, onAnswer }) {
             <div className="p-3 rounded-lg bg-white dark:bg-neutral-800 border border-indigo-100 dark:border-neutral-700">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">Explanation</p>
               <div className="prose prose-xs dark:prose-invert max-w-none text-xs">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                  {explanation}
-                </ReactMarkdown>
+                <ScriptureMarkdown raw components={{}}>{explanation}</ScriptureMarkdown>
               </div>
             </div>
           )}

@@ -12,6 +12,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { currentSessionToken } from '../api'
+import { fetchAudioUrl } from '../lib/audio-pool'
 
 const API = window.__API_URL__ || ''
 
@@ -267,31 +268,30 @@ export default function HebrewPassageReader({ verseRef, onClose, readingLessonId
       if (highlightInterval.current) clearInterval(highlightInterval.current)
     }  }, [verseRef])
 
-  // Play audio for a single word
+  // Play audio for a single word. URL lookup goes through the shared pool
+  // cache (dedupes fetches across components); playback keeps its own
+  // element for play-state/highlight tracking.
   const playAudio = useCallback(async (word) => {
     if (!word) return
-    // Check cache first
-    if (audioCache[word]) {
+    const playCached = (url) => {
       if (audioElt.current) { audioElt.current.pause(); audioElt.current = null }
-      const audio = new Audio(audioCache[word])
+      const audio = new Audio(url)
       audioElt.current = audio
       audio.onended = () => setAudioPlaying(null)
       audio.onerror = () => setAudioPlaying(null)
       audio.play().then(() => setAudioPlaying(word)).catch(() => setAudioPlaying(null))
+    }
+    // Check cache first
+    if (audioCache[word]) {
+      playCached(audioCache[word])
       return
     }
-    // Fetch audio URL
+    // Fetch audio URL (pool dedupes + caches globally)
     try {
-      const r = await fetch(`${API}/api/v1/hebrew/audio/${encodeURIComponent(word)}`)
-      const d = await r.json()
-      if (d.ok && d.data?.audio_url) {
-        setAudioCache(prev => ({ ...prev, [word]: d.data.audio_url }))
-        if (audioElt.current) { audioElt.current.pause(); audioElt.current = null }
-        const audio = new Audio(d.data.audio_url)
-        audioElt.current = audio
-        audio.onended = () => setAudioPlaying(null)
-        audio.onerror = () => setAudioPlaying(null)
-        audio.play().then(() => setAudioPlaying(word)).catch(() => setAudioPlaying(null))
+      const url = await fetchAudioUrl(word)
+      if (url) {
+        setAudioCache(prev => ({ ...prev, [word]: url }))
+        playCached(url)
       }
     } catch {}
   }, [audioCache])

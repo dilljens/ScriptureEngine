@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
-import { getWikiArticle, getWikiBrowse, getWikiSearch } from '../api'
-import { preprocess, createComponents } from '../lib/scripture-markdown'
-import ConnectionGraph from './ConnectionGraph'
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
+// Perf (Track C1): cytoscape rides its own chunk — fetched only when the
+// Connection Graph section is expanded, never on initial load.
+const ConnectionGraph = lazy(() => import('./ConnectionGraph'))
 
 /**
  * WikiArticleViewer — Wikipedia-style wiki viewer with sidebar, search, and browse.
@@ -529,9 +527,7 @@ function ArticleView({ article, onEntityClick, onOpenTab }) {
         prose-th:bg-neutral-50 dark:prose-th:bg-neutral-800 prose-th:px-2 prose-th:py-1
         prose-td:px-2 prose-td:py-1 prose-td:border prose-td:border-neutral-200 dark:prose-td:border-neutral-700
         prose-blockquote:text-neutral-500 dark:prose-blockquote:text-neutral-400 prose-blockquote:border-l-neutral-300 dark:prose-blockquote:border-l-neutral-600">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
+        <ScriptureMarkdown
           components={createComponents({
             onOpenVerse: handleWikiVerse,
             hoverPreview: true,
@@ -541,8 +537,8 @@ function ArticleView({ article, onEntityClick, onOpenTab }) {
               ) : null,
             },
           })}>
-          {preprocess(article.content || '')}
-        </ReactMarkdown>
+          {article.content || ''}
+        </ScriptureMarkdown>
       </div>
 
       {/* Key Verses */}
@@ -610,12 +606,14 @@ function ArticleView({ article, onEntityClick, onOpenTab }) {
         </button>
         {showGraph && centerVerse && (
           <div className="h-72 md:h-96">
-            <ConnectionGraph
-              centerVerse={centerVerse}
-              onOpenTab={(b, ch, opts) => {
-                if (onOpenTab) onOpenTab(b, ch, opts)
-              }}
-            />
+            <Suspense fallback={<div className="p-4 text-center text-[11px] text-neutral-400">Loading graph…</div>}>
+              <ConnectionGraph
+                centerVerse={centerVerse}
+                onOpenTab={(b, ch, opts) => {
+                  if (onOpenTab) onOpenTab(b, ch, opts)
+                }}
+              />
+            </Suspense>
           </div>
         )}
         {showGraph && !centerVerse && (

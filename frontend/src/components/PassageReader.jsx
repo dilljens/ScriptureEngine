@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import CardQueue from './CardQueue'
 import { lessonToCards } from '../lib/card-factory'
 import { currentSessionToken } from '../api'
+import { fetchAudioUrl } from '../lib/audio-pool'
 
 /**
  * PassageReader — LingQ-style passage study mode.
@@ -225,10 +226,11 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
       }
       // 2. Fallback: TTS word audio (kokoro) — served from lesson words by node?
       //    The passage reader has no node_id, so try the plain-hebrew route.
-      const r2 = await fetch(`/api/v1/hebrew/audio/${encodeURIComponent(cleaned)}`)
-      const d2 = await r2.json()
-      if (d2.ok && d2.data?.audio_url) {
-        const a = new Audio(d2.data.audio_url)
+      //    URL lookup pooled (deduped cache); playback keeps its own element
+      //    so tapping another word cuts the current one.
+      const fallbackUrl = await fetchAudioUrl(cleaned)
+      if (fallbackUrl) {
+        const a = new Audio(fallbackUrl)
         audioRef.current = a
         a.play().catch(() => {})
       }

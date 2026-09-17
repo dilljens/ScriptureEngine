@@ -19,5 +19,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        // Perf (Track C1): cytoscape (~350KB, graph tabs only) and the
+        // markdown stack (5 importing components) load on demand instead
+        // of riding the initial chunks.
+        manualChunks: {
+          cytoscape: ['cytoscape'],
+          markdown: ['react-markdown', 'remark-gfm', 'rehype-raw'],
+        },
+      },
+    },
   },
 })

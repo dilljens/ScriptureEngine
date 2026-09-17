@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { currentSessionToken, fetchJSON, hebrewSessionUser } from '../api'
+import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
 
 /**
  * AnkiReview — Dedicated flip-card study view for Hebrew vocabulary.
@@ -41,7 +42,6 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const [ratings, setRatings] = useState({})
   const [imageCache, setImageCache] = useState({})
   const [audioUrl, setAudioUrl] = useState(null)
-  const audioRef = useRef(null)
   const spaceRef = useRef(false)
 
   const currentCard = cards[currentIdx]
@@ -60,22 +60,18 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     })
   }, [initialCards])
 
-  // Auto-play audio for hearing mode when card is shown
+  // Auto-play audio for hearing mode when card is shown (pooled: cached URL + shared element).
   useEffect(() => {
     if (!currentCard || flipped) return
     if (currentCard.mode === 'hearing' && currentCard.hebrew) {
-      fetchJSON(`/hebrew/audio/${encodeURIComponent(currentCard.hebrew)}`)
-        .then(r => {
-          if (r.ok && r.data?.audio_url) {
-            setAudioUrl(r.data.audio_url)
-            const audio = new Audio(r.data.audio_url)
-            audioRef.current = audio
-            audio.play().catch(() => {})
-          }
-        })
-        .catch(() => {})
+      let cancelled = false
+      fetchAudioUrl(currentCard.hebrew).then(url => {
+        if (cancelled || !url) return
+        setAudioUrl(url)
+        playUrl(url)
+      })
+      return () => { cancelled = true }
     }
-    return () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null } }
   }, [currentCard?.id, flipped])
 
   const handleFlip = useCallback(() => {

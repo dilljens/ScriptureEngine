@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import HebrewQuiz from './HebrewQuiz'
 import HebrewModePicker, { getGame, loadLearnMode, loadGameId } from './HebrewModePicker'
@@ -10,7 +10,9 @@ import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
 import DailyVerse from './DailyVerse'
 import AudioReviewSession from './AudioReviewSession'
+import WordTilesView from './WordTilesView'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
+import { grammarTrackBonus } from '../lib/idle-game'
 import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /* ── Dropdown components for compact action menus ── */
@@ -86,6 +88,119 @@ const CATEGORY_STYLES = {
   phrase: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300 dark:border-yellow-700', text: 'text-yellow-800 dark:text-yellow-200', label: 'Phrases', icon: 'כ' },
 }
 
+/**
+ * LessonRow — one curriculum row. Memoized so parent re-renders (toasts,
+ * prefs, queue counts) skip all 696 rows: a row re-renders only when its
+ * own node object changes.
+ */
+const LessonRow = memo(function LessonRow({ node, onOpenLesson, onOpenPassage }) {
+  const cs = CATEGORY_STYLES[node.category] || {}
+  // Placement (diagnostic) credit unlocks but is NOT practiced
+  // mastery — shown distinctly so it never masquerades as mastered.
+  const isTestedOut = node.mastery >= 0.8 && node.source === 'placement'
+  const isMastered = node.mastery >= 0.8 && !isTestedOut
+  const isLearning = node.mastery > 0 && node.mastery < 0.8
+  const isLocked = !node.unlocked
+
+  return (
+    <button onClick={() => {
+      if (isLocked) return
+      // Reading lessons open the PassageReader instead of the lesson view
+      if (node.category === 'reading' && node.description) {
+        const refMatch = node.description.match(/Read\s+([\w]+)\.(\d+)/)
+        if (refMatch) {
+          onOpenPassage?.(`${refMatch[1]}.${refMatch[2]}.1`, node.id)
+          return
+        }
+      }
+      onOpenLesson?.(node.id)
+    }} disabled={isLocked}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
+        ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
+          : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
+          : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
+          : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
+        }`}>
+      {/* Status dot */}
+      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+        isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
+          : isMastered ? 'bg-green-500'
+          : isTestedOut ? 'bg-sky-400'
+          : isLearning ? 'bg-amber-500'
+          : 'bg-neutral-200 dark:bg-neutral-700'
+      }`} />
+
+      {/* Level */}
+      <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-6 shrink-0">L{node.level}</span>
+
+      {/* Title + category */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-medium truncate ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'}`}>
+            {node.title}
+          </span>
+          {cs?.label && (
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cs.bg} ${cs.text} ${cs.border} border`}>
+              {cs.icon} {cs.label}
+            </span>
+          )}
+          {isTestedOut && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
+              title="Diagnostic credit — demonstrated in the placement quiz, not yet practiced">
+              ✓ tested out
+            </span>
+          )}
+        </div>
+        {node.description && (
+          <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
+        )}
+        {/* Why is this locked? Never leave a dead end unexplained. */}
+        {isLocked && (
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 truncate" title="Master the prerequisites (80%+) to unlock">
+            🔒 Requires {(node.prerequisites && node.prerequisites.length > 0)
+              ? node.prerequisites.map(p => `${p.title} (${Math.round((p.mastery || 0) * 100)}%)`).join(', ')
+              : 'an earlier lesson'}
+          </p>
+        )}
+      </div>
+
+      {/* Mastery bar */}
+      <div className="w-14 shrink-0">
+        <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isTestedOut ? 'bg-sky-400' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
+            style={{ width: `${node.mastery * 100}%` }} />
+        </div>
+        <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>
+      </div>
+
+      {/* Learning speed indicator */}
+      {!isLocked && node.learning_speed !== undefined && (
+        <div className="w-6 shrink-0 flex items-center justify-center" title={
+          node.learning_speed > 1.5 ? 'Fast learner on this topic' :
+          node.learning_speed >= 0.8 ? 'Normal pace' :
+          node.learning_speed >= 0.4 ? 'Needs extra practice' :
+          'Struggling — review prerequisites'
+        }>
+          <span className={`text-xs ${
+            node.learning_speed > 1.5 ? 'text-green-500' :
+            node.learning_speed >= 0.8 ? 'text-blue-400' :
+            node.learning_speed >= 0.4 ? 'text-amber-500' :
+            'text-red-500'
+          }`}>
+            {node.learning_speed > 1.5 ? '⚡' :
+             node.learning_speed >= 0.8 ? '→' :
+             node.learning_speed >= 0.4 ? '～' :
+             '⚠'}
+          </span>
+        </div>
+      )}
+
+      {isLocked && <span className="text-xs text-neutral-400 shrink-0">🔒</span>}
+      {!isLocked && !isMastered && <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
+    </button>
+  )
+})
+
 export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [curriculum, setCurriculum] = useState(null)
   const [gamification, setGamification] = useState(null)
@@ -109,6 +224,9 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [freqVocabCards, setFreqVocabCards] = useState([])
   const [showAudioReview, setShowAudioReview] = useState(false)
   const [audioWords, setAudioWords] = useState([])
+  const [showWordTiles, setShowWordTiles] = useState(false)
+  const [wordTilesInitial, setWordTilesInitial] = useState([])
+  const [wordTilesKind, setWordTilesKind] = useState('words')
   const [showQuiz, setShowQuiz] = useState(false)
   // Anki-style daily pacing: deck options + live queue counts
   const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
@@ -138,17 +256,33 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return token ? { Authorization: `Bearer ${token}` } : {}
   }
 
-  // Load curriculum + gamification in parallel
-  const loadAll = () => {    setLoading(true)
-    sessionQuery().then(q => Promise.all([
-      fetch(`/api/v1/hebrew/curriculum${q}`, { headers: sessionHeaders() }).then(r => r.json()),
-      fetch(`/api/v1/hebrew/gamification${q}`, { headers: sessionHeaders() }).then(r => r.json()),
-    ]))
-      .then(([curData, gamData]) => {
-        if (curData.ok) setCurriculum(curData.data)
-        else setError(curData.detail || 'Failed to load')
-        if (gamData.ok) setGamification(gamData.data)
-      })
+  // Load everything in ONE round trip (bootstrap: curriculum + gamification
+  // + prefs + queue). Falls back to the old 3-fetch path if bootstrap is
+  // unavailable (older backend).
+  const loadAll = () => {
+    setLoading(true)
+    sessionQuery().then(async (q) => {
+      const amp = q ? '&' + q.slice(1) : ''
+      try {
+        const r = await fetch(`/api/v1/hebrew/bootstrap?queue_limit=1${amp}`, { headers: sessionHeaders() })
+        const d = await r.json()
+        if (d.ok && d.data?.curriculum) {
+          setCurriculum(d.data.curriculum)
+          if (d.data.gamification) setGamification(d.data.gamification)
+          if (d.data.prefs) { setPrefs(d.data.prefs); setPrefsDraft(d.data.prefs) }
+          if (d.data.queue) setQueueStats(d.data.queue)
+          return
+        }
+      } catch {}
+      const [curData, gamData] = await Promise.all([
+        fetch(`/api/v1/hebrew/curriculum${q}`, { headers: sessionHeaders() }).then(r => r.json()),
+        fetch(`/api/v1/hebrew/gamification${q}`, { headers: sessionHeaders() }).then(r => r.json()),
+      ])
+      if (curData.ok) setCurriculum(curData.data)
+      else setError(curData.detail || 'Failed to load')
+      if (gamData.ok) setGamification(gamData.data)
+      loadPacing() // fallback path skips bootstrap: fetch pacing separately
+    })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
@@ -159,7 +293,8 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return stop
   }, [])
 
-  // Daily pacing: deck options + queue counts (due / new / capped)
+  // Daily pacing refresh (prefs + queue counts). Mount is covered by the
+  // bootstrap in loadAll; this stays for post-save refreshes.
   const loadPacing = useCallback(async () => {
     try {
       const uq = await sessionQuery()
@@ -172,7 +307,6 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       if (q.ok) setQueueStats(q.data)
     } catch {}
   }, [])
-  useEffect(() => { loadPacing() }, [loadPacing])
 
   const savePrefs = async () => {
     try {
@@ -251,12 +385,28 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   if (!curriculum) return null
 
   const { nodes, total, mastered, tested_out, in_progress, locked } = curriculum
-  const filtered = filter === 'all' ? nodes : nodes.filter(n => n.category === filter)
-  const byLevel = {}
-  for (const n of filtered) {
-    if (!byLevel[n.level]) byLevel[n.level] = []
-    byLevel[n.level].push(n)
-  }
+  // Perf (Track D2): grouping rebuilt only when nodes/filter change — toast,
+  // prefs and queue updates re-render without touching 696 rows (memo below).
+  // The 'tracks' pseudo-filter shows the grammar grid, not the lesson list.
+  const filtered = useMemo(
+    () => (filter === 'all' ? nodes : filter === 'tracks' ? [] : nodes.filter(n => n.category === filter)),
+    [nodes, filter])
+  const byLevel = useMemo(() => {
+    const groups = {}
+    for (const n of filtered) {
+      if (!groups[n.level]) groups[n.level] = []
+      groups[n.level].push(n)
+    }
+    return groups
+  }, [filtered])
+  // Grammar tracks grid (Scale Track C): derived from node category+level,
+  // no migration. +5% Ohr per complete tier (see IdleBar 📜 chip).
+  const trackInfo = useMemo(() => grammarTrackBonus(nodes), [nodes])
+  const TRACK_META = [
+    { id: 'binyanim', label: 'Binyanim', desc: 'verb stems', icon: 'ע' },
+    { id: 'clauses', label: 'Clauses', desc: 'syntax', icon: '⇄' },
+    { id: 'nominals', label: 'Nominals', desc: 'nouns + grammar', icon: 'ד' },
+  ]
 
   // Passage reader mode
   if (showPassageReader) {
@@ -379,6 +529,13 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </div>
         <AudioReviewSession words={audioWords} onComplete={() => setShowAudioReview(false)} onRate={handleAudioRate} />
       </div>
+    )
+  }
+
+  // Word Tiles: 50 words at once, Anki-style (mastered = 21+ day interval)
+  if (showWordTiles) {
+    return (
+      <WordTilesView initialWords={wordTilesKind === 'words' ? wordTilesInitial : []} kind={wordTilesKind} onClose={() => { setShowWordTiles(false); loadAll() }} />
     )
   }
 
@@ -677,6 +834,18 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             try { const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10'); const d = await r.json(); setAudioWords((d.data?.words || []).filter(w => w.hebrew && w.gloss).map(w => ({ hebrew: w.hebrew, english: w.gloss, transliteration: w.transliteration }))) } catch {}
             setShowAudioReview(true)
           }} icon="🎧" label="Audio Review" desc="Listen & repeat" />
+          <DropdownItem onClick={async () => {
+            try {
+              const uq = await sessionQuery()
+              const amp = uq ? '&' + uq.slice(1) : ''
+              const r = await fetch(`/api/v1/hebrew/top-words?limit=50&with_status=1${amp}`, { headers: sessionHeaders() })
+              const d = await r.json()
+              setWordTilesInitial(d.ok ? (d.data?.words || []) : [])
+            } catch { setWordTilesInitial([]) }
+            setWordTilesKind('words')
+            setShowWordTiles(true)
+          }} icon="🔠" label="Word Tiles" desc="50 words at once · Anki intervals" />
+          <DropdownItem onClick={() => { setWordTilesKind('roots'); setShowWordTiles(true) }} icon="🌱" label="Root Tiles" desc="50 roots · 25 mastered words to enter" />
         </DropdownMenu>
       </div>
 
@@ -760,7 +929,8 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           Object.entries(CATEGORY_STYLES).map(([cat, cs]) => ({
             id: cat, count: nodes.filter(n => n.category === cat).length, ...cs
           })).filter(c => c.count > 0)
-        ).map(c => (
+        ).concat([{ id: 'tracks', count: trackInfo.complete, label: 'Tracks', icon: '🧭',
+          bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-800 dark:text-sky-200' }]).map(c => (
           <button key={c.id} onClick={() => setFilter(c.id)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               filter === c.id
@@ -817,6 +987,47 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </div>
       )}
 
+      {/* Grammar tracks grid (Scale Track C): 3 tracks × 5 tiers. Click a
+          cell to open its first unmastered lesson. Empty cells are the
+          content backlog — visible, not hidden. */}
+      {filter === 'tracks' && (
+        <div className="mb-6 p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1">
+            Grammar Tracks · {trackInfo.complete} tiers complete (+{Math.round(trackInfo.bonus * 100)}% Ohr)
+          </h3>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mb-3">Each complete tier pays +5% Ohr/sec (cap +50%). Tiers follow lesson level (L3→1 … L7→5).</p>
+          <div className="space-y-2">
+            {TRACK_META.map(t => (
+              <div key={t.id} className="flex items-center gap-2">
+                <div className="w-24 shrink-0 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">
+                  <span className="mr-1">{t.icon}</span>{t.label}
+                </div>
+                <div className="flex gap-1.5 flex-1">
+                  {[1, 2, 3, 4, 5].map(tier => {
+                    const cell = trackInfo.grid[t.id]?.[tier]
+                    const done = cell && cell.mastered >= cell.total
+                    const color = !cell ? 'bg-neutral-100 dark:bg-neutral-800 border-dashed'
+                      : done ? 'bg-green-500 border-green-500'
+                      : cell.mastered > 0 ? 'bg-amber-400 border-amber-400'
+                      : 'bg-neutral-200 dark:bg-neutral-700 border-transparent'
+                    const nextId = cell?.ids.map(id => nodes.find(n => n.id === id)).find(n => n && (n.mastery || 0) < 0.8)?.id
+                      || cell?.ids[0]
+                    return (
+                      <button key={tier} disabled={!nextId} onClick={() => nextId && onOpenLesson?.(nextId)}
+                        title={!cell ? `Tier ${tier}: no lessons yet — content backlog`
+                          : `${t.label} tier ${tier}: ${cell.mastered}/${cell.total} mastered${done ? ' (+5% Ohr)' : ''}`}
+                        className={`flex-1 h-9 rounded-lg border text-[10px] font-medium transition-all cursor-pointer disabled:cursor-default hover:ring-2 hover:ring-indigo-400 disabled:hover:ring-0 ${color} ${done || !cell ? 'text-white dark:text-white' : 'text-neutral-600 dark:text-neutral-300'}`}>
+                        T{tier}{cell ? ` ${cell.mastered}/${cell.total}` : ' ···'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lessons by level */}
       {!showMasteryMap && (
         <div className="space-y-6">
@@ -824,120 +1035,16 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             <div key={level}>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">Level {level}</h3>
               <div className="space-y-1.5">
-                {levelNodes.map(node => {
-                  const cs = CATEGORY_STYLES[node.category] || {}
-                  // Placement (diagnostic) credit unlocks but is NOT practiced
-                  // mastery — shown distinctly so it never masquerades as mastered.
-                  const isTestedOut = node.mastery >= 0.8 && node.source === 'placement'
-                  const isMastered = node.mastery >= 0.8 && !isTestedOut
-                  const isLearning = node.mastery > 0 && node.mastery < 0.8
-                  const isLocked = !node.unlocked
-
-                  return (
-                    <button key={node.id} onClick={() => {
-                      if (isLocked) return
-                      // Reading lessons open the PassageReader instead of the lesson view
-                      if (node.category === 'reading' && node.description) {
-                        const refMatch = node.description.match(/Read\s+([\w]+)\.(\d+)/)
-                        if (refMatch) {
-                          onOpenPassage?.(`${refMatch[1]}.${refMatch[2]}.1`, node.id)
-                          return
-                        }
-                      }
-                      onOpenLesson?.(node.id)
-                    }} disabled={isLocked}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
-                        ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
-                          : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
-                          : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
-                          : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
-                        }`}>
-                      {/* Status dot */}
-                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                        isLocked ? 'bg-neutral-300 dark:bg-neutral-600'
-                          : isMastered ? 'bg-green-500'
-                          : isTestedOut ? 'bg-sky-400'
-                          : isLearning ? 'bg-amber-500'
-                          : 'bg-neutral-200 dark:bg-neutral-700'
-                      }`} />
-
-                      {/* Level */}
-                      <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 w-6 shrink-0">L{node.level}</span>
-
-                      {/* Title + category */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-sm font-medium truncate ${isLocked ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-800 dark:text-neutral-200'}`}>
-                            {node.title}
-                          </span>
-                          {cs?.label && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${cs.bg} ${cs.text} ${cs.border} border`}>
-                              {cs.icon} {cs.label}
-                            </span>
-                          )}
-                          {isTestedOut && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800"
-                              title="Diagnostic credit — demonstrated in the placement quiz, not yet practiced">
-                              ✓ tested out
-                            </span>
-                          )}
-                        </div>
-                        {node.description && (
-                          <p className={`text-xs mt-0.5 truncate ${isLocked ? 'text-neutral-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{node.description}</p>
-                        )}
-                        {/* Why is this locked? Never leave a dead end unexplained. */}
-                        {isLocked && (
-                          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 truncate" title="Master the prerequisites (80%+) to unlock">
-                            🔒 Requires {(node.prerequisites && node.prerequisites.length > 0)
-                              ? node.prerequisites.map(p => `${p.title} (${Math.round((p.mastery || 0) * 100)}%)`).join(', ')
-                              : 'an earlier lesson'}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Mastery bar */}
-                      <div className="w-14 shrink-0">
-                        <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${isMastered ? 'bg-green-500' : isTestedOut ? 'bg-sky-400' : isLearning ? 'bg-amber-500' : 'bg-neutral-300 dark:bg-neutral-600'}`}
-                            style={{ width: `${node.mastery * 100}%` }} />
-                        </div>
-                        <span className="text-[8px] text-neutral-400 dark:text-neutral-500 mt-0.5 block text-right">{Math.round(node.mastery * 100)}%</span>
-                      </div>
-
-                      {/* Learning speed indicator */}
-                      {!isLocked && node.learning_speed !== undefined && (
-                        <div className="w-6 shrink-0 flex items-center justify-center" title={
-                          node.learning_speed > 1.5 ? 'Fast learner on this topic' :
-                          node.learning_speed >= 0.8 ? 'Normal pace' :
-                          node.learning_speed >= 0.4 ? 'Needs extra practice' :
-                          'Struggling — review prerequisites'
-                        }>
-                          <span className={`text-xs ${
-                            node.learning_speed > 1.5 ? 'text-green-500' :
-                            node.learning_speed >= 0.8 ? 'text-blue-400' :
-                            node.learning_speed >= 0.4 ? 'text-amber-500' :
-                            'text-red-500'
-                          }`}>
-                            {node.learning_speed > 1.5 ? '⚡' :
-                             node.learning_speed >= 0.8 ? '→' :
-                             node.learning_speed >= 0.4 ? '～' :
-                             '⚠'}
-                          </span>
-                        </div>
-                      )}
-
-                      {isLocked && <span className="text-xs text-neutral-400 shrink-0">🔒</span>}
-                      {!isLocked && !isMastered && <span className="text-xs text-indigo-500 dark:text-indigo-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">→</span>}
-                    </button>
-                  )
-                })}
+                {levelNodes.map(node => (
+                  <LessonRow key={node.id} node={node} onOpenLesson={onOpenLesson} onOpenPassage={onOpenPassage} />
+                ))}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {filtered.length === 0 && (
+      {filtered.length === 0 && filter !== 'tracks' && (
         <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
           No lessons in this category. Try another filter.
         </div>

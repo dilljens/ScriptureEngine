@@ -65,6 +65,7 @@ function currentModeGame() {
 
 export function readLog() {
   try {
+    drain()
     const raw = readRaw()
     if (!raw) return []
     const arr = JSON.parse(raw)
@@ -78,13 +79,39 @@ export function readLog() {
 export function logEvent(type, data = {}) {
   const { mode, game } = currentModeGame()
   const ev = { t: Date.now(), session: getSession(), mode, game, type, data }
-  const log = readLog()
-  log.push(ev)
-  while (log.length > MAX_EVENTS) log.shift()
+  memBuf.push(ev)
+  // Persist lazily (browser: 10s batch; node: on next read). Reads drain,
+  // so they always see pending events.
+  if (typeof window !== 'undefined' && !writeTimer) {
+    writeTimer = setTimeout(() => { writeTimer = null; persist() }, 10000)
+  }
+  return ev
+}
+
+// ── Write batching (perf Track D1): the 2000-event array is re-stringified
+// at most 1x/10s instead of on every answer/purchase. Reads drain first so
+// they always see pending events.
+let memBuf = []
+let writeTimer = null
+let persisting = false
+function persist() {
+  if (!memBuf.length || persisting) return
+  persisting = true
   try {
+    const log = readLog()
+    log.push(...memBuf)
+    while (log.length > MAX_EVENTS) log.shift()
     writeRaw(JSON.stringify(log))
   } catch {}
-  return ev
+  memBuf = []
+  persisting = false
+}
+function drain() {
+  if (writeTimer) { clearTimeout(writeTimer); writeTimer = null }
+  persist()
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', persist)
 }
 
 /** Mark a session start (call once on mount, e.g. HebrewLearnView). */

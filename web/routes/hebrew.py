@@ -10,6 +10,7 @@ import random
 import re
 import secrets
 import sqlite3
+import time
 import unicodedata
 import urllib.parse
 from pathlib import Path
@@ -112,6 +113,16 @@ def fsrs_schedule(stability, difficulty, rating):
     return new_s, new_d, interval
 
 
+# ── Word mastery, Anki-style ─────────────────────────────────────────────
+# Compared against Anki 26.08.1 (installed locally at /usr/bin/anki,
+# https://apps.ankiweb.net/). Anki has no binary "mastered" flag — mastery IS
+# time-until-next-review: each card stores interval/due, and cards with
+# interval >= 21 days count as "mature" in Anki stats. FSRS (default since
+# Anki 23.10) schedules interval = stability at the desired retention
+# (default 0.90). We mirror that: a word is mastered when its FSRS interval
+# reaches 21+ days. The float `mastery` column stays for backward compat.
+WORD_MATURE_INTERVAL_DAYS = 21
+
 # ── Student-Topic Learning Speeds (Math Academy Ch. 29) ──
 # learning_speed = speedup_due_to_ability / slowdown_due_to_difficulty
 # ability = user's weighted accuracy across all topics
@@ -190,7 +201,19 @@ def compute_learning_speed(user_id="default"):
     `_get_user_category_accuracy`), falling back to the user's overall
     accuracy otherwise. Higher speed = learner is faster on this topic →
     longer review intervals (applied with caps in the review scheduler).
+
+    Perf: memoized per user for 60s (3-4 full scans otherwise, on every
+    read AND write). A review landing mid-window shifts the next interval
+    by a few percent at most — Anki recomputes its parameters far more
+    rarely than that.
     """
+    global _SPEED_CACHE
+    try:
+        hit = _SPEED_CACHE.get(user_id)
+        if hit and hit[0] > time.monotonic():
+            return hit[1]
+    except Exception:
+        pass
     user_acc, total_attempts, total_correct = _get_all_user_accuracy(user_id)
     topic_diff = _get_topic_difficulty()
 
@@ -217,28 +240,47 @@ def compute_learning_speed(user_id="default"):
         speed = ability / diff
         speeds[node_id] = round(speed, 3)
 
-    return speeds, round(overall_ability, 3), {k: round(v, 3) for k, v in topic_diff.items()}
+    result = (speeds, round(overall_ability, 3), {k: round(v, 3) for k, v in topic_diff.items()})
+    try:
+        _SPEED_CACHE[user_id] = (time.monotonic() + _SPEED_TTL, result)
+    except Exception:
+        pass
+    return result
+
+
+_SPEED_CACHE: dict = {}
+_SPEED_TTL = 60.0
 
 
 # ── FIRe (Fractional Implicit Repetition) ──
 
-def fire_process(graph, node_id, correct, weight=0.3):
+def fire_process(graph, node_id, correct, weight=0.3, _depth=0, _seen=None):
     """Process FIRe: implicit repetition credit flows through the knowledge graph.
 
     When a node is practiced, connected prerequisite nodes get partial credit.
     This implements repetition compression (Math Academy Ch. 18, 29).
+
+    Perf: iterative depth cap (6) + weight floor (0.01) + visited set — the
+    old unbounded recursion re-walked shared descendants exponentially on
+    diamond/cyclic graphs. Direct edge credits are unchanged; only repeated
+    deep re-credit of the same descendant is collapsed.
     """
     if not graph:
         return {}
+    if _seen is None:
+        _seen = set()
+    if node_id in _seen or _depth > 6 or weight < 0.01:
+        return {}
+    _seen.add(node_id)
     results = {}
     # Get prerequisites (nodes that this node depends on)
     prereqs = graph.get(node_id, [])
     for prereq_id in prereqs:
         # Credit = weight * correctness
         credit = weight * (1.0 if correct else 0.0)
-        results[prereq_id] = credit
+        results[prereq_id] = results.get(prereq_id, 0) + credit
         # Recursive: propagate to prerequisites of prerequisites
-        sub_results = fire_process(graph, prereq_id, correct, weight * 0.5)
+        sub_results = fire_process(graph, prereq_id, correct, weight * 0.5, _depth + 1, _seen)
         for k, v in sub_results.items():
             results[k] = results.get(k, 0) + v
     return results
@@ -499,8 +541,118 @@ def _ensure_hebrew_progress_source(conn):
         conn.execute("ALTER TABLE hebrew_progress ADD COLUMN source TEXT DEFAULT 'practice'")
 
 
-def read_hebrew_prefs(conn, user_id: str) -> dict:
+# ── Schema ensure-once (perf Track A1) ─────────────────────────────────────
+# The _ensure_* helpers above are idempotent but were called per-request:
+# PRAGMA + a failing ALTER on every call, and _ensure_gamification_table()
+# opened/closed its own connection 4-6x per review. This consolidates them
+# into one call that short-circuits on a single sqlite_master lookup once
+# the hot-path indexes exist. Always correct (fresh/test DBs lack the
+# indexes, so the full ensure runs), and CREATEs are all IF NOT EXISTS.
+_SCHEMA_INDEXES = (
+    "idx_hebrew_progress_user_practiced",
+    "idx_review_state_user_due",
+    "idx_review_state_user_node",
+    "idx_lessons_node",
+)
+
+
+def _ensure_all_hebrew_tables(conn):
+    """Run every Hebrew CREATE/ALTER on the given connection (no new ones)."""
+    _ensure_hebrew_review_state(conn)
+    _ensure_hebrew_progress_source(conn)
     _ensure_hebrew_prefs(conn)
+    _ensure_attempt_events_schema(conn)
+    _ensure_analytics_table(conn)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_gamification (
+            user_id TEXT NOT NULL DEFAULT 'default',
+            xp INTEGER DEFAULT 0,
+            streak_count INTEGER DEFAULT 0,
+            last_review_date TEXT,
+            best_streak INTEGER DEFAULT 0,
+            insight_xp INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'default',
+            badge_id TEXT NOT NULL,
+            earned_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, badge_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_seen_connections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'default',
+            connection_key TEXT NOT NULL,
+            seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, connection_key)
+        )
+    """)
+
+
+def _ensure_hot_indexes(conn):
+    """Hot-path secondary indexes (guarded: minimal DBs may lack the tables)."""
+    tables = {
+        r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    if "hebrew_progress" in tables:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_hebrew_progress_user_practiced"
+            " ON hebrew_progress(user_id,last_practiced)"
+        )
+    if "hebrew_review_state" in tables:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_review_state_user_due"
+            " ON hebrew_review_state(user_id,due)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_review_state_user_node"
+            " ON hebrew_review_state(user_id,node_id)"
+        )
+    if "hebrew_lessons" in tables:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_lessons_node ON hebrew_lessons(node_id)"
+        )
+
+
+def ensure_hebrew_schema_once(conn=None):
+    """Create Hebrew tables/columns/indexes once; near-free afterwards.
+
+    Pass the caller's connection when one is open (request paths, tests with
+    tmp DBs): ensures run on it with no new connections. Without a conn,
+    opens MEM_DB but short-circuits on a single sqlite_master lookup once
+    the hot-path indexes exist.
+    """
+    if conn is not None:
+        _ensure_all_hebrew_tables(conn)
+        return
+    if not MEM_DB.exists():
+        return
+    owned = sqlite3.connect(str(MEM_DB))
+    try:
+        have = {
+            r[0] for r in owned.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
+                _SCHEMA_INDEXES,
+            ).fetchall()
+        }
+        if len(have) == len(_SCHEMA_INDEXES):
+            return
+        _ensure_all_hebrew_tables(owned)
+        _ensure_hot_indexes(owned)
+        owned.commit()
+    finally:
+        owned.close()
+
+
+def read_hebrew_prefs(conn, user_id: str) -> dict:
+    ensure_hebrew_schema_once(conn)
     row = conn.execute(
         "SELECT new_cards_per_day, max_reviews_per_day FROM hebrew_prefs WHERE user_id=?",
         (user_id,)).fetchone()
@@ -589,11 +741,47 @@ def post_hebrew_review(body: dict, authorization: str = Header("")):
     )
 
 
+_HEBREW_NODE_MAP: dict = {"count": -1, "map": {}}
+
+
+def hebrew_node_map(conn):
+    """Hebrew surface/glyph/bare -> node_id, rebuilt only when the lesson
+    count changes (perf: replaces up to 500 unindexable LIKE scans per
+    top-words page with one straight SELECT + dict lookups). Progress
+    writes don't change the lesson count, so the map stays valid."""
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM hebrew_lessons").fetchone()[0]
+    except Exception:
+        return {}
+    if count != _HEBREW_NODE_MAP["count"]:
+        m = {}
+        try:
+            rows = conn.execute("SELECT node_id, content_json FROM hebrew_lessons").fetchall()
+        except Exception:
+            rows = []
+        for node_id, content_json in rows:
+            try:
+                c = json.loads(content_json or "{}")
+            except (TypeError, json.JSONDecodeError):
+                continue
+            for key in (c.get("hebrew"), c.get("glyph"), c.get("bare")):
+                if key and key not in m:
+                    m[key] = node_id
+        _HEBREW_NODE_MAP.update(count=count, map=m)
+    return _HEBREW_NODE_MAP["map"]
+
+
 def resolve_hebrew_node(conn, hebrew: str) -> str:
-    """Resolve a Hebrew word to a node id via lesson content (audio-review path)."""
+    """Resolve a Hebrew word to a node id via lesson content (audio-review path).
+
+    Map lookup first (exact surface/glyph/bare); LIKE fallback only on miss.
+    """
     word = (hebrew or "").strip()
     if not word:
         return ""
+    hit = hebrew_node_map(conn).get(word)
+    if hit:
+        return hit
     row = conn.execute("""
         SELECT n.id FROM hebrew_nodes n
         JOIN hebrew_lessons l ON l.node_id=n.id
@@ -633,8 +821,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     graph = get_hebrew_graph()
 
     conn = sqlite3.connect(str(MEM_DB))
-    _ensure_hebrew_review_state(conn)
-    _ensure_hebrew_progress_source(conn)
+    ensure_hebrew_schema_once()
     if not node_id and hebrew:
         node_id = resolve_hebrew_node(conn, hebrew)
     conn.execute("BEGIN IMMEDIATE")
@@ -706,17 +893,25 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     fire_results = {}
     if learning_speed >= 0.5:
         fire_results = fire_process(graph, node_id, rating >= 2, weight=0.3)
-        for prereq_id, credit in fire_results.items():
-            if credit > 0:
-                pr = conn.execute("SELECT mastery, attempts, source FROM hebrew_progress WHERE user_id=? AND node_id=?",
-                                  (user_id, prereq_id)).fetchone()
-                if pr:
-                    bumped = pr[0] + credit * 0.05
-                    if not (pr[1] or 0):
-                        # Implicit credit alone must never "master" an untried node.
-                        bumped = min(bumped, 0.79)
-                    conn.execute("UPDATE hebrew_progress SET mastery=?,source='fire',last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
-                                 (min(1.0, bumped), user_id, prereq_id))
+        # Perf: one SELECT IN + one executemany instead of SELECT+UPDATE per prereq.
+        credits = {k: v for k, v in fire_results.items() if v > 0}
+        if credits:
+            ids = sorted(credits)
+            placeholders = ",".join("?" for _ in ids)
+            updates = []
+            for nid, mastery, attempts in conn.execute(
+                f"SELECT node_id, mastery, attempts FROM hebrew_progress WHERE user_id=? AND node_id IN ({placeholders})",
+                (user_id, *ids),
+            ).fetchall():
+                bumped = (mastery or 0.0) + credits[nid] * 0.05
+                if not (attempts or 0):
+                    # Implicit credit alone must never "master" an untried node.
+                    bumped = min(bumped, 0.79)
+                updates.append((min(1.0, bumped), user_id, nid))
+            if updates:
+                conn.executemany(
+                    "UPDATE hebrew_progress SET mastery=?,source='fire',last_practiced=datetime('now') WHERE user_id=? AND node_id=?",
+                    updates)
 
         # Unified cross-domain FIRe: Hebrew concept review → credit to verses using this concept
         try:
@@ -735,9 +930,12 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     xp_base = 10
     streak_multiplier = min(3.0, 1.0 + streak_count * 0.05)  # up to 3x for 40 day streak
     xp_earned = round(xp_base * streak_multiplier)
-    new_xp, new_badges = _award_xp(user_id, xp_earned, f"Review: {node_id}")
+    new_xp, new_badges = _award_xp(user_id, xp_earned, f"Review: {node_id}", check_badges=False)
 
-    # Insight XP: discover connections through the graph
+    # Insight XP: discover connections through the graph.
+    # Exactly one badge check per review: the XP award above skips its own,
+    # insight runs it on the pass path, and the fail path checks here.
+    badges_checked = False
     insight_amount = 0
     insight_new_connections = 0
     if rating >= 2:
@@ -747,6 +945,9 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         insight_new_connections = ins_new
         if ins_badges:
             new_badges.extend(ins_badges)
+        badges_checked = True
+    if not badges_checked:
+        new_badges = _check_badges(user_id)
 
     conn.commit()
     conn.close()
@@ -1182,7 +1383,7 @@ def _placement_apply_results(conn, user_id, results):
     SRS seeding (correct → mature interval, missed → review soon), and
     per-skill 'start at lesson N' mapping. Test-out rows are marked
     source='placement' so the UI can show 'tested out' instead of 'mastered'."""
-    _ensure_hebrew_progress_source(conn)
+    ensure_hebrew_schema_once(conn)
     applied = {"nodes_tested_out": 0, "srs_seeded": 0, "skills": {}}
     for skill, cats, lo, hi, _start in PLACEMENT_SKILLS:
         est, conf = _placement_estimate(results[skill], (lo, hi))
@@ -1222,7 +1423,7 @@ def _placement_apply_results(conn, user_id, results):
             new_d = fsrs_next_difficulty(5.0, rating)
             interval = fsrs_next_interval(new_s)
             due = datetime.datetime.now() + datetime.timedelta(days=max(1, interval))
-            _ensure_hebrew_review_state(conn)
+            ensure_hebrew_schema_once()
             conn.execute("""
                 INSERT INTO hebrew_review_state
                     (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
@@ -1486,7 +1687,7 @@ def apply_diagnostic_results(body: dict, authorization: str = Header("")):
         stats["total"] += 1
         stats["correct"] += int(correct)
         total_correct += int(correct)
-        _ensure_hebrew_progress_source(conn)
+        ensure_hebrew_schema_once()
         conn.execute("""
             INSERT INTO hebrew_progress
                 (user_id,node_id,mastery,attempts,correct,last_practiced,source)
@@ -1518,7 +1719,7 @@ def get_hebrew_curriculum(
         return {"ok": True, "data": {"nodes": [], "total": 0}}
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
-    _ensure_hebrew_progress_source(conn)
+    ensure_hebrew_schema_once()
     nodes = conn.execute("""
         SELECT n.*, COUNT(DISTINCT e.source_id) as prereq_count,
                 COUNT(DISTINCT e2.source_id) as dependent_count,
@@ -1533,19 +1734,21 @@ def get_hebrew_curriculum(
         LEFT JOIN hebrew_lessons l ON l.node_id=n.id
         GROUP BY n.id ORDER BY n.level, n.id
     """, (user_id,)).fetchall()
+    # Perf: one batched prereq query instead of N+1 (was ~697 queries/req).
+    prereqs_by: dict = {}
+    for e in conn.execute("""
+        SELECT e.target_id, e.source_id, n.title, n.level, COALESCE(p.mastery,0) as mastery
+        FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id
+        LEFT JOIN hebrew_progress p ON p.node_id=e.source_id AND p.user_id=?
+    """, (user_id,)).fetchall():
+        prereqs_by.setdefault(e["target_id"], []).append(dict(e))
     result_nodes = []
     for n in nodes:
         try:
             lesson = json.loads(n['has_content']) if n['has_content'] else {}
         except (TypeError, json.JSONDecodeError):
             lesson = {}
-        prereqs = conn.execute("""
-            SELECT e.source_id, n.title, n.level, COALESCE(p.mastery,0) as mastery
-            FROM hebrew_edges e JOIN hebrew_nodes n ON n.id=e.source_id
-            LEFT JOIN hebrew_progress p ON p.node_id=e.source_id AND p.user_id=?
-            WHERE e.target_id=?
-        """, (user_id, n['id'])).fetchall()
-        prereq_list = [dict(r) for r in prereqs]
+        prereq_list = prereqs_by.get(n['id'], [])
         all_mastered = all(r['mastery'] >= 0.8 for r in prereq_list) if prereq_list else True
         result_nodes.append({
             "id": n['id'], "title": n['title'], "category": n['category'],
@@ -1559,7 +1762,6 @@ def get_hebrew_curriculum(
             "gloss": lesson.get("gloss") or "",
             "language": lesson.get("language") or "hebrew",
         })
-    conn.close()
 
     # ── Add per-node learning speeds from student-topic calibration ──
     try:
@@ -1571,14 +1773,13 @@ def get_hebrew_curriculum(
         n['learning_speed'] = round(speeds.get(n['id'], 1.0), 3)
 
     # ── Non-Interference: reorder to separate confusable pairs ──
-    # Load confusability pairs from DB
+    # Load confusability pairs on the already-open connection.
     try:
-        conn2 = sqlite3.connect(str(MEM_DB))
-        confusable = conn2.execute(
+        confusable = conn.execute(
             "SELECT node_a, node_b FROM hebrew_confusability").fetchall()
-        conn2.close()
     except Exception:
         confusable = []
+    conn.close()
 
     if confusable:
         # Build a set of confusable pairs for O(1) lookup
@@ -1652,7 +1853,7 @@ def list_hebrew_attempts(node_id: str = "", user_id: str = "default",
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
     try:
-        _ensure_attempt_events_schema(conn)
+        ensure_hebrew_schema_once()
         if node_id:
             rows = conn.execute(
                 "SELECT id, node_id, question_id, correct, hints, created_at, "
@@ -1743,7 +1944,7 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
     # review queue reads hebrew_review_state; previously only the AnkiReview
     # dropdown wrote it, leaving the main learning loop decoupled from SRS.
     try:
-        _ensure_hebrew_review_state(conn)
+        ensure_hebrew_schema_once()
         rating = 3 if correct else 1  # correct → Good, incorrect → Again
         state = conn.execute(
             "SELECT stability,difficulty,reps,lapses FROM hebrew_review_state WHERE user_id=? AND node_id=?",
@@ -1780,17 +1981,18 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
         cat = conn.execute("SELECT category FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
         if cat and cat[0] == 'verb':
             try:
-                # Fetch drill questions for this verb category
-                import requests as _req
-                drill_resp = _req.get(f"http://localhost:8000/api/v1/hebrew/verb-drill?count=3&category={node_id.split('_')[0] if '_' in node_id else node_id}&user_id={user_id}", timeout=5)
-                drill_data = drill_resp.json()
-                if drill_data.get("ok") and drill_data.get("data",{}).get("drills"):
-                    for drill in drill_data["data"]["drills"]:
-                        # Log a progress entry for each drill (as a 'seen' marker)
-                        drill_nid = drill.get("node_id", f"{node_id}_drill")
-                        conn.execute(
-                            "INSERT OR IGNORE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?,?,0.1,1,1,datetime('now'))",
-                            (user_id, f"{drill_nid}_drill"))
+                # Direct builder call on the same connection — previously a
+                # self-HTTP GET to /verb-drill (localhost round-trip + 5s
+                # timeout inside the write path). Same drills, no network.
+                vcat = node_id.split('_')[0] if '_' in node_id else node_id
+                vdrills = _build_verb_drills(_query_verb_lessons(conn, vcat))
+                random.shuffle(vdrills)
+                for drill in vdrills[:3]:
+                    # Log a progress entry for each drill (as a 'seen' marker)
+                    drill_nid = drill.get("node_id", f"{node_id}_drill")
+                    conn.execute(
+                        "INSERT OR IGNORE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced) VALUES (?,?,0.1,1,1,datetime('now'))",
+                        (user_id, f"{drill_nid}_drill"))
             except Exception:
                 pass  # silent — verb drill auto-queue is optional
 
@@ -2490,6 +2692,22 @@ def _interleave_due_items(by_cat, confusable_pairs):
         by_cat.keys(),
         key=lambda c: min(i['retrievability'] for i in by_cat[c]))
 
+    # Perf: sort each category ONCE and track taken ids in a set (was:
+    # re-sorted per iteration + `item not in interleaved` list scans = O(n²)
+    # on dict equality). Identical selection order: items are unique per
+    # node_id within the pool (due rows have progress, new cards don't).
+    cat_sorted = {
+        c: sorted(by_cat[c], key=lambda x: x['retrievability'])
+        for c in cat_priority
+    }
+    taken = set()
+
+    def first_untaken(c):
+        for it in cat_sorted[c]:
+            if it['node_id'] not in taken:
+                return it
+        return None
+
     interleaved = []
     remaining = {c: len(by_cat[c]) for c in cat_priority}
     cat_cycle = list(cat_priority)  # mutable copy for cycling
@@ -2510,10 +2728,8 @@ def _interleave_due_items(by_cat, confusable_pairs):
                 continue
             if c == last_cat:
                 continue
-            cat_items = sorted(by_cat[c], key=lambda x: x['retrievability'])
-            untaken = [it for it in cat_items if it not in interleaved]
-            if untaken:
-                candidate = untaken[0]
+            candidate = first_untaken(c)
+            if candidate:
                 # Skip this category if its next item would cause interference.
                 if recent_nodes and any(
                     (candidate['node_id'], recent_nid) in confusable_pairs
@@ -2534,12 +2750,7 @@ def _interleave_due_items(by_cat, confusable_pairs):
             break
 
         # Pick the most urgent item from this category.
-        cat_items_sorted = sorted(by_cat[chosen_cat], key=lambda x: x['retrievability'])
-        item = None
-        for candidate in cat_items_sorted:
-            if candidate not in interleaved:
-                item = candidate
-                break
+        item = first_untaken(chosen_cat)
 
         if not item:
             remaining[chosen_cat] = 0
@@ -2551,8 +2762,8 @@ def _interleave_due_items(by_cat, confusable_pairs):
             (item['node_id'], recent_nid) in confusable_pairs
             for recent_nid in recent_nodes[-3:]
         ):
-            for alternative in cat_items_sorted:
-                if alternative not in interleaved and alternative['node_id'] != item['node_id'] and not any(
+            for alternative in cat_sorted[chosen_cat]:
+                if alternative['node_id'] not in taken and alternative['node_id'] != item['node_id'] and not any(
                     (alternative['node_id'], recent_nid) in confusable_pairs
                     for recent_nid in recent_nodes[-3:]
                 ):
@@ -2560,6 +2771,7 @@ def _interleave_due_items(by_cat, confusable_pairs):
                     break
 
         interleaved.append(item)
+        taken.add(item['node_id'])
         remaining[chosen_cat] -= 1
         last_cat = chosen_cat
         recent_nodes.append(item['node_id'])
@@ -2582,7 +2794,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         return {"ok": True, "data": {"reviews": [], "due_count": 0}}
     conn = sqlite3.connect(str(MEM_DB))
     conn.row_factory = sqlite3.Row
-    _ensure_hebrew_review_state(conn)
+    ensure_hebrew_schema_once()
     prefs = read_hebrew_prefs(conn, user_id)
     new_cards_per_day, max_reviews_per_day = resolve_pacing(
         new_cards_per_day, max_reviews_per_day, prefs)
@@ -2597,9 +2809,11 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     """, (user_id,)).fetchall()
     # Per-direction FSRS rows: a node is due in the modes whose row is due.
     # Legacy '' rows (pre-direction) count as due in every direction once.
+    # Perf: not-yet-due modes filtered in SQL (idx_review_state_user_due);
+    # the Python strptime check below stays as a safety net.
     state_rows = conn.execute("""
         SELECT node_id, card_mode, stability, difficulty, due, last_review
-        FROM hebrew_review_state WHERE user_id=?
+        FROM hebrew_review_state WHERE user_id=? AND due <= datetime('now','localtime')
     """, (user_id,)).fetchall()
     by_node_modes = {}
     for s in state_rows:
@@ -2752,10 +2966,8 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     # 2. Load confusability pairs for non-interference enforcement
     confusable_pairs = set()
     try:
-        conn2 = sqlite3.connect(str(MEM_DB))
-        conf_rows = conn2.execute(
+        conf_rows = conn.execute(
             "SELECT node_a, node_b FROM hebrew_confusability").fetchall()
-        conn2.close()
         for a, b in conf_rows:
             confusable_pairs.add((a, b))
             confusable_pairs.add((b, a))
@@ -2769,11 +2981,15 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
 
     conn.close()
 
-    # Add confusability_warning to items that have confusable counterparts in the queue
+    # Add confusability_warning to items that have confusable counterparts in the queue.
+    # Perf: reverse index (was O(L²) nested scan over the queue slice).
     queued_ids = set(it['node_id'] for it in interleaved[:limit])
+    conf_by: dict = {}
+    for a, b in confusable_pairs:
+        if a in queued_ids and b in queued_ids and a != b:
+            conf_by.setdefault(a, []).append(b)
     for item in interleaved[:limit]:
-        conf_with = [nid for nid in queued_ids if (item['node_id'], nid) in confusable_pairs and nid != item['node_id']]
-        item['confusability_warning'] = conf_with if conf_with else []
+        item['confusability_warning'] = sorted(conf_by.get(item['node_id'], []))
 
     # ── Repetition Compression ──
     # Scan for items where one encompasses another (via the knowledge graph)
@@ -2856,6 +3072,28 @@ def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
     return {"ok": True, "data": prefs}
 
 
+@router.get("/api/v1/hebrew/bootstrap")
+def get_hebrew_bootstrap(user_id: str = "default", session_token: str = "",
+                         authorization: str = Header(""), queue_limit: int = 1):
+    """One-call dashboard bootstrap (perf Track D2): curriculum +
+    gamification + prefs + review-queue in a single round trip instead of
+    three sequential fetch effects on mount."""
+    _resolve_hebrew_read_user(user_id, session_token, authorization)
+    auth = authorization if isinstance(authorization, str) else ""
+    cur = get_hebrew_curriculum(user_id=user_id, session_token=session_token, authorization=auth)
+    gam = get_hebrew_gamification(user_id=user_id, session_token=session_token, authorization=auth)
+    prf = get_hebrew_prefs(user_id=user_id, session_token=session_token, authorization=auth)
+    que = get_hebrew_review_queue(user_id=user_id, limit=queue_limit,
+                                  include_new=False, session_token=session_token,
+                                  authorization=auth)
+    return {"ok": True, "data": {
+        "curriculum": cur["data"] if cur.get("ok") else None,
+        "gamification": gam["data"] if gam.get("ok") else None,
+        "prefs": prf["data"] if prf.get("ok") else None,
+        "queue": que["data"] if que.get("ok") else None,
+    }}
+
+
 def _ensure_analytics_table(conn):
     """Create the analytics table + indexes. Idempotent; safe to call per batch."""
     conn.execute(
@@ -2912,7 +3150,7 @@ def post_hebrew_analytics(body: dict):
         conn = None
         try:
             conn = sqlite3.connect(str(MEM_DB))
-            _ensure_analytics_table(conn)
+            ensure_hebrew_schema_once()
             conn.executemany(
                 "INSERT INTO hebrew_analytics_events (t, session, mode, game, type, data) VALUES (?,?,?,?,?,?)",
                 [
@@ -2953,7 +3191,7 @@ def set_hebrew_prefs(body: dict, authorization: str = Header("")):
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
     conn = sqlite3.connect(str(MEM_DB))
-    _ensure_hebrew_prefs(conn)
+    ensure_hebrew_schema_once()
     conn.execute("""
         INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day)
         VALUES (?, ?, ?)
@@ -3364,41 +3602,13 @@ def get_hebrew_lesson(node_id: str):
 # ── Gamification: XP, Streaks, Badges, Connection Discovery ──
 
 def _ensure_gamification_table():
-    """Create gamification tables if they don't exist."""
-    if not MEM_DB.exists():
-        return
-    conn = sqlite3.connect(str(MEM_DB))
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS hebrew_gamification (
-            user_id TEXT NOT NULL DEFAULT 'default',
-            xp INTEGER DEFAULT 0,
-            streak_count INTEGER DEFAULT 0,
-            last_review_date TEXT,
-            best_streak INTEGER DEFAULT 0,
-            insight_xp INTEGER DEFAULT 0,
-            PRIMARY KEY (user_id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS hebrew_badges (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL DEFAULT 'default',
-            badge_id TEXT NOT NULL,
-            earned_at TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE(user_id, badge_id)
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS hebrew_seen_connections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL DEFAULT 'default',
-            connection_key TEXT NOT NULL,
-            seen_at TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE(user_id, connection_key)
-        )
-    """)
-    conn.commit()
-    conn.close()
+    """Create gamification tables if they don't exist.
+
+    Delegates to ensure_hebrew_schema_once(): same coverage, and near-free
+    once the hot-path indexes exist (previously opened/closed its own
+    connection on every call — 4-6x per review).
+    """
+    ensure_hebrew_schema_once()
 
 
 def _get_gamification(user_id="default"):
@@ -3464,7 +3674,7 @@ def _update_streak(user_id="default"):
     return streak
 
 
-def _award_xp(user_id="default", amount=10, reason=""):
+def _award_xp(user_id="default", amount=10, reason="", check_badges=True):
     """Award XP to a user and return new total."""
     _ensure_gamification_table()
     if not MEM_DB.exists():
@@ -3483,8 +3693,9 @@ def _award_xp(user_id="default", amount=10, reason=""):
     conn.commit()
     conn.close()
 
-    # Check for new badges
-    new_badges = _check_badges(user_id)
+    # Check for new badges (skippable: process_hebrew_review batches one
+    # trailing check instead of one per award helper).
+    new_badges = _check_badges(user_id) if check_badges else []
 
     return new_xp, new_badges
 
@@ -3503,7 +3714,7 @@ def _check_badges(user_id="default"):
 
     # Get progress stats (badges count practiced mastery only — diagnostic
     # test-out credit unlocks lessons but doesn't earn mastery badges)
-    _ensure_hebrew_progress_source(conn)
+    ensure_hebrew_schema_once()
     total_mastered = conn.execute(
         "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=? AND mastery>=0.8 AND source!='placement'",
         (user_id,)).fetchone()[0]
@@ -3738,11 +3949,95 @@ def _top500():
 
 
 @router.get("/api/v1/hebrew/top-words")
-def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 0):
-    """500 most common Hebrew words by corpus frequency (gloss + root + SBL translit)."""
+def get_hebrew_top_words(limit: int = 50, offset: int = 0, min_frequency: int = 0,
+                          with_status: bool = False, user_id: str = "default",
+                          session_token: str = "", authorization: str = Header("")):
+    """500 most common Hebrew words by corpus frequency (gloss + root + SBL translit).
+
+    with_status=1 joins per-word Anki-style SRS status (see WORD_MATURE_INTERVAL_DAYS):
+    node_id, mastery, interval_days, due, due_in_days, retrievability, mastered
+    (mastered = interval >= 21d, i.e. Anki "mature"). Unstudied words report
+    interval 0 / mastered False. Powers the 50-at-once Word Tiles screen.
+    """
     words = [w for w in _top500().get("words", []) if w.get("frequency", 0) >= min_frequency]
     total = len(words)
-    return {"ok": True, "data": {"words": words[offset:offset + limit], "total": total}}
+    page = words[offset:offset + limit]
+    if not with_status:
+        return {"ok": True, "data": {"words": page, "total": total}}
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {
+            "words": [{**w, "node_id": "", "mastery": 0.0, "interval_days": 0,
+                       "due": None, "due_in_days": 0.0, "retrievability": 1.0,
+                       "mastered": False} for w in page], "total": total}}
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once()
+    now = datetime.datetime.now()
+    # Perf: resolve all node_ids through the cached hebrew map (no per-word
+    # LIKE scans), then TWO batched queries for progress + review state
+    # instead of ~3 per word.
+    node_map = hebrew_node_map(conn)
+    node_ids = []
+    for w in page:
+        nid = ""
+        for key in (w.get("hebrew"), w.get("bare")):
+            if key and key in node_map:
+                nid = node_map[key]
+                break
+        if not nid:
+            hebrew = w.get("hebrew") or w.get("bare") or ""
+            nid = resolve_hebrew_node(conn, hebrew) if hebrew else ""
+        node_ids.append(nid)
+    mastery_by: dict = {}
+    states_by: dict = {}
+    uniq = sorted({n for n in node_ids if n})
+    if uniq:
+        placeholders = ",".join("?" for _ in uniq)
+        for nid, mastery in conn.execute(
+            f"SELECT node_id, mastery FROM hebrew_progress WHERE user_id=? AND node_id IN ({placeholders})",
+            (user_id, *uniq),
+        ).fetchall():
+            mastery_by[nid] = mastery or 0.0
+        for s in conn.execute(
+            f"SELECT node_id, stability, difficulty, due, last_review FROM hebrew_review_state WHERE user_id=? AND node_id IN ({placeholders})",
+            (user_id, *uniq),
+        ).fetchall():
+            states_by.setdefault(s["node_id"], []).append(s)
+    out = []
+    for w, node_id in zip(page, node_ids):
+        mastery, interval_days, due, due_in_days, ret, mastered = 0.0, 0, None, 0.0, 1.0, False
+        if node_id:
+            mastery = mastery_by.get(node_id, 0.0)
+            states = states_by.get(node_id, [])
+            if states:
+                best = 0
+                for s in states:
+                    try:
+                        due_dt = datetime.datetime.strptime(s["due"], "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        continue
+                    try:
+                        last_dt = datetime.datetime.strptime(s["last_review"], "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        last_dt = due_dt
+                    iv = max(0, (due_dt - last_dt).days)
+                    if iv > best:
+                        best = iv
+                        due = s["due"]
+                        due_in_days = round((due_dt - now).total_seconds() / 86400.0, 1)
+                        stab = max(0.25, s["stability"] or 0.25)
+                        days = max(0.0, (now - last_dt).total_seconds() / 86400.0)
+                        ret = round(fsrs_retrievability(stab, days), 3)
+                interval_days = best
+                mastered = interval_days >= WORD_MATURE_INTERVAL_DAYS
+        out.append({**w, "node_id": node_id, "mastery": mastery,
+                    "interval_days": interval_days, "due": due,
+                    "due_in_days": due_in_days, "retrievability": ret,
+                    "mastered": mastered})
+    conn.close()
+    return {"ok": True, "data": {"words": out, "total": total,
+                                 "mature_interval_days": WORD_MATURE_INTERVAL_DAYS}}
 
 
 @router.get("/api/v1/hebrew/top-roots")

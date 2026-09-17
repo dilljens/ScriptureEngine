@@ -305,7 +305,14 @@ def main():
     # Get existing word lessons (category='word') to find the max level
     existing = conn.execute("SELECT COUNT(*) FROM hebrew_nodes WHERE category='word'").fetchone()[0]
     print(f"  Existing word lessons: {existing}")
-    start_level = 4  # word level
+
+    def tier_level(rank):
+        # Mirrors wordTier() in frontend/src/lib/idle-game.js — frequency
+        # rank spreads words across levels so decks unlock in stages.
+        if rank < 50: return 4
+        if rank < 150: return 5
+        if rank < 300: return 6
+        return 7
 
     new_nodes = 0
     new_items = 0
@@ -354,7 +361,7 @@ def main():
 
         conn.execute(
             "INSERT OR IGNORE INTO hebrew_nodes (id, title, level, category, description) VALUES (?, ?, ?, 'word', ?)",
-            (lid, title, start_level, desc)
+            (lid, title, tier_level(i), desc)
         )
         new_nodes += 1
 

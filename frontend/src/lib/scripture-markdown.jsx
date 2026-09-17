@@ -481,3 +481,29 @@ export function createComponents(options = {}) {
   // Merge custom component overrides
   return customComponents ? { ...base, ...customComponents } : base
 }
+
+/**
+ * ScriptureMarkdown — single shared react-markdown wrapper (perf Track C1).
+ *
+ * All vendor imports (react-markdown/remark-gfm/rehype-raw) live HERE, so
+ * the 338KB markdown chunk is shared instead of duplicated per component.
+ * Props:
+ *   children   — raw lesson/chat text (preprocess applied automatically)
+ *   raw        — children already preprocessed, render as-is
+ *   components — override the default verse-chip components (e.g. ChatPanel's
+ *                per-message closures, Wiki's image overrides)
+ *   ...rest    — pass-through (urlTransform, etc.)
+ */
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+
+export function ScriptureMarkdown({ children, raw = false, components, ...rest }) {
+  const comps = components || createComponents({ onOpenVerse: openVerseRef })
+  const body = raw || typeof children !== 'string' ? children : preprocess(children)
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={comps} {...rest}>
+      {body}
+    </ReactMarkdown>
+  )
+}

@@ -6,15 +6,12 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
 import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
 import VersePreviewCard from './VersePreviewCard'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, conversationShare, chat, chatStream, getChatInstructions, currentUserId, currentSessionToken } from '../api'
-import { preprocess as preprocessScripture, createComponents } from '../lib/scripture-markdown'
+import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 import { parseStandardRef, resolveBook } from '../refParser'
 
@@ -295,6 +292,11 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [chatMode, setChatMode] = useState(() => normalizeChatMode(initialMode))
   const [chatModel, setChatModel] = useState(null)
   const [messages, setMessages] = useState([])
+  // Perf (Track D2): window the history — only the latest bubbles run the
+  // markdown pipeline per render/stream token. Indices stay absolute so
+  // edit/copy/share/verse-expansion are unaffected.
+  const HIST_WINDOW = 30
+  const [historyShown, setHistoryShown] = useState(HIST_WINDOW)
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
   const [sessionId, setSessionId] = useState(null)
@@ -376,7 +378,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
   useEffect(() => { waitingRef.current = waiting }, [waiting])
   // Clear any pending-marker recovery poll on unmount
-  useEffect(() => () => { if (pendingPollRef.current) clearInterval(pendingPollRef.current) }, [])
+  useEffect(() => () => { if (pendingPollRef.current) clearTimeout(pendingPollRef.current) }, [])
 
   // Foreground notice: when the app was backgrounded mid-run and the user
   // returns, the job kept running server-side — show a brief "caught up" chip.
@@ -1339,30 +1341,38 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     if (!marker) return
     const baseline = marker.msgCount || 0
     const deadline = Date.now() + 10 * 60 * 1000
-    pendingPollRef.current = setInterval(async () => {
-      try {
-        const now = Date.now()
-        if (!loadPendingMarker(sid) || now > deadline) {
-          clearInterval(pendingPollRef.current)
-          pendingPollRef.current = null
-          clearPendingMarker(sid)
-          return
-        }
-        const res = await conversationGet(sid)
-        const msgs = res?.data?.messages || []
-        if (msgs.length > baseline) {
-          clearInterval(pendingPollRef.current)
-          pendingPollRef.current = null
-          clearPendingMarker(sid)
-          const merged = mergeMessages(
-            [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
-            mergeMessages(msgs, loadSnapshot(sid) || []),
-          )
-          setMessages(merged)
-          messagesRef.current = merged
-        }
-      } catch { /* keep polling */ }
-    }, 3000)
+    // Perf (Track D2): exponential backoff 3s→8s→20s→60s instead of fixed
+    // 3s — recovery usually lands on the first polls; long outages stop
+    // hammering the server (deadline still 10min).
+    let backoffMs = 3000
+    const schedulePoll = () => {
+      pendingPollRef.current = setTimeout(async () => {
+        try {
+          const now = Date.now()
+          if (!loadPendingMarker(sid) || now > deadline) {
+            pendingPollRef.current = null
+            clearPendingMarker(sid)
+            return
+          }
+          const res = await conversationGet(sid)
+          const msgs = res?.data?.messages || []
+          if (msgs.length > baseline) {
+            pendingPollRef.current = null
+            clearPendingMarker(sid)
+            const merged = mergeMessages(
+              [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
+              mergeMessages(msgs, loadSnapshot(sid) || []),
+            )
+            setMessages(merged)
+            messagesRef.current = merged
+            return
+          }
+        } catch { /* keep polling */ }
+        backoffMs = Math.min(60000, backoffMs === 3000 ? 8000 : backoffMs * 2.5)
+        schedulePoll()
+      }, backoffMs)
+    }
+    schedulePoll()
   }
 
   // ── Start a fresh chat: new session + cleared state (so saves work immediately) ──
@@ -1382,6 +1392,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     const welcome = mkMsg('assistant', welcomeMessage())
     setMessages([welcome])
     messagesRef.current = [welcome]
+    setHistoryShown(HIST_WINDOW)
     try {
       const res = await conversationCreate({ title: 'Chat Session', created_by: userId.current })
       if (res.ok && res.data) {
@@ -1642,9 +1653,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
     if (!hasActionMarkers) {
       return (
-        <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={comps}>
+        <ScriptureMarkdown raw components={comps} urlTransform={safeUrlTransform}>
           {safeMarkdown(processed)}
-        </Markdown>
+        </ScriptureMarkdown>
       )
     }
 
@@ -1657,9 +1668,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       // Regular markdown text (with <span> tags from scripture) — render with Markdown component
       if (part.trim()) {
         return (
-          <Markdown key={i} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} urlTransform={safeUrlTransform} components={comps}>
+          <ScriptureMarkdown raw key={i} components={comps} urlTransform={safeUrlTransform}>
             {safeMarkdown(part)}
-          </Markdown>
+          </ScriptureMarkdown>
         )
       }
       return null
@@ -1673,7 +1684,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     <>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[300px]" onScroll={handleMessagesScroll}>
-        {messages.map((msg, i) => (
+        {messages.length > historyShown && (
+          <button onClick={() => setHistoryShown(m => m + 50)}
+            className="w-full py-1.5 rounded-lg text-[11px] text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+            ↑ Show earlier ({messages.length - historyShown} more)
+          </button>
+        )}
+        {messages.map((msg, i) => {
+          if (i < messages.length - historyShown) return null
+          return (
           <div key={msg.id || i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             {/* Edit mode: textarea for user messages */}
             {msg.role === 'user' && editingIdx === i ? (
@@ -1843,7 +1862,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               </>
             )}
           </div>
-        ))}
+          )
+        })}
         <div ref={messagesEndRef} />
       </div>
 

@@ -109,6 +109,8 @@ test('fresh workshop onboards without errors', async ({ page }) => {
 
 test('rich workshop: harvest fig, tend vine, claim daily', async ({ page }) => {
   await gotoEmet(page, richSeed())
+  // Grove timers live in the Garden tab; daily lives in Quests.
+  await page.locator('[role="tab"]:has-text("Garden")').click()
   await expect(page.locator('text=Fig lvl 4').first()).toBeVisible()
   await expect(page.locator('text=1/3 ripe').first()).toBeVisible()
   await expect(page.locator('text=10/10').first()).toBeVisible()
@@ -122,6 +124,7 @@ test('rich workshop: harvest fig, tend vine, claim daily', async ({ page }) => {
   await page.getByTestId('vine-tend-0').click()
   await expect(page.locator('text=Vineyard lvl 8').first()).toBeVisible({ timeout: 15000 })
 
+  await page.locator('[role="tab"]:has-text("Quests")').click()
   await page.getByTestId('daily-claim').click()
   await expect(page.locator('text=done ✓').first()).toBeVisible({ timeout: 15000 })
 })

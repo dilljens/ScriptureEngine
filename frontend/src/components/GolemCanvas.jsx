@@ -22,6 +22,10 @@ import { LETTERS } from '../lib/idle-game'
 
 const MAX_GOLEMS = 44
 const MAX_MOTES = 26
+// Perf (Track D1): small screens draw fewer golems (22) — same roster logic,
+// half the sprites.
+const smallScreen = () => typeof window !== 'undefined'
+  && window.matchMedia && window.matchMedia('(max-width: 640px)').matches
 
 export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0, answerPulse = null }) {
   const canvasRef = useRef(null)
@@ -86,10 +90,11 @@ export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0
     const syncRoster = () => {
       const target = []
       const ownedMap = propsRef.current.owned || {}
+      const cap = smallScreen() ? 22 : MAX_GOLEMS
       const indices = Object.keys(ownedMap).map(Number).sort((a, b) => a - b)
       for (const li of indices) {
         const n = Math.min(ownedMap[li] || 0, 6) // cap per-letter visual
-        for (let k = 0; k < n && target.length < MAX_GOLEMS; k++) target.push(li)
+        for (let k = 0; k < n && target.length < cap; k++) target.push(li)
       }
       const cur = stateRef.current.golems
       if (cur.length > target.length) cur.length = target.length
@@ -244,13 +249,28 @@ export default function GolemCanvas({ owned = {}, mastery = {}, prestigeTick = 0
         ctx.fillRect(0, 0, w, h)
       }
 
-      raf = requestAnimationFrame(tick)
+      raf = 0
+      // Perf (Track D1): stop the loop when the tab is hidden or the canvas
+      // scrolled offscreen; resume on visibility/intersection. Idle tabs go
+      // from 60fps to zero.
+      if (!document.hidden && onScreen) raf = requestAnimationFrame(tick)
     }
+    let onScreen = true
+    const kick = () => {
+      if (!document.hidden && onScreen && !raf) { lastT = 0; raf = requestAnimationFrame(tick) }
+    }
+    const io = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; kick() })
+      : null
+    if (io) io.observe(canvas)
+    document.addEventListener('visibilitychange', kick)
     raf = requestAnimationFrame(tick)
 
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', resize)
+      document.removeEventListener('visibilitychange', kick)
+      if (io) io.disconnect()
     }
   }, [])
 

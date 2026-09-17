@@ -51,10 +51,10 @@ export function baseCost(i) {
   return Math.floor(10 * Math.pow(4.2, i / 3))
 }
 
-/** Cost of next generator given owned count. Cookie 1.15 law × difficulty. */
-export function generatorCost(i, owned, diff = null) {
-  const { costMult } = difficultyScalars(diff || {})
-  return Math.max(1, Math.ceil(baseCost(i) * Math.pow(1.15, owned) * costMult))
+/** Cost of next generator given owned count. Cookie 1.15 law × difficulty × sages. */
+export function generatorCost(i, owned, diff = null, costMult = 1) {
+  const { costMult: diffMult } = difficultyScalars(diff || {})
+  return Math.max(1, Math.ceil(baseCost(i) * Math.pow(1.15, owned) * diffMult * costMult))
 }
 
 /** Base Ohr/sec per generator. Aleph 0.2/s … Tav ~80/s. */
@@ -100,50 +100,69 @@ export function workshopSynergy(owned = {}, mastery = {}) {
  * letterUpgrades: {`u${i}:${k}`: true} — ×2 tiers.
  * perm: {upgradeId: true} — permanent Kavod + heavenly upgrades.
  * sparks: unspent Aliyah sparks — +1% global each.
+ * masteredWords: mastered word objects ({bare}) for the word→letter bonus —
+ *   each mastered word containing letter i lifts ONLY that letter's rate.
+ * matureRoots: count of mature roots (word↔root synergy input).
  */
-export function perSecond(owned, mastery = {}, tracks = {}, words = 0, roots = 0, letterUpgrades = {}, perm = {}, sparks = 0) {
+export function perSecond(owned, mastery = {}, tracks = {}, words = 0, roots = 0, letterUpgrades = {}, perm = {}, sparks = 0, masteredWords = [], matureRoots = 0) {
   const readingMult = 1 + (tracks.reading || 0) * 0.10
-  const global = globalMultiplier(roots, words, tracks) * (1 + permEffect(perm, 'globalMult'))
+  const wordCount = Array.isArray(words) ? words.length : words
+  const details = masteredWords.length ? masteredWords : (Array.isArray(words) ? words : [])
+  const global = globalMultiplier(roots, wordCount, tracks, matureRoots) * (1 + permEffect(perm, 'globalMult'))
   let sum = 0
   for (let i = 0; i < LETTERS.length; i++) {
     const n = owned[i] || 0
     if (!n) continue
     const m = mastery[i] ?? 0
-    sum += baseRate(i) * n * (0.5 + m) * letterMultiplier(letterUpgrades, i) * synergyMultiplier(owned, mastery, i)
+    sum += baseRate(i) * n * (0.5 + m) * letterMultiplier(letterUpgrades, i) * synergyMultiplier(owned, mastery, i) * letterWordMultiplier(i, details, mastery)
   }
   return sum * readingMult * global * sparkBonus(sparks)
 }
 
 /** Compose perSecond straight from game state (keeps call sites honest). */
-export function statePerSecond(state, mastery = {}) {
+export function statePerSecond(state, mastery = {}, gramMult = 1) {
   return perSecond(
     state.owned || {}, mastery, state.tracks || {}, state.words || 0, state.roots || 0,
     state.letterUpgrades || {}, state.perm || {}, availableSparks(state),
-  ) * figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state)
+    state.masteredWords || [], matureRootCount(state),
+  ) * figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state) * gramMult
+    * sageEffects(state).global
 }
 
 /**
  * This letter's current Ohr/sec contribution — the exact term perSecond sums.
  * Powers the shop tile's "+X/s" effect preview (what buying more buys).
  */
-export function letterRate(state = {}, mastery = {}, i = 0) {
+export function letterRate(state = {}, mastery = {}, i = 0, gramMult = 1) {
   const n = (state.owned || {})[i] || 0
   if (!n) return 0
   const m = mastery[i] ?? 0
   const readingMult = 1 + ((state.tracks || {}).reading || 0) * 0.10
-  const global = globalMultiplier(state.roots || 0, state.words || 0, state.tracks || {})
+  const global = globalMultiplier(state.roots || 0, state.words || 0, state.tracks || {}, matureRootCount(state))
     * (1 + permEffect(state.perm || {}, 'globalMult'))
   const tail = figMultiplier(state.figs) * vineyardMultiplier(state.vineyard) * shemenMultiplier(state)
   return baseRate(i) * n * (0.5 + m) * letterMultiplier(state.letterUpgrades || {}, i)
     * synergyMultiplier(state.owned || {}, mastery, i)
-    * readingMult * global * sparkBonus(availableSparks(state)) * tail
+    * letterWordMultiplier(i, state.masteredWords || [], mastery)
+    * readingMult * global * sparkBonus(availableSparks(state)) * tail * gramMult
+    * sageEffects(state).global
 }
 
-export function globalMultiplier(roots = 0, words = 0, tracks = {}) {
+/** Per mature root: +5% to the word term (roots bootstrap vocabulary). */
+export const WORD_ROOT_SYNERGY = 0.05
+/** Per mastered word: +0.1% to the roots term (vocabulary feeds roots back). */
+export const ROOT_WORD_SYNERGY = 0.001
+
+export function globalMultiplier(roots = 0, words = 0, tracks = {}, matureRoots = 0) {
   // Roots +10% each (Realm RE), words +2% each (AdCap Angels).
   // Reading track intentionally excluded here (applied in perSecond) to avoid double-count.
+  // Word↔root synergy (Cookie-Clicker Farm↔Time Machine pairs, linguistically
+  // true both ways): each mature root lifts the WORD term +5%, and each
+  // mastered word lifts the ROOTS term +0.1% — late game pulls early forward.
   void tracks
-  return (1 + roots * 0.10) * (1 + words * 0.02)
+  const wordCount = Array.isArray(words) ? words.length : words
+  return (1 + roots * 0.10) * (1 + wordCount * ROOT_WORD_SYNERGY)
+    * (1 + wordCount * 0.02) * (1 + (matureRoots || 0) * WORD_ROOT_SYNERGY)
 }
 
 /** Tap value for one correct answer (× difficulty, × permanent upgrades, × tap buff). */
@@ -254,6 +273,8 @@ export function defaultIdleState() {
     owned: {},       // letterIndex -> count
     roots: 0,
     words: 0,        // mastered word count (synced from curriculum)
+    masteredWords: [], // mastered word details [{bare, rank}] → per-letter bonus
+    rootReps: {},    // root string -> {k: knows, s: skips} → mature roots
     tracks: {},      // trackId -> level
     streak: 0,
     bestStreak: 0,
@@ -276,6 +297,9 @@ export function defaultIdleState() {
     figs: { level: 0, readyAt: 0 }, // 20h retention timer (sugar-lump analogue)
     quizDeck: null, // Anki-style daily quiz set {day, newLetters, due, seen, stats} — built on first quiz
     vineyard: { level: 0, vines: [0, 0, 0] }, // 3 parallel 4h tending timers (garden analogue)
+    garden: { plots: [null, null, null, null, null, null] }, // Root Garden: 6 plots of growing roots
+    sanhedrin: { seats: {}, cooldowns: {} }, // Seated sages (Honor/Wisdom/Learning) + swap cooldowns
+    shuk: { holdings: {}, debtUntil: 0, loanCooldownUntil: 0 }, // market stalls + credit state
     daily: { day: '', correct: 0, claimed: false }, // 10-correct daily lesson
     letterUpgrades: {}, // `u${letter}:${tier}` -> true (×2 tiers)
     perm: {},           // permanent Kavod upgrades -> true
@@ -318,14 +342,17 @@ export function saveIdleState(s) {
 /** Apply one correct answer: tap + streak + Kavod. Returns {gained, crit, kavod}. */
 export function applyCorrectAnswer(state, perSec, rng = Math.random) {
   const streak = (state.streak || 0) + 1
+  const fx = sageEffects(state)
   const { value: raw, crit } = rollTap(perSec, streak, state.tracks, rng, state.difficulty, state.perm, tapBuffMultiplier(state))
   // Shemittah sprint: every tap counts double. Exile: Kavod doubles instead.
-  const value = raw * shemittahTapMult(state)
+  // Seated sages tune both (Hillel/Shammai/Elijah taps, Akiva Kavod).
+  const value = raw * shemittahTapMult(state) * fx.tap
   // Kavod — the learning currency: 1 base, +1 per 5 streak, +3 on crit.
   // This is the ONLY way to buy speed. No money, no waiting shortcut.
   // Exile runs pay double: fewer letters to study, faster Kavod, harder breadth.
   let kavod = 1 + Math.floor(streak / 5) + (crit ? 3 : 0)
   if (state.exile?.kind === 'exile') kavod = Math.round(kavod * EXILE_KAVOD_MULT)
+  kavod = Math.max(1, Math.round(kavod * fx.kavod))
   state.kavod = (state.kavod || 0) + kavod
   state.streak = streak
   state.bestStreak = Math.max(state.bestStreak || 0, streak)
@@ -466,18 +493,18 @@ export function totalOwned(state) {
 }
 
 /** Cost to buy n generators at once (loop; n is small). */
-export function bulkCost(i, owned, n, diff = null) {
+export function bulkCost(i, owned, n, diff = null, costMult = 1) {
   let t = 0
-  for (let k = 0; k < n; k++) t += generatorCost(i, owned + k, diff)
+  for (let k = 0; k < n; k++) t += generatorCost(i, owned + k, diff, costMult)
   return t
 }
 
 /** Max affordable count + total spend (cap 1000 iterations). */
-export function maxBuyable(i, owned, ohr, diff = null) {
+export function maxBuyable(i, owned, ohr, diff = null, costMult = 1) {
   let n = 0
   let spend = 0
   while (n < 1000) {
-    const c = generatorCost(i, owned + n, diff)
+    const c = generatorCost(i, owned + n, diff, costMult)
     if (spend + c > ohr) break
     spend += c
     n++
@@ -568,10 +595,12 @@ export function warpCost(state) {
   return 30 * Math.pow(3, state.warps || 0)
 }
 
-/** Current buff multiplier. Same-kind buffs don't stack — take the strongest. */
+/** Current buff multiplier. Different KINDS multiply (the combo engine:
+ * Frenzy × Gale × Shofar) — same kind refreshes, never double-counts.
+ * Shuk debt (learning on credit) multiplies in as the one debuff. */
 export function buffMultiplier(state, now = Date.now()) {
   const frenzy = (state.buffs?.frenzyEndsAt || 0) > now ? FRENZY_MULT : 1
-  return Math.max(frenzy, galeMultiplier(state, now))
+  return frenzy * galeMultiplier(state, now) * shofarMultiplier(state, now) * shukDebt(state, now)
 }
 
 // ── Golden Prompts: quiz-gated buffs, accuracy windows, never reflex ──
@@ -586,7 +615,19 @@ export const GOLDEN_PROMPTS = [
   { id: 'gale', name: 'Ruach Gale', icon: '🌪️', kind: 'mult', mult: 7, seconds: 77, weight: 3, desc: 'x7 Ohr for 77s' },
   { id: 'dew', name: 'Dew of Light', icon: '💧', kind: 'hours', hours: 2, weight: 2, desc: '2h of production, instantly' },
   { id: 'rush', name: 'Dikduk Rush', icon: '📖', kind: 'tap', tapMult: 3, seconds: 60, weight: 2, desc: 'x3 tap power for 60s' },
+  { id: 'shofar', name: 'Shofar Blast', icon: '📯', kind: 'blast', seconds: 60, weight: 1, desc: 'workshop blast: production ×(1 + golems/20) for 60s' },
 ]
+
+/** Bank rule (Cookie Lucky): Dew pays at most 2h, at least 15min, and scales
+ * with the bank in between — hoarding Ohr pays. granted = min(2h·rate,
+ * max(15min·rate, 15% of bank)). */
+export const DEW_BANK_SHARE = 0.15
+export const DEW_MIN_HOURS = 0.25
+export function dewGrant(state, perSec) {
+  const cap = (perSec || 0) * 3600 * ((GOLDEN_PROMPTS.find(p => p.id === 'dew') || {}).hours || 0)
+  const floor = (perSec || 0) * 3600 * DEW_MIN_HOURS
+  return Math.min(cap, Math.max(floor, (state.ohr || 0) * DEW_BANK_SHARE))
+}
 
 function goldenByKind(kind) {
   return GOLDEN_PROMPTS.find(p => p.kind === kind)
@@ -607,6 +648,7 @@ export const PROPHET_BLESSINGS = [
   { id: 'gale', name: 'Ruach Gale', icon: '🌪️', desc: 'x7 Ohr for 77s' },
   { id: 'dew', name: 'Dew of Light', icon: '💧', desc: '2h of production, instantly' },
   { id: 'rush', name: 'Dikduk Rush', icon: '📖', desc: 'x3 tap power for 60s' },
+  { id: 'shofar', name: 'Shofar Blast', icon: '📯', desc: 'workshop blast: production ×(1 + golems/20) for 60s' },
   { id: 'manna', name: 'Manna', icon: '🍞', desc: `+${MANNA_KAVOD} 🌟 Kavod, instantly` },
   { id: 'early', name: 'Early Harvest', icon: '⏰', desc: `Fig −${EARLY_FIG_HOURS}h, every vine −${EARLY_VINE_HOURS}h` },
 ]
@@ -628,15 +670,19 @@ export function sampleBlessings(rng = Math.random) {
  */
 export function applyProphetChoice(state, id, perSec = 0, now = Date.now()) {
   const def = id => PROPHET_BLESSINGS.find(b => b.id === id) || { name: id, desc: '' }
-  if (id === 'gale' || id === 'rush') {
-    const p = goldenByKind(id === 'gale' ? 'mult' : 'tap')
-    const key = id === 'gale' ? 'galeEndsAt' : 'tapEndsAt'
+  if (id === 'gale' || id === 'rush' || id === 'shofar') {
+    const p = goldenByKind(id === 'gale' ? 'mult' : id === 'rush' ? 'tap' : 'blast')
+    const key = id === 'gale' ? 'galeEndsAt' : id === 'rush' ? 'tapEndsAt' : 'blastEndsAt'
     state.buffs = { ...(state.buffs || {}), [key]: now + p.seconds * 1000 }
+    if (id === 'shofar') {
+      const mult = 1 + totalOwned(state) / 20
+      state.buffs.blastMult = mult
+      return { claimed: { ...def(id), desc: `workshop blast: production ×${mult.toFixed(1)} for 60s` }, granted: 0 }
+    }
     return { claimed: def(id), granted: 0 }
   }
   if (id === 'dew') {
-    const p = goldenByKind('hours')
-    const granted = perSec * 3600 * (p.hours || 0)
+    const granted = dewGrant(state, perSec)
     state.ohr += granted
     state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
     return { claimed: def(id), granted }
@@ -662,6 +708,19 @@ export function galeMultiplier(state, now = Date.now()) {
   return goldenByKind('mult')?.mult || 1
 }
 
+/** Shofar Blast multiplier (1 when silent). */
+export function shofarMultiplier(state, now = Date.now()) {
+  if ((state.buffs?.blastEndsAt || 0) <= now) return 1
+  return state.buffs?.blastMult || 1
+}
+
+/** How many production buffs are currently stacked (combo display). */
+export function activeBuffCount(state, now = Date.now()) {
+  return ((state.buffs?.frenzyEndsAt || 0) > now ? 1 : 0)
+    + (galeMultiplier(state, now) > 1 ? 1 : 0)
+    + (shofarMultiplier(state, now) > 1 ? 1 : 0)
+}
+
 export function tapBuffMultiplier(state, now = Date.now()) {
   if ((state.buffs?.tapEndsAt || 0) <= now) return 1
   return goldenByKind('tap')?.tapMult || 1
@@ -680,13 +739,19 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   if (state.golden) return null
   if (perSec <= 0) return null // nothing to multiply yet — never hand out a value-less prompt
   if (now < (state.nextGoldenAt || 0)) return null
+  // Get Lucky (Cookie): while a production buff runs, the next visit comes
+  // twice as fast — combos happen naturally to the prepared.
+  const lucky = activeBuffCount(state, now) > 0 ? 0.5 : 1
+  const scheduleNext = () => {
+    const [lo, hi] = GOLDEN_INTERVAL_SEC
+    state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000 * lucky
+  }
   // Rare visitation: the Prophet offers a CHOICE of three blessings instead
   // of one fixed prompt — the surprise system with an actual decision in it.
   if (rng() < PROPHET_CHANCE) {
     const options = sampleBlessings(rng)
     state.golden = { id: 'prophet', expiresAt: now + GOLDEN_WINDOW_SEC * 1000, options, quiz: makeGoldenQuiz(state, rng, extra, now) }
-    const [lo, hi] = GOLDEN_INTERVAL_SEC
-    state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
+    scheduleNext()
     return state.golden
   }
   const p = pickGoldenPrompt(rng)
@@ -716,8 +781,7 @@ export function spawnGoldenPrompt(state, now = Date.now(), rng = Math.random, pe
   }
   if (!quiz) quiz = makeGoldenQuiz(state, rng, extra, now)
   state.golden = { id: p.id, expiresAt: now + GOLDEN_WINDOW_SEC * 1000, quiz }
-  const [lo, hi] = GOLDEN_INTERVAL_SEC
-  state.nextGoldenAt = now + (lo + rng() * (hi - lo)) * 1000
+  scheduleNext()
   return state.golden
 }
 
@@ -899,6 +963,132 @@ export const WORD_QUIZ_SHARE = 0.35
 export const ROOT_QUIZ_SHARE = 0.15
 const FINAL_TO_BASE = { 'ך': 11, 'ם': 12, 'ן': 13, 'ף': 16, 'ץ': 17 }
 
+// ── Word→letter gains + Anki-style word mastery ──────────────────────────
+// Compared against Anki 26.08.1 (/usr/bin/anki): Anki has no "mastered" flag —
+// mastery IS interval. Cards with interval >= 21d are "mature" in Anki stats.
+// A word tile is mastered when its FSRS interval_days reaches 21. Mastered
+// words then pay points to their letters: each mastered word containing
+// letter i gives that letter +2% (cap +200%), but ONLY once the letter
+// itself is mastered (mastery >= 0.8) — words extend mastered letters.
+
+/** Anki "mature" threshold in days — matches backend WORD_MATURE_INTERVAL_DAYS. */
+export const WORD_MATURE_INTERVAL_DAYS = 21
+/** Per mastered word containing the letter: +2% to that letter's rate. */
+export const WORD_LETTER_BONUS = 0.02
+/** Ceiling on the word→letter bonus: +200%. */
+export const WORD_LETTER_CAP = 2.0
+
+/** Anki-style check: mastered = interval until next review reached maturity. */
+export function isWordMastered(word) {
+  if (!word) return false
+  if (typeof word.mastered === 'boolean') return word.mastered
+  return (word.interval_days || 0) >= WORD_MATURE_INTERVAL_DAYS
+}
+
+// ── Word tiers: frequency rank → curriculum level ───────────────────────
+// The 500-word list spreads across levels so Word Tiles decks unlock in
+// stages (Cookie-Clicker building tiers): Shema 0-49 → L4, Daily 50-149 →
+// L5, Prophets 150-299 → L6, Writings/Rare 300+ → L7. Single source of
+// truth shared by the seeder (fresh DBs) and the tier migration (existing).
+export function wordTier(rank) {
+  const r = Number(rank) || 0
+  if (r < 50) return 4
+  if (r < 150) return 5
+  if (r < 300) return 6
+  return 7
+}
+
+/** Letter indices appearing in a word's bare (unpointed) form. */
+export function wordLetterIndices(bare = '') {
+  const out = []
+  for (const ch of bare || '') {
+    let idx = LETTERS.indexOf(ch)
+    if (idx < 0 && FINAL_TO_BASE[ch] !== undefined) idx = FINAL_TO_BASE[ch]
+    if (idx < 0 || out.includes(idx)) continue
+    out.push(idx)
+  }
+  return out
+}
+
+/** Count mastered words per letter index: {letterIndex: count}. */
+export function countWordLetters(masteredWords = []) {
+  const counts = {}
+  for (const w of masteredWords || []) {
+    if (!w || !w.bare) continue
+    for (const i of wordLetterIndices(w.bare)) counts[i] = (counts[i] || 0) + 1
+  }
+  return counts
+}
+
+/**
+ * This letter's word bonus. Gated: unmastered letters get ×1 — words extend
+ * mastered letters, they don't shortcut them.
+ */
+export function letterWordMultiplier(i, masteredWords = [], mastery = {}) {
+  if ((mastery[i] ?? 0) < MASTERY_THRESHOLD) return 1
+  let hits = 0
+  for (const w of masteredWords || []) {
+    if (!w || !w.bare) continue
+    if (wordLetterIndices(w.bare).includes(i)) hits++
+  }
+  return 1 + Math.min(hits * WORD_LETTER_BONUS, WORD_LETTER_CAP)
+}
+
+/**
+ * Sync mastered-word details into idle state from a Word Tiles fetch.
+ * Keeps state.words (count → global +2%/word) and state.masteredWords
+ * (per-letter details → +2%/letter) consistent. Returns counts for the HUD.
+ * # ponytail: stores bare forms only; upgrade path is node_id-keyed rows when
+ * the vocab SRS covers all 500 words.
+ */
+export function syncMasteredWords(state, words = []) {
+  const mastered = (words || []).filter(isWordMastered).map(w => ({ bare: w.bare, rank: w.rank }))
+  state.masteredWords = mastered
+  state.words = mastered.length
+  return { words: mastered.length, perLetter: countWordLetters(mastered) }
+}
+
+// ── Roots tier: self-graded study + staged deck gates ───────────────────
+// Roots mature by study reps (3 net knows), not FSRS — per-root FSRS nodes
+// cover only 17/500 roots, so invented intervals would lie. Upgrade path:
+// per-root review_state rows when root_* coverage reaches 100+.
+
+/** Net knows needed for a root to count as mature (feeds word synergy). */
+export const ROOT_MATURE_REPS = 3
+/** Word decks 3+ (ranks 150+) need 10 mastered words; decks 6+ (300+) need 40. */
+export const WORD_DECK_GATES = { 3: 10, 6: 40 }
+/** Roots Tiles screen needs 25 mastered words. */
+export const ROOTS_TILES_GATE = 25
+
+/** Record one self-graded root study rep. Returns {knows, mature}. */
+export function recordRootStudy(state, root, known) {
+  if (!root) return { knows: 0, mature: false }
+  const reps = state.rootReps || (state.rootReps = {})
+  const r = reps[root] || (reps[root] = { k: 0, s: 0 })
+  if (known) r.k++
+  else r.s++
+  const mature = (r.k - r.s) >= ROOT_MATURE_REPS
+  return { knows: r.k - r.s, mature }
+}
+
+/** Count of mature roots in idle state (word↔root synergy input). */
+export function matureRootCount(state) {
+  let n = 0
+  for (const r of Object.values(state.rootReps || {})) {
+    if ((r.k - r.s) >= ROOT_MATURE_REPS) n++
+  }
+  return n
+}
+
+/** Word deck d (0-indexed, 50/deck) unlocked with this many mastered words. */
+export function wordDeckUnlocked(deckIdx, masteredTotal) {
+  let need = 0
+  for (const [d, g] of Object.entries(WORD_DECK_GATES)) {
+    if (deckIdx >= Number(d)) need = Math.max(need, g)
+  }
+  return (masteredTotal || 0) >= need
+}
+
 /** Letters of a bare word that the workshop does NOT own yet. */
 export function wordLockedLetters(word, owned = {}) {
   const missing = []
@@ -943,6 +1133,57 @@ export function grammarStudied(mastery = {}, categories = {}) {
     if ((c === 'grammar' || c === 'syntax' || c === 'verb') && (v || 0) >= 0.8) n++
   }
   return n
+}
+
+// ── Grammar tracks: 3 rows × 5 tiers, derived (no migration) ───────────
+// verb → binyanim, syntax → clauses, noun+grammar → nominals. Tier follows
+// node level (L3→1 … L7→5). A tier is complete when it has ≥1 node and every
+// node is mastered; each complete tier pays +5% global (cap +50%, CC CpS%
+// cookies). Empty cells are the content backlog — visible, not hidden.
+
+/** Category → grammar track (null = not a grammar node). */
+export const GRAMMAR_TRACKS = { verb: 'binyanim', syntax: 'clauses', noun: 'nominals', grammar: 'nominals' }
+/** Per complete track-tier: +5% global Ohr. */
+export const TRACK_BONUS_PER_TIER = 0.05
+/** Ceiling on track income: +50%. */
+export const TRACK_BONUS_CAP = 0.5
+
+/** {track, tier} for a curriculum node, or null. */
+export function grammarTrack(node) {
+  if (!node) return null
+  const track = GRAMMAR_TRACKS[node.category]
+  if (!track) return null
+  const tier = Math.min(5, Math.max(1, (node.level || 3) - 2))
+  return { track, tier }
+}
+
+/**
+ * Track grid + income from curriculum nodes.
+ * Returns {bonus, complete, grid, backlog}: grid[track][tier] =
+ * {total, mastered, ids}; backlog = [{track, tier, reason}] for incomplete
+ * cells ('unfinished') and never-seeded cells ('empty' = content backlog).
+ */
+export function grammarTrackBonus(nodes = []) {
+  const grid = {}
+  for (const n of nodes || []) {
+    const t = grammarTrack(n)
+    if (!t) continue
+    const cell = ((grid[t.track] ||= {})[t.tier] ||= { total: 0, mastered: 0, ids: [] })
+    cell.total++
+    if ((n.mastery || 0) >= MASTERY_THRESHOLD) cell.mastered++
+    cell.ids.push(n.id)
+  }
+  let complete = 0
+  const backlog = []
+  for (const track of Object.keys(GRAMMAR_TRACKS).map(c => GRAMMAR_TRACKS[c]).filter((v, i, a) => a.indexOf(v) === i)) {
+    for (let tier = 1; tier <= 5; tier++) {
+      const cell = grid[track]?.[tier]
+      if (!cell) backlog.push({ track, tier, reason: 'empty' })
+      else if (cell.mastered >= cell.total) complete++
+      else backlog.push({ track, tier, reason: 'unfinished', done: cell.mastered, total: cell.total })
+    }
+  }
+  return { bonus: Math.min(complete * TRACK_BONUS_PER_TIER, TRACK_BONUS_CAP), complete, grid, backlog }
 }
 
 /** Tier gate: 100 known words + 100 known roots + studied grammar. */
@@ -1101,7 +1342,14 @@ export function resolveGoldenPrompt(state, correct, now = Date.now(), perSec = 0
     state.buffs = { ...(state.buffs || {}), tapEndsAt: now + p.seconds * 1000 }
     return { claimed: p, granted: 0 }
   }
-  const granted = perSec * 3600 * (p.hours || 0)
+  if (p.kind === 'blast') {
+    // Binyan Special (Cookie Building Special): the bigger the workshop,
+    // the louder the blast. Stacks WITH gale/frenzy (combo engine).
+    const mult = 1 + totalOwned(state) / 20
+    state.buffs = { ...(state.buffs || {}), blastEndsAt: now + p.seconds * 1000, blastMult: mult }
+    return { claimed: { ...p, desc: `workshop blast: production ×${mult.toFixed(1)} for 60s` }, granted: 0 }
+  }
+  const granted = dewGrant(state, perSec)
   state.ohr += granted
   state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
   return { claimed: p, granted }
@@ -1423,6 +1671,264 @@ export function harvestVine(state, i, perSec, now = Date.now()) {
   return granted
 }
 
+// ── Root Garden: the first minigame (Cookie-Clicker Garden, Hebrew soil) ─
+// 6 plots. Plant a readable root for 15min of production; 2h growth through
+// sprout→bud→mature; harvest grants 30min production + 5 Kavod + 1 study rep
+// for the root (reps mature roots → +5% word income each, Track B3).
+// Cross-breed: harvesting beside a DIFFERENT mature root has a 25% mutation:
+// +15 Kavod and a rep for the neighbor root too. No wither, no rot — the
+// game never punishes (Ohr = wait, Kavod = know; planting costs only Ohr).
+
+export const GARDEN_PLOTS = 6
+export const GARDEN_GROW_MS = 2 * 3600 * 1000
+export const GARDEN_COST_HOURS = 0.25
+export const GARDEN_REWARD_HOURS = 0.5
+export const GARDEN_KAVOD = 5
+export const GARDEN_MUTATION_CHANCE = 0.25
+export const GARDEN_MUTATION_KAVOD = 15
+
+/** Plot array (length 6): null | {root, plantedAt}. */
+export function gardenPlots(state) {
+  const plots = [...(state.garden?.plots || [])]
+  while (plots.length < GARDEN_PLOTS) plots.push(null)
+  return plots.slice(0, GARDEN_PLOTS)
+}
+
+/** Growth stage 0 (sprout) / 1 (bud) / 2 (mature) by elapsed thirds. */
+export function gardenStage(plot, now = Date.now()) {
+  if (!plot) return -1
+  const el = now - (plot.plantedAt || 0)
+  if (el >= GARDEN_GROW_MS) return 2
+  if (el >= GARDEN_GROW_MS / 3 * 2) return 1
+  return 0
+}
+
+export function gardenReady(state, i, now = Date.now()) {
+  return gardenStage(gardenPlots(state)[i], now) === 2
+}
+
+/** Adjacent plot indices in the 3×2 grid (no wraparound). */
+export function gardenNeighbors(i) {
+  const out = []
+  const row = Math.floor(i / 3), col = i % 3
+  if (col > 0) out.push(i - 1)
+  if (col < 2) out.push(i + 1)
+  if (row > 0) out.push(i - 3)
+  if (row < 1) out.push(i + 3)
+  return out
+}
+
+/** Roots the workshop can read (every letter owned). Accepts strings or {root}. */
+export function readableRoots(owned = {}, roots = []) {
+  return (roots || []).filter(r => {
+    const s = typeof r === 'string' ? r : r.root
+    if (!s) return false
+    const idx = wordLetterIndices(s)
+    return idx.length > 0 && idx.every(j => (owned[j] || 0) > 0)
+  })
+}
+
+/** Plant a root: costs 15min of production. Returns false if occupied/unaffordable. */
+export function plantGardenRoot(state, i, root, perSec, now = Date.now()) {
+  if (!root || i < 0 || i >= GARDEN_PLOTS) return false
+  const plots = gardenPlots(state)
+  if (plots[i]) return false
+  const cost = (perSec || 0) * GARDEN_COST_HOURS * 3600
+  if ((state.ohr || 0) < cost) return false
+  state.ohr -= cost
+  plots[i] = { root, plantedAt: now }
+  state.garden = { ...(state.garden || {}), plots }
+  return true
+}
+
+/**
+ * Harvest a mature plot. Grants production + Kavod + a study rep for the
+ * root; adjacent different mature roots may mutate (+Kavod, rep for the
+ * neighbor). Clears the plot. Returns null unless mature.
+ */
+export function harvestGardenRoot(state, i, perSec, now = Date.now(), rng = Math.random) {
+  const plots = gardenPlots(state)
+  const plot = plots[i]
+  if (gardenStage(plot, now) !== 2) return null
+  const granted = (perSec || 0) * GARDEN_REWARD_HOURS * 3600
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  let kavod = GARDEN_KAVOD
+  let mutated = false
+  let neighbor = null
+  for (const j of gardenNeighbors(i)) {
+    const nb = plots[j]
+    if (nb && nb.root !== plot.root && gardenStage(nb, now) === 2) { neighbor = nb.root; break }
+  }
+  if (neighbor && rng() < GARDEN_MUTATION_CHANCE) {
+    mutated = true
+    kavod += GARDEN_MUTATION_KAVOD
+    recordRootStudy(state, neighbor, true)
+  }
+  recordRootStudy(state, plot.root, true)
+  state.kavod = (state.kavod || 0) + kavod
+  plots[i] = null
+  state.garden = { ...(state.garden || {}), plots }
+  return { granted, kavod, mutated, neighbor: mutated ? neighbor : null, root: plot.root }
+}
+
+// ── Sanhedrin: the second minigame (Cookie-Clicker Pantheon, sages) ────
+// Seat three sages out of six. Seats scale the effect (Honor ×1.0, Wisdom
+// ×0.6, Learning ×0.3); every sage has a gift and a price, so the loadout
+// is buildcraft, not a checklist. Swapping a seat starts a 4h cooldown on
+// that seat. Effects flow through sageEffects(state) into production, costs,
+// taps, Kavod, offline and Shemen — one choke point, no signature sprawl.
+
+export const SANHEDRIN_SEATS = [
+  { id: 'honor', name: 'Seat of Honor', mult: 1.0 },
+  { id: 'wisdom', name: 'Seat of Wisdom', mult: 0.6 },
+  { id: 'learning', name: 'Seat of Learning', mult: 0.3 },
+]
+export const SAGE_SWAP_COOLDOWN_MS = 4 * 3600 * 1000
+export const SAGES = [
+  { id: 'rashi', name: 'Rashi', icon: '📖', desc: '+10% Ohr · +10% letter costs', fx: { global: 0.10, cost: 0.10 } },
+  { id: 'hillel', name: 'Hillel', icon: '🕊️', desc: '+15% tap value · −5% Ohr', fx: { tap: 0.15, global: -0.05 } },
+  { id: 'shammai', name: 'Shammai', icon: '⚖️', desc: '−10% letter costs · −5% tap value', fx: { cost: -0.10, tap: -0.05 } },
+  { id: 'akiva', name: 'Akiva', icon: '🔥', desc: '+20% Kavod from answers · −5% Ohr', fx: { kavod: 0.20, global: -0.05 } },
+  { id: 'miriam', name: 'Miriam', icon: '🌊', desc: '+15% Shemen effect · +5% letter costs', fx: { milk: 0.15, cost: 0.05 } },
+  { id: 'elijah', name: 'Elijah', icon: '⚡', desc: '+15% offline earnings · −5% tap value', fx: { offline: 0.15, tap: -0.05 } },
+]
+
+/** Combined sage multipliers {global, cost, tap, kavod, offline, milk} (all 1 when empty). */
+export function sageEffects(state) {
+  const out = { global: 1, cost: 1, tap: 1, kavod: 1, offline: 1, milk: 1 }
+  const seats = state.sanhedrin?.seats || {}
+  for (const seat of SANHEDRIN_SEATS) {
+    const sage = SAGES.find(s => s.id === seats[seat.id])
+    if (!sage) continue
+    for (const [k, v] of Object.entries(sage.fx)) {
+      if (out[k] !== undefined) out[k] *= (1 + v * seat.mult)
+    }
+  }
+  return out
+}
+
+/** Seat a sage (or replace). One sage sits once; the seat cools 4h. False when locked/cooling. */
+export function swapSage(state, seatId, sageId, now = Date.now()) {
+  const seat = SANHEDRIN_SEATS.find(s => s.id === seatId)
+  if (!seat || !SAGES.some(s => s.id === sageId)) return false
+  const cd = state.sanhedrin?.cooldowns || {}
+  if ((cd[seatId] || 0) > now) return false
+  const seats = { ...(state.sanhedrin?.seats || {}) }
+  for (const k of Object.keys(seats)) if (seats[k] === sageId) delete seats[k]
+  seats[seatId] = sageId
+  state.sanhedrin = { seats, cooldowns: { ...cd, [seatId]: now + SAGE_SWAP_COOLDOWN_MS } }
+  return true
+}
+
+/** Cooldown ms remaining on a seat (0 = swappable). */
+export function sageCooldownLeft(state, seatId, now = Date.now()) {
+  return Math.max(0, (state.sanhedrin?.cooldowns?.[seatId] || 0) - now)
+}
+
+// ── Shuk: the third minigame (Cookie-Clicker Stock Market, stalls) ─────
+// Five goods priced in production-seconds (auto-scales to your era, like
+// Cookie's $=CpS-seconds). Prices ride deterministic smooth cycles (47min +
+// 11min sines, per-good phases) — no stored prices, always tradeable, real
+// buy-low-sell-high play. A 2% bid/ask spread stops instant flips.
+// "Learn on credit": grant 1h of production now, −25% for 4h after (one
+// loan at a time, 24h cooldown). Debt never stacks with itself.
+
+export const SHUK_GOODS = [
+  { id: 'oil', name: 'Olive Oil', icon: '🫒', baseSecs: 90, ph1: 0.0, ph2: 0.0 },
+  { id: 'wheat', name: 'Wheat', icon: '🌾', baseSecs: 30, ph1: 0.37, ph2: 0.73 },
+  { id: 'wine', name: 'Wine', icon: '🍷', baseSecs: 120, ph1: 0.74, ph2: 0.46 },
+  { id: 'honey', name: 'Honey', icon: '🍯', baseSecs: 240, ph1: 0.11, ph2: 0.19 },
+  { id: 'linen', name: 'Linen', icon: '🧵', baseSecs: 60, ph1: 0.52, ph2: 0.91 },
+]
+export const SHUK_SPREAD = 0.02
+export const SHUK_SLOW_MIN = 47
+export const SHUK_FAST_MIN = 11
+export const SHUK_LOAN_HOURS = 1
+export const SHUK_DEBT_MULT = 0.75
+export const SHUK_DEBT_HOURS = 4
+export const SHUK_LOAN_COOLDOWN_MS = 24 * 3600 * 1000
+
+function shukGood(id) {
+  return SHUK_GOODS.find(g => g.id === id) || null
+}
+
+/** Mid price in Ohr (deterministic cycles, floored at 20% of base). */
+export function shukPrice(goodId, perSec, now = Date.now()) {
+  const g = shukGood(goodId)
+  if (!g || !(perSec > 0)) return 0
+  const t = now / 60000
+  const f = 1
+    + 0.35 * Math.sin(2 * Math.PI * (t / SHUK_SLOW_MIN + g.ph1))
+    + 0.15 * Math.sin(2 * Math.PI * (t / SHUK_FAST_MIN + g.ph2))
+  return Math.max(0.2, f) * (perSec || 0) * g.baseSecs
+}
+
+/** {bid, ask, trend} — trend is +1/−1/0 from the 5-minute slope. */
+export function shukQuote(goodId, perSec, now = Date.now()) {
+  const mid = shukPrice(goodId, perSec, now)
+  const prev = shukPrice(goodId, perSec, now - 5 * 60000)
+  return {
+    bid: mid * (1 - SHUK_SPREAD),
+    ask: mid * (1 + SHUK_SPREAD),
+    trend: mid > prev * 1.001 ? 1 : mid < prev * 0.999 ? -1 : 0,
+  }
+}
+
+/** Buy n units at ask. Returns spent Ohr (0 when unaffordable/unknown). */
+export function buyShuk(state, goodId, n = 1, perSec = 0, now = Date.now()) {
+  const g = shukGood(goodId)
+  if (!g || !(n > 0)) return 0
+  const { ask } = shukQuote(goodId, perSec, now)
+  const spend = ask * n
+  if ((state.ohr || 0) < spend) return 0
+  state.ohr -= spend
+  const holdings = { ...(state.shuk?.holdings || {}) }
+  holdings[goodId] = (holdings[goodId] || 0) + n
+  state.shuk = { ...(state.shuk || {}), holdings }
+  return spend
+}
+
+/** Sell n units (clamped to holdings) at bid. Returns granted Ohr. */
+export function sellShuk(state, goodId, n = 1, perSec = 0, now = Date.now()) {
+  const g = shukGood(goodId)
+  if (!g || !(n > 0)) return 0
+  const have = state.shuk?.holdings?.[goodId] || 0
+  const k = Math.min(n, have)
+  if (k <= 0) return 0
+  const { bid } = shukQuote(goodId, perSec, now)
+  const granted = bid * k
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  const holdings = { ...(state.shuk?.holdings || {}), [goodId]: have - k }
+  state.shuk = { ...(state.shuk || {}), holdings }
+  return granted
+}
+
+/** Debt multiplier (1 normally, 0.75 while learning on credit). */
+export function shukDebt(state, now = Date.now()) {
+  return (state.shuk?.debtUntil || 0) > now ? SHUK_DEBT_MULT : 1
+}
+
+/**
+ * Learn on credit: +1h production now, −25% for 4h. One loan at a time,
+ * 24h cooldown after the debt clears. Returns granted Ohr (0 if refused).
+ */
+export function takeShukLoan(state, perSec, now = Date.now()) {
+  if ((state.shuk?.debtUntil || 0) > now) return 0
+  if ((state.shuk?.loanCooldownUntil || 0) > now) return 0
+  const granted = (perSec || 0) * 3600 * SHUK_LOAN_HOURS
+  state.ohr += granted
+  state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
+  state.shuk = {
+    ...(state.shuk || {}),
+    holdings: { ...(state.shuk?.holdings || {}) },
+    debtUntil: now + SHUK_DEBT_HOURS * 3600 * 1000,
+    loanCooldownUntil: now + (SHUK_DEBT_HOURS * 3600 * 1000 + SHUK_LOAN_COOLDOWN_MS),
+  }
+  return granted
+}
+
 // ── Achievements → Shemen (oil): +4% Ohr each ────────────────────────
 // Derived from state — no extra bookkeeping, no way to lose one.
 // ("Talmidim multipliers read Shemen" from the plan is moot: there is no
@@ -1457,7 +1963,7 @@ export function achievementsEarned(state) {
 }
 
 export function shemenMultiplier(state) {
-  return 1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT
+  return (1 + achievementsEarned(state).length * SHEMEN_PER_ACHIEVEMENT) * sageEffects(state).milk
 }
 
 /**
@@ -1690,7 +2196,8 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   gp4.buffs = { ...gp4.buffs, galeEndsAt: 5000 }
   a(galeMultiplier(gp4, 1000) === 7 && buffMultiplier(gp4, 1000) === 7, 'gale = x7 and feeds buffMultiplier')
   gp4.buffs = { ...gp4.buffs, frenzyEndsAt: 5000 }
-  a(buffMultiplier(gp4, 1000) === 7, 'same-kind buffs take the max, not the product')
+  a(buffMultiplier(gp4, 1000) === 3 * 7, 'different-kind buffs MULTIPLY (combo engine: frenzy x gale)')
+  a(activeBuffCount(gp4, 1000) === 2, 'two buffs counted for the combo display')
   a(galeMultiplier(gp4, 6000) === 1, 'gale expires')
   const gp5 = defaultIdleState()
   gp5.buffs = { ...gp5.buffs, tapEndsAt: 5000 }
@@ -1698,9 +2205,26 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(tapValue(0, 0, {}, null, {}, tapBuffMultiplier(gp5, 1000)) === 3, 'tap value reflects the rush buff')
   const gp6 = defaultIdleState()
   gp6.golden = { id: 'dew', expiresAt: 99999 }
+  gp6.ohr = 10 * 3600 * 20 // fat bank: full 2h pours out
   const dew = resolveGoldenPrompt(gp6, true, 1000, 10)
-  a(dew.granted === 10 * 3600 * 2, 'dew grants 2h of production instantly')
-  a(pickGoldenPrompt(() => 0).id === 'gale' && pickGoldenPrompt(() => 0.99).id === 'rush', 'weighted pick is ordered')
+  a(dew.granted === 10 * 3600 * 2, 'dew grants 2h of production with a full bank')
+  const gp6b = defaultIdleState()
+  gp6b.golden = { id: 'dew', expiresAt: 99999 }
+  gp6b.ohr = 0 // empty bank: floor of 15min, never nothing
+  const dewPoor = resolveGoldenPrompt(gp6b, true, 1000, 10)
+  a(dewPoor.granted === 10 * 3600 * DEW_MIN_HOURS, 'dew floor is 15min on an empty bank')
+  const gpx7 = defaultIdleState()
+  gpx7.owned = { 0: 10, 1: 10 }
+  gpx7.golden = { id: 'shofar', expiresAt: 99999 }
+  const sho = resolveGoldenPrompt(gpx7, true, 1000, 10)
+  a(sho.claimed && shofarMultiplier(gpx7, 1000) === 1 + 20 / 20, 'shofar blast scales with workshop size (20 golems = x2)')
+  a(Math.abs(buffMultiplier(gpx7, 1000) - 2) < 1e-9, 'shofar feeds the combo multiplier')
+  const gpx8 = defaultIdleState()
+  gpx8.buffs = { ...gpx8.buffs, galeEndsAt: 99999 }
+  spawnGoldenPrompt(gpx8, 1000, () => 0.99)
+  const [lox8] = GOLDEN_INTERVAL_SEC
+  a(gpx8.nextGoldenAt <= 1000 + (lox8 + 0.99 * (180 - lox8)) * 1000 * 0.5 + 1, 'get lucky: buffed visits come twice as fast')
+  a(pickGoldenPrompt(() => 0).id === 'gale' && pickGoldenPrompt(() => 0.99).id === 'shofar', 'weighted pick is ordered (rarest last)')
   a(GOLDEN_PROMPTS.every(p => p.weight > 0), 'every prompt has weight')
   a(spawnGoldenPrompt(defaultIdleState(), 1000, Math.random, 0) === null, 'no golden prompt with zero production')
   const gp7 = defaultIdleState()
@@ -1881,7 +2405,9 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(resolveGoldenPrompt(ph2, false, 2000, 0).fizzled === true, 'wrong answer fizzles the Prophet too')
   const manna = applyProphetChoice(defaultIdleState(), 'manna', 0)
   a(manna.granted === MANNA_KAVOD, 'manna grants instant Kavod')
-  const dewChoice = applyProphetChoice(defaultIdleState(), 'dew', 10)
+  const dewState = defaultIdleState()
+  dewState.ohr = 10 * 3600 * 20 // bank rule applies to blessings too
+  const dewChoice = applyProphetChoice(dewState, 'dew', 10)
   a(dewChoice.granted === 10 * 3600 * 2, 'dew choice matches the dew prompt')
   const galeChoice = applyProphetChoice(defaultIdleState(), 'gale', 0, 1000)
   a(galeChoice.granted === 0, 'gale choice buffs instead of granting')
@@ -1971,4 +2497,106 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(vowReleased(vx, 1000 + VOW_MAX_HOURS * 3600 * 1000 + 1) === true && !vx.exile, 'vow releases after 24h')
   a(vx.exilesCompleted === 0, 'expiry releases uncounted (fizzle, not completion)')
   a(vowReleased(defaultIdleState(), 99999) === false, 'nothing to release when free')
+  // Word tiers (rank → level) + word→letter gains
+  a(wordTier(0) === 4 && wordTier(49) === 4, 'Shema words are L4')
+  a(wordTier(50) === 5 && wordTier(149) === 5, 'Daily words are L5')
+  a(wordTier(150) === 6 && wordTier(299) === 6, 'Prophets words are L6')
+  a(wordTier(300) === 7 && wordTier(499) === 7, 'Writings/Rare words are L7')
+  a(isWordMastered({ interval_days: 21 }) && !isWordMastered({ interval_days: 20 }), 'mature at 21d (Anki rule)')
+  const wMastery = { 0: 0.9, 2: 0.1 }
+  a(letterWordMultiplier(0, [{ bare: 'אב' }], wMastery) === 1 + WORD_LETTER_BONUS, 'mastered letter gains per containing word')
+  a(letterWordMultiplier(2, [{ bare: 'אבג' }], wMastery) === 1, 'unmastered letter gets no word bonus')
+  a(wordLetterIndices('אב').length === 2 && wordLetterIndices('ך')[0] === 11, 'final forms map to base letters')
+  // Word↔root synergy + staged gates + root study reps
+  a(Math.abs(globalMultiplier(0, 100, {}, 0) - (1 + 100 * 0.02) * (1 + 100 * ROOT_WORD_SYNERGY)) < 1e-9, 'words feed the roots term +0.1% each')
+  a(Math.abs(globalMultiplier(0, 100, {}, 4) / globalMultiplier(0, 100, {}, 0) - (1 + 4 * WORD_ROOT_SYNERGY)) < 1e-9, 'mature roots lift the word term +5% each')
+  a(wordDeckUnlocked(0, 0) && wordDeckUnlocked(2, 0) && !wordDeckUnlocked(3, 9) && wordDeckUnlocked(3, 10), 'decks 3+ gate on 10 mastered')
+  a(!wordDeckUnlocked(6, 39) && wordDeckUnlocked(6, 40), 'decks 6+ gate on 40 mastered')
+  const rs = defaultIdleState()
+  a(matureRootCount(rs) === 0, 'no mature roots at start')
+  recordRootStudy(rs, 'אמר', true); recordRootStudy(rs, 'אמר', true); recordRootStudy(rs, 'אמר', false)
+  a(matureRootCount(rs) === 0, '2-1 is not mature')
+  recordRootStudy(rs, 'אמר', true); recordRootStudy(rs, 'אמר', true)
+  a(matureRootCount(rs) === 1, '3 net knows matures a root')
+  // Grammar tracks (derived, no migration)
+  a(grammarTrack({ category: 'verb', level: 5 }).track === 'binyanim', 'verbs map to binyanim')
+  a(grammarTrack({ category: 'syntax', level: 6 }).track === 'clauses', 'syntax maps to clauses')
+  a(grammarTrack({ category: 'noun', level: 6 }).track === 'nominals', 'nouns map to nominals')
+  a(grammarTrack({ category: 'grammar', level: 3 }).track === 'nominals', 'grammar maps to nominals')
+  a(grammarTrack({ category: 'word', level: 4 }) === null, 'words are not track nodes')
+  a(grammarTrack({ category: 'verb', level: 3 }).tier === 1 && grammarTrack({ category: 'verb', level: 7 }).tier === 5, 'tiers follow level L3->1 … L7->5')
+  const gt = grammarTrackBonus([
+    { id: 'v1', category: 'verb', level: 3, mastery: 0.9 },
+    { id: 'v2', category: 'verb', level: 3, mastery: 0.2 },
+    { id: 's1', category: 'syntax', level: 6, mastery: 1.0 },
+  ])
+  a(gt.complete === 1 && Math.abs(gt.bonus - TRACK_BONUS_PER_TIER) < 1e-9, 'one complete tier pays +5%')
+  a(gt.backlog.some(b => b.reason === 'empty'), 'unseeded cells surface as backlog')
+  // Root Garden minigame
+  const gs = defaultIdleState()
+  gs.ohr = 100000
+  a(gardenPlots(gs).length === GARDEN_PLOTS && gardenPlots(gs).every(p => !p), 'six empty plots at start')
+  a(plantGardenRoot(gs, 0, 'אמר', 10, 1000) === true, 'planting takes root + Ohr')
+  a(Math.abs(gs.ohr - (100000 - 10 * GARDEN_COST_HOURS * 3600)) < 1e-9, 'planting costs 15min of production')
+  a(plantGardenRoot(gs, 0, 'דבר', 10, 1000) === false, 'occupied plot refuses')
+  a(gardenStage({ root: 'אמר', plantedAt: 1000 }, 1000) === 0, 'sprout at planting')
+  a(gardenStage({ root: 'אמר', plantedAt: 1000 }, 1000 + GARDEN_GROW_MS) === 2, 'mature at 2h')
+  a(gardenReady(gs, 0, 1000 + GARDEN_GROW_MS) === true, 'plot ready at 2h')
+  a(harvestGardenRoot(gs, 0, 10, 1000) === null, 'unripe harvest refuses')
+  const hr = harvestGardenRoot(gs, 0, 10, 1000 + GARDEN_GROW_MS, () => 0.99)
+  a(hr && Math.abs(hr.granted - 10 * GARDEN_REWARD_HOURS * 3600) < 1e-9 && hr.kavod === GARDEN_KAVOD && !hr.mutated, 'harvest grants 30min + 5 Kavod + no mutation alone')
+  a(gardenPlots(gs)[0] === null, 'harvest clears the plot')
+  const mut0 = defaultIdleState()
+  mut0.ohr = 100000
+  plantGardenRoot(mut0, 0, 'אמר', 10, 1000)
+  plantGardenRoot(mut0, 1, 'דבר', 10, 1000)
+  const mut = harvestGardenRoot(mut0, 0, 10, 1000 + GARDEN_GROW_MS, () => 0.0)
+  a(mut && mut.mutated && mut.neighbor === 'דבר' && mut.kavod === GARDEN_KAVOD + GARDEN_MUTATION_KAVOD, 'adjacent different mature roots mutate')
+  a(JSON.stringify(gardenNeighbors(0).sort()) === JSON.stringify([1, 3]), 'corner neighbors without wraparound')
+  a(JSON.stringify(gardenNeighbors(4).sort()) === JSON.stringify([1, 3, 5]), 'center neighbors')
+  const allLetters = Object.fromEntries(LETTERS.map((_, k) => [k, 1]))
+  a(readableRoots(allLetters, ['אמר', { root: 'דבר' }]).length === 2, 'all readable when all letters owned')
+  a(readableRoots({}, ['אמר']).length === 0, 'nothing readable with no letters')
+  // Sanhedrin sages
+  const se = defaultIdleState()
+  const fx0 = sageEffects(se)
+  a(Object.values(fx0).every(v => v === 1), 'empty sanhedrin is neutral')
+  a(swapSage(se, 'honor', 'rashi', 1000) === true, 'seat Rashi with honor')
+  a(Math.abs(sageEffects(se).global - 1.10) < 1e-9, 'honor seat ×1.0: +10% Ohr')
+  a(swapSage(se, 'honor', 'hillel', 2000) === false, 'cooling seat refuses')
+  a(swapSage(se, 'wisdom', 'hillel', 2000) === true, 'second seat takes Hillel')
+  a(Math.abs(sageEffects(se).tap - (1 + 0.15 * 0.6)) < 1e-9, 'wisdom seat ×0.6: +9% tap')
+  a(swapSage(se, 'learning', 'hillel', 2000) === true && !se.sanhedrin.seats.wisdom, 'one sage sits once (moves seats)')
+  a(swapSage(se, 'nope', 'rashi', 99999999) === false && swapSage(se, 'honor', 'bogus', 99999999) === false, 'bad seat/sage refuse')
+  a(sageCooldownLeft(se, 'honor', 1000 + SAGE_SWAP_COOLDOWN_MS + 1) === 0, 'cooldown expires after 4h')
+  const scx = defaultIdleState()
+  scx.owned = { 0: 10 }
+  swapSage(scx, 'honor', 'akiva', 0)
+  const before = scx.kavod || 0
+  applyCorrectAnswer(scx, 1, () => 0.99)
+  a(scx.kavod - before >= 1, 'Akiva Kavod bonus flows through answers')
+  // Shuk market
+  a(shukPrice('oil', 10, 1000) === shukPrice('oil', 10, 1000), 'prices are deterministic')
+  a(shukPrice('bogus', 10, 1000) === 0 && shukPrice('oil', 0, 1000) === 0, 'unknown goods and zero rate price at 0')
+  const qq = shukQuote('wheat', 10, 600000)
+  a(qq.ask > qq.bid && Math.abs(qq.ask / qq.bid - (1 + SHUK_SPREAD) / (1 - SHUK_SPREAD)) < 1e-9, '2% spread stops instant flips')
+  a([-1, 0, 1].includes(qq.trend), 'trend is a direction')
+  const shk = defaultIdleState()
+  shk.ohr = 100000
+  a(buyShuk(shk, 'bogus', 1, 10) === 0, 'unknown goods refuse')
+  const spent = buyShuk(shk, 'wheat', 2, 10, 600000)
+  a(spent > 0 && shk.shuk.holdings.wheat === 2, 'buying fills holdings')
+  const got = sellShuk(shk, 'wheat', 1, 10, 600000)
+  a(got > 0 && got < spent / 2 + 1 && shk.shuk.holdings.wheat === 1, 'selling pays bid (below ask)')
+  a(sellShuk(shk, 'wheat', 99, 10, 600000) > 0 && shk.shuk.holdings.wheat === 0, 'oversell clamps to holdings')
+  const poor = defaultIdleState()
+  a(buyShuk(poor, 'oil', 1, 10) === 0, 'broke buyers refused')
+  const ln = defaultIdleState()
+  const grant = takeShukLoan(ln, 10, 1000)
+  a(grant === 10 * 3600 * SHUK_LOAN_HOURS, 'credit grants an hour now')
+  a(shukDebt(ln, 1000) === SHUK_DEBT_MULT, 'debt weighs production')
+  a(Math.abs(buffMultiplier(ln, 1000) - SHUK_DEBT_MULT) < 1e-9, 'debt flows through the combo multiplier')
+  a(takeShukLoan(ln, 10, 2000) === 0, 'no second loan while indebted')
+  a(shukDebt(ln, 1000 + SHUK_DEBT_HOURS * 3600 * 1000 + 1) === 1, 'debt clears after 4h')
+  a(takeShukLoan(ln, 10, 1000 + SHUK_DEBT_HOURS * 3600 * 1000 + 2) === 0, 'cooldown outlives the debt')
 }
