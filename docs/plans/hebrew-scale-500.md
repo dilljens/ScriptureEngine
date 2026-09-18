@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 kind: plan
 area: hebrew-scale
 author: james
@@ -11,11 +11,11 @@ created: 2026-09-16
 Goal: 500 words/roots learnable in Anki-style tiers with Cookie-Clicker depth, grammar as 3 tracks, and visible tap feedback.
 
 ## Requirements
-- [ ] R1: Word Tiles pages through all 500 words in 10 decks of 50 (due-first order)
-- [ ] R2: Word/root nodes spread across levels 4–7 by frequency tier (no L4 blob)
-- [ ] R3: Tap feedback — every tap (correct/wrong) is visible where the numbers live
-- [ ] R4: Grammar reorganized into 3 tracks x levels (display + income), no content rewrite
-- [ ] R5: No balance break — 1.15 law, x2 tiers, Shemen (milk), cube-root prestige untouched
+- [x] R1: Word Tiles pages through all 500 words in 10 decks of 50 (due-first order)
+- [x] R2: Word/root nodes spread across levels 4–7 by frequency tier (no L4 blob)
+- [x] R3: Tap feedback — every tap (correct/wrong) is visible where the numbers live
+- [x] R4: Grammar reorganized into 3 tracks x levels (display + income), no content rewrite
+- [x] R5: No balance break — 1.15 law, x2 tiers, Shemen (milk), cube-root prestige untouched
 
 ## Pre-resolved Decisions
 - Milk equivalent already exists: Shemen +4%/achievement (`SHEMEN_PER_ACHIEVEMENT`, wired into `statePerSecond`). No Honey system needed.
@@ -39,7 +39,7 @@ Goal: 500 words/roots learnable in Anki-style tiers with Cookie-Clicker depth, g
 - Fallback: floaters only (current behavior)
 - Depends on: nothing
 
-## Track B: Word/root tiers + deck pager `[ ]`
+## Track B: Word/root tiers + deck pager `[x]`
 - Description: 500 words pageable in 10 decks; nodes leveled by tier
 - Scope: ~4 files, ~120 lines
 
@@ -89,5 +89,5 @@ Goal: 500 words/roots learnable in Anki-style tiers with Cookie-Clicker depth, g
 - Fallback: flat categories (current)
 - Depends on: nothing
 
-## Track D: Minigames (future) `[ ]`
-- Out of scope: Root Garden -> Golden Dreidel combos -> Sage loadout -> Shuk market (CC order). Do not start.
+## Track D: Minigames (shipped under garden-onescreen plan) `[x]`
+- Out of scope here by design; built as docs/plans/hebrew-garden-onescreen.md Tracks A–J: Root Garden → Golden Dreidel combos → Watchmen → Shuk market (+ feasts, scribe autobuy). Do not start here.

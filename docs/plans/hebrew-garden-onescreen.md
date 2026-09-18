@@ -1,5 +1,5 @@
 ---
-status: active
+status: completed
 kind: plan
 area: hebrew-games
 author: james
@@ -11,11 +11,11 @@ created: 2026-09-16
 Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that needs no page scroll on iPhone.
 
 ## Requirements
-- [ ] R1: Garden: 6 plots, plant readable roots for Ohr, 2h growth (3 stages), harvest = 30min production + 5 Kavod + 1 root rep
-- [ ] R2: Cross-breed: adjacent different mature roots → 25% mutation on harvest → +15 Kavod + rep for the neighbor root (feeds B3 +5% word synergy)
-- [ ] R3: No punishment mechanics (wither/rot banned — matches game rules); costs only Ohr, never Kavod
-- [ ] R4: iPhone: HUD + tabs + active panel fit one screen, no page scroll (tab content may mini-scroll internally on SE-size screens)
-- [ ] R5: Desktop keeps full power — tabs for everyone (no forked logic), golems collapsible
+- [x] R1: Garden: 6 plots, plant readable roots for Ohr, 2h growth (3 stages), harvest = 30min production + 5 Kavod + 1 root rep
+- [x] R2: Cross-breed: adjacent different mature roots → 25% mutation on harvest → +15 Kavod + rep for the neighbor root (feeds B3 +5% word synergy)
+- [x] R3: No punishment mechanics (wither/rot banned — matches game rules); costs only Ohr, never Kavod
+- [x] R4: iPhone: HUD + tabs + active panel fit one screen, no page scroll (tab content may mini-scroll internally on SE-size screens)
+- [x] R5: Desktop keeps full power — tabs for everyone (no forked logic), golems collapsible
 
 ## Pre-resolved Decisions
 - Garden state in idle-game.js (`state.garden.plots`), pure functions + self-checks, same pattern as figs/vineyard.
@@ -76,8 +76,10 @@ Goal: first minigame (Root Garden) live in a tabbed single-screen game HUD that 
 - One-unit drip per tick (never drains the saving bank); global ON/OFF; exile-aware; quill hire buttons on mastered tiles + 📜 badges
 - 11 new self-checks (319 total); e2e buy-button order preserved
 - Verify: 319 self-checks, esbuild clean, vite build green
-- FEASTS table (8 moedim with meaning/scriptures/vocab), Intl Hebrew-calendar detection verified vs real 2026 dates, 13 new self-checks (309 total)
-- Effects: mercy windows (Passover/YK 60s), Shavuot grammar ×2, Trumpets/Hanukkah/Shemini spawn quickening, Sukkot garden ×2, Purim +5 🌟/claim
-- HUD feast chip (live/countdown) + info modal; Enoch 364-day tie-in documented for the Luminaries follow-up
-- Fixed en route: purim edit ate the answer-path `hours` guard (restored)
-- Verify: 309 self-checks, 54 backend tests, esbuild clean, vite build green
+
+## Post-plan polish (2026-09-17, on top of completed tracks)
+- Golem taps pay Ohr: GolemCanvas is a real tap button (25% of study-tap, Ohr only) via applyTap() + floaters + surge flash
+- Letter quiz trimmed 5→2 directions (H→EN name MC + EN→HE typing); get_hebrew_lesson_quiz dedupes by answer
+- Quiz/golden by learner weakness: general + per-lesson quizzes rank (node, question_type) by attempt accuracy (unseen first, then weakest); golden prompts go deck-weakest (letters failed→unseen→lowest streak; words/roots weakest streak in-pool)
+- Vowel quiz trimmed to match (78→40 rows); game UI polish (reduced-motion guard, tap cue chip, affordable-letter glow, focus rings)
+- Verify at close: 323 idle-game self-checks ok; 85 backend hebrew tests pass; tree clean
