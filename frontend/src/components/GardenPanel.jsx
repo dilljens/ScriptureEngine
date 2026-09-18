@@ -9,6 +9,7 @@ import {
   plantGardenRoot,
   harvestGardenRoot,
   isFeastDay,
+  fmtBig,
 } from '../lib/idle-game'
 
 /**
@@ -73,7 +74,7 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
     const res = harvestGardenRoot(next, i, perSec || 0, Date.now(), Math.random, growMs)
     if (!res) return
     setFlash(
-      `+${Math.floor(res.granted).toLocaleString()} ✨ +${res.kavod} 🌟 ${res.root}` +
+      `+${fmtBig(res.granted)} ✨ +${res.kavod} 🌟 ${res.root}` +
       (res.mutated ? ` · 🧬 mutation with ${res.neighbor}!` : '')
     )
     setTimeout(() => setFlash(null), 4000)
@@ -119,7 +120,7 @@ export default function GardenPanel({ state, perSec, onUpdate }) {
       {pickPlot != null && (
         <div className="mt-2 p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
           <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mb-1.5">
-            Plant plot {pickPlot + 1} — costs {Math.floor(cost).toLocaleString()} ✨ (15min of production)
+            Plant plot {pickPlot + 1} — costs {fmtBig(cost)} ✨ (15min of production)
           </div>
           {choices.length === 0 ? (
             <div className="text-[11px] text-neutral-500">No readable roots yet — own every letter of a root to plant it. Study letters first 👆</div>

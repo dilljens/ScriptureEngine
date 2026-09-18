@@ -21,7 +21,7 @@ import {
 } from '../lib/idle-game'
 import { pullIdleState, pushIdleState, beaconIdleState, serverIsNewer } from '../lib/idle-sync'
 import { logEvent, exportLog } from '../lib/analytics'
-import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast, scribeUnlocked, scribeCost, hireScribe, autoBuyTick, scribeCount } from '../lib/idle-game'
+import { grammarTrackBonus, gardenPlots, gardenReady, watchEffects, isFeastDay, activeFeasts, nextFeast, scribeUnlocked, scribeCost, hireScribe, autoBuyTick, scribeCount, fmtBig } from '../lib/idle-game'
 import FeastModal from './FeastModal'
 import GardenPanel from './GardenPanel'
 import WatchmenPanel from './WatchmenPanel'
@@ -520,7 +520,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       // The button only shows when nextRoots > roots, but a stale render can
       // still land here — never swallow the click silently.
       const need = Math.floor((goals?.root?.need || 0))
-      setBoostFlash({ text: need > 0 ? `🌿 Not yet — ${need.toLocaleString()} lifetime Ohr for root #${goals?.root?.next}. Keep studying.` : '🌿 Not yet — keep studying and the next root will come.' })
+      setBoostFlash({ text: need > 0 ? `🌿 Not yet — ${fmtBig(need)} lifetime Ohr for root #${goals?.root?.next}. Keep studying.` : '🌿 Not yet — keep studying and the next root will come.' })
       setTimeout(() => setBoostFlash(null), 4000)
       return
     }
@@ -646,7 +646,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     })
     if (granted > 0) {
       try { logEvent('boost', { kind: 'warp', cost, granted: Math.floor(granted), warps }) } catch {}
-      setBoostFlash({ text: `⏳ Time Warp! +${Math.floor(granted).toLocaleString()} Ohr (1h, cost ${cost} 🌟).` })
+      setBoostFlash({ text: `⏳ Time Warp! +${fmtBig(granted)} Ohr (1h, cost ${cost} 🌟).` })
       setTimeout(() => setBoostFlash(null), 4000)
     }
   }
@@ -692,7 +692,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     if (granted <= 0) return
     commit(next); saveIdleState(next)
     try { logEvent('fig', { granted: Math.floor(granted), level: next.figs.level }) } catch {}
-    setBoostFlash({ text: `🍯 Fig harvested! +${Math.floor(granted).toLocaleString()} Ohr · grove level ${next.figs.level} (+${next.figs.level * 10}% Ohr forever).` })
+    setBoostFlash({ text: `🍯 Fig harvested! +${fmtBig(granted)} Ohr · grove level ${next.figs.level} (+${next.figs.level * 10}% Ohr forever).` })
     setTimeout(() => setBoostFlash(null), 4500)
   }
 
@@ -702,7 +702,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     if (granted <= 0) return
     commit(next); saveIdleState(next)
     try { logEvent('daily', { granted: Math.floor(granted) }) } catch {}
-    setBoostFlash({ text: `📅 Daily lesson complete! +${Math.floor(granted).toLocaleString()} Ohr. Come back tomorrow.` })
+    setBoostFlash({ text: `📅 Daily lesson complete! +${fmtBig(granted)} Ohr. Come back tomorrow.` })
     setTimeout(() => setBoostFlash(null), 4500)
   }
 
@@ -714,7 +714,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     if (granted <= 0) return
     commit(next); saveIdleState(next)
     try { logEvent('vineyard', { granted: Math.floor(granted), level: next.vineyard.level, vine: i }) } catch {}
-    setBoostFlash({ text: `🍇 Vine harvested! +${Math.floor(granted).toLocaleString()} Ohr · vineyard level ${next.vineyard.level} (+${next.vineyard.level * 5}% Ohr forever).` })
+    setBoostFlash({ text: `🍇 Vine harvested! +${fmtBig(granted)} Ohr · vineyard level ${next.vineyard.level} (+${next.vineyard.level * 5}% Ohr forever).` })
     setTimeout(() => setBoostFlash(null), 4500)
   }
 
@@ -755,7 +755,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     if (!(v > 0)) return '0'
     if (v < 10) return v.toFixed(1)
     if (v < 1000) return Math.floor(v).toLocaleString()
-    return `${(v / 1000).toFixed(1)}k`
+    if (v < 1e8) return `${(v / 1000).toFixed(1)}k`
+    return fmtBig(v) // 9+ digits go scientific, never "100000.0k"
   }
   const figLevel = state.figs?.level || 0
   const figPct = figIsReady ? 1 : figLevel >= 0 && state.figs?.readyAt
@@ -789,11 +790,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     },
     milestoneFlash && {
       id: 'milestone', cls: 'bg-orange-500',
-      text: `🔥 ${milestoneFlash.milestone} streak! +${milestoneFlash.bonus.toLocaleString()} Ohr burst.`,
+      text: `🔥 ${milestoneFlash.milestone} streak! +${fmtBig(milestoneFlash.bonus)} Ohr burst.`,
     },
     questFlash && {
       id: 'quest', cls: 'bg-green-600',
-      text: `✅ Quest complete: ${questFlash.name} (+${questFlash.reward.toLocaleString()} Ohr)`,
+      text: `✅ Quest complete: ${questFlash.name} (+${fmtBig(questFlash.reward)} Ohr)`,
     },
     buyHint && {
       id: 'buyhint', cls: 'bg-red-500',
@@ -801,7 +802,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         ? (exileKind === 'shemittah'
           ? '🌾 The land rests — no inscribing until the next root. Study on: every tap counts double.'
           : `⛓️ ${LETTERS[buyHint.i]} is beyond your vow — exile study is ${exileLetters.map(i => LETTERS[i]).join(' · ')} until the next root.`)
-        : `Need ${buyHint.need.toLocaleString()} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`,
+        : `Need ${fmtBig(buyHint.need)} more ✨ Ohr for ${LETTERS[buyHint.i]} — answer a question (tap bonus) or let your golems mine.`,
     },
     feedbackFlash && {
       id: 'feedback', cls: 'bg-neutral-600',
@@ -848,7 +849,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           <div>
             <div className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">✨ Ohr</div>
             <div key={state.taps || 0} className="idle-pop text-2xl sm:text-xl font-bold text-neutral-800 dark:text-neutral-100 tabular-nums">
-              {Math.floor(state.ohr).toLocaleString()}
+              {fmtBig(state.ohr)}
             </div>
           </div>
           {/* HUD strip — permanent space is earned by frequency: Ohr, rate,
@@ -857,7 +858,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
             {effPerSec.toFixed(1)}/s · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state) * watchEffects(state).tap).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
-            <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 <span key={Math.floor(state.kavod || 0)} className="idle-pop inline-block">{Math.floor(state.kavod || 0)}</span></span>
+            <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 <span key={Math.floor(state.kavod || 0)} className="idle-pop inline-block">{fmtBig(state.kavod || 0)}</span></span>
             {(frenzyActive || galeMultiplier(state) > 1 || shofarMultiplier(state) > 1) && (
               <details className="relative inline-block">
                 <summary className="cursor-pointer font-bold text-orange-500 hover:underline" title="Active buffs multiply together — tap for detail">
@@ -1057,7 +1058,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         {goals.gen && (
           <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
             <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-              <span>Next: <b>{goals.gen.letter}</b> generator · {goals.gen.cost.toLocaleString()} Ohr</span>
+              <span>Next: <b>{goals.gen.letter}</b> generator · {fmtBig(goals.gen.cost)} Ohr</span>
               <span className="tabular-nums">{Math.round(goals.gen.pct * 100)}%</span>
             </div>
             <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
@@ -1067,7 +1068,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         )}
         <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
           <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-            <span>Next: root <b>#{goals.root.next}</b> · {Math.floor(goals.root.need).toLocaleString()} lifetime</span>
+            <span>Next: root <b>#{goals.root.next}</b> · {fmtBig(goals.root.need)} lifetime</span>
             <span className="tabular-nums">{Math.round(goals.root.pct * 100)}%</span>
           </div>
           <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
@@ -1077,7 +1078,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         {((state.roots || 0) > 0 || sparksTotal > 0) && (
           <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 col-span-2">
             <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-              <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {Math.floor(sparkProg.need).toLocaleString()} lifetime Ohr</span>
+              <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {fmtBig(sparkProg.need)} lifetime Ohr</span>
               <span className="tabular-nums">{Math.round(sparkProg.pct * 100)}%{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''}</span>
             </div>
             <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
@@ -1092,14 +1093,14 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {(offlinePopup || (state.pendingOffline || 0) >= 1) && (
         <button onClick={claimOffline}
           className="mt-2 w-full min-h-[48px] p-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
-          🌙 While you were away{offlinePopup?.hrs ? ` (${offlinePopup.hrs}h)` : ''}: +{Math.floor(state.pendingOffline || offlinePopup?.earned || 0).toLocaleString()} Ohr — tap to claim
+          🌙 While you were away{offlinePopup?.hrs ? ` (${offlinePopup.hrs}h)` : ''}: +{fmtBig(state.pendingOffline || offlinePopup?.earned || 0)} Ohr — tap to claim
         </button>
       )}
 
       {/* First-run call to action — the buy button must be unmissable. */}
       {totalOwned(state) === 0 && (
         <div className="mt-2 p-2.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-200">
-          <b>👋 Start here:</b> tap any letter below to inscribe your <b>first golem</b>. You have {Math.floor(state.ohr).toLocaleString()} ✨ Ohr — the first letters cost 10–40. Golems then mine Ohr for you while you study.
+          <b>👋 Start here:</b> tap any letter below to inscribe your <b>first golem</b>. You have {fmtBig(state.ohr)} ✨ Ohr — the first letters cost 10–40. Golems then mine Ohr for you while you study.
         </div>
       )}
       {/* Tap affordance: until the first tap lands, say where taps come from. */}
@@ -1433,7 +1434,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   className={`min-h-[64px] p-1.5 rounded-lg border text-center transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500 ${locked ? 'bg-neutral-800 dark:bg-black border-neutral-700 opacity-50' : afford ? 'bg-white dark:bg-neutral-800 border-amber-300 dark:border-amber-700 shadow-[0_0_10px_rgba(245,158,11,0.35)] active:scale-95' : buyHint?.i === i ? 'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-600' : 'bg-neutral-100 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 opacity-70'}`}>
                   <div className="text-xl leading-none">{locked ? lockIcon : L}</div>
                   <div className="text-[10px] font-mono text-neutral-500 tabular-nums">
-                    {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
+                    {owned > 0 && bulk === '1' ? `x${owned}` : spend >= 1e8 ? fmtBig(spend) : spend >= 1000 ? `${(spend / 1000).toFixed(1)}k${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}` : `${spend}${bulk !== '1' ? ` ×${bulk === 'max' ? n : bulk}` : ''}`}
                   </div>
                   <div className="text-[10px] font-mono text-amber-600 dark:text-amber-400 tabular-nums">
                     {owned > 0 ? `+${fmtRate(letterRate(state, mastery, i, gramMult))}/s` : `=${GEMATRIA[i]}`}
@@ -1482,7 +1483,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                     <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
                       <span className={claimed ? 'line-through opacity-60' : ''}>{q.name} · {q.desc}</span>
                       <span className="tabular-nums shrink-0 ml-2">
-                        {val >= 1000 ? Math.floor(val).toLocaleString() : Math.floor(val)}/{q.goal >= 1000 ? q.goal.toLocaleString() : q.goal}
+                        {fmtBig(val)}/{fmtBig(q.goal)}
                       </span>
                     </div>
                     <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
@@ -1492,9 +1493,9 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   {claimed ? (
                     <span className="text-green-600 text-sm shrink-0" aria-label={`Quest complete: ${q.name}`}>✓</span>
                   ) : done ? (
-                    <button onClick={() => claimQuestReward(q.id)} aria-label={`Claim quest reward: ${q.name}, +${q.reward.toLocaleString()} Ohr`}
+                    <button onClick={() => claimQuestReward(q.id)} aria-label={`Claim quest reward: ${q.name}, +${fmtBig(q.reward)} Ohr`}
                       className="idle-pop shrink-0 min-h-[44px] px-3 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold cursor-pointer">
-                      +{q.reward.toLocaleString()}
+                      +{fmtBig(q.reward)}
                     </button>
                   ) : null}
                 </div>
@@ -1582,7 +1583,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                     <button key={r.id} onClick={() => {
                       const next = { ...state }
                       if (!buyLetterUpgrade(next, r.i, r.k)) {
-                        setBoostFlash({ text: `Need ${(r.cost - state.ohr).toLocaleString()} more ✨ Ohr for ${r.L} ×2 — answer a question or let your golems mine.` })
+                        setBoostFlash({ text: `Need ${fmtBig(r.cost - state.ohr)} more ✨ Ohr for ${r.L} ×2 — answer a question or let your golems mine.` })
                         setTimeout(() => setBoostFlash(null), 4000)
                         return
                       }
@@ -1594,7 +1595,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                         <span className="font-medium text-neutral-700 dark:text-neutral-200">
                           {r.L} ×2 output <span className="text-neutral-400">· owns {r.owned}</span>
                         </span>
-                        <span className="tabular-nums text-neutral-500">{r.cost.toLocaleString()} ✨</span>
+                        <span className="tabular-nums text-neutral-500">{fmtBig(r.cost)} ✨</span>
                       </div>
                       <div className="text-[10px] tabular-nums text-amber-600 dark:text-amber-400">
                         Effect: +{fmtRate(nowRate)}/s → +{fmtRate(nowRate * 2)}/s
@@ -1617,7 +1618,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   <button key={u.id} disabled={ownedP} onClick={() => {
                     const next = { ...state }
                     if (!buyPerm(next, u.id)) {
-                      setBoostFlash({ text: `Need ${(u.cost - (state.kavod || 0)).toLocaleString()} more 🌟 Kavod for ${u.name} — Kavod comes only from correct answers.` })
+                      setBoostFlash({ text: `Need ${fmtBig(u.cost - (state.kavod || 0))} more 🌟 Kavod for ${u.name} — Kavod comes only from correct answers.` })
                       setTimeout(() => setBoostFlash(null), 4000)
                       return
                     }

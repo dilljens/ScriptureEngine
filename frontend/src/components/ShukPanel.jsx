@@ -9,6 +9,7 @@ import {
   sellShuk,
   shukDebt,
   takeShukLoan,
+  fmtBig,
 } from '../lib/idle-game'
 
 /**
@@ -21,6 +22,7 @@ import {
  */
 
 function fmtOhr(n) {
+  if (n >= 1e8) return fmtBig(n) // 9+ digits go scientific, never "100000.0k/M"
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
   return Math.floor(n).toLocaleString()

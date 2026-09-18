@@ -57,6 +57,15 @@ export function generatorCost(i, owned, diff = null, costMult = 1) {
   return Math.max(1, Math.ceil(baseCost(i) * Math.pow(1.15, owned) * diffMult * costMult))
 }
 
+/** Display: integers with more than 8 digits use scientific notation
+ * (1.23e8) instead of a full comma string — keeps HUD rows, tabs, and
+ * toasts one-line on phones. 8 digits (99,999,999) still show in full. */
+export function fmtBig(n) {
+  const v = Math.floor(Math.abs(n) || 0)
+  if (v < 1e8) return Math.floor(n || 0).toLocaleString()
+  return Math.floor(n).toExponential(2).replace('e+', 'e')
+}
+
 /** Base Ohr/sec per generator. Aleph 0.2/s … Tav ~80/s. */
 export function baseRate(i) {
   return 0.2 * Math.pow(1.35, i)
@@ -2898,4 +2907,12 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(autoBuyTick({ ...sb2, ohr: 0 }) === 0, 'broke scribes wait')
   const sb3 = { ...defaultIdleState(), roots: 0, ohr: 1e9, scribes: { 0: true }, autobuy: true }
   a(autoBuyTick(sb3) === 0 && sb3.owned[0] === undefined, 'locked scribes never buy')
+  // fmtBig: 8 digits stay full, 9+ go scientific
+  a(fmtBig(0) === '0', 'fmtBig zero')
+  a(fmtBig(999) === '999', 'fmtBig small')
+  a(fmtBig(1234567) === '1,234,567', 'fmtBig commas')
+  a(fmtBig(99999999) === '99,999,999', 'fmtBig 8 digits stays full')
+  a(fmtBig(100000000) === '1.00e8', 'fmtBig 9 digits goes scientific')
+  a(fmtBig(1234567890) === '1.23e9', 'fmtBig billions')
+  a(fmtBig(8e12) === '8.00e12', 'fmtBig trillions')
 }
