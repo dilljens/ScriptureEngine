@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { currentSessionToken } from '../api'
 import {
   LETTERS, LETTER_NAMES, LETTER_SYMBOLS, GEMATRIA, baseCost, generatorCost, bulkCost, maxBuyable, statePerSecond, tapValue,
   rootsEarned, shouldPrestige, offlineEarnings, totalOwned,
