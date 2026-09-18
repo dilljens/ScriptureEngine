@@ -656,35 +656,9 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           </div>
         )}
         <HebrewModePicker mode={learnMode} onMode={setLearnMode} activeGameId={activeGameId} onGame={setActiveGameId} />
-        {ActiveGame ? <ActiveGame curriculum={curriculum} /> : null}
-
-        {/* The earn loop: tap golems for a little Ohr, answer for the big taps + Kavod. */}
-        <div className="mt-4 p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
-          <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-1">
-            ⚡ Earn Ohr &amp; 🌟 Kavod
-          </div>
-          <p className="hidden sm:block text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">
-            Tap your golems for a little Ohr any time. Every correct answer taps big Ohr and mints Kavod. Golems mine Ohr passively, but only answering earns the 🌟 that buys Frenzy and Time Warps.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {nextLesson ? (
-              <button onClick={() => setReviewTarget(nextLesson.id)}
-                className="min-h-[44px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer">
-                ⚡ Practice now: {nextLesson.title}
-              </button>
-            ) : null}
-            {(queueStats?.due_count || 0) > 0 && (
-              <button onClick={() => setReviewTarget('due')}
-                className="min-h-[44px] px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium cursor-pointer">
-                🔁 Review due ({queueStats.due_count})
-              </button>
-            )}
-            <button onClick={() => setShowBrowseInGame(true)}
-              className="min-h-[44px] px-4 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-sm cursor-pointer">
-              📚 Browse all lessons
-            </button>
-          </div>
-        </div>
+        {/* Practice + review live inside the game shell (Letters tab) — the
+            earn-loop card below used to slide under the sticky workshop. */}
+        {ActiveGame ? <ActiveGame curriculum={curriculum} dueCount={queueStats?.due_count || 0} onOpenReview={setReviewTarget} onBrowseLessons={() => setShowBrowseInGame(true)} /> : null}
 
         {reviewTarget && (
           <GameReviewModal

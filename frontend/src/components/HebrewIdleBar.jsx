@@ -106,7 +106,7 @@ function loadUiPrefs() {
   return { showGolems: true, bulk: '1', activeTab: 'letters' }
 }
 
-export default function HebrewIdleBar({ curriculum, onEarn }) {
+export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpenReview = null, onBrowseLessons = null }) {
   const [state, setState] = useState(loadIdleState)
   // UI prefs persist separately from game state — the active tab stays as you left it.
   const [uiPrefs] = useState(loadUiPrefs)
@@ -273,6 +273,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   // Shavuot doubles it (Torah given); the day key refreshes across midnight.
   const todayKey = dayKey(Date.now())
   const gramMult = useMemo(() => (1 + grammarTrackBonus(curriculum?.nodes || []).bonus) * (isFeastDay('shavuot') ? 2 : 1), [curriculum, todayKey])
+  // Practice entry: the next unmastered lesson (same pick as the dashboard).
+  // Lives in the Letters tab — answers are the core loop, not a card below the game.
+  const nextLesson = useMemo(() => (curriculum?.nodes || [])
+    .filter(n => n.unlocked && n.mastery < 0.8)
+    .sort((a, b) => a.level - b.level || a.mastery - b.mastery)[0] || null, [curriculum])
   const gramPct = Math.round((gramMult - 1) * 100)
   const perSec = statePerSecond(state, mastery, gramMult)
   const workshopSyn = workshopSynergy(state.owned, mastery)
@@ -312,7 +317,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       }
       // Scribes: mastered letters drip one unit per tick when affordable.
       // Runs before the skip check — a buy is movement worth rendering.
-      const bought = autoBuyTick(next, next.difficulty, sageEffects(next).cost)
+      const bought = autoBuyTick(next, next.difficulty, watchEffects(next).cost)
       // Word quizzes unlock mid-game (100+ readable words) — start the
       // 1000-row download only once the workshop is broad enough to use it.
       if (totalOwned(s) >= 5 || (s.roots || 0) > 0) ensureTopLists()
@@ -1041,52 +1046,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       )}
       {/* Golden result flashes live in the overlay toast stack. */}
 
-      {/* The legend — why golems: one word, one book, one eraser */}
-      <details className="mt-2 px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-600 dark:text-neutral-300">
-        <summary className="cursor-pointer font-semibold">📜 Why golems?</summary>
-        <p className="mt-1 leading-relaxed">
-          The word <i>golem</i> appears once in Scripture — Ps 139:16, “unformed substance.”
-          Sefer Yetzirah teaches that God creates through the 22 letters, so the sages tell
-          of clay men animated by <b>אמת</b> (<i>emet</i>, truth) on the brow. Erase the א
-          and <b>מת</b> (<i>met</i>) remains: dead. Every golem you inscribe, every root you
-          forge by erasing, plays that story.
-        </p>
-      </details>
-
-      {/* Next goals — always answers "what am I working toward?" */}
-      <div className="mt-2 grid gap-1.5 grid-cols-2">
-        {goals.gen && (
-          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
-            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-              <span>Next: <b>{goals.gen.letter}</b> generator · {fmtBig(goals.gen.cost)} Ohr</span>
-              <span className="tabular-nums">{Math.round(goals.gen.pct * 100)}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-              <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${goals.gen.pct * 100}%` }} />
-            </div>
-          </div>
-        )}
-        <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
-          <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-            <span>Next: root <b>#{goals.root.next}</b> · {fmtBig(goals.root.need)} lifetime</span>
-            <span className="tabular-nums">{Math.round(goals.root.pct * 100)}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-            <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${goals.root.pct * 100}%` }} />
-          </div>
-        </div>
-        {((state.roots || 0) > 0 || sparksTotal > 0) && (
-          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 col-span-2">
-            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
-              <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {fmtBig(sparkProg.need)} lifetime Ohr</span>
-              <span className="tabular-nums">{Math.round(sparkProg.pct * 100)}%{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''}</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-              <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${sparkProg.pct * 100}%` }} />
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Next goals live in the Quests tab — "what am I working toward" has its own spot. */}
       {/* Prestige/milestone/quest flashes live in the overlay toast stack. */}
 
       {/* Offline: tap-to-claim, never silent */}
@@ -1393,6 +1353,30 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {/* Letter shop — one tab of the single screen (6 cols on phones) */}
       {activeTab === 'letters' && (
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {/* Answer to earn — the core loop lives here, inside the game shell,
+              never as a card sliding under the sticky workshop. */}
+          {(nextLesson || dueCount > 0 || onBrowseLessons) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {nextLesson && onOpenReview && (
+                <button onClick={() => onOpenReview(nextLesson.id)} data-testid="practice-now"
+                  className="flex-1 sm:flex-none min-h-[48px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
+                  ⚡ Practice: {nextLesson.title}
+                </button>
+              )}
+              {dueCount > 0 && onOpenReview && (
+                <button onClick={() => onOpenReview('due')} data-testid="review-due"
+                  className="flex-1 sm:flex-none min-h-[48px] px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium cursor-pointer active:scale-[0.99]">
+                  🔁 Review ({dueCount})
+                </button>
+              )}
+              {onBrowseLessons && (
+                <button onClick={onBrowseLessons}
+                  className="min-h-[48px] px-4 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 text-sm cursor-pointer active:scale-[0.99]">
+                  📚 Lessons
+                </button>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex items-center gap-1.5">
             <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Buy:</span>
             {BULK_MODES.map(m => (
@@ -1462,7 +1446,41 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {/* Quests tab — the short-term loop + daily + achievements */}
       {activeTab === 'quests' && (
         <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
-      <div className="rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+      {/* Next up — "what am I working toward" lives here, not on the main screen. */}
+      <div className="grid gap-1.5 grid-cols-2">
+        {goals.gen && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
+            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
+              <span>Next: <b>{goals.gen.letter}</b> generator · {fmtBig(goals.gen.cost)} Ohr</span>
+              <span className="tabular-nums">{Math.round(goals.gen.pct * 100)}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+              <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${goals.gen.pct * 100}%` }} />
+            </div>
+          </div>
+        )}
+        <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700">
+          <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
+            <span>Next: root <b>#{goals.root.next}</b> · {fmtBig(goals.root.need)} lifetime</span>
+            <span className="tabular-nums">{Math.round(goals.root.pct * 100)}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+            <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${goals.root.pct * 100}%` }} />
+          </div>
+        </div>
+        {((state.roots || 0) > 0 || sparksTotal > 0) && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 col-span-2">
+            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
+              <span>Next: 💫 spark <b>#{sparkProg.next}</b> · {fmtBig(sparkProg.need)} lifetime Ohr</span>
+              <span className="tabular-nums">{Math.round(sparkProg.pct * 100)}%{sparksTotal > 0 ? ` · ${sparksTotal} earned` : ''}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+              <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${sparkProg.pct * 100}%` }} />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="mt-2 rounded-lg bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 overflow-hidden">
         <div
           className="w-full min-h-[44px] px-2.5 flex items-center gap-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
           <span>📜 Quests</span>
