@@ -645,7 +645,6 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     const nextLesson = (nodes || [])
       .filter(n => n.unlocked && n.mastery < 0.8)
       .sort((a, b) => a.level - b.level || a.mastery - b.mastery)[0]
-    const cs = nextLesson ? (CATEGORY_STYLES[nextLesson.category] || {}) : {}
     return (
       <div ref={gameTopRef} className="max-w-4xl mx-auto px-4 sm:px-6 py-6 scroll-mt-12">
         {toast && (

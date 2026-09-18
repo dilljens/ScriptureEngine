@@ -131,7 +131,7 @@ test('rich workshop: harvest fig, tend vine, claim daily', async ({ page }) => {
 
 test('shop buys a letter; Ascent branch locks its rival', async ({ page }) => {
   await gotoEmet(page, richSeed())
-  await page.getByTestId('shop-toggle').click()
+  await page.locator('[role="tab"]:has-text("Letters")').click()
   // Buy one Aleph (seeded owned 12 -> 13).
   const aleph = page.locator('.grid-cols-6 button').first()
   await aleph.click()
@@ -155,7 +155,7 @@ test('exile vow locks the shop to three letters', async ({ page }) => {
   }
   await gotoEmet(page, seed)
   await expect(page.locator('text=In exile').first()).toBeVisible({ timeout: 10000 })
-  await page.getByTestId('shop-toggle').click()
+  await page.locator('[role="tab"]:has-text("Letters")').click()
   // Tile 10 (כ) is outside the vowed [אבג] — it explains the lock.
   const tiles = page.locator('.grid-cols-6 button')
   await tiles.nth(10).click()

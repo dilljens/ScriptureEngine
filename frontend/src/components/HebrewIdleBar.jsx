@@ -982,10 +982,6 @@ export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpen
               {sync === 'busy' ? '☁️···' : sync === 'err' ? '☁️!' : '☁️'}
             </span>
           )}
-          <button onClick={() => setActiveTab('letters')} data-testid="shop-toggle" aria-label="Letter shop"
-            className={`flex-1 sm:flex-none min-h-[44px] text-sm px-4 rounded-lg font-medium cursor-pointer ${totalOwned(state) === 0 ? 'bg-amber-500 hover:bg-amber-600 text-white animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}>
-            Letters ▼
-          </button>
           {nextRoots > (state.roots || 0) && (
             <button onClick={doPrestige}
               title={exileKind ? 'Complete your vow run: forge roots, release the vow' : 'Forge roots: reset Ohr + generators, keep roots, +10% each forever'}
