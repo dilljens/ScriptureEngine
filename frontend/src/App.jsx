@@ -777,8 +777,17 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (dy > 24) setUiVisible(v => (v === false ? v : false))
     else if (dy < -16) setUiVisible(v => (v === true ? v : true))
   }, [])
-  const handleMainClick = useCallback(() => {
-    // Double-tap to toggle UI visibility (bars hide/show)
+  const handleMainClick = useCallback((e) => {
+    // Double-tap to toggle UI visibility (bars hide/show) — but gameplay
+    // taps must NEVER toggle chrome. Disambiguate by region, not timing:
+    // any click originating inside an interactive element (game tap targets,
+    // buttons, tabs, quiz answers, canvas) is gameplay/UI, not a chrome
+    // toggle request. Only background double-taps toggle.
+    const t = e?.target
+    if (t?.closest?.('button, a, canvas, input, select, textarea, [role="tab"], [role="button"], [data-no-chrome-toggle]')) {
+      lastTapRef.current = 0  // reset so a gameplay tap can't pair with a later background tap
+      return
+    }
     const now = Date.now()
     if (now - lastTapRef.current < 300) {
       setUiVisible(v => !v)

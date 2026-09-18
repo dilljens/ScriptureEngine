@@ -74,6 +74,30 @@ const TAB_META = {
   quests: { icon: '📜', label: 'Quests' },
   upgrades: { icon: '⬆️', label: 'Upgrades' },
 }
+// Progressive unlocks — breadth gates, never time gates. A new system opens
+// when the player has mastered the previous one; locked tabs stay visible
+// but greyed with the unlock condition (aspiration, not surprise).
+const GARDEN_UNLOCK_OWNED = 10 // matches the Watchmen gate: a bench of letters first
+function gardenUnlockedFor(s) { return totalOwned(s) >= GARDEN_UNLOCK_OWNED || (s.roots || 0) > 0 }
+function shukUnlockedFor(s) { return (s.roots || 0) > 0 } // the market is the second-act reveal
+// Locked-tab teaser — shows WHAT the system is and HOW CLOSE the unlock is,
+// with one tap back to the core loop. Tapping a locked tab is never a dead end.
+function LockedTeaser({ icon, name, blurb, progress, onGo }) {
+  return (
+    <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+      <div className="p-4 rounded-xl bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-center">
+        <div className="text-3xl" aria-hidden="true">{icon}</div>
+        <div className="mt-1 text-sm font-bold text-neutral-700 dark:text-neutral-200">🔒 {name} — not yet planted</div>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{blurb}</p>
+        <div className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400 tabular-nums">{progress}</div>
+        <button onClick={onGo}
+          className="mt-3 min-h-[48px] px-5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold cursor-pointer active:scale-95">
+          א Back to Letters
+        </button>
+      </div>
+    </div>
+  )
+}
 function loadUiPrefs() {
   try {
     const raw = localStorage.getItem(UI_KEY)
@@ -106,6 +130,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   const [buyHint, setBuyHint] = useState(null) // {i, need} — unaffordable click feedback
   const [answerPulse, setAnswerPulse] = useState(null) // {n, correct} — golem reaction
   const [tapFloats, setTapFloats] = useState([]) // manual golem taps — {id, x, y, value, crit}
+  const lastBuzzRef = useRef(0) // haptic throttle — max ~1 buzz per 80ms in tap bursts
   // Persist UI prefs — the tab stays exactly as you left it.
   useEffect(() => {
     try {
@@ -265,6 +290,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     return { n: afford + permAfford, avail }
   })()
   const gardenRipe = gardenPlots(state).filter((p, i) => gardenReady(state, i)).length
+  // Progressive unlocks (breadth gates): garden opens on a bench of letters,
+  // shuk opens at the first forged root. Locked tabs stay visible as teasers.
+  const gardenOpen = gardenUnlockedFor(state)
+  const shukOpen = shukUnlockedFor(state)
 
   // 1s ticker — accrues Ohr (× frenzy buff), persists throttled.
   useEffect(() => {
@@ -364,6 +393,8 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
   }, [mastery, onEarn, saveSoon, gramMult])
 
   // Manual golem tap: small Ohr (no Kavod/streak) + floater exactly at the tap point.
+  // Feel: light haptic per tap (throttled in bursts), a double-buzz + big
+  // floater every 100th tap. Haptics default on, toggleable under the ⚙️ gear.
   const doCanvasTap = useCallback((x, y) => {
     const s = stateRef.current
     const next = { ...s }
@@ -372,9 +403,18 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
     saveSoon(next)
     commit(next)
     const id = Date.now() + Math.random()
-    setTapFloats(f => [...f.slice(-9), { id, x, y, value: r.gained, crit: r.crit }])
+    const taps = next.taps || 0
+    const milestone = taps > 0 && taps % 100 === 0
+    setTapFloats(f => [...f.slice(-9), { id, x, y, value: r.gained, crit: r.crit || milestone }])
     setTimeout(() => setTapFloats(f => f.filter(t => t.id !== id)), 1100)
     setAnswerPulse({ n: Date.now(), correct: true })
+    try {
+      if (s.haptics !== false && typeof navigator !== 'undefined' && navigator.vibrate) {
+        const now = Date.now()
+        if (milestone) { navigator.vibrate([30, 50, 30]); lastBuzzRef.current = now }
+        else if (now - lastBuzzRef.current > 80) { navigator.vibrate(10); lastBuzzRef.current = now }
+      }
+    } catch {}
   }, [mastery, gramMult, saveSoon, commit])
 
   // Mount: plant the first fig AND settle offline earnings in ONE commit.
@@ -811,33 +851,57 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
               {Math.floor(state.ohr).toLocaleString()}
             </div>
           </div>
+          {/* HUD strip — permanent space is earned by frequency: Ohr, rate,
+              tap, streak, the two currencies. Buffs collapse to one combo
+              pill, passive bonuses to one ✦ popover, both tap-for-detail. */}
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {effPerSec.toFixed(1)}/s{frenzyActive ? ` x${FRENZY_MULT} 🌬️${frenzySecs}s` : ''}{galeMultiplier(state) > 1 ? ` x${galeMultiplier(state)} 🌪️` : ''}{shofarMultiplier(state) > 1 ? ` x${shofarMultiplier(state).toFixed(1)} 📯` : ''}{activeBuffCount(state) > 1 ? ` COMBO x${activeBuffCount(state)}` : ''} · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state) * watchEffects(state).tap).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
+            {effPerSec.toFixed(1)}/s · tap {(tapValue(perSec, state.streak, state.tracks, diff, state.perm, tapBuffMultiplier(state)) * shemittahTapMult(state) * watchEffects(state).tap).toFixed(1)}{exileKind === 'shemittah' ? ' ×2🌾' : ''} · 🔥{state.bestStreak || 0} best{state.streak > 0 && ` · ${state.streak} now`}{graceAvailable && <span title="Streak grace: once a day, a wrong answer halves a 10+ streak instead of resetting it."> · 🛡️</span>}
             {state.roots > 0 && <span> · 🌿 {state.roots}</span>}
             <span title="Kavod — earned only by correct answers, buys speed"> · 🌟 <span key={Math.floor(state.kavod || 0)} className="idle-pop inline-block">{Math.floor(state.kavod || 0)}</span></span>
-            {synPct > 0 && (
-              <span className="text-amber-600 dark:text-amber-400"
-                title={`Breadth bonus: every letter you own boosts the others (+2% each, +4% more per mastered). Currently +${synPct}%, cap +100%.`}>
-                {' '}· ⚡ +{synPct}%
-              </span>
+            {(frenzyActive || galeMultiplier(state) > 1 || shofarMultiplier(state) > 1) && (
+              <details className="relative inline-block">
+                <summary className="cursor-pointer font-bold text-orange-500 hover:underline" title="Active buffs multiply together — tap for detail">
+                  {' '}· ⚡COMBO x{activeBuffCount(state)} ▾
+                </summary>
+                <div className="absolute left-0 z-30 mt-1 p-2 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl text-[11px] whitespace-nowrap">
+                  {frenzyActive && <div>🌬️ Frenzy x{FRENZY_MULT} · {frenzySecs}s left</div>}
+                  {galeMultiplier(state) > 1 && <div>🌪️ Gale x{galeMultiplier(state)}</div>}
+                  {shofarMultiplier(state) > 1 && <div>📯 Shofar x{shofarMultiplier(state).toFixed(1)}</div>}
+                </div>
+              </details>
             )}
-            {gramPct > 0 && (
-              <span className="text-sky-600 dark:text-sky-400"
-                title={`Grammar tracks: +5% Ohr for each complete track-tier (binyanim/clauses/nominals × levels). Currently +${gramPct}%, cap +50%.`}>
-                {' '}· 📜 +{gramPct}%
-              </span>
-            )}
-            {(sparksTotal > 0 || sparkProg.pct > 0) && (
-              <span className="text-teal-600 dark:text-teal-400"
-                title="Aliyah sparks — cube root of lifetime Ohr. Each UNSPENT spark is +1% Ohr; spend them on the heavenly chain (⬆️ Upgrades).">
-                {' '}· 💫 {sparks}{sparks > 0 ? ` +${Math.round((sparkBonus(sparks) - 1) * 100)}%` : ''}
-              </span>
-            )}
-            {shemenPct > 0 && (
-              <span className="text-lime-600 dark:text-lime-500"
-                title={`Shemen (oil): +4% Ohr for each achievement — ${earnedAch.length}/${ACHIEVEMENTS.length} earned.`}>
-                {' '}· 🫒 +{shemenPct}%
-              </span>
+            {(synPct > 0 || gramPct > 0 || sparksTotal > 0 || sparkProg.pct > 0 || shemenPct > 0) && (
+              <details className="relative inline-block">
+                <summary className="cursor-pointer hover:underline" title="Passive bonuses — tap for detail">
+                  {' '}· ✦ ▾
+                </summary>
+                <div className="absolute left-0 z-30 mt-1 p-2 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl text-[11px] whitespace-nowrap space-y-0.5">
+                  {synPct > 0 && (
+                    <div className="text-amber-600 dark:text-amber-400"
+                      title={`Breadth bonus: every letter you own boosts the others (+2% each, +4% more per mastered). Currently +${synPct}%, cap +100%.`}>
+                      ⚡ Synergy +{synPct}%
+                    </div>
+                  )}
+                  {gramPct > 0 && (
+                    <div className="text-sky-600 dark:text-sky-400"
+                      title={`Grammar tracks: +5% Ohr for each complete track-tier (binyanim/clauses/nominals × levels). Currently +${gramPct}%, cap +50%.`}>
+                      📜 Grammar +{gramPct}%
+                    </div>
+                  )}
+                  {(sparksTotal > 0 || sparkProg.pct > 0) && (
+                    <div className="text-teal-600 dark:text-teal-400"
+                      title="Aliyah sparks — cube root of lifetime Ohr. Each UNSPENT spark is +1% Ohr; spend them on the heavenly chain (⬆️ Upgrades).">
+                      💫 Sparks {sparks}{sparks > 0 ? ` +${Math.round((sparkBonus(sparks) - 1) * 100)}%` : ''}
+                    </div>
+                  )}
+                  {shemenPct > 0 && (
+                    <div className="text-lime-600 dark:text-lime-500"
+                      title={`Shemen (oil): +4% Ohr for each achievement — ${earnedAch.length}/${ACHIEVEMENTS.length} earned.`}>
+                      🫒 Shemen +{shemenPct}%
+                    </div>
+                  )}
+                </div>
+              </details>
             )}
             {(() => {
               const live = activeFeasts()
@@ -881,11 +945,30 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
         <span className="hidden sm:flex flex-1" />
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setState(s => { const n = { ...s, muted: !s.muted }; saveIdleState(n); return n })}
-            className="min-h-[44px] min-w-[44px] px-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 cursor-pointer"
-            title="Toggle letter audio">
-            {state.muted ? '🔇' : '🔊'}
-          </button>
+          {/* Settings live behind a gear — mute + golem visibility, not permanent buttons. */}
+          <details className="relative">
+            <summary className="min-h-[44px] min-w-[44px] px-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-500 cursor-pointer flex items-center justify-center list-none [&::-webkit-details-marker]:hidden"
+              title="Workshop settings">
+              ⚙️
+            </summary>
+            <div className="absolute left-0 z-30 mt-1 p-1.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-xl flex flex-col gap-1 w-44">
+              <button onClick={() => setState(s => { const n = { ...s, muted: !s.muted }; saveIdleState(n); return n })}
+                className="min-h-[44px] px-3 rounded-lg text-xs text-left text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer"
+                title="Toggle letter audio">
+                {state.muted ? '🔇 Muted' : '🔊 Audio on'}
+              </button>
+              <button onClick={() => setShowGolems(s => !s)}
+                className="min-h-[44px] px-3 rounded-lg text-xs text-left text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer"
+                title="Show or hide the golem workshop (tapping still earns via answers)">
+                {showGolems ? '🫥 Hide golems' : '🗿 Show golems'}
+              </button>
+              <button onClick={() => setState(s => { const n = { ...s, haptics: s.haptics === false }; saveIdleState(n); return n })}
+                className="min-h-[44px] px-3 rounded-lg text-xs text-left text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer"
+                title="Tap vibration (light buzz per tap, double-buzz every 100th)">
+                {state.haptics === false ? '📳 Haptics off' : '📳 Haptics on'}
+              </button>
+            </div>
+          </details>
           {sync !== 'off' && (
             <span title={sync === 'ok' ? 'Workshop syncs to your account — same progress on phone & computer' : sync === 'busy' ? 'Syncing…' : 'Sync failed — playing local (progress stays on this device)'}
               className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border flex items-center justify-center text-sm ${sync === 'err' ? 'border-red-300 text-red-500' : 'border-neutral-200 dark:border-neutral-700 text-neutral-500'}`}
@@ -1030,7 +1113,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       {/* Boosts tab — learning buys the speed that idle games sell for money.
           Pace controls live here too, beside the buffs they tune. */}
       {activeTab === 'boosts' && (
-      <>
+      <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
       <div className="mt-2 flex gap-2">
         <button onClick={buyBoostFrenzy} disabled={(state.kavod || 0) < FRENZY_COST || frenzyActive}
           title={frenzyActive ? `Frenzy active — ${frenzySecs}s left` : `x${FRENZY_MULT} Ohr/sec for 60s — costs ${FRENZY_COST} 🌟`}
@@ -1087,7 +1170,7 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
       <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
         Answer → tap Ohr → buy letters → quests → roots. Green dot = mastered (0.8+). ⚡ = breadth bonus (each letter you own lifts all the others). The game watches your accuracy and adjusts — the pace buttons steer it.
       </div>
-      </>
+      </div>
       )}
 
 
@@ -1228,12 +1311,64 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
 
 
 
-      {/* Garden tab — Root Garden minigame + grove timers */}
-      {activeTab === 'garden' && (
+      {/* Garden tab — Root Garden minigame + grove timers, single scroll region */}
+      {activeTab === 'garden' && (gardenOpen ? (
         <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
           <GardenPanel state={state} perSec={perSec} onUpdate={(next) => { commit(next); saveIdleState(next) }} />
+          {/* Grove timers: fig + vineyard live in the Garden tab */}
+          <div className="mt-2 rounded-xl bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 px-2.5 py-2 space-y-2">
+          {/* Fig — 20h timer */}
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{figIsReady ? '🍯' : '🌱'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
+                <span>Fig <b>lvl {figLevel}</b>{figLevel > 0 && <span> · +{figLevel * 10}% Ohr</span>}{figLevel >= FIG_MAX_LEVEL && <span> · max</span>}</span>
+                <span className="tabular-nums">{figIsReady ? 'ripe!' : state.figs?.readyAt ? `${figWait} left` : 'planting…'}</span>
+              </div>
+              <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
+                <div className={`h-full rounded-full ${figIsReady ? 'bg-amber-500' : 'bg-lime-500'}`} style={{ width: `${figPct * 100}%` }} />
+              </div>
+            </div>
+            <button onClick={harvest} disabled={!figIsReady} data-testid="fig-harvest"
+              title={figIsReady ? 'Fig is ripe — harvest now' : `Fig ripening — ${figWait} left`}
+              aria-label={figIsReady ? `Harvest ripe fig, grove level ${figLevel}` : `Fig not ready, ${figWait} remaining`}
+              className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+              Harvest
+            </button>
+          </div>
+          {/* Vineyard — 4h tending loop, 3 parallel vines */}
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🍇</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
+                <span>Vineyard <b>lvl {vineLevel}</b>{vineLevel > 0 && <span> · +{vineLevel * 5}% Ohr</span>}{vineLevel >= VINE_MAX_LEVEL && <span> · max</span>}</span>
+                <span className="tabular-nums">{vines.filter(v => v.ready).length}/{VINE_COUNT} ripe</span>
+              </div>
+              <div className="space-y-0.5 mt-0.5">
+                {vines.map(v => (
+                  <div key={v.i} className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                      <div className={`h-full rounded-full ${v.ready ? 'bg-purple-500' : 'bg-lime-500'}`} style={{ width: `${v.pct * 100}%` }} />
+                    </div>
+                    <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready} data-testid={`vine-tend-${v.i}`}
+                      title={v.ready ? `Vine ${v.i + 1} ripe — tend now` : state.vineyard?.vines?.[v.i] ? `Vine ${v.i + 1} ripening — ${v.wait} left` : `Vine ${v.i + 1} sowing…`}
+                      aria-label={v.ready ? `Tend ripe vine ${v.i + 1}` : `Vine ${v.i + 1} not ready, ${v.wait} remaining`}
+                      className={`shrink-0 min-h-[44px] px-2 rounded-md text-[11px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
+                      {v.ready ? 'Tend' : (state.vineyard?.vines?.[v.i] ? v.wait : 'sowing…')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          </div>
         </div>
-      )}
+      ) : (
+        <LockedTeaser icon="🌱" name="Root Garden"
+          blurb="Plant readable roots and cross-breed them for Kavod — your garden grows while you study."
+          progress={`${totalOwned(state)}/${GARDEN_UNLOCK_OWNED} letters inscribed`}
+          onGo={() => setActiveTab('letters')} />
+      ))}
 
       {/* Watch tab — watchmen loadout minigame */}
       {activeTab === 'watch' && (
@@ -1242,12 +1377,17 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
         </div>
       )}
 
-      {/* Shuk tab — market stalls minigame */}
-      {activeTab === 'shuk' && (
+      {/* Shuk tab — market stalls minigame, gated to the first root (second-act reveal) */}
+      {activeTab === 'shuk' && (shukOpen ? (
         <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
           <ShukPanel state={state} perSec={perSec} onUpdate={(next) => { commit(next); saveIdleState(next) }} />
         </div>
-      )}
+      ) : (
+        <LockedTeaser icon="🧺" name="Shuk market"
+          blurb="Trade oil, wine, and grain for production — and borrow light against tomorrow's earnings. The market opens its stalls to proven builders."
+          progress="Unlocks at your first forged root 🌿"
+          onGo={() => setActiveTab('letters')} />
+      ))}
 
       {/* Letter shop — one tab of the single screen (6 cols on phones) */}
       {activeTab === 'letters' && (
@@ -1359,64 +1499,11 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
                   ) : null}
                 </div>
               )
-            })}
-          </div>
-      </div>
-      </div>
-      )}
-
-      {/* Grove timers: fig + vineyard live in the Garden tab */}
-      {activeTab === 'garden' && (
-        <div className="mt-2 rounded-xl bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 px-2.5 py-2 space-y-2">
-          {/* Fig — 20h timer */}
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{figIsReady ? '🍯' : '🌱'}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                <span>Fig <b>lvl {figLevel}</b>{figLevel > 0 && <span> · +{figLevel * 10}% Ohr</span>}{figLevel >= FIG_MAX_LEVEL && <span> · max</span>}</span>
-                <span className="tabular-nums">{figIsReady ? 'ripe!' : state.figs?.readyAt ? `${figWait} left` : 'planting…'}</span>
-              </div>
-              <div className="h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden mt-0.5">
-                <div className={`h-full rounded-full ${figIsReady ? 'bg-amber-500' : 'bg-lime-500'}`} style={{ width: `${figPct * 100}%` }} />
-              </div>
+              })}
             </div>
-            <button onClick={harvest} disabled={!figIsReady} data-testid="fig-harvest"
-              title={figIsReady ? 'Fig is ripe — harvest now' : `Fig ripening — ${figWait} left`}
-              aria-label={figIsReady ? `Harvest ripe fig, grove level ${figLevel}` : `Fig not ready, ${figWait} remaining`}
-              className={`shrink-0 min-h-[44px] px-3 rounded-lg text-xs font-semibold ${figIsReady ? 'idle-pop bg-amber-500 hover:bg-amber-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
-              Harvest
-            </button>
-          </div>
-          {/* Vineyard — 4h tending loop, 3 parallel vines */}
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🍇</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between text-[11px] text-neutral-500 dark:text-neutral-400">
-                <span>Vineyard <b>lvl {vineLevel}</b>{vineLevel > 0 && <span> · +{vineLevel * 5}% Ohr</span>}{vineLevel >= VINE_MAX_LEVEL && <span> · max</span>}</span>
-                <span className="tabular-nums">{vines.filter(v => v.ready).length}/{VINE_COUNT} ripe</span>
-              </div>
-              <div className="space-y-0.5 mt-0.5">
-                {vines.map(v => (
-                  <div key={v.i} className="flex items-center gap-1.5">
-                    <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                      <div className={`h-full rounded-full ${v.ready ? 'bg-purple-500' : 'bg-lime-500'}`} style={{ width: `${v.pct * 100}%` }} />
-                    </div>
-                    <button onClick={() => harvestVineAt(v.i)} disabled={!v.ready} data-testid={`vine-tend-${v.i}`}
-                      title={v.ready ? `Vine ${v.i + 1} ripe — tend now` : state.vineyard?.vines?.[v.i] ? `Vine ${v.i + 1} ripening — ${v.wait} left` : `Vine ${v.i + 1} sowing…`}
-                      aria-label={v.ready ? `Tend ripe vine ${v.i + 1}` : `Vine ${v.i + 1} not ready, ${v.wait} remaining`}
-                      className={`shrink-0 min-h-[44px] px-2 rounded-md text-[11px] font-semibold ${v.ready ? 'idle-pop bg-purple-500 hover:bg-purple-600 text-white cursor-pointer active:scale-95' : 'border border-neutral-200 dark:border-neutral-700 text-neutral-400 opacity-60'}`}>
-                      {v.ready ? 'Tend' : (state.vineyard?.vines?.[v.i] ? v.wait : 'sowing…')}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Daily + achievements join the Quests tab */}
-      {activeTab === 'quests' && (
-        <div className="mt-2 rounded-xl bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 px-2.5 py-2 space-y-2">
+      </div>
+      {/* Daily + achievements join the Quests tab, same scroll region */}
+      <div className="mt-2 rounded-xl bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 px-2.5 py-2 space-y-2">
           {/* Daily lesson */}
           <div className="flex items-center gap-2">
             <span className="text-lg">📅</span>
@@ -1454,7 +1541,10 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
             </div>
           </div>
         </div>
+      </div>
       )}
+
+      {/* Grove + daily blocks now live inside their tab scrollers (single scroll region). */}
 
       {/* Upgrades tab — the choice axis. Letter ×2s (Ohr) + permanents (Kavod). */}
       {activeTab === 'upgrades' && (
@@ -1602,12 +1692,20 @@ export default function HebrewIdleBar({ curriculum, onEarn }) {
           const badge = t === 'quests' && unclaimedQuests > 0 ? unclaimedQuests
             : t === 'upgrades' && upgradeBadge.n > 0 ? upgradeBadge.n
             : null
-          const dot = t === 'garden' && gardenRipe > 0
+          const dot = t === 'garden' && gardenOpen && gardenRipe > 0
+          // Locked tabs stay visible but greyed with the unlock condition —
+          // tapping one shows its teaser, never a dead end.
+          const locked = (t === 'garden' && !gardenOpen) || (t === 'shuk' && !shukOpen)
+          const lockHint = t === 'garden' && locked ? `Root Garden unlocks at ${GARDEN_UNLOCK_OWNED} letters or your first root (${totalOwned(state)}/${GARDEN_UNLOCK_OWNED})`
+            : t === 'shuk' && locked ? 'Shuk market unlocks at your first forged root'
+            : null
           return (
             <button key={t} role="tab" aria-selected={activeTab === t} onClick={() => setActiveTab(t)}
-              className={`relative min-h-[48px] rounded-lg text-[10px] font-semibold cursor-pointer transition-colors ${activeTab === t ? 'bg-amber-500 text-white' : 'bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'}`}>
+              title={lockHint || TAB_META[t].label}
+              className={`relative min-h-[48px] rounded-lg text-[10px] font-semibold cursor-pointer transition-colors ${activeTab === t ? 'bg-amber-500 text-white' : locked ? 'bg-neutral-100 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-400 dark:text-neutral-500' : 'bg-white/70 dark:bg-neutral-800/70 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'}`}>
               <div className="text-base leading-none">{TAB_META[t].icon}</div>
               <div className="text-[9px] leading-tight truncate">{TAB_META[t].label}</div>
+              {locked && <span className="absolute top-0.5 left-0.5 text-[9px]" aria-hidden="true">🔒</span>}
               {badge != null && (
                 <span className="absolute top-0.5 right-0.5 px-1.5 py-px rounded-full bg-green-500 text-white text-[9px] font-bold">{badge}</span>
               )}
