@@ -7,6 +7,7 @@ import VerseBlock from './VerseBlock'
 import VerseAudioPlayer from './VerseAudioPlayer'
 import WikiLayout from './WikiLayout'
 import { useTabs } from '../tabContext'
+import { readScrollPos } from '../lib/scrollMemory'
 
 const LS_WIKI_KEY = 'scriptureengine.wikiMode'
 
@@ -57,7 +58,20 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const [verseJump, setVerseJump] = useState('')
   const verseInputRef = useRef(null)
   const [wikiMode, setWikiMode] = useState(() => localStorage.getItem(LS_WIKI_KEY) === 'true')
-  const { openWikiTab } = useTabs()
+  const { openWikiTab, currentTab } = useTabs()
+  // Resume where you left off: restore the saved first-visible verse once
+  // the chapter renders — unless a navigation highlight claims the scroll.
+  const restoredRef = useRef(false)
+  useEffect(() => { restoredRef.current = false }, [book, chapter])
+  useEffect(() => {
+    if (!data || highlightVerse || restoredRef.current) return
+    restoredRef.current = true
+    const sv = readScrollPos(currentTab?.id)
+    if (sv && sv.book === book && sv.chapter === chapter && sv.verse) {
+      const el = verseRefs.current[sv.verse] || document.getElementById(`verse-${book}.${chapter}.${sv.verse}`)
+      el?.scrollIntoView({ block: 'start' })
+    }
+  }, [data, book, chapter, highlightVerse])
 
   useEffect(() => {
     const handler = (e) => {
@@ -224,7 +238,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         {/* Language selector */}
         <div className="flex items-center gap-1">
           <span className="text-neutral-400 dark:text-neutral-500 font-medium">Language:</span>
-          <select value={displayLang} onChange={e => setDisplayLang(e.target.value)}
+          <select value={displayLang} onChange={e => setDisplayLang(e.target.value)} aria-label="Display language"
             className="px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[9px] font-mono bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer">
             <option value="english">English</option>
             <option value="hebrew">Hebrew</option>
@@ -285,7 +299,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
                 if (e.key === 'Escape') { setVerseJump(''); verseInputRef.current?.blur() }
               }}
               placeholder="v#"
-              className="w-12 px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 text-[10px] font-mono bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 placeholder-neutral-400 dark:placeholder-neutral-500" />
+              className="w-14 px-1.5 py-1 rounded border border-neutral-300 dark:border-neutral-600 text-base font-mono bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 placeholder-neutral-400 dark:placeholder-neutral-500" />
           </div>
         )}
       </div>
@@ -308,7 +322,7 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         const verseWords = wordData?.[`${book}.${chapter}.${v.verse}`] || null
         const verseExtra = connectionsByVerse[vs] || null
         return (
-          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el} className={highlightVerse === v.verse ? 'scroll-mt-20' : ''}>
+          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el} className="scroll-mt-24">
             <VerseBlock verse={v} toggles={toggles} poetryMode={poetryMode}
               chiasms={data.chiasms} highlights={[]}
               footnotes={toggles.footnotes ? verseFns : []}

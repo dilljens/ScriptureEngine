@@ -406,10 +406,24 @@ export function parseAndFuzzy(input, allBooks) {
   }
 
   // ── Fuzzy search across all books (scored, sorted, top 20) ──
-  // Extract trailing number from query to use as chapter (so "isaah 34" fuzzy-matches "Isaiah")
-  const chapterMatch = clean.match(/^(.*\S)\s+(\d+)$/)
-  const fuzzyQuery = chapterMatch ? chapterMatch[1].trim() : clean
-  const chapterNum = chapterMatch ? parseInt(chapterMatch[2]) : 1
+  // Extract a trailing chapter ("isaah 34") or chapter:verses ("isai 4:3",
+  // "isai 4:3-5") so typos still land on the right verse, not chapter 1.
+  let fuzzyQuery = clean
+  let chapterNum = 1
+  let verseList = null
+  let m = clean.match(/^(.*\S)\s+(\d+):([\d,\-]+)$/)
+  if (m) {
+    fuzzyQuery = m[1].trim()
+    chapterNum = parseInt(m[2])
+    verseList = parseVerses(m[3])
+    if (verseList.length === 0) verseList = null
+  } else {
+    m = clean.match(/^(.*\S)\s+(\d+)$/)
+    if (m) {
+      fuzzyQuery = m[1].trim()
+      chapterNum = parseInt(m[2])
+    }
+  }
 
   const scored = allBooks
     .map(b => {
@@ -424,6 +438,14 @@ export function parseAndFuzzy(input, allBooks) {
     .map(b => {
       const label = `${b.workLabel} → ${b.bookTitle}`
       const hl = scoreFuzzy(label, fuzzyQuery)
+      // Compact verse suffix mirrors the exact path ("4:3", "4:3-5")
+      let verseSuffix = ''
+      if (verseList?.length === 1) verseSuffix = `:${verseList[0]}`
+      else if (verseList?.length > 1) {
+        verseSuffix = verseList.length <= 3
+          ? `:${verseList.join(',')}`
+          : `:${verseList[0]}-${verseList[verseList.length - 1]}`
+      }
       return {
         type: 'navigate',
         score: b.score,
@@ -431,7 +453,9 @@ export function parseAndFuzzy(input, allBooks) {
         workId: b.workId,
         book: b.bookId,
         chapter: chapterNum,
-        label: chapterNum > 1 ? `${label} ${b.bookId?.startsWith('dc') ? 'sec.' : 'ch.'}${chapterNum}` : label,
+        verse: verseList?.[0] ?? null,
+        verses: verseList,
+        label: chapterNum > 1 || verseSuffix ? `${label} ${b.bookId?.startsWith('dc') ? 'sec.' : 'ch.'}${chapterNum}${verseSuffix}` : label,
         newTab: isNewTab,
       }
     })

@@ -19,7 +19,7 @@ export default function StructureModal({ open, onClose, onNavigate }) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 pb-8 bg-black/30 dark:bg-black/50" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Isaiah structure" className="fixed inset-0 z-50 flex items-start justify-center pt-12 pb-8 bg-black/30 dark:bg-black/50" onClick={onClose}>
       <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto mx-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Isaiah Book Structure</h2>

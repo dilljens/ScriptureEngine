@@ -159,6 +159,23 @@ describe('parseAndFuzzy', () => {
     expect(r.results[0].chapter).toBe(55)
   })
 
+  it('fuzzy-matches a typo with chapter:verse ("Isai 4:3")', () => {
+    const r = parseAndFuzzy('Isai 4:3', mockBooks)
+    expect(r.type).toBe('navigate')
+    expect(r.results[0].book).toBe('isa')
+    expect(r.results[0].chapter).toBe(4)
+    expect(r.results[0].verses).toEqual([3])
+    expect(r.results[0].label).toContain('4:3')
+  })
+
+  it('fuzzy-matches a typo with a verse range ("Isai 4:3-5")', () => {
+    const r = parseAndFuzzy('Isai 4:3-5', mockBooks)
+    expect(r.type).toBe('navigate')
+    expect(r.results[0].book).toBe('isa')
+    expect(r.results[0].verses).toEqual([3, 4, 5])
+    expect(r.results[0].label).toContain('4:3,4,5')
+  })
+
   it('returns chat type for /chat command', () => {
     const r = parseAndFuzzy('/chat hello', mockBooks)
     expect(r.type).toBe('chat')

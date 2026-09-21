@@ -113,6 +113,34 @@ describe('preprocess', () => {
     expect(preprocess('Hear Him in 3 Nephi 11:7')).toContain('data-ref="3ne.11.7"')
   })
 
+  it('auto-links chapter-only refs like 1 John 3', () => {
+    expect(preprocess('Read 1 John 3 today')).toContain('data-ref="1john.3.1"')
+    expect(preprocess('In Genesis 1 we read')).toContain('data-ref="gen.1.1"')
+    expect(preprocess('Read Psalm 23 tonight')).toContain('data-ref="psa.23.1"')
+    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="2pet.1.1"')
+    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="jude.3.1"')
+  })
+
+  it('links chapter-only refs preceded by prose without eating the prose', () => {
+    const r = preprocess('we see in 1 John 3 the love of God')
+    expect(r).toContain('data-ref="1john.3.1"')
+    expect(r).toContain('we see in ')
+    expect(r).toContain(' the love of God')
+  })
+
+  it('auto-links section-only D&C refs', () => {
+    expect(preprocess('See D&C 76 for context')).toContain('data-ref="dc76.76.1"')
+  })
+
+  it('does not double-link chapter-only prefixes of ch:vs refs', () => {
+    const r = preprocess('Read Genesis 1:1 carefully')
+    expect(r).toContain('data-ref="gen.1.1"')
+    expect(r.match(/data-type="verse"/g)).toHaveLength(1)
+    const r2 = preprocess('the love of God in 1 John 4:7-8 is clear')
+    expect(r2).toContain('data-ref="1john.4.7-8"')
+    expect(r2.match(/data-type="verse"/g)).toHaveLength(1)
+  })
+
   it('auto-links long book names like Deuteronomy', () => {
     expect(preprocess('As in Deuteronomy 4:12')).toContain('data-ref="deu.4.12"')
   })

@@ -37,16 +37,23 @@ export default function CollectionView({ collection, onBack, onStudyInChat, onSt
   const [expanded, setExpanded] = useState(null) // ref_id of expanded item
   const [detail, setDetail] = useState(null)     // full text of expanded item
   const [detailLoading, setDetailLoading] = useState(false)
+  const [retryN, setRetryN] = useState(0) // bump to re-run a failed fetch
+
+  // Reset on collection switch, then (re)fetch when empty — including retries.
+  useEffect(() => {
+    setItems(null); setExpanded(null); setDetail(null)
+  }, [collection])
 
   useEffect(() => {
+    if (items) return
     let cancelled = false
-    setItems(null); setError(''); setExpanded(null); setDetail(null)
+    setError('')
     const load = collection === 'cfm' ? getCfmLessons : getConferenceTalks
     load()
       .then(r => { if (!cancelled && r.data) setItems(r.data.lessons || r.data.talks || []) })
       .catch(e => { if (!cancelled) setError('Could not load collection.') })
     return () => { cancelled = true }
-  }, [collection])
+  }, [collection, retryN])
 
   const toggle = async (refId) => {
     if (expanded === refId) { setExpanded(null); setDetail(null); return }
@@ -111,7 +118,7 @@ export default function CollectionView({ collection, onBack, onStudyInChat, onSt
         </div>
       </div>
 
-      {error && <div className="text-sm text-rose-500 py-8 text-center">{error}</div>}
+      {error && <div className="text-sm text-rose-500 py-8 text-center">{error} <button onClick={() => setRetryN(n => n + 1)} className="ml-2 underline hover:text-rose-700 cursor-pointer">Retry</button></div>}
       {!items && !error && (
         <div className="text-center py-12">
           <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-3"></div>

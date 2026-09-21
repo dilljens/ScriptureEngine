@@ -170,7 +170,7 @@ export function LayersPopover({ open, onClose, poetryMode, setPoetryMode, button
 
   return (
     <div ref={popoverRef}
-      className="absolute top-full right-0 mt-1 w-72 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 animate-scale-in origin-top-right overflow-hidden">
+      className="absolute top-full right-0 mt-1 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl z-50 animate-scale-in origin-top-right overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
         <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">Layers</span>

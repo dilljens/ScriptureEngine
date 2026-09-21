@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import QuizCard from './QuizCard'
 import HebrewQuizCard from './HebrewQuizCard'
 import VersePreviewCard from './VersePreviewCard'
+import VersePopup from './VersePopup'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, conversationShare, chat, chatStream, getChatInstructions, currentUserId, currentSessionToken } from '../api'
 import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
@@ -187,22 +188,34 @@ function preprocessVerses(markdown) {
 
   // 1. Match "Book Name ch:vs" or "Book Name ch.vs" with optional leading ** or 📖
   // Handles: Genesis 1:1, Isaiah 2:3-4, **📖 Genesis 1:1**, 📖Genesis 1.1, etc.
-  // Also matches number-prefixed books: "1 Nephi 3:7", "2 Corinthians 5:17"
+  // Also matches number-prefixed books: "1 Nephi 3:7", "2 Corinthians 5:17",
+  // and chapter-only refs: "1 John 3", "Psalm 23" (linked at verse 1).
+  // The book span may swallow preceding prose ("we see in 1 John 3") — retry
+  // with leading words stripped until a known book resolves, and keep the
+  // stripped prose in the output (never delete the user's words).
   result = result.replace(
-    /\*{0,2}📖?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&.-]+?)\s*(\d+)(?:([:.])(\d+(?:\s*[-,]\s*\d+)*))?\*{0,2}/g,
+    /\*{0,2}(?:📖)?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&.-]+?)\s*(\d+)(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)(?:([:.])(\d+(?:\s*[-,]\s*\d+)*))?\*{0,2}/g,
     (match, chapter, _sep, verseStr) => {
       // Extract the book name: strip leading ** and 📖, take everything before the chapter number
-      let clean = match.replace(/^\*{0,2}📖?\s*/, '').replace(/\s*\d+(?:[:.]\d+(?:\s*[-,]\s*\d+)*)?\*{0,2}$/, '').trim()
-      // Strip leading >, blockquote markers, and noise words like "See", "cf.", "in"
+      let clean = match.replace(/^\*{0,2}(?:📖)?\s*/, '').replace(/\s*\d+(?:[:.]\d+(?:\s*[-,]\s*\d+)*)?\*{0,2}$/, '').trim()
+      // Strip leading > blockquote markers for resolution (they stay in the
+      // output — they sit outside the match). Do NOT strip noise words here:
+      // the drop-loop below preserves them as prefix text instead of eating them.
       clean = clean.replace(/^[>|]+\s*/i, '')
-      clean = clean.replace(/^(?:see|cf\.?|in|of|as|like|read|from)\s+/i, '')
       // Strip trailing punctuation that might stick to book name: .,;:!?()[]"'—
       clean = clean.replace(/[.,;:!?()\[\]""'—–-]+$/g, '').trim()
-      const bookId = resolveBookName(clean)
-      if (!bookId) return match
-      // Keep verse ranges intact (e.g. "1-12" stays as "1-12"), but strip comma lists. Normalize spaces around dashes.
-      const versePart = verseStr ? verseStr.replace(/,.*$/, '').replace(/\s*-\s*/g, '-').trim() : '1'
-      return `:verse[${bookId}.${chapter}.${versePart}]`
+      // The match's leading whitespace (eaten by the pattern's \s*) is
+      // re-emitted so words never glue to the chip ("Read:verse[...]" bug).
+      const lead = (match.match(/^\s*/) || [''])[0]
+      const words = clean.split(/\s+/).filter(Boolean)
+      for (let drop = 0; drop < words.length; drop++) {
+        const bookId = resolveBookName(words.slice(drop).join(' '))
+        if (!bookId) continue
+        const prefix = words.slice(0, drop).join(' ')
+        const versePart = verseStr ? verseStr.replace(/,.*$/, '').replace(/\s*-\s*/g, '-').trim() : '1'
+        return `${lead}${prefix ? `${prefix} ` : ''}:verse[${bookId}.${chapter}.${versePart}]`
+      }
+      return match
     }
   )
 
@@ -231,16 +244,23 @@ function preprocessVerses(markdown) {
 
   // 4. Catch-all: remaining "Book ch:vs" or "Book ch.vs" patterns missed by passes 1-3
   // Handles edge cases like "Gen. 1:1", "(see Isa 55:6)", "Ex 20:1-5", etc.
+  // Same prose-tolerant retry as pass 1: strip leading words until a known
+  // book resolves, preserving the stripped prose.
   result = result.replace(
     /:verse\[[^\]]+\]|([a-zA-Z][a-zA-Z\s]*?)\.?\s*(\d+)[.:](\d+)(?:[-,]\s*(\d+))?/g,
     (match, book, ch, vs, vsEnd) => {
       if (!book) return match // already a :verse[...] marker
       let clean = book.trim().replace(/[.,;:!?)\]}>"']+$/, '').trim()
       if (!clean) return match
-      const bookId = resolveBookName(clean)
-      if (!bookId) return match
-      const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
-      return `:verse[${bookId}.${ch}.${versePart}]`
+      const words = clean.split(/\s+/).filter(Boolean)
+      for (let drop = 0; drop < words.length; drop++) {
+        const bookId = resolveBookName(words.slice(drop).join(' '))
+        if (!bookId) continue
+        const prefix = words.slice(0, drop).join(' ')
+        const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
+        return `${prefix ? `${prefix} ` : ''}:verse[${bookId}.${ch}.${versePart}]`
+      }
+      return match
     }
   )
 
@@ -286,7 +306,7 @@ const normalizeChatMode = (mode) => mode === 'hebrew' ? 'hebrew' : 'chat'
 
 // ── Chat Panel Component ──
 
-export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, mode: initialMode = 'chat', variant = 'overlay' }) {
+export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initialMessage, onInitialConsumed, mode: initialMode = 'chat', variant = 'overlay' }) {
   const { searchWorks, searchLayers, searchLang, bibleVersion, enabledTools, searchScopes } = useToggles?.() || {}
   const userId = useRef(currentUserId())
   const [chatMode, setChatMode] = useState(() => normalizeChatMode(initialMode))
@@ -312,7 +332,7 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [recentSessions, setRecentSessions] = useState([])
   const [loadingRecent, setLoadingRecent] = useState(false)
   const [restoring, setRestoring] = useState(false)
-  const [activeVerse, setActiveVerse] = useState(null) // {msgIndex, ref} — inline verse expansion (one tap to open)
+  const [activeVerse, setActiveVerse] = useState(null) // {ref} — open in the VersePopup drawer
   const [editingIdx, setEditingIdx] = useState(null)   // index of user message being edited, or null
   const [editText, setEditText] = useState('')          // text while editing
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
@@ -334,6 +354,21 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const abortRef = useRef(null)
   const titleSet = useRef(false)
   const nearBottomRef = useRef(true)    // autoscroll only when the user is near the bottom
+  const draftTimer = useRef(null)       // debounce for draft persistence
+  // Mirror the input box to localStorage (per session) so a tab switch or
+  // reload never eats a half-typed question. Cleared on send.
+  const queueDraftSave = useCallback((text) => {
+    clearTimeout(draftTimer.current)
+    const sid = sessionRef.current
+    if (!sid) return
+    draftTimer.current = setTimeout(() => {
+      try {
+        if (text) localStorage.setItem(DRAFT_PREFIX + sid, text)
+        else localStorage.removeItem(DRAFT_PREFIX + sid)
+      } catch {}
+    }, 400)
+  }, [])
+  useEffect(() => () => { clearTimeout(draftTimer.current); clearTimeout(shareFlagTimer.current) }, [])
 
   const switchChatMode = useCallback((nextMode) => {
     const normalized = normalizeChatMode(nextMode)
@@ -499,12 +534,18 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
             }
             setRestoring(false)
             recoverPendingChat(storedId)
+            // Restore any half-typed question from before a tab switch/reload.
+            setInput(loadDraft(storedId))
             // One-shot question handed off from a shared-conversation fork
             // (see SharedView / MainContentView). Cleared before sending so a
-            // remount can never resend it.
+            // remount can never resend it. initialMessage is App state (not
+            // self-clearing), so report it consumed the moment we schedule it.
             const pendingQuestion = takePendingQuestion()
             const firstMessage = pendingQuestion || initialMessage
-            if (firstMessage) setTimeout(() => sendMessage(firstMessage), 300)
+            if (firstMessage) {
+              if (!pendingQuestion && initialMessage) onInitialConsumed?.()
+              setTimeout(() => sendMessage(firstMessage), 300)
+            }
             return
           }
         } catch {}
@@ -524,7 +565,10 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
       messagesRef.current = [welcome]
       titleSet.current = false
       setRestoring(false)
-      if (initialMessage) setTimeout(() => sendMessage(initialMessage), 300)
+      if (initialMessage) {
+        onInitialConsumed?.()
+        setTimeout(() => sendMessage(initialMessage), 300)
+      }
     }
     init()
     return unsub
@@ -863,6 +907,7 @@ The **sod** layer tags these connections as \`cosmic_mountain\`, \`eden_temple\`
         return next
       })
       setInput('')
+    clearDraftFor(sessionRef.current)
       autoTitle(text)
       saveMessage('user', text)
       saveMessage('assistant', prebuilt)
@@ -980,6 +1025,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // ── Share (per-message snapshot → unlisted link) ──
   const [sharedIdx, setSharedIdx] = useState(null)
+  const [shareFlag, setShareFlag] = useState(null) // {idx, kind:'saving'|'failed'} — transient inline feedback
+  const shareFlagTimer = useRef(null)
+  const flashShareFlag = (idx, kind) => {
+    clearTimeout(shareFlagTimer.current)
+    setShareFlag({ idx, kind })
+    shareFlagTimer.current = setTimeout(() => setShareFlag(null), 2200)
+  }
   const handleShare = async (msg, idx) => {
     const sid = sessionRef.current
     if (!sid) return
@@ -987,6 +1039,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       typeof msg.serverId === 'number' ? msg.serverId
       : typeof msg.id === 'number' ? msg.id
       : null
+    // Never silently share the WHOLE conversation when the tap meant one
+    // response: the server id lands after the save POST returns. If it isn't
+    // here yet, say so and let the user retry instead of sharing wrong scope.
+    if (msg.role === 'assistant' && serverMsgId == null) {
+      flashShareFlag(idx, 'saving')
+      return
+    }
     try {
       const res = await conversationShare(sid, serverMsgId)
       if (res.ok && res.data?.url) {
@@ -994,10 +1053,10 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         setSharedIdx(idx)
         setTimeout(() => setSharedIdx(null), 1500)
       } else {
-        alert(res.error || 'Share failed')
+        flashShareFlag(idx, 'failed')
       }
-    } catch (e) {
-      alert('Share failed: ' + e.message)
+    } catch {
+      flashShareFlag(idx, 'failed')
     }
   }
 
@@ -1224,6 +1283,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       return next
     })
     setInput('')
+    clearDraftFor(sessionRef.current)
     autoTitle(text)
     saveMessage('user', text)
 
@@ -1292,6 +1352,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     })
     setEditingIdx(null)
     setInput('')
+    clearDraftFor(sessionRef.current)
     saveMessage('user', newText)
 
     await performChat(allMessages)
@@ -1409,9 +1470,8 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // ── Markdown components with scripture integration ──
   // Uses the shared scripture-markdown module for :verse[], :entity[], :gematria[], etc.
-  // Verse chips toggle an inline expansion inside the message (one tap opens —
-  // no screen-covering popup). The overrides are shared; onOpenVerse is bound
-  // per-message in renderContent so the expansion attaches to the right message.
+  // Tapping a verse chip opens a Gospel-Library-style drawer (VersePopup):
+  // a left-anchored scrollable chapter panel dismissed by click-out / Esc / ✕.
   const chatMarkdownOverrides = {
       // Chat-specific overrides for standard elements
       p: ({ children }) => (
@@ -1626,10 +1686,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       ? content.replace(/%%%(?:QUIZ|HEBREW_QUIZ):[\s\S]*?%%%/g, '[Interactive quizzes are available in the Hebrew/Learn section.]')
       : content
 
-    // Per-message components: verse chip taps expand inline under THIS message.
+    // Per-message components: verse chip taps open the VersePopup drawer.
     const comps = createComponents({
-      onOpenVerse: (ref) => setActiveVerse(prev =>
-        prev && prev.msgIndex === msgIndex && prev.ref === ref ? null : { msgIndex, ref }),
+      onOpenVerse: (ref) => setActiveVerse({ ref }),
       customComponents: chatMarkdownOverrides,
     })
 
@@ -1727,11 +1786,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
                 }`}>
-                {/* Copy button (top-right, on hover) — for assistant messages */}
+                {/* Copy button (top-right) — always visible on touch, hover-reveal on desktop */}
                 {msg.role === 'assistant' && !msg.streaming && (
                   <button onClick={() => copyToClipboard(msg.content, i)}
                     aria-label="Copy message"
-                    className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    className="absolute -top-2 -right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Copy message">
                     {copiedIdx === i ? (
                       <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
@@ -1745,10 +1804,12 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {msg.role === 'assistant' && !msg.streaming && (
                   <button onClick={() => handleShare(msg, i)}
                     aria-label="Share message"
-                    className="absolute -top-1.5 -right-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    className="absolute -top-2 -right-11 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Share this response — copies an unlisted link">
                     {sharedIdx === i ? (
                       <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
+                    ) : shareFlag?.idx === i ? (
+                      <span title={shareFlag.kind === 'failed' ? 'Share failed — try again' : 'Saving message… try again in a moment'}>{shareFlag.kind === 'failed' ? '⚠️' : '⏳'}</span>
                     ) : (
                       <span>🔗</span>
                     )}
@@ -1831,34 +1892,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {msg.role === 'user' && !waiting && (
                   <button onClick={() => startEditing(i, msg.content)}
                     aria-label="Edit message"
-                    className="absolute -bottom-1.5 -right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
+                    className="absolute -bottom-2 -right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
                     title="Edit message">
                     Edit
                   </button>
                 )}
               </div>
 
-              {/* Inline verse expansion — one tap on a verse chip opens it here
-                  (scrollable chapter, verse highlighted; no screen-covering popup) */}
-              {activeVerse && activeVerse.msgIndex === i && (
-                <div className="mt-2 w-full max-w-full">
-                  <VersePreviewCard
-                    refs={activeVerse.ref}
-                    onNavigate={(b, c) => { setActiveVerse(null); onNavigate(b, c) }}
-                    maxHeight="14rem"
-                  />
-                  <div className="flex items-center gap-2 mt-1">
-                    <button onClick={() => setActiveVerse(null)}
-                      className="px-2 py-0.5 rounded text-[11px] text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
-                      title="Collapse verse">
-                      ▲ Collapse
-                    </button>
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">
-                      tap another reference to open it here
-                    </span>
-                  </div>
-                </div>
-              )}
+              {/* Inline verse expansion lives in the VersePopup drawer now
+                  (rendered once at the panel root below) — nothing per-message. */}
               </>
             )}
           </div>
@@ -1913,14 +1955,14 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
             ref={inputRef}
             type="text"
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => { setInput(e.target.value); queueDraftSave(e.target.value) }}
             onKeyDown={e => {
               if (e.key === 'Escape' && variant === 'overlay') { handleClose(); return }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); return }
             }}
             placeholder="Ask about scriptures... (type a verse ref to preview)"
             aria-label="Message"
-            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
+            className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-base sm:text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 placeholder-neutral-400 dark:placeholder-neutral-500"
             disabled={waiting || restoring}
           />
 
@@ -1938,7 +1980,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               {chatMode === 'hebrew' ? 'Hebrew' : 'General'}
             </button>
             {showChatModeMenu && (
-              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px]"
+              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px] max-w-[calc(100vw-2rem)]"
                 onMouseLeave={() => setShowChatModeMenu(false)}>
                 {Object.entries(CHAT_MODE_LABELS).map(([id, label]) => (
                   <button key={id}
@@ -1971,7 +2013,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
               {responseMode === 'auto' ? 'Auto' : responseMode === 'short' ? 'S' : responseMode === 'medium' ? 'M' : 'D'}
             </button>
             {showModeMenu && (
-              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px]"
+              <div className="absolute bottom-full right-0 mb-1 bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 z-50 py-1 min-w-[130px] max-w-[calc(100vw-2rem)]"
                 onMouseLeave={() => setShowModeMenu(false)}>
                 {[
                   { id: 'auto', label: 'Auto', desc: 'Estimates based on question' },
@@ -2012,6 +2054,17 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Shared overlays (Verse popup + Recent sessions) ──
   const overlays = (
     <>
+      {activeVerse && (
+        <VersePopup
+          verseRef={activeVerse.ref}
+          onClose={() => setActiveVerse(null)}
+          onNavigate={(b, c) => {
+            setActiveVerse(null)
+            if (onNavigate) onNavigate(b, c)
+            if (variant === 'overlay') handleClose()
+          }}
+        />
+      )}
       {showRecent && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[10vh]"
           onClick={() => setShowRecent(false)}>
@@ -2137,19 +2190,22 @@ const STORAGE_KEY = 'current_chat_session'
 const SNAPSHOT_PREFIX = 'chat_snapshot_'
 const PENDING_PREFIX = 'chat_pending_'
 const PENDING_QUESTION_KEY = 'chat_pending_question'
+const DRAFT_PREFIX = 'chat_draft_'
 function loadSessionId() { try { return localStorage.getItem(STORAGE_KEY) } catch { return null } }
 function saveSessionId(id) { try { localStorage.setItem(STORAGE_KEY, id) } catch {} }
 function clearSessionId() { try { localStorage.removeItem(STORAGE_KEY) } catch {} }
 
 // One-shot follow-up question handed off from a shared-conversation fork.
 // Read-and-clear: the question is consumed exactly once, on the mount that
-// restores the forked session.
+// restores the forked session. Expires after 10 minutes so a crashed handoff
+// can never fire a stale question on a much later visit.
 function takePendingQuestion() {
   try {
     const raw = localStorage.getItem(PENDING_QUESTION_KEY)
     if (!raw) return null
     localStorage.removeItem(PENDING_QUESTION_KEY)
     const parsed = JSON.parse(raw)
+    if (parsed?.ts && Date.now() - parsed.ts > 10 * 60 * 1000) return null
     const text = typeof parsed?.text === 'string' ? parsed.text.trim() : ''
     return text || null
   } catch { return null }
@@ -2192,4 +2248,15 @@ function writeSnapshot(sessionId, messages) {
 function removeSnapshotMessage(sessionId, message) {
   const pending = loadSnapshot(sessionId) || []
   writeSnapshot(sessionId, pending.filter(m => m.clientId !== message.clientId))
+}
+
+// Unsent input draft per session — survives tab switches and reloads,
+// cleared the moment the message is sent.
+function loadDraft(sessionId) {
+  if (!sessionId) return ''
+  try { return localStorage.getItem(DRAFT_PREFIX + sessionId) || '' } catch { return '' }
+}
+function clearDraftFor(sessionId) {
+  if (!sessionId) return
+  try { localStorage.removeItem(DRAFT_PREFIX + sessionId) } catch {}
 }

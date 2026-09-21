@@ -15,7 +15,7 @@ const TABS = [
 
 export default function MobileBottomNav({ activeTab, onTab, visible = true }) {
   return (
-    <nav className={`sm:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 safe-area-bottom transition-transform duration-300 ${visible ? 'translate-y-0' : 'translate-y-full'}`}>
+    <nav style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} className={`sm:hidden fixed bottom-0 inset-x-0 z-50 bg-white dark:bg-neutral-900 border-t border-neutral-200 dark:border-neutral-700 transition-transform duration-300 ${visible ? 'translate-y-0' : 'translate-y-full'}`}>
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
         {TABS.map(tab => (
           <button

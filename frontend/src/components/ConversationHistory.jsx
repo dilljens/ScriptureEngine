@@ -16,25 +16,10 @@ import {
   conversationDelete, conversationConnections, conversationPromoteConnection,
   conversationShare
 } from '../api'
+import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
+import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 
 const PER_PAGE = 20
-
-// ── Verse ref styling ──
-function linkRefs(text, onNavigate) {
-  const parts = text.split(/([a-z0-9_]+\.\d+\.\d+)/gi)
-  return parts.map((part, i) => {
-    const m = part.match(/^([a-z0-9_]+)\.(\d+)\.(\d+)$/i)
-    if (m) {
-      return (
-        <button key={i} onClick={() => onNavigate(m[1].toLowerCase(), parseInt(m[2]))}
-          className="text-blue-600 hover:text-blue-800 underline font-medium cursor-pointer">
-          {part}
-        </button>
-      )
-    }
-    return part
-  })
-}
 
 
 // ── Connection Badge ──
@@ -303,9 +288,14 @@ export default function ConversationHistory({ onNavigate, onClose }) {
                       {m.role}
                     </div>
                     <div className="prose prose-sm max-w-none [&_strong]:font-semibold [&_italic]:italic">
-                      {m.content.split('\n').map((line, j) => (
-                        <p key={j} className="my-0.5">{linkRefs(line, onNavigate)}</p>
-                      ))}
+                      <ScriptureMarkdown raw components={createComponents({
+                        onOpenVerse: (ref) => {
+                          const p = String(ref).split('.')
+                          if (p.length >= 2) onNavigate?.(p[0], parseInt(p[1]) || 1, p.length >= 3 ? [parseInt(p[2])] : undefined)
+                        },
+                      })} urlTransform={safeUrlTransform}>
+                        {preprocessScripture(escapeHtml(String(m.content || '')))}
+                      </ScriptureMarkdown>
                     </div>
                   </div>
                 </div>

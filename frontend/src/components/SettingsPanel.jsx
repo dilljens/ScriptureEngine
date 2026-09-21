@@ -62,7 +62,7 @@ export default function SettingsPanel({ onClose, hotkeys, getHotkey, setHotkey, 
   }, [editing, setHotkey])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 pb-8 bg-black/30 dark:bg-black/50" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Settings" className="fixed inset-0 z-50 flex items-start justify-center pt-12 pb-8 bg-black/30 dark:bg-black/50" onClick={onClose}>
       <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Settings</h2>

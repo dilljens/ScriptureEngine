@@ -9,23 +9,8 @@
  */
 import React, { useState, useEffect } from 'react'
 import { sharedGet, sharedFork } from '../api'
-
-// Link bare verse refs (gen.1.1) — same convention as ConversationHistory.
-function linkRefs(text, onNavigate) {
-  const parts = text.split(/([a-z0-9_]+\.\d+\.\d+)/gi)
-  return parts.map((part, i) => {
-    const m = part.match(/^([a-z0-9_]+)\.(\d+)\.(\d+)$/i)
-    if (m) {
-      return (
-        <button key={i} onClick={() => onNavigate(m[1].toLowerCase(), parseInt(m[2]))}
-          className="text-blue-600 hover:text-blue-800 underline font-medium cursor-pointer">
-          {part}
-        </button>
-      )
-    }
-    return part
-  })
-}
+import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
+import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 
 export default function SharedView({ slug, onNavigate, onAsk }) {
   const [data, setData] = useState(null)
@@ -75,6 +60,15 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
     return <div className="p-8 text-sm text-neutral-400 animate-pulse text-center">Loading shared conversation...</div>
   }
 
+  // Same rendering pipeline as chat: markdown + linked verse chips.
+  // Tapping a ref jumps straight to the verse (with highlight).
+  const comps = createComponents({
+    onOpenVerse: (ref) => {
+      const p = String(ref).split('.')
+      if (p.length >= 2) onNavigate?.(p[0], parseInt(p[1]) || 1, p.length >= 3 ? [parseInt(p[2])] : undefined)
+    },
+  })
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col h-full">
       {/* Header */}
@@ -100,9 +94,9 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
                 {m.role}
               </div>
               <div className="prose prose-sm max-w-none [&_strong]:font-semibold [&_italic]:italic">
-                {String(m.content || '').split('\n').map((line, j) => (
-                  <p key={j} className="my-0.5">{linkRefs(line, onNavigate)}</p>
-                ))}
+                <ScriptureMarkdown raw components={comps} urlTransform={safeUrlTransform}>
+                  {preprocessScripture(escapeHtml(String(m.content || '')))}
+                </ScriptureMarkdown>
               </div>
             </div>
           </div>
@@ -111,21 +105,23 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
 
       {/* Follow-up input — forks the snapshot into your own conversation */}
       <div className="border-t border-neutral-200 dark:border-neutral-700 pt-3 mt-2">
+        <form onSubmit={e => { e.preventDefault(); ask() }}>
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={question}
             onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') ask() }}
             placeholder="Ask a follow-up question — this continues in your own conversation..."
             disabled={asking}
-            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-50"
+            aria-label="Ask a follow-up question"
+            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-base sm:text-sm bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 disabled:opacity-50"
           />
-          <button onClick={ask} disabled={asking || !question.trim()}
+          <button type="submit" disabled={asking || !question.trim()}
             className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-40 cursor-pointer transition-colors shrink-0">
             {asking ? 'Forking…' : 'Ask'}
           </button>
         </div>
+        </form>
         <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1.5">
           Your question forks this snapshot into a new private conversation — the original stays untouched.
         </p>

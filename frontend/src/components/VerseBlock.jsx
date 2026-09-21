@@ -802,11 +802,10 @@ function FootnoteTooltip({ fn, x, y, onClose }) {
   const tooltipY = Math.min(y, window.innerHeight - 250)
 
   return (
-    <div className="fixed z-[60 pointer-events-none"
+    <div className="fixed z-[60] pointer-events-none"
       style={{ left: tooltipX + 12, top: tooltipY - 10 }}>
       <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700
-        p-3 max-w-xs text-xs leading-relaxed"
-        onMouseEnter={() => {}}>
+        p-3 max-w-xs text-xs leading-relaxed">
         {/* Header */}
         <div className="flex items-center gap-1.5 mb-1.5 font-medium text-neutral-800 dark:text-neutral-200">
           <span>{CATEGORY_ICONS[fn.category] || '📄'}</span>

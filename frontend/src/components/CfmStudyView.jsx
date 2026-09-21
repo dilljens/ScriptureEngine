@@ -14,15 +14,18 @@ export default function CfmStudyView({ week, onBack, onBrowse, onNavigate, onStu
   const [expandedKey, setExpandedKey] = useState(null)   // 'gen.1' … — expanded chapter
   const [chapters, setChapters] = useState({})           // 'gen.1' → {verses:[…]}
   const [loadingCh, setLoadingCh] = useState(null)
+  const [retryN, setRetryN] = useState(0) // bump to re-run failed fetches
+  const retryAll = () => { setErr(''); setLessons(null); setLesson(null); setScriptures(null); setRetryN(n => n + 1) }
 
   // Load the 52-week list once
   useEffect(() => {
+    if (lessons?.length) return
     let cancelled = false
     getCfmLessons(CFM_YEAR)
       .then(r => { if (!cancelled) setLessons(r.data?.lessons || []) })
       .catch(() => { if (!cancelled) setErr('Could not load the Come Follow Me schedule.') })
     return () => { cancelled = true }
-  }, [])
+  }, [retryN])
 
   // Resolve the active week (explicit slug, else the current calendar week)
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function CfmStudyView({ week, onBack, onBrowse, onNavigate, onStu
       .then(r => { if (!cancelled) setScriptures(r.data?.blocks || []) })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [weekSlug])
+  }, [weekSlug, retryN])
 
   const active = lessons?.find(l => l.week_slug === weekSlug) || null
   const currentIdx = lessons?.findIndex(l => l.week_slug === weekSlug) ?? -1
@@ -107,7 +110,7 @@ export default function CfmStudyView({ week, onBack, onBrowse, onNavigate, onStu
         </button>
       </div>
 
-      {err && <div className="text-sm text-rose-500 py-4 text-center">{err}</div>}
+      {err && <div className="text-sm text-rose-500 py-4 text-center">{err} <button onClick={retryAll} className="ml-2 underline hover:text-rose-700 cursor-pointer">Retry</button></div>}
       {!lessons && !err && (
         <div className="text-center py-12">
           <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-3"></div>

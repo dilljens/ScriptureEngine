@@ -121,6 +121,7 @@ export default function MainContentView(props) {
         variant="tab"
         open={true}
         initialMessage={chatInitialMsg}
+        onInitialConsumed={() => setChatInitialMsg('')}
         onNavigate={handleChatNavigate}
         onOpenTab={handleChatOpenTab}
         onClose={() => {}}

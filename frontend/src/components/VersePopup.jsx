@@ -1,21 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { parseRef, formatRef } from '../bookNames'
-import VersePreviewCard from './VersePreviewCard'
+import { parseRef } from '../bookNames'
 
 /**
- * VersePopup — responsive verse reference popup.
+ * VersePopup — Gospel-Library-style verse reference drawer.
  *
- * Mobile: bottom sheet that slides up
- * Desktop: centered modal
- *
- * Shows verse text, surrounding context, connections, and actions.
+ * A panel anchored to the left covering most of the viewport, showing the
+ * full chapter (scrollable) with the referenced verse highlighted.
+ * Click the backdrop, press Escape, or hit ✕ to dismiss.
  */
 export default function VersePopup({ verseRef, onClose, onNavigate }) {
   const info = parseRef(verseRef)
   const [chapterData, setChapterData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [mounted, setMounted] = useState(false)
   const scrollRef = useRef(null)
+
+  // Slide-in transition (no custom keyframes — plain Tailwind transition).
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(t)
+  }, [])
 
   // Fetch chapter data
   useEffect(() => {
@@ -57,36 +62,33 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
 
   if (!info) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-        <div className="bg-white dark:bg-neutral-900 rounded-xl p-6 text-sm text-red-500">Invalid reference: {verseRef}</div>
+      <div className="fixed inset-0 z-[70] bg-black/30" onClick={onClose}>
+        <div className="absolute left-0 top-0 h-full w-[min(560px,94vw)] bg-white dark:bg-neutral-900 p-6 text-sm text-red-500">Invalid reference: {verseRef}</div>
       </div>
     )
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 flex items-end sm:items-center justify-center animate-fade-in"
+      className="fixed inset-0 z-[70] bg-black/30 dark:bg-black/60"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={info.label}
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="
-          w-full sm:max-w-lg
-          sm:rounded-xl rounded-t-xl
+        className={`
+          absolute left-0 top-0 h-full w-[min(560px,94vw)]
           bg-white dark:bg-neutral-900
-          border border-neutral-200 dark:border-neutral-700
+          border-r border-neutral-200 dark:border-neutral-700
           shadow-2xl
-          max-h-[85vh] sm:max-h-[70vh]
           flex flex-col
-          animate-slide-up sm:animate-scale-in
           overflow-hidden
-        "
+          transition-transform duration-200 ease-out
+          ${mounted ? 'translate-x-0' : '-translate-x-full'}
+        `}
       >
-        {/* Mobile drag handle */}
-        <div className="sm:hidden flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-        </div>
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
           <div className="flex items-center gap-2">
@@ -104,6 +106,7 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
             </button>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-sm px-2 py-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             >
               ✕

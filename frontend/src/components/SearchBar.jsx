@@ -217,9 +217,13 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
             if (e.key === 'Escape') { setShowDropdown(false); inputRef.current?.blur() }
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel(i => Math.min(i + 1, allResults.length - 1)) }
             if (e.key === 'ArrowUp') { e.preventDefault(); setSel(i => Math.max(i - 1, 0)) }
-            if (e.key === 'Enter' && allResults[sel]) {
-              const item = allResults[sel]
-              if (item._type === 'semantic_header' || item._type === 'ref_header' || item._type === 'search_header') return
+            if (e.key === 'Enter') {
+              // sel may sit on a section header (or past the end after the
+              // list shrinks) — headers aren't actionable, so fall through
+              // to the first actionable item instead of doing nothing.
+              const isActionable = (it) => it && it._type !== 'semantic_header' && it._type !== 'ref_header' && it._type !== 'search_header'
+              const item = isActionable(allResults[sel]) ? allResults[sel] : allResults.find(isActionable)
+              if (!item) return
               if (item._type === 'ref') {
                 onNavigate?.(item.book, item.chapter, item.verses)
                 setShowDropdown(false)
@@ -237,8 +241,8 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
           className="flex-1 text-xs outline-none bg-transparent text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500" />
         {loading && <svg className="w-3 h-3 text-neutral-400 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>}
         {/* Semantic toggle */}
-        <button onClick={() => setShowSemantic(!showSemantic)}
-          className={`text-[9px] px-1 rounded cursor-pointer shrink-0 ${showSemantic ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' : 'text-neutral-300 dark:text-neutral-600 hover:text-neutral-400'}`}
+        <button onClick={() => setShowSemantic(!showSemantic)} aria-label="Toggle semantic search"
+          className={`text-[9px] px-1.5 py-1 rounded cursor-pointer shrink-0 ${showSemantic ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' : 'text-neutral-300 dark:text-neutral-600 hover:text-neutral-400'}`}
           title="Toggle semantic search concept matching">✦</button>
         {/* Work filter */}
         {works.length > 0 && (

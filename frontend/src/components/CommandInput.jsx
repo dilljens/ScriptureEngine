@@ -212,7 +212,7 @@ function HighlightedLabel({ label, matchIdxs }) {
 }
 
 return (
-  <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]" onClick={onClose}>
+  <div role="dialog" aria-modal="true" aria-label="Command palette" className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]" onClick={onClose}>
     <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-300 dark:border-neutral-700 w-full max-w-xl mx-4 flex flex-col overflow-hidden"
       onClick={e => e.stopPropagation()}>
 
@@ -365,7 +365,7 @@ return (
             if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); setShowChapters(false); setSel(i => Math.max(i - 1, 0)); return }
           }}
           placeholder="isa 55:6 · /search · /chat · /help"
-          className="flex-1 text-sm outline-none bg-transparent text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500" />
+          className="flex-1 text-base sm:text-sm outline-none bg-transparent text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-500" />
         <kbd className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono bg-neutral-100 dark:bg-neutral-700 px-1.5 py-0.5 rounded">↵</kbd>
         <span className="text-[9px] text-neutral-300 dark:text-neutral-600 font-mono hidden sm:inline">
           <kbd className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">Tab</kbd> chapters

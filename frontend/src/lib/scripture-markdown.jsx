@@ -138,9 +138,14 @@ export function preprocess(text) {
 // "1QS.1.1", "dc76.76.22". Colon form: "Gen 1:1", "Psalm 23:1", "1 Nephi 1:5",
 // "D&C 93:1" — but only when the book name is a KNOWN book
 // (avoids "The book of 1" false positives).
+// Chapter-only form: "Genesis 1", "1 John 3", "Psalm 23", "D&C 76" — same
+// known-book gate; the lookahead excludes ":./digits" so "Genesis 1" never
+// fires on the prefix of "Genesis 1:1" (the longer ch:vs hit wins dedupe).
 const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?(?![\w\u0590-\u05FF])/g
-const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[123]\s)?[A-Za-z][A-Za-z ]{1,16})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z][A-Za-z ]{1,24})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
 const BARE_DC_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_CHAPTER_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z][A-Za-z ]{1,24})\s+(\d+)(?![\w\u0590-\u05FF:.\d])(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)/g
+const BARE_DC_CH_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+)(?![\w\u0590-\u05FF:.\d])/g
 // Multi-verse continuations after a linked ref, same book context:
 // "Isaiah 52:1-2, 54:2", "Isaiah 53:5, 11", "Exodus 33:22–34:6".
 // Verse-only continuations ("53:5, 11") must not run into prose ("66 chapters").
@@ -151,7 +156,8 @@ const CONT_VS_RE = /^(?:\s*[,;]\s*|\s+and\s+)(\d+(?:-\d+)?)(?![\w\u0590-\u05FF:]
  * Find all verse references in plain text.
  * Returns [{ index, len, ref }] where ref is a verse id like "isa.1.18"
  * (ranges like "isa.33.14-17" included). Handles dot form, colon form with
- * known book names (incl. numbered books and D&C), and multi-verse
+ * known book names (incl. numbered books and D&C), chapter-only refs
+ * ("1 John 3" → "1john.3.1", "D&C 76" → "dc76.76.1"), and multi-verse
  * continuations sharing the preceding book context ("Isa 52:1, 54:2").
  */
 export function findVerseRefs(text) {
@@ -189,6 +195,30 @@ export function findVerseRefs(text) {
         break
       }
     }
+  }
+  // Chapter-only refs ("1 John 3", "Psalm 23") — same prose-tolerant retry,
+  // linked at verse 1 (chapter opens at the top, matching ChatPanel's
+  // existing chapter-only convention).
+  BARE_CHAPTER_RE.lastIndex = 0
+  while ((m = BARE_CHAPTER_RE.exec(text)) !== null) {
+    const words = m[1].trim().split(/\s+/)
+    for (let drop = 0; drop < words.length; drop++) {
+      const candidate = words.slice(drop).join(' ')
+      const bookKey = resolveBookKey(candidate)
+      if (bookKey) {
+        const startInMatch = m[0].indexOf(candidate)
+        hits.push({
+          index: m.index + startInMatch,
+          len: m[0].length - startInMatch,
+          ref: `${bookKey}.${m[2]}.1`,
+        })
+        break
+      }
+    }
+  }
+  BARE_DC_CH_RE.lastIndex = 0
+  while ((m = BARE_DC_CH_RE.exec(text)) !== null) {
+    hits.push({ index: m.index, len: m[0].length, ref: `dc${m[1]}.${m[1]}.1` })
   }
   // sort by index, drop overlaps (keep the earliest/longest)
   hits.sort((a, b) => a.index - b.index || b.len - a.len)

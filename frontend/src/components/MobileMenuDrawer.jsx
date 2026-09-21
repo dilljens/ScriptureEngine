@@ -77,9 +77,9 @@ export default function MobileMenuDrawer({
           <div className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800">
             <span className="text-[9px] text-neutral-400 font-medium">Font</span>
             <div className="flex items-center gap-2">
-              <button onClick={() => onChangeFontSize(-1)} className="text-sm w-6 h-6 rounded bg-white dark:bg-neutral-700 cursor-pointer">A−</button>
+              <button aria-label="Decrease font size" onClick={() => onChangeFontSize(-1)} className="text-sm w-9 h-9 rounded bg-white dark:bg-neutral-700 cursor-pointer">A−</button>
               <span className="text-[10px] w-5 text-center font-mono">{fontSize}%</span>
-              <button onClick={() => onChangeFontSize(1)} className="text-sm w-6 h-6 rounded bg-white dark:bg-neutral-700 cursor-pointer">A+</button>
+              <button aria-label="Increase font size" onClick={() => onChangeFontSize(1)} className="text-sm w-9 h-9 rounded bg-white dark:bg-neutral-700 cursor-pointer">A+</button>
             </div>
           </div>
           <MenuButton icon="⚙" label="Settings" onClick={onSettings} />

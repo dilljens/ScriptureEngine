@@ -70,6 +70,7 @@ export default function AppOverlays(props) {
       <Suspense fallback={null}>
         <ChatPanel open={showChat} onClose={() => { setShowChat(false); setChatInitialMsg('') }}
           initialMessage={chatInitialMsg}
+          onInitialConsumed={() => setChatInitialMsg('')}
           onNavigate={handleChatNavigate} onOpenTab={handleChatOpenTab} />
       </Suspense>
       <CommandInput open={showCommand} onClose={() => setShowCommand(false)}
@@ -78,7 +79,7 @@ export default function AppOverlays(props) {
 
       {/* Split-pane chapter picker */}
       {showSplitPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowSplitPicker(false)}>
+        <div role="dialog" aria-modal="true" aria-label="Split with chapter" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => setShowSplitPicker(false)}>
           <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 p-4 w-72" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3">Split with chapter</h3>
             <div className="flex items-center gap-2 mb-3">
@@ -130,7 +131,7 @@ export default function AppOverlays(props) {
       )}
 
       {showAssessment && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 bg-black/30 dark:bg-black/50">
+        <div role="dialog" aria-modal="true" aria-label="Assessment" className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 bg-black/30 dark:bg-black/50">
           <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">📝 Scripture Assessment</h2>
@@ -201,14 +202,16 @@ export default function AppOverlays(props) {
             // "Read" must only land on a scripture-reading tab — a learn/hebrew/
             // wiki/memorize tab must not masquerade as Read (bug: showed Learn).
             const READ_VIEWS = ['chapter', 'book', 'work', 'library']
+            const alreadyReading = READ_VIEWS.includes(currentTab?.view)
             const readTab = currentWorkspace?.tabs?.slice().reverse().find(t => READ_VIEWS.includes(t.view))
             if (readTab && readTab.id !== currentTab?.id) {
               selectTab(readTab.id)
-            } else {
+            } else if (!alreadyReading) {
               // No other reading tab — exit any study/collection view to the grid
               setCollection(null); setStudyWeek(null)
               openLibraryView()
             }
+            // Already reading where you left off — stay put.
             break
           }
           case 'chat': {

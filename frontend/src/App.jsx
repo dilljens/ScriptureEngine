@@ -4,6 +4,7 @@ import { TabProvider, useTabs } from './tabContext.jsx'
 import { SettingsProvider, useSettings, useHistory } from './settings.jsx'
 import { ProgressProvider, useProgress } from './progress.jsx'
 import { parseAndFuzzy, getChapters } from './refParser'
+import { saveScrollPos, parseVerseAnchor } from './lib/scrollMemory'
 import CommandInput from './components/CommandInput'
 import AppOverlays from './components/AppOverlays'
 import MainContentView from './components/MainContentView'
@@ -186,6 +187,10 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   // Open study, wiki article, or shared-conversation from URL query params
   // (e.g., ?study=torah-in-all-scripture, ?wiki=ascending-to-presence, or ?shared=<slug>)
+  // Reuses an existing tab for the same slug, and cleans the URL afterwards
+  // so a reload restores the persisted tab instead of stacking duplicates.
+  const wsRef = useRef(null)
+  wsRef.current = currentWorkspace
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const studySlug = params.get('study')
@@ -195,11 +200,15 @@ const [showAssessment, setShowAssessment] = useState(false)
       // Wait a beat for tabs to initialize
       const timer = setTimeout(() => {
         if (sharedSlug) {
-          openTab(sharedSlug, 1, {
-            label: 'Shared conversation',
-            view: 'shared',
-            viewRef: sharedSlug,
-          })
+          const existing = wsRef.current?.tabs?.find(t => t.view === 'shared' && t.viewRef === sharedSlug)
+          if (existing) selectTab(existing.id)
+          else {
+            openTab(sharedSlug, 1, {
+              label: 'Shared conversation',
+              view: 'shared',
+              viewRef: sharedSlug,
+            })
+          }
         } else if (wikiSlug) {
           openWikiTab(wikiSlug, `Wiki: ${wikiSlug}`)
         } else {
@@ -209,10 +218,11 @@ const [showAssessment, setShowAssessment] = useState(false)
             viewRef: studySlug,
           })
         }
+        window.history.replaceState(null, '', window.location.pathname)
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [openTab, openWikiTab])
+  }, [openTab, openWikiTab, selectTab])
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
   const tabLabel = currentTab?.label || ''
@@ -294,7 +304,10 @@ const [showAssessment, setShowAssessment] = useState(false)
   }, [history, currentTab?.id])
 
   const pushHistory = useCallback(() => { history.push({ book, chapter, view: viewLevel, viewRef, label: `${bookTitle} ${chapter}`, tabId: currentTab?.id }) }, [book, chapter, bookTitle, viewLevel, viewRef, currentTab?.id, history])
-  useEffect(() => { if (historyNavRef.current) { historyNavRef.current = false; return }; if (currentTab?.id) pushHistory() }, [book, chapter, viewLevel])
+  // Tab switches change book/chapter/viewLevel too — but switching tabs is
+  // not navigation, so don't push (otherwise Back walks across tabs).
+  const histTabRef = useRef(null)
+  useEffect(() => { if (historyNavRef.current) { historyNavRef.current = false; return }; if (!currentTab?.id) return; if (histTabRef.current !== currentTab.id) { histTabRef.current = currentTab.id; return }; pushHistory() }, [book, chapter, viewLevel])
 
   const goPrevChapter = useCallback(() => {
     if (!currentTab?.id) return
@@ -668,7 +681,10 @@ const [showAssessment, setShowAssessment] = useState(false)
     setShowMobileNav(false)
     setMobileNavVal('')
     if (result.type === 'navigate' && result.book) {
-      handleCommandNav(result.book, result.chapter, false)
+      if (result.newTab) handleCommandNav(result.book, result.chapter, true)
+      // handleChatNavigate applies verse highlights (scrolls to the verse);
+      // handleCommandNav drops them, so only use it for new-tab opens.
+      else handleChatNavigate(result.book, result.chapter, result.verses)
     } else if (result.type === 'chat') {
       handleCommandChat(result.message || '')
     } else if (result.type === 'search' && result.query) {
@@ -681,7 +697,7 @@ const [showAssessment, setShowAssessment] = useState(false)
     } else if (result.type === 'structure') {
       setShowStructure(true)
     }
-  }, [handleCommandNav, handleCommandChat, handleSearchCommand])
+  }, [handleCommandNav, handleChatNavigate, handleCommandChat, handleSearchCommand])
 
   const handleMobileNavInput = useCallback((val) => {
     setMobileNavVal(val)
@@ -717,6 +733,20 @@ const [showAssessment, setShowAssessment] = useState(false)
       }])
     }, 200)
   }, [allBooks])
+
+  // Submit-on-Go: the soft keyboard's Go button only submits inside a <form>;
+  // without one it just dismisses the keyboard and Enter never fires.
+  // Parse synchronously here so Go works even if the debounce hasn't run yet.
+  const submitMobileNav = useCallback(() => {
+    const current = mobileNavResults[mobileNavSel]
+    if (current) { executeMobileNav(current); return }
+    const val = mobileNavVal.trim()
+    if (!val) return
+    const parsed = parseAndFuzzy(val, allBooks || [])
+    const first = parsed.results?.[0]
+    if (first && parsed.type !== 'error') { executeMobileNav(first); return }
+    executeMobileNav({ type: 'search', query: val, icon: '🔍', label: `Search: "${val}"` })
+  }, [mobileNavResults, mobileNavSel, mobileNavVal, allBooks, executeMobileNav])
 
   // Close mobile nav dropdown on click outside
   useEffect(() => {
@@ -796,6 +826,45 @@ const [showAssessment, setShowAssessment] = useState(false)
       lastTapRef.current = now
     }
   }, [])
+
+  // ── Reading position memory ──
+  // Window (not <main>) is the scroll container for single-pane reading.
+  // Throttled: at most one scan per 800ms, and storage writes only when the
+  // first-visible verse actually changes (saveScrollPos dedupes).
+  useEffect(() => {
+    if (viewLevel !== 'chapter') return undefined
+    const tabId = currentTab?.id
+    const tabBook = currentTab?.book
+    const tabChapter = currentTab?.chapter
+    if (!tabId) return undefined
+    let last = 0
+    let timer = null
+    const scan = () => {
+      last = Date.now()
+      const els = document.querySelectorAll('[id^="verse-"]')
+      for (const el of els) {
+        if (el.getBoundingClientRect().bottom <= 96) continue
+        // First verse reaching below the sticky header — save it only when
+        // it belongs to this tab's chapter (companion/other views ignored).
+        const parsed = parseVerseAnchor(el.id)
+        if (parsed && parsed.book === tabBook && parsed.chapter === tabChapter) {
+          saveScrollPos(tabId, parsed.book, parsed.chapter, parsed.verse)
+        }
+        break
+      }
+    }
+    const onScroll = () => {
+      const now = Date.now()
+      if (now - last < 800) {
+        clearTimeout(timer)
+        timer = setTimeout(scan, 800 - (now - last))
+        return
+      }
+      scan()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(timer) }
+  }, [viewLevel, currentTab?.id, currentTab?.book, currentTab?.chapter])
 
   // highlightVerse: from search results or tab highlights
   const highlightVerse = currentTab?.highlights?.[0] || null
@@ -966,17 +1035,17 @@ const [showAssessment, setShowAssessment] = useState(false)
         <div className="flex items-center gap-1 text-sm min-w-0 flex-1">
           {/* Directory navigation: up a level + prev/next at current level.
               (History back/forward is available in the More menu.) */}
-          <button onClick={goUpLevel} className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+          <button onClick={goUpLevel} aria-label="Up a level" className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
             title="Up a level">
             <ChevronUp />
           </button>
-          <button onClick={goPrevAtLevel}
-            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+          <button onClick={goPrevAtLevel} aria-label="Previous"
+            className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
             title="Previous">
             <ChevronLeft />
           </button>
-          <button onClick={goNextAtLevel}
-            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
+          <button onClick={goNextAtLevel} aria-label="Next"
+            className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer shrink-0"
             title="Next">
             <ChevronRight />
           </button>
@@ -1013,6 +1082,7 @@ const [showAssessment, setShowAssessment] = useState(false)
         {/* Right side: compact nav search + Tiles */}
         <div className="flex items-center gap-1 shrink-0">
           <div ref={mobileNavRef} className="relative">
+            <form onSubmit={e => { e.preventDefault(); submitMobileNav() }}>
             <input
               type="search" inputMode="search" enterKeyHint="go"
               value={mobileNavVal} onChange={e => handleMobileNavInput(e.target.value)}
@@ -1021,10 +1091,11 @@ const [showAssessment, setShowAssessment] = useState(false)
                 if (e.key === 'Escape') { setShowMobileNav(false); e.target.blur() }
                 if (e.key === 'ArrowDown') { e.preventDefault(); setMobileNavSel(i => Math.min(i + 1, mobileNavResults.length - 1)) }
                 if (e.key === 'ArrowUp') { e.preventDefault(); setMobileNavSel(i => Math.max(i - 1, 0)) }
-                if (e.key === 'Enter') { e.preventDefault(); executeMobileNav(mobileNavResults[mobileNavSel]) }
+                if (e.key === 'Enter') { e.preventDefault(); submitMobileNav() }
               }}
               placeholder="🔍 Go to…"
-              className="w-20 sm:w-28 text-[10px] px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" />
+              className="w-24 text-base px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" />
+            </form>
             {showMobileNav && mobileNavResults.length > 0 && (
               <div className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-h-72 overflow-y-auto z-50 min-w-[220px]">
                 {mobileNavResults.map((r, i) => (
