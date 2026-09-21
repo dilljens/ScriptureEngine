@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from web.routes.memorize import (
+    PREVIEW_MODES,
     auto_preview_level,
     effective_rating,
     expand_mastery_entry,
@@ -73,8 +74,20 @@ def test_effective_rating_weights_confidence_by_help():
     assert effective_rating(4, "full_text", 0) == 2
     assert effective_rating(3, "full_text", 0) == 2
     assert effective_rating(1, "full_text", 0) == 1
+    # Fade mode: partial full-word help caps Easy at Good…
+    assert effective_rating(4, "fade_words", 25) == 3
+    assert effective_rating(4, "fade_words", 50) == 3
+    assert effective_rating(4, "fade_words", 75) == 3
+    assert effective_rating(2, "fade_words", 50) == 2
+    # …and fade at 100% (≈ full text) caps at Hard
+    assert effective_rating(4, "fade_words", 100) == 2
+    assert effective_rating(3, "fade_words", 100) == 2
     # Unknown mode defaults to no penalty
     assert effective_rating(4, "bogus", 0) == 4
+
+
+def test_fade_words_is_a_valid_preview_mode():
+    assert "fade_words" in PREVIEW_MODES
 
 
 def test_mastery_list_has_100_passages_25_per_group():

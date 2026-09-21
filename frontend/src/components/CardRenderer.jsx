@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { firstLetterMask, PREVIEW_LEVELS } from '../lib/previewMask'
+import { firstLetterMask, fadeMask, PREVIEW_LEVELS } from '../lib/previewMask'
 import { parseRef, canonicalBookId } from '../bookNames'
 import { ScriptureMarkdown } from '../lib/scripture-markdown'
 import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
@@ -82,6 +82,7 @@ function VerseCardRenderer({ card, showAnswer, preview, onPreviewChange }) {
 
   const renderPreview = () => {
     if (mode === 'full_text') return fullText
+    if (mode === 'fade_words') return fadeMask(fullText, level)
     if (mode === 'first_letters') {
       if (level <= 0) return ''
       return firstLetterMask(fullText, level)
@@ -105,6 +106,7 @@ function VerseCardRenderer({ card, showAnswer, preview, onPreviewChange }) {
             {[
               { id: 'none', label: 'Recall' },
               { id: 'first_letters', label: '1st letters' },
+              { id: 'fade_words', label: 'Fade' },
               { id: 'full_text', label: 'Full text' },
             ].map(o => (
               <button key={o.id} onClick={(e) => { e.stopPropagation(); onPreviewChange?.({ mode: o.id, level }) }}
@@ -117,8 +119,8 @@ function VerseCardRenderer({ card, showAnswer, preview, onPreviewChange }) {
               </button>
             ))}
           </div>
-          {/* First-letter level stepper: automated progression 25/50/75/100% */}
-          {mode === 'first_letters' && (
+          {/* Level stepper for hint modes: automated progression 25/50/75/100% */}
+          {(mode === 'first_letters' || mode === 'fade_words') && (
             <div className="flex justify-center gap-1 mb-3">
               {PREVIEW_LEVELS.filter(l => l > 0).map(l => (
                 <button key={l} onClick={(e) => { e.stopPropagation(); onPreviewChange?.({ mode, level: l }) }}

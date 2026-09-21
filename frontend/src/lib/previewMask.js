@@ -1,10 +1,13 @@
 /**
  * Preview masking for verse memorization review.
  *
- * Two preview options (mirrors web/routes/memorize.py):
- *   first_letters — first letter of N% of words (levels 25/50/75/100)
+ * Learning stages, most help → least:
  *   full_text     — the whole verse
+ *   fade_words    — N% of words in FULL, the rest as first letters
+ *                   (levels 25/50/75/100): the graduated middle stage
+ *   first_letters — first letter of N% of words (levels 25/50/75/100)
  *   none          — reference only, pure recall
+ * (mirrors web/routes/memorize.py)
  *
  * Hidden words render as ___ so positions are preserved.
  * Revealed words show just their first letter (classic first-letter drill).
@@ -38,9 +41,24 @@ export function firstLetterMask(text, pct) {
   }).join(' ')
 }
 
+/** Fade mask: pct% of words shown in FULL (evenly spread, deterministic),
+ *  the rest as first letters. 100 ≈ full text, 0 ≈ first-letters-only. */
+export function fadeMask(text, pct) {
+  if (!text) return ''
+  const words = text.split(/\s+/).filter(Boolean)
+  if (pct >= 100) return text
+  if (pct <= 0) return words.map(firstLetterOf).join(' ')
+  return words.map((w, i) => {
+    const full = Math.floor(((i + 1) * pct) / 100) > Math.floor((i * pct) / 100)
+    return full ? w : firstLetterOf(w)
+  }).join(' ')
+}
+
 /** Human-readable note about how the current preview caps the rating. */
 export function previewCapNote(mode, level) {
   if (mode === 'full_text') return 'Full text shown — counts at most as Hard'
+  if (mode === 'fade_words' && (level || 0) >= 100) return 'Nearly full text — counts at most as Hard'
+  if (mode === 'fade_words') return `Fading at ${level}% — Easy counts as Good`
   if (mode === 'first_letters' && (level || 0) >= 75) return `Hints at ${level}% — Easy counts as Good`
   return null
 }

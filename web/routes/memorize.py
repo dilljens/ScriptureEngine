@@ -202,13 +202,16 @@ def _fsrs_schedule(stability, difficulty, rating):
 # ── Preview-aware review (first-letter hints vs full text) ──
 # A review card shows the reference plus an optional preview:
 #   first_letters — only the first letter of N% of words (levels 25/50/75/100)
+#   fade_words    — N% of words shown in FULL, the rest as first letters
+#                   (levels 25/50/75/100); the graduated middle stage between
+#                   full text and first-letters-only
 #   full_text     — the whole verse text
 #   none          — reference only, pure recall
 # More help = less scheduling credit (Anki honesty: if you read the answer,
 # you didn't recall it).
 
 PREVIEW_LEVELS = (0, 25, 50, 75, 100)
-PREVIEW_MODES = ("none", "first_letters", "full_text")
+PREVIEW_MODES = ("none", "first_letters", "fade_words", "full_text")
 
 
 def auto_preview_level(mastery: float = 0.0, attempts: int = 0) -> int:
@@ -245,12 +248,16 @@ def effective_rating(rating: int, preview_mode: str = "none",
     """Weight an Anki-style confidence rating (1-4) by the help used.
 
     - full_text: seeing the answer caps the rating at Hard (2).
+    - fade_words at 100% (≈ full text): caps at Hard (2); any fade level
+      shows more than first-letters, so Easy (4) caps down to Good (3).
     - first_letters at 75-100%: heavy hints cap Easy (4) down to Good (3).
     - 0-50% first letters or no preview: full credit.
     """
     rating = max(1, min(4, int(rating or 3)))
     if preview_mode == "full_text":
         return min(rating, 2)
+    if preview_mode == "fade_words":
+        return min(rating, 2 if (preview_level or 0) >= 100 else 3)
     if preview_mode == "first_letters" and (preview_level or 0) >= 75:
         return min(rating, 3)
     return rating
@@ -823,8 +830,8 @@ def submit_review(queue_id: int, body: dict, request: Request):
     """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy).
 
     Accepts the preview help the user used:
-      preview_mode: 'none' | 'first_letters' | 'full_text'
-      preview_level: 0 | 25 | 50 | 75 | 100 (first-letter coverage %)
+      preview_mode: 'none' | 'first_letters' | 'fade_words' | 'full_text'
+      preview_level: 0 | 25 | 50 | 75 | 100 (coverage %)
     The Anki-style confidence rating is weighted by that help: reading the
     full text caps the rating at Hard, heavy first-letter hints cap Easy at
     Good. The weighted (effective) rating drives FSRS scheduling.
