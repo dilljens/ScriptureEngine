@@ -1339,6 +1339,15 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   const correct = !expired && quiz && quiz.options[choiceIdx] === answer
   state.golden = null
   if (expired) return { fizzled: true, reason: 'expired' }
+  // The golden question owns the game streak: only golden answers move it.
+  // Study answers elsewhere never touch streak, Ohr, or milestones.
+  if (correct) {
+    state.streak = (state.streak || 0) + 1
+    state.bestStreak = Math.max(state.bestStreak || 0, state.streak)
+    state.correct = (state.correct || 0) + 1
+  } else {
+    state.streak = 0
+  }
   // Letter quizzes feed the letter deck; words and roots feed their own SRS
   // tracks — partial correctness is the point: strong items graduate while
   // weak ones keep coming back, each on its own streak.
@@ -2549,6 +2558,13 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   gq2.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq2, 0, 1000, 0).claimed?.id === 'gale', 'right option claims the buff')
   a(gq2.golden === null, 'quiz answer clears the prompt')
+  a(gq2.streak === 1 && gq2.bestStreak === 1, 'golden correct owns the streak')
+  a(gq2.correct === 1, 'golden correct feeds quest progress')
+  const gq2b = defaultIdleState()
+  gq2b.streak = 7; gq2b.bestStreak = 7
+  gq2b.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
+  a(answerGoldenQuiz(gq2b, 2, 1000, 0).fizzled === true, 'golden wrong resets the streak')
+  a(gq2b.streak === 0 && gq2b.bestStreak === 7, 'best streak survives a golden miss')
   const gq3 = defaultIdleState()
   gq3.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq3, 2, 1000, 0).fizzled === true, 'wrong option fizzles, never drains')

@@ -7,7 +7,7 @@ import {
   FRENZY_COST, FRENZY_MULT, buffMultiplier, frenzyRemainingSec, buyFrenzy, buyTimeWarp, warpCost,
   LETTER_UPGRADE_TIERS, availableLetterUpgrades, buyLetterUpgrade, letterMultiplier,
   KAVOD_UPGRADES, buyPerm, hasPerm, synergyMultiplier, workshopSynergy, letterRate,
-  loadIdleState, saveIdleState, applyPrestige, applyCorrectAnswer, applyWrongAnswer, applyTap,
+  loadIdleState, saveIdleState, applyPrestige, applyTap,
   applyFeedback, recordAttempt, difficultyScalars, recentAccuracy,
   sparksEarned, availableSparks, sparkBonus, sparkProgress,
   HEAVENLY_UPGRADES, heavenlyOwned, heavenlyUnlocked, buyHeavenly, heavenlyTierOwned, HEAVENLY_TIERS,
@@ -34,7 +34,9 @@ import GolemCanvas from './GolemCanvas'
  * HebrewIdleBar — trial idle-game HUD for Aleph to Revelation.
  *
  * The gameplay loop, all visible at a glance:
- *   answer correctly → tap Ohr (+streak, crits) → buy letters (x1/x10/Max)
+ *   answer the Golden Prompt correctly → streak, Ohr bursts, daily credit,
+ *   quest progress → buy letters (x1/x10/Max). Study answers elsewhere tune
+ *   difficulty and feed SRS only — never game credit.
  *   → chase quests + next goals → forge roots → repeat, faster.
  *
  * Mobile-first: stacks on small screens, 44px+ touch targets, 6-col
@@ -354,49 +356,25 @@ export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpen
   }, [mastery, commit, gramMult])
 
   // Adaptive loop: graded answers from anywhere in the app.
-  // Correct answers tap Ohr (streak + crit) — studying IS the clicker.
+  // Study answers tune difficulty ONLY — they grant no Ohr, no streak, no
+  // milestones, no daily credit. Game credit comes exclusively from the
+  // Golden Prompt quiz (answerGoldenQuiz owns the streak; answerQuiz below
+  // owns milestones + daily). Scheduling (FSRS) is untouched everywhere.
   useEffect(() => {
     const handler = (e) => {
       const { correct, ms } = e.detail || {}
       const s = stateRef.current
       const next = { ...s, difficulty: recordAttempt(s.difficulty || { bias: 0, recent: [] }, correct, ms) }
-      const rate = statePerSecond(next, mastery, gramMult)
-      let gainInfo = null
-      let milestoneInfo = null
-      if (correct) {
-        const r = applyCorrectAnswer(next, rate)
-        gainInfo = { value: r.gained, crit: r.crit, kavod: r.kavod, n: next.taps }
-        milestoneInfo = checkStreakMilestone(next)
-        recordDailyCorrect(next)
-        if (r.crit && onEarn) onEarn(r.gained)
-      } else {
-        const wres = applyWrongAnswer(next)
-        if (wres?.graced) {
-          setBoostFlash({ text: `🛡️ Streak grace — a wrong answer halved your streak to ${next.streak} instead of resetting it. Once per day.` })
-          setTimeout(() => setBoostFlash(null), 4500)
-        }
-      }
       // Golden Prompts are answered in their own popup quiz now, not here:
-      // study answers tap Ohr, tune difficulty, and keep streaks — they never
-      // claim or fizzle prompts.
+      // study answers tune difficulty — they never claim or fizzle prompts,
+      // and never touch Ohr, streak, milestones, or daily progress.
       saveSoon(next)
       commit(next)
-      if (gainInfo) {
-        setLastGain(gainInfo)
-        const id = Date.now() + Math.random()
-        setGains(g => [...g.slice(-4), { ...gainInfo, id }])
-        setTimeout(() => setGains(g => g.filter(x => x.id !== id)), 1500)
-      }
       setAnswerPulse({ n: Date.now(), correct: !!correct })
-      if (milestoneInfo) {
-        try { logEvent('milestone', milestoneInfo) } catch {}
-        setMilestoneFlash(milestoneInfo)
-        setTimeout(() => setMilestoneFlash(null), 4000)
-      }
     }
     window.addEventListener('hebrew-idle-answer', handler)
     return () => window.removeEventListener('hebrew-idle-answer', handler)
-  }, [mastery, onEarn, saveSoon, gramMult])
+  }, [saveSoon])
 
   // Manual golem tap: small Ohr (no Kavod/streak) + floater exactly at the tap point.
   // Feel: light haptic per tap (throttled in bursts), a double-buzz + big
@@ -592,6 +570,14 @@ export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpen
     const rate = statePerSecond(next, mastery, gramMult) * buffMultiplier(next)
     const res = answerGoldenQuiz(next, choiceIdx, Date.now(), rate)
     if (!res) return
+    // Golden owns game credit: streak milestones and the daily counter move
+    // here (answerGoldenQuiz already moved the streak itself). Study answers
+    // elsewhere grant nothing.
+    let milestoneInfo = null
+    if (!res.fizzled) {
+      milestoneInfo = checkStreakMilestone(next)
+      recordDailyCorrect(next)
+    }
     commit(next); saveIdleState(next)
     if (res.choice) {
       // The Prophet offers — the quiz is passed, so the choice never expires.
@@ -605,6 +591,11 @@ export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpen
       setGoldenFlash({ name: '', desc: '', fizzled: true })
       setTimeout(() => setGoldenFlash(null), 4000)
       try { logEvent('golden', { fizzled: true, reason: res.reason }) } catch {}
+    }
+    if (milestoneInfo) {
+      setMilestoneFlash(milestoneInfo)
+      setTimeout(() => setMilestoneFlash(null), 4000)
+      try { logEvent('milestone', milestoneInfo) } catch {}
     }
     if (onEarn && res.granted > 0) onEarn(res.granted)
   }
@@ -1063,7 +1054,7 @@ export default function HebrewIdleBar({ curriculum, onEarn, dueCount = 0, onOpen
       {/* Tap affordance: until the first tap lands, say where taps come from. */}
       {(state.taps || 0) === 0 && totalOwned(state) > 0 && (
         <div className="mt-2 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 text-xs text-green-800 dark:text-green-200">
-          <b>👆 Two ways to earn:</b> tap your golems above for a little Ohr any time — each correct answer below pops <b>big +Ohr</b> up top and flashes this panel green. Wrong answers flash red (streak only, nothing lost).
+          <b>👆 Two ways to earn:</b> tap your golems above for a little Ohr any time — answers below tune difficulty and flash this panel green (red when wrong). Only the <b>Golden Prompt</b> quiz pays Ohr, keeps your streak, and advances daily progress.
         </div>
       )}
 

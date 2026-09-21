@@ -1170,8 +1170,14 @@ def get_hebrew_diagnostic(
 def _normalize_hebrew_answer(value):
     text = re.sub(r"\s+", " ", str(value if value is not None else "").strip().casefold())
     if re.search(r"[\u0590-\u05ff]", text):
-        text = re.sub(r"[\u0591-\u05af]", "", text)
+        # Strip all Hebrew marks (niqqud, cantillation, dagesh, shin/sin
+        # dots — the old range stopped at \u05af and missed vowel points).
+        text = re.sub(r"[\u0591-\u05C7]", "", text)
         text = text.replace("/", "")
+    # Fold final (sofit) letters: typing mem instead of mem-sofit (or the
+    # reverse) must not fail grading. Applied to both sides equally.
+    text = (text.replace("ך", "כ").replace("ם", "מ").replace("ן", "נ")
+                 .replace("ף", "פ").replace("ץ", "צ"))
     return text
 
 
@@ -3741,12 +3747,16 @@ def _build_verb_drills(verb_lessons) -> list:
 
 
 def _grade_verb_answer(drill: dict, answer) -> bool:
-    """Server-side check: option text (or A/B/C/D letter / index) vs correct."""
+    """Server-side check: option text (or A/B/C/D letter / index) vs correct.
+
+    Free-text paths compare sofit-insensitively (mem ≡ mem-sofit)."""
     correct = str(drill.get("correct", "") or "").strip()
     if not correct:
         return False
     given = str(answer if answer is not None else "").strip()
     if given.lower() == correct.lower():
+        return True
+    if _normalize_hebrew_answer(given) == _normalize_hebrew_answer(correct):
         return True
     try:
         options = json.loads(drill.get("options") or "[]")
@@ -3755,12 +3765,14 @@ def _grade_verb_answer(drill: dict, answer) -> bool:
     # Letter (A/B/C/…) or 0-based index pointing at the correct option
     letters = [chr(ord("A") + i) for i in range(len(options))]
     if given.upper() in letters:
-        return options[letters.index(given.upper())].strip().lower() == correct.lower()
+        picked = str(options[letters.index(given.upper())]).strip()
+        return picked.lower() == correct.lower() or _normalize_hebrew_answer(picked) == _normalize_hebrew_answer(correct)
     if given.isdigit() and options:
         idx = int(given)
         idx = idx - 1 if 1 <= idx <= len(options) else idx
         if 0 <= idx < len(options):
-            return str(options[idx]).strip().lower() == correct.lower()
+            picked = str(options[idx]).strip()
+            return picked.lower() == correct.lower() or _normalize_hebrew_answer(picked) == _normalize_hebrew_answer(correct)
     return False
 
 
