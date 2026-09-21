@@ -519,6 +519,11 @@ def rate_connection(
     if evidence_ceiling is not None and quality_score > evidence_ceiling:
         quality_score = evidence_ceiling
         ceiling_applied = True
+        # P2-F: numerical evidence attempted to score above its class
+        # ceiling (a user-visible citation that needed clamping).
+        # Lazy import keeps this module dependency-free for generators.
+        from lib.monitoring import bump_p2_counter
+        bump_p2_counter("numerical_citation")
 
     # Build explanation of which signals drove the score
     signals_contrib = {

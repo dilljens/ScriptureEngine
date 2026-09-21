@@ -211,6 +211,13 @@ def prometheus_metrics():
         "# TYPE scripture_uptime_seconds gauge",
         f'scripture_uptime_seconds {uptime}',
     ]
+    # P2-F plan counters — operator surface only (/metrics), deliberately
+    # absent from the public /api/v1/health payload.
+    from lib.monitoring import p2_counter_snapshot
+    lines += ["", "# HELP scripture_p2 Plan track counters (tutor phase 2)"]
+    lines.append("# TYPE scripture_p2 counter")
+    for _name, _value in sorted(p2_counter_snapshot().items()):
+        lines.append(f'scripture_p2{{counter="{_name}"}} {_value}')
     from fastapi.responses import PlainTextResponse
     return PlainTextResponse("\n".join(lines) + "\n")
 

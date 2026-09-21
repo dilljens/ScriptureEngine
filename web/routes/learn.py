@@ -26,6 +26,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException
 
+from lib.monitoring import bump_p2_counter
 from web.routes.auth import _resolve_request_user
 
 router = APIRouter()
@@ -555,6 +556,11 @@ def submit_practice(module_id: str, body: dict, authorization: str = Header(""))
         conn.close()
         raise HTTPException(400, "rating must be 1, 2, 3, or 4")
 
+    # P2-F: client self-rating disagrees with server grading (client claims
+    # success the grader denies, or vice versa).
+    if (rating >= 3) != bool(correct):
+        bump_p2_counter("quiz_grading_disagreement")
+
     attempt_id = str(body.get("attempt_id", body.get("idempotency_key", ""))).strip()
     if not attempt_id or len(attempt_id) > 200:
         conn.close()
@@ -573,6 +579,8 @@ def submit_practice(module_id: str, body: dict, authorization: str = Header(""))
         (user_id, attempt_id),
     ).rowcount
     if inserted == 0:
+        # P2-F: duplicate attempt_id — idempotency replay absorbed.
+        bump_p2_counter("progress_idempotency_hit")
         prior_attempt = conn.execute(
             "SELECT response_json FROM learning_attempts WHERE user_id=? AND attempt_id=?",
             (user_id, attempt_id),

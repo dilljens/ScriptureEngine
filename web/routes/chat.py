@@ -21,6 +21,11 @@ from lib.api import call_tool
 from lib.api.staging import stage_connection, stage_study
 from lib.chat_cache import tool_cache
 from lib.db import get_db
+from lib.monitoring import (
+    TUTOR_SNAPSHOT_MARKER,
+    bump_p2_counter,
+    contains_tutor_marker,
+)
 from web.lib import jobs as _jobs
 from web.lib.llm_provider import ProviderRouter
 from web.lib import subagents as _subagents
@@ -1296,7 +1301,7 @@ def _hebrew_learner_snapshot(user_id: str) -> str | None:
     if not isinstance(data, dict) or not data.get("ok") or not data.get("has_progress"):
         return None
 
-    lines = ["[LEARNER PROGRESS SNAPSHOT · server-derived · read-only]"]
+    lines = [TUTOR_SNAPSHOT_MARKER + " · server-derived · read-only]"]
 
     placement = data.get("placement") or {}
     levels = placement.get("level_estimates") if isinstance(placement, dict) else None
@@ -1372,10 +1377,17 @@ def _prepare_chat_messages(body) -> list[dict]:
 
     # Hebrew Tutor hydration — compact learner state, bound identity only.
     # Never injected for general chat; never from client-supplied ids.
+    # P2-F leak probe: tutor snapshot state must never arrive inside a
+    # general-chat request (client smuggling or cross-mode carryover).
+    # Count and strip it rather than letting it reach the model.
     if _effective_mode(body.mode) == "hebrew":
         snapshot = _hebrew_learner_snapshot(_chat_tool_user_id(body))
         if snapshot:
             msgs.insert(1, {"role": "system", "content": snapshot})
+    elif contains_tutor_marker(msgs):
+        bump_p2_counter("tutor_memory_leak_probe")
+        msgs = [m for m in msgs
+                if TUTOR_SNAPSHOT_MARKER not in str(m.get("content", ""))]
 
     body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
     return apply_context_budget(msgs)

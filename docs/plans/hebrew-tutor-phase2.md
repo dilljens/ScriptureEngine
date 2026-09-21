@@ -69,12 +69,18 @@ source + rating flow on the unified FSRS path before flipping to `available`.
 - [ ] Staged feature-flag rollout mechanism beyond env selection if usage grows.
 - Checkpoint: provider changes cannot bypass verifier/allowlists/quotas.
 
-## Track P2-F: Monitoring instrumentation (parent F tail)
+## Track P2-F: Monitoring instrumentation (parent F tail) — DONE 2026-09-21
 
-- [ ] Counters for quiz grading disagreement, progress-event idempotency
+- [x] Counters for quiz grading disagreement, progress-event idempotency
       hits, tutor-memory leakage probes, numerical citation rate.
-- [ ] Surface counters through operator health only (not public).
+      (`lib/monitoring.py`: bump/snapshot; sites: learn.py rating-vs-grade
+      + idempotent replay, chat.py tutor-marker probe with strip,
+      calibration.py numerical ceiling clamp.)
+- [x] Surface counters through operator health only (not public).
+      (Exposed as `scripture_p2{counter=...}` in /metrics; deliberately
+      absent from the public /api/v1/health payload.)
 - Checkpoint: plan monitoring targets observable in production.
+  (Verify: `curl /metrics | grep scripture_p2` post-deploy.)
 
 ## Track P2-G: B3 purge execution
 
