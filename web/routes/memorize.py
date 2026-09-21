@@ -21,6 +21,17 @@ from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from lib.api.fsrs import (
+    FSRS_W,
+    initial_stability as _fsrs_initial_stability,
+    next_difficulty as _fsrs_next_difficulty,
+    next_interval as _fsrs_next_interval,
+    schedule as _fsrs_schedule,
+    stability_after_failure as _fsrs_stability_after_failure,
+    stability_after_success as _fsrs_stability_after_success,
+    humanize_interval as _humanize_interval,
+)
+
 router = APIRouter()
 log = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -121,10 +132,8 @@ def get_conn():
     return conn
 
 
-# ── FSRS-5 (copied from hebrew.py for independence) ──
-FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
-          1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
-          1.8729, 0.5425, 0.0912, 0.0658, 0.1542]
+# ── FSRS-5 core lives in lib/api/fsrs.py (single implementation shared
+# with the Hebrew scheduler) — imported at the top of this file. ──
 
 def compute_learning_speed(conn, user_id, verse_id):
     """Compute student-topic learning speed from performance history.
@@ -157,46 +166,6 @@ def compute_learning_speed(conn, user_id, verse_id):
 
     # Clamp to reasonable range
     return max(0.3, min(3.0, speed))
-
-def _fsrs_initial_stability(rating):
-    return FSRS_W[max(0, min(3, rating - 1))]
-
-def _fsrs_next_interval(stability, request_retention=0.9, learning_speed=1.0):
-    """Compute next review interval, adjusted for student-topic learning speed.
-
-    Per Math Academy Ch 29: speed governs how quickly the student moves
-    through the spaced repetition process.
-    - Fast learner (speed > 1.0): longer intervals
-    - Slow learner (speed < 1.0): shorter intervals
-    """
-    if stability <= 0: return 0
-    base = stability * (math.log(request_retention) / math.log(0.9)) ** (1.0 / FSRS_W[10])
-    return max(1, round(base * learning_speed))
-
-def _fsrs_stability_after_success(stability, difficulty, rating):
-    difficulty_weight = math.pow(FSRS_W[7], difficulty - 1)
-    retrieval_strength = math.pow(stability, -FSRS_W[9])
-    rating_mult = FSRS_W[8]
-    if rating == 2: rating_mult = FSRS_W[8] * FSRS_W[15]
-    elif rating == 4: rating_mult = FSRS_W[8] * FSRS_W[16]
-    return stability * (1 + rating_mult * retrieval_strength * difficulty_weight)
-
-def _fsrs_stability_after_failure(stability, difficulty, _rating):
-    return FSRS_W[11] * math.pow(difficulty, FSRS_W[12]) * math.pow(stability, -FSRS_W[13]) * (stability + 1)
-
-def _fsrs_next_difficulty(difficulty, rating):
-    delta = -FSRS_W[6] if rating >= 3 else FSRS_W[6]
-    mean_reversion = FSRS_W[7] * (FSRS_W[4] - difficulty)
-    return max(1.0, min(10.0, difficulty + delta + mean_reversion))
-
-def _fsrs_schedule(stability, difficulty, rating):
-    if rating <= 2:
-        new_s = _fsrs_stability_after_failure(stability, difficulty, rating)
-        new_d = _fsrs_next_difficulty(difficulty, rating)
-    else:
-        new_s = _fsrs_stability_after_success(stability, difficulty, rating)
-        new_d = _fsrs_next_difficulty(difficulty, rating)
-    return new_s, new_d, _fsrs_next_interval(new_s)
 
 
 # ── Preview-aware review (first-letter hints vs full text) ──
@@ -823,18 +792,6 @@ def get_due_reviews(
     conn.commit()  # Save FIRe knock-out updates
     conn.close()
     return {"ok": True, "data": {"reviews": reviews, "due": len(reviews), "knocked_out": knocked_out}}
-
-
-def _humanize_interval(days):
-    """Anki-style short label: 1d, 12d, 3w, 1.5mo, 2y."""
-    days = max(1, int(days))
-    if days < 14:
-        return f"{days}d"
-    if days < 60:
-        return f"{round(days / 7):g}w"
-    if days < 365:
-        return f"{round(days / 30.44, 1):g}mo"
-    return f"{round(days / 365.25, 1):g}y"
 
 
 @router.get("/api/v1/memorize/review/{queue_id}/intervals")

@@ -17,6 +17,18 @@ from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException
 
+from lib.api.fsrs import (
+    FSRS_W,
+    initial_stability as fsrs_initial_stability,
+    next_difficulty as fsrs_next_difficulty,
+    next_interval as fsrs_next_interval,
+    retrievability as fsrs_retrievability,
+    schedule as fsrs_schedule,
+    stability_after_failure as fsrs_stability_after_failure,
+    stability_after_success as fsrs_stability_after_success,
+    humanize_interval as fsrs_humanize_interval,
+)
+
 router = APIRouter()
 log = logging.getLogger(__name__)
 
@@ -38,79 +50,11 @@ def _public_options_json(raw_options):
         return "[]"
 
 # ── Persisted adaptive review scheduler ──
-# Legacy helper/route names remain for compatibility. This is project-specific,
-# persisted scheduling and is not represented as an FSRS implementation.
-
-FSRS_W = [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
-          1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
-          1.8729, 0.5425, 0.0912, 0.0658, 0.1542]
-
-
-def fsrs_initial_stability(rating):
-    """Initial stability (in days) based on rating 1-4."""
-    if rating < 1 or rating > 4:
-        rating = 3
-    return FSRS_W[rating - 1]
-
-
-def fsrs_next_interval(stability, request_retention=0.9):
-    """Next review interval in days."""
-    if stability <= 0:
-        return 0
-    return max(1, round(stability * (math.log(request_retention) / math.log(0.9)) ** (1.0 / FSRS_W[10])))
-
-
-def fsrs_stability_after_success(stability, difficulty, rating):
-    """Calculate new stability after a successful recall."""
-    difficulty_weight = math.pow(FSRS_W[7], difficulty - 1)
-    retrieval_strength = math.pow(stability, -FSRS_W[9])
-    # Rating multiplier
-    rating_mult = FSRS_W[8]
-    if rating == 2:  # Hard
-        rating_mult = FSRS_W[8] * FSRS_W[15]
-    elif rating == 4:  # Easy
-        rating_mult = FSRS_W[8] * FSRS_W[16]
-
-    new_s = stability * (1 + rating_mult * retrieval_strength * difficulty_weight)
-    return new_s
-
-
-def fsrs_stability_after_failure(stability, difficulty, _rating):
-    """Calculate new stability after a failed recall."""
-    difficulty_pow = math.pow(difficulty, FSRS_W[12])
-    stability_factor = math.pow(stability, -FSRS_W[13])
-    new_s = FSRS_W[11] * difficulty_pow * stability_factor * (stability + 1)
-    return new_s
-
-
-def fsrs_next_difficulty(difficulty, rating):
-    """Calculate next difficulty after a review."""
-    delta = -FSRS_W[6] if rating >= 3 else FSRS_W[6]
-    mean_reversion = FSRS_W[7] * (FSRS_W[4] - difficulty)
-    new_d = difficulty + delta + mean_reversion
-    # Clamp to [1, 10]
-    return max(1.0, min(10.0, new_d))
-
-
-def fsrs_retrievability(stability, days_since):
-    """Probability of recall after elapsed days."""
-    if stability <= 0:
-        return 0
-    return math.exp(-days_since / stability * math.log(1.0 / (1.0 - FSRS_W[20])) if FSRS_W[20] > 0
-                    else math.pow(1 + days_since / (stability * FSRS_W[19]), 1 - FSRS_W[18]))
-
-
-def fsrs_schedule(stability, difficulty, rating):
-    """Full FSRS schedule: given current state + rating, return new state + interval."""
-    if rating == 1:  # Again fails; Hard is a difficult successful recall.
-        new_s = fsrs_stability_after_failure(stability, difficulty, rating)
-        new_d = fsrs_next_difficulty(difficulty, rating)
-    else:  # Passed (Good or Easy)
-        new_s = fsrs_stability_after_success(stability, difficulty, rating)
-        new_d = fsrs_next_difficulty(difficulty, rating)
-
-    interval = fsrs_next_interval(new_s)
-    return new_s, new_d, interval
+# FSRS core lives in lib/api/fsrs.py — one canonical implementation shared
+# with the scripture-memorize scheduler (imported above). Legacy helper
+# names are kept as aliases for compatibility.
+# This is project-specific, persisted scheduling and is not represented
+# as an FSRS implementation.
 
 
 # ── Word mastery, Anki-style ─────────────────────────────────────────────
@@ -732,6 +676,51 @@ def _resolve_hebrew_read_user(
             raise HTTPException(401, "Invalid authorization header")
         session_token = value.strip()
     return _require_hebrew_user(user_id, session_token)
+
+
+@router.get("/api/v1/hebrew/fsrs/intervals")
+def hebrew_fsrs_intervals(
+    node_id: str = "", card_mode: str = "",
+    user_id: str = "default", session_token: str = "",
+    authorization: str = Header(""),
+):
+    """Preview the next-review interval behind each rating (1-4) for a card.
+
+    Uses the exact computation post_hebrew_review applies (shared canonical
+    FSRS core + per-node learning speed), so the labels on Again/Hard/Good/
+    Easy match what tapping each rating will schedule.
+    """
+    session_token = _session_token_from_header(authorization) or session_token
+    user_id = _require_hebrew_user(user_id, session_token)
+    if card_mode not in ("", "hearing", "reverse", "forward", "drill", "visual_only"):
+        card_mode = ""
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+
+    conn = sqlite3.connect(str(MEM_DB))
+    if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+        conn.close()
+        raise HTTPException(400, "Unknown Hebrew node")
+
+    speeds, _, _ = compute_learning_speed(user_id)
+    learning_speed = clamp_learning_speed(speeds.get(node_id, 1.0))
+
+    state = conn.execute("""
+        SELECT stability,difficulty FROM hebrew_review_state
+        WHERE user_id=? AND node_id=? AND card_mode=?
+    """, (user_id, node_id, card_mode)).fetchone()
+    conn.close()
+
+    out = {}
+    for rating in (1, 2, 3, 4):
+        if state:
+            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating)
+        else:
+            new_s = fsrs_initial_stability(rating)
+            interval = fsrs_next_interval(new_s)
+        adjusted = max(1, round(interval * learning_speed))
+        out[str(rating)] = {"days": adjusted, "label": fsrs_humanize_interval(adjusted)}
+    return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "intervals": out}}
 
 
 @router.post("/api/v1/hebrew/fsrs/review")

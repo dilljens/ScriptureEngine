@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { currentSessionToken, fetchJSON, hebrewSessionUser } from '../api'
 import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
+import RatingButtons from './RatingButtons'
 
 /**
  * AnkiReview — Dedicated flip-card study view for Hebrew vocabulary.
@@ -47,6 +48,31 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const currentCard = cards[currentIdx]
   const isComplete = currentIdx >= cards.length
   const totalCards = cards.length
+  // Anki-style interval preview, same shared scheduler as memorize.
+  // Cleared on card change so a stale card's waits never flash.
+  const [intervals, setIntervals] = useState(null)
+  const intervalsCard = useRef(null)
+  useEffect(() => {
+    const nid = currentCard?.node_id
+    const cmode = currentCard?.mode || ''
+    const key = `${nid}|${cmode}`
+    if (intervalsCard.current !== key) {
+      intervalsCard.current = key
+      setIntervals(null)
+    }
+    if (!nid || !flipped) return
+    const sessionToken = currentSessionToken()
+    const params = new URLSearchParams({ node_id: nid, card_mode: cmode })
+    fetch(`/api/v1/hebrew/fsrs/intervals?${params}`, {
+      headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (intervalsCard.current !== key) return
+        setIntervals(d.ok ? d.data?.intervals || null : null)
+      })
+      .catch(() => { if (intervalsCard.current === key) setIntervals(null) })
+  }, [currentCard?.node_id, currentCard?.mode, flipped, currentIdx])
 
   // Pre-fetch images and audio for all cards
   useEffect(() => {
@@ -233,24 +259,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       )}
 
       {/* Rating buttons */}
-      <div className="grid grid-cols-4 gap-2 pt-2">
-        {[
-          { label: 'Again', key: '1', color: 'bg-red-500 hover:bg-red-600', desc: 'Forgot' },
-          { label: 'Hard', key: '2', color: 'bg-amber-500 hover:bg-amber-600', desc: 'Difficult' },
-          { label: 'Good', key: '3', color: 'bg-green-500 hover:bg-green-600', desc: 'Correct' },
-          { label: 'Easy', key: '4', color: 'bg-blue-500 hover:bg-blue-600', desc: 'Trivial' },
-        ].map(btn => (
-          <button
-            key={btn.key}
-            onClick={() => handleRate(parseInt(btn.key))}
-            className={`${btn.color} text-white text-xs font-medium py-3 rounded-lg transition-colors`}
-            title={`${btn.label} — ${btn.desc}`}
-          >
-            <div className="text-sm">{btn.key}</div>
-            <div className="text-[10px] opacity-80">{btn.desc}</div>
-          </button>
-        ))}
-      </div>
+      <RatingButtons intervals={intervals} onRate={(v) => handleRate(v)} variant="grid" showKeys />
     </div>
   )
 

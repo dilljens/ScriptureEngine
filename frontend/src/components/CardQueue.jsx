@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import CardRenderer from './CardRenderer'
+import RatingButtons from './RatingButtons'
 import { previewCapNote } from '../lib/previewMask'
 import { currentSessionToken } from '../api'
 
@@ -81,11 +82,16 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   }, [idx, cards])
 
   // Interval preview for verse cards with a queue row: refetch when the
-  // card or the preview help changes (intervals are help-aware).
+  // card or the preview help changes (intervals are help-aware). Cleared on
+  // card change so a stale card's waits never flash.
   useEffect(() => {
     const qid = current?.type === 'verse' ? current?.queue_id : null
-    if (!qid) { setIntervals(null); intervalsCard.current = null; return }
-    intervalsCard.current = qid
+    const key = `${qid}|${preview.mode}|${preview.level}`
+    if (intervalsCard.current !== key) {
+      intervalsCard.current = key
+      setIntervals(null)
+    }
+    if (!qid) return
     const token = currentSessionToken()
     const params = new URLSearchParams({
       preview_mode: preview.mode || 'none',
@@ -96,10 +102,10 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
     })
       .then(r => r.json())
       .then(d => {
-        if (intervalsCard.current !== qid) return
+        if (intervalsCard.current !== key) return
         setIntervals(d.ok ? d.data?.intervals || null : null)
       })
-      .catch(() => { if (intervalsCard.current === qid) setIntervals(null) })
+      .catch(() => { if (intervalsCard.current === key) setIntervals(null) })
   }, [current?.type, current?.queue_id, idx, preview.mode, preview.level])
 
   const handleReveal = useCallback(() => {
@@ -285,23 +291,7 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
               ⚠️ {previewCapNote(preview.mode, preview.level)}
             </p>
           )}
-          <div className="flex gap-2 justify-center">
-            {[
-              { val: 1, label: 'Again', desc: 'Forgot', color: 'bg-red-500 hover:bg-red-600' },
-              { val: 2, label: 'Hard', desc: 'Struggled', color: 'bg-amber-500 hover:bg-amber-600' },
-              { val: 3, label: 'Good', desc: 'Recalled', color: 'bg-green-500 hover:bg-green-600' },
-              { val: 4, label: 'Easy', desc: 'Instant', color: 'bg-blue-500 hover:bg-blue-600' },
-            ].map(b => (
-              <button key={b.val} onClick={() => handleRate(b.val)}
-                className={`pressable flex flex-col items-center px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color} min-w-[70px]`}>
-                <span>{b.label}</span>
-                {intervals?.[b.val]?.label && (
-                  <span className="text-[11px] font-semibold opacity-95 leading-tight">{intervals[b.val].label}</span>
-                )}
-                <span className="text-[9px] opacity-80">{b.desc}</span>
-              </button>
-            ))}
-          </div>
+          <RatingButtons intervals={intervals} onRate={handleRate} variant="row" />
         </div>
       )}
 
