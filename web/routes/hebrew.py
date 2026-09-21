@@ -19,6 +19,8 @@ from fastapi import APIRouter, Header, HTTPException
 
 from lib.api.fsrs import (
     FSRS_W,
+    days_since,
+    initial_difficulty as fsrs_initial_difficulty,
     initial_stability as fsrs_initial_stability,
     next_difficulty as fsrs_next_difficulty,
     next_interval as fsrs_next_interval,
@@ -706,7 +708,7 @@ def hebrew_fsrs_intervals(
     learning_speed = clamp_learning_speed(speeds.get(node_id, 1.0))
 
     state = conn.execute("""
-        SELECT stability,difficulty FROM hebrew_review_state
+        SELECT stability,difficulty,last_review FROM hebrew_review_state
         WHERE user_id=? AND node_id=? AND card_mode=?
     """, (user_id, node_id, card_mode)).fetchone()
     conn.close()
@@ -714,7 +716,8 @@ def hebrew_fsrs_intervals(
     out = {}
     for rating in (1, 2, 3, 4):
         if state:
-            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating)
+            days_elapsed = days_since(state[2])
+            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed)
         else:
             new_s = fsrs_initial_stability(rating)
             interval = fsrs_next_interval(new_s)
@@ -836,10 +839,11 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
 
     if state:
-        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating)
+        days_elapsed = days_since(state[2])
+        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed)
     else:
         new_s = fsrs_initial_stability(rating)
-        new_d = fsrs_next_difficulty(5.0, rating)
+        new_d = fsrs_initial_difficulty(rating)
         interval = fsrs_next_interval(new_s)
     adjusted_interval = max(1, round(interval * learning_speed))
     reviewed_at = datetime.datetime.now()

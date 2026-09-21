@@ -42,6 +42,47 @@ def test_hard_is_success_not_lapse():
     assert ivs == sorted(ivs)
 
 
+def test_canonical_vectors_against_reference():
+    # Hardcoded from py-fsrs 6.x (Scheduler defaults): state S=5, D=4.5,
+    # reviewed 6 days later. Any drift from the reference fails here.
+    expected = {
+        1: (0.980488, 8.177416, 1),
+        2: (14.149185, 6.334072, 14),
+        3: (20.213145, 4.490728, 20),
+        4: (33.492698, 2.647385, 33),
+    }
+    for grade, (ns, nd, iv) in expected.items():
+        got = fsrs.schedule(5.0, 4.5, grade, 6.0)
+        assert abs(got[0] - ns) < 1e-5, (grade, got)
+        assert abs(got[1] - nd) < 1e-5, (grade, got)
+        assert got[2] == iv, (grade, got)
+
+
+def test_short_term_branch_vectors():
+    # Same-day re-review of existing memory (S=5): Again may drop,
+    # Hard/Good floor at no-change, Easy grows. Values from py-fsrs.
+    expected = {1: 1.596818, 2: 5.0, 3: 5.0, 4: 8.129610}
+    for grade, ns in expected.items():
+        got = fsrs.schedule(5.0, 4.5, grade, 0.0)[0]
+        assert abs(got - ns) < 1e-5, (grade, got)
+
+
+def test_initial_difficulty_is_canonical():
+    # D0(G) = w4 − e^(w5·(G−1)) + 1, clamped — not flat 5.0.
+    assert fsrs.initial_difficulty(1) == 6.4133
+    assert abs(fsrs.initial_difficulty(2) - 5.1122) < 1e-3
+    assert abs(fsrs.initial_difficulty(3) - 2.1181) < 1e-3
+    assert fsrs.initial_difficulty(4) == 1.0
+
+
+def test_retrievability_defining_property():
+    # R(S) == 0.9 by construction, at any stability.
+    for s in (0.5, 2.0, 10.0, 100.0):
+        assert abs(fsrs.retrievability(s, s) - 0.9) < 1e-12, s
+    assert fsrs.retrievability(0, 5) == 0.0
+    assert fsrs.retrievability(10.0, 0) > 0.9
+
+
 def test_humanize_labels():
     assert fsrs.humanize_interval(1) == "1d"
     assert fsrs.humanize_interval(13) == "13d"

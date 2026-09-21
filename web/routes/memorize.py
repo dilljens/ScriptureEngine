@@ -23,9 +23,12 @@ from fastapi import APIRouter, Header, HTTPException, Request
 
 from lib.api.fsrs import (
     FSRS_W,
+    days_since,
+    initial_difficulty,
     initial_stability as _fsrs_initial_stability,
     next_difficulty as _fsrs_next_difficulty,
     next_interval as _fsrs_next_interval,
+    retrievability,
     schedule as _fsrs_schedule,
     stability_after_failure as _fsrs_stability_after_failure,
     stability_after_success as _fsrs_stability_after_success,
@@ -706,12 +709,12 @@ def get_due_reviews(
                 )
             continue
 
-        # Compute retrievability
+        # Compute retrievability (canonical power forgetting curve)
         if r["last_review"]:
             try:
                 last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
                 days = (now - last).total_seconds() / 86400.0
-                ret = math.exp(-days / r["stability"]) if r["stability"] > 0 else 1.0
+                ret = retrievability(r["stability"], days)
             except Exception:
                 ret = 0.5
         else:
@@ -827,7 +830,7 @@ def preview_intervals(
     verse_id = item["verse_id"]
 
     prog = conn.execute(
-        "SELECT attempts, stability, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
+        "SELECT attempts, stability, difficulty, last_review FROM memorize_progress WHERE user_id=? AND verse_id=?",
         (user_id, verse_id)
     ).fetchone()
     learning_speed = compute_learning_speed(conn, user_id, verse_id)
@@ -838,11 +841,13 @@ def preview_intervals(
         if prog:
             stability = max(1.0, prog["stability"])
             difficulty = prog["difficulty"]
+            days_elapsed = days_since(prog["last_review"])
         else:
             stability = _fsrs_initial_stability(eff)
-            difficulty = 5.0
+            difficulty = initial_difficulty(eff)
+            days_elapsed = None
         speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
-        _, _, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff)
+        _, _, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
         interval = max(1, round(base_interval * learning_speed))
         out[str(rating)] = {
             "days": interval,
@@ -900,7 +905,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
 
     # Get current progress
     prog = conn.execute(
-        "SELECT mastery, attempts, correct, stability, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
+        "SELECT mastery, attempts, correct, stability, difficulty, last_review FROM memorize_progress WHERE user_id=? AND verse_id=?",
         (user_id, verse_id)
     ).fetchone()
 
@@ -908,10 +913,12 @@ def submit_review(queue_id: int, body: dict, request: Request):
         a, c = prog["attempts"], prog["correct"]
         stability = max(1.0, prog["stability"])
         difficulty = prog["difficulty"]
+        days_elapsed = days_since(prog["last_review"])
     else:
         a, c = 0, 0
         stability = _fsrs_initial_stability(eff)
-        difficulty = 5.0
+        difficulty = initial_difficulty(eff)
+        days_elapsed = None
 
     # FSRS update with student-topic learning speed
     learning_speed = compute_learning_speed(conn, user_id, verse_id)
@@ -920,7 +927,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
     # Fast learners get lower effective difficulty, slow learners higher
     speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
 
-    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff)
+    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
 
     # Apply learning speed to interval
     interval = max(1, round(base_interval * learning_speed))
@@ -1125,7 +1132,7 @@ def get_interleaved_reviews(
             try:
                 last = datetime.datetime.strptime(r["last_review"], "%Y-%m-%d %H:%M:%S")
                 days = (now - last).total_seconds() / 86400.0
-                retro = math.exp(-days / r["stability"]) if r["stability"] > 0 else 1.0
+                retro = retrievability(r["stability"], days)
             except Exception:
                 retro = 0.5
         all_cards.append({
