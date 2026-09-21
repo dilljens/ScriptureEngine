@@ -9,12 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from web.routes.memorize import (
     PREVIEW_MODES,
+    _humanize_interval,
     auto_preview_level,
     effective_rating,
     expand_mastery_entry,
     load_mastery_list,
     next_preview_level,
     parse_verse_spec,
+    preview_intervals,
 )
 
 BASE = Path(__file__).resolve().parent.parent
@@ -88,6 +90,23 @@ def test_effective_rating_weights_confidence_by_help():
 
 def test_fade_words_is_a_valid_preview_mode():
     assert "fade_words" in PREVIEW_MODES
+
+
+def test_humanize_interval_labels():
+    assert _humanize_interval(1) == "1d"
+    assert _humanize_interval(13) == "13d"
+    assert _humanize_interval(14) == "2w"
+    assert _humanize_interval(90) == "3mo"
+    assert _humanize_interval(400) == "1.1y"
+
+
+def test_preview_intervals_404_for_missing_item():
+    import pytest
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as exc:
+        preview_intervals(999999999, "none", 0, "default", "", "")
+    assert exc.value.status_code == 404
 
 
 def test_mastery_list_has_100_passages_25_per_group():

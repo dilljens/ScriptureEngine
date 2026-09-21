@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import CardRenderer from './CardRenderer'
 import { previewCapNote } from '../lib/previewMask'
+import { currentSessionToken } from '../api'
 
 // Objectively-graded card types: the server decides correctness, so the learner
 // must never be asked to self-assess recall.
@@ -49,6 +50,10 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
   // Verse preview help (first-letter hints / full text), reset per card.
   // Initialized from the backend's automated suggestion when present.
   const [preview, setPreview] = useState({ mode: 'none', level: 100 })
+  // Anki-style interval preview: next-review wait behind each rating,
+  // computed with the exact scheduling math (incl. preview weighting).
+  const [intervals, setIntervals] = useState(null) // {1:{label},…} for current card
+  const intervalsCard = useRef(null)
 
   // Reset only when the deck identity actually changes (not on parent re-render
   // with a new array reference). Prevents wiping typed answers mid-card.
@@ -74,6 +79,28 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
       level: current?.data?.suggested_preview ?? 100,
     })
   }, [idx, cards])
+
+  // Interval preview for verse cards with a queue row: refetch when the
+  // card or the preview help changes (intervals are help-aware).
+  useEffect(() => {
+    const qid = current?.type === 'verse' ? current?.queue_id : null
+    if (!qid) { setIntervals(null); intervalsCard.current = null; return }
+    intervalsCard.current = qid
+    const token = currentSessionToken()
+    const params = new URLSearchParams({
+      preview_mode: preview.mode || 'none',
+      preview_level: String(preview.level ?? 0),
+    })
+    fetch(`/api/v1/memorize/review/${qid}/intervals?${params}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (intervalsCard.current !== qid) return
+        setIntervals(d.ok ? d.data?.intervals || null : null)
+      })
+      .catch(() => { if (intervalsCard.current === qid) setIntervals(null) })
+  }, [current?.type, current?.queue_id, idx, preview.mode, preview.level])
 
   const handleReveal = useCallback(() => {
     if (current?.type === 'drill' && !answerState?.[current.id]?.submitted) return
@@ -266,8 +293,11 @@ export default function CardQueue({ cards, onRate, onComplete, title, emptyMessa
               { val: 4, label: 'Easy', desc: 'Instant', color: 'bg-blue-500 hover:bg-blue-600' },
             ].map(b => (
               <button key={b.val} onClick={() => handleRate(b.val)}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color} min-w-[70px]`}>
+                className={`pressable flex flex-col items-center px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color} min-w-[70px]`}>
                 <span>{b.label}</span>
+                {intervals?.[b.val]?.label && (
+                  <span className="text-[11px] font-semibold opacity-95 leading-tight">{intervals[b.val].label}</span>
+                )}
                 <span className="text-[9px] opacity-80">{b.desc}</span>
               </button>
             ))}

@@ -825,6 +825,77 @@ def get_due_reviews(
     return {"ok": True, "data": {"reviews": reviews, "due": len(reviews), "knocked_out": knocked_out}}
 
 
+def _humanize_interval(days):
+    """Anki-style short label: 1d, 12d, 3w, 1.5mo, 2y."""
+    days = max(1, int(days))
+    if days < 14:
+        return f"{days}d"
+    if days < 60:
+        return f"{round(days / 7):g}w"
+    if days < 365:
+        return f"{round(days / 30.44, 1):g}mo"
+    return f"{round(days / 365.25, 1):g}y"
+
+
+@router.get("/api/v1/memorize/review/{queue_id}/intervals")
+def preview_intervals(
+    queue_id: int, preview_mode: str = "none", preview_level: int = 0,
+    user_id: str = "default", session_token: str = "",
+    authorization: str = Header(""),
+):
+    """Preview the next-review interval behind each rating (1-4) for a card.
+
+    Uses the exact FSRS computation submit_review will apply, including the
+    preview-help weighting (effective rating), so the labels on Again/Hard/
+    Good/Easy are truthful for every preview mode and level.
+    """
+    user_id = _require_review_user(user_id, session_token, authorization)
+    if preview_mode not in PREVIEW_MODES:
+        preview_mode = "none"
+    try:
+        preview_level = int(preview_level or 0)
+    except (TypeError, ValueError):
+        preview_level = 0
+    if preview_level not in PREVIEW_LEVELS:
+        preview_level = 0
+
+    conn = get_conn()
+    item = conn.execute(
+        "SELECT verse_id FROM memorize_queue WHERE id=? AND user_id=?",
+        (queue_id, user_id)
+    ).fetchone()
+    if not item:
+        conn.close()
+        raise HTTPException(404, "Queue item not found")
+    verse_id = item["verse_id"]
+
+    prog = conn.execute(
+        "SELECT attempts, stability, difficulty FROM memorize_progress WHERE user_id=? AND verse_id=?",
+        (user_id, verse_id)
+    ).fetchone()
+    learning_speed = compute_learning_speed(conn, user_id, verse_id)
+
+    out = {}
+    for rating in (1, 2, 3, 4):
+        eff = effective_rating(rating, preview_mode, preview_level)
+        if prog:
+            stability = max(1.0, prog["stability"])
+            difficulty = prog["difficulty"]
+        else:
+            stability = _fsrs_initial_stability(eff)
+            difficulty = 5.0
+        speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
+        _, _, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff)
+        interval = max(1, round(base_interval * learning_speed))
+        out[str(rating)] = {
+            "days": interval,
+            "label": _humanize_interval(interval),
+            "effective": eff,
+        }
+    conn.close()
+    return {"ok": True, "data": {"queue_id": queue_id, "intervals": out}}
+
+
 @router.post("/api/v1/memorize/review/{queue_id}")
 def submit_review(queue_id: int, body: dict, request: Request):
     """Submit a rating for a review (1=Again, 2=Hard, 3=Good, 4=Easy).
