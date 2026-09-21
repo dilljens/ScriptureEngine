@@ -27,7 +27,7 @@ const LABELS = {
 export default function HotkeyCheatsheet({ onClose, getHotkey, DEFAULT_HOTKEYS }) {
   return (
     <div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/50" onClick={onClose}>
-      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 w-full max-w-lg mx-4 max-h-[80vh] max-h-[80dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 dark:border-neutral-700">
           <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Keyboard Shortcuts</h2>
           <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer text-lg">&times;</button>

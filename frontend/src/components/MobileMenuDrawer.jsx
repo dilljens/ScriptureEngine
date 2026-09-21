@@ -18,7 +18,8 @@ export default function MobileMenuDrawer({
   return (
     <div className="fixed inset-0 z-50 sm:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
-      <div className="absolute bottom-0 inset-x-0 bg-white dark:bg-neutral-900 rounded-t-2xl shadow-2xl p-4 pb-8 max-h-[80vh] overflow-y-auto"
+      <div className="absolute bottom-0 inset-x-0 bg-white dark:bg-neutral-900 rounded-t-2xl shadow-2xl p-4 max-h-[80vh] max-h-[80dvh] overflow-y-auto"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto mb-4" />
 

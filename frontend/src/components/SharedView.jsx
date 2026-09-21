@@ -109,6 +109,7 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
         <div className="flex items-center gap-2">
           <input
             type="text"
+            enterKeyHint="send"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             placeholder="Ask a follow-up question — this continues in your own conversation..."

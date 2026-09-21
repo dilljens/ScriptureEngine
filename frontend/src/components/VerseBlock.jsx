@@ -394,7 +394,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
       return (
         <div className={`mb-0.5 ${isHighlighted ? 'ring-2 ring-amber-400 dark:ring-amber-600 rounded-sm p-1.5 ml-0' : ''}`}>
           <div className="flex items-start gap-1">
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono select-none mt-0.5 shrink-0">{verse.verse}</span>
+            <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-mono select-none mt-0.5 shrink-0">{verse.verse}</span>
             <div className="flex-1 min-w-0">
               <div className="hebrew-scholar" dir="rtl">
                 {words.map((word, i) => {
@@ -579,7 +579,7 @@ export default function VerseBlock({ verse, toggles, poetryMode, chiasms, highli
                   )}
                 </span>
                 {/* Verse text with footnote markers */}
-                <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 flex-1 min-w-0">
+                <p className="text-base leading-[1.65] sm:text-sm sm:leading-relaxed text-neutral-800 dark:text-neutral-200 flex-1 min-w-0">
                   {renderWithFootnotes(verse.text_english, footnotes, openFn, setOpenFn, setTooltip, tooltip)}
                 </p>
               </div>

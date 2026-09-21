@@ -1777,12 +1777,12 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                     className="px-2.5 py-1 rounded text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer transition-colors">
                     Cancel
                   </button>
-                  <span className="text-neutral-400 dark:text-neutral-500 italic">Ctrl+Enter to resend · Esc to cancel</span>
+                  <span className="text-neutral-500 dark:text-neutral-400 italic">Ctrl+Enter to resend · Esc to cancel</span>
                 </div>
               </div>
             ) : (
               <>
-              <div className={`group relative max-w-full sm:max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words
+              <div className={`group relative max-w-[92%] sm:max-w-[85%] w-fit px-4 py-2.5 text-sm leading-relaxed shadow-sm break-words
                 ${msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
@@ -1792,9 +1792,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {/* Reasoning — stream as one line; never expands into a box */}
                 {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
                   <div className="mb-2 flex items-center gap-1.5 min-w-0">
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic font-medium font-mono shrink-0">thinking</span>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400 italic font-medium font-mono shrink-0">thinking</span>
                     <span
-                      className="truncate text-[10px] text-neutral-400 dark:text-neutral-500 font-mono"
+                      className="truncate text-[10px] text-neutral-500 dark:text-neutral-400 font-mono"
                       title={(msg.streaming ? streamingThinking : msg.reasoning_content) || undefined}
                     >
                       {msg.streaming ? streamingThinking : msg.reasoning_content}
@@ -1813,7 +1813,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                           <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                           <span className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </span>
-                        <span className="italic text-neutral-400 dark:text-neutral-500">Thinking</span>
+                        <span className="italic text-neutral-500 dark:text-neutral-400">Thinking</span>
                         <button onClick={() => { if (abortRef.current) abortRef.current.abort() }}
                           aria-label="Cancel request"
                           className="ml-1 px-2 py-0.5 rounded text-[10px] font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer transition-colors border border-red-200 dark:border-red-800"
@@ -1842,7 +1842,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   const promptPct = Math.round(msg.usage.prompt_tokens / total * 100)
                   const compPct = Math.round(msg.usage.completion_tokens / total * 100)
                   return (
-                    <div className="hidden sm:flex items-center gap-2 mt-1.5 text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">
+                    <div className="hidden sm:flex items-center gap-2 mt-1.5 text-[9px] text-neutral-500 dark:text-neutral-400 font-mono">
                       <div className="flex-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden max-w-[60px]">
                         <div className="h-full flex">
                           <div className="bg-blue-400 dark:bg-blue-500 h-full" style={{ width: `${promptPct}%` }} />
@@ -1932,16 +1932,16 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 + Add as context
               </button>
               <button onClick={() => setPreviewRef(null)}
-                className="text-[10px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
+                className="text-[10px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
                 Dismiss
               </button>
-              <span className="text-[9px] text-neutral-400 dark:text-neutral-500 ml-auto">{previewRef.label}</span>
+              <span className="text-[9px] text-neutral-500 dark:text-neutral-400 ml-auto">{previewRef.label}</span>
             </div>
           </div>
         )}
         {/* Background-run notices: resumed after minimize, auto-regenerating, or cut off */}
         {(resumedNotice || regenerating) && (
-          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400">
             {resumedNotice && <span>↻ resumed in background — caught up</span>}
             {regenerating && <span>… answer hit the output limit, regenerating with more room</span>}
           </div>
@@ -1959,6 +1959,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           <input
             ref={inputRef}
             type="text"
+            enterKeyHint="send"
             value={input}
             onChange={e => { setInput(e.target.value); queueDraftSave(e.target.value) }}
             onKeyDown={e => {
@@ -2047,7 +2048,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
           <button onClick={() => sendMessage(input)} disabled={waiting || restoring || !input.trim()}
             aria-label="Send message"
-            className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium
+            className="pressable px-4 min-h-[44px] rounded-lg bg-indigo-600 text-white text-xs font-medium
               hover:bg-indigo-700 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 disabled:cursor-not-allowed cursor-pointer transition-colors shrink-0">
             Send
           </button>
@@ -2142,7 +2143,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-end justify-center pb-4 pointer-events-none">
-        <div className="w-full max-w-3xl mx-4 bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 pointer-events-auto flex flex-col max-h-[80vh]"
+        <div className="w-full max-w-3xl mx-4 bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 pointer-events-auto flex flex-col max-h-[80vh] max-h-[80dvh]"
           onClick={e => e.stopPropagation()}>
 
           {/* Header */}

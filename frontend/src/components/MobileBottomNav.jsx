@@ -21,18 +21,21 @@ export default function MobileBottomNav({ activeTab, onTab, visible = true }) {
           <button
             key={tab.id}
             onClick={() => onTab(tab.id)}
-            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-medium transition-colors cursor-pointer min-w-0 px-0.5
+            aria-label={tab.label}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+            className={`pressable flex flex-col items-center justify-center flex-1 h-full text-[11px] font-medium transition-colors cursor-pointer min-w-0 px-0.5
               ${activeTab === tab.id
                 ? 'text-blue-600 dark:text-blue-400'
-                : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'}`}
+                : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}
           >
-            <span className="text-lg leading-none mb-0.5">{tab.icon}</span>
+            <span className={`text-lg leading-none mb-0.5 px-4 py-0.5 rounded-full transition-colors ${activeTab === tab.id ? 'bg-blue-100 dark:bg-blue-900/40' : ''}`}>{tab.icon}</span>
             <span className="truncate max-w-full">{tab.label}</span>
           </button>
         ))}
         <button onClick={() => onTab('menu')}
-          className="flex flex-col items-center justify-center h-full text-[10px] font-medium text-neutral-400 min-w-0 px-0.5 hover:text-neutral-600 cursor-pointer">
-          <span className="text-lg leading-none mb-0.5">⋮</span>
+          aria-label="More options"
+          className="pressable flex flex-col items-center justify-center h-full text-[11px] font-medium text-neutral-500 dark:text-neutral-400 min-w-0 px-0.5 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer">
+          <span className="text-lg leading-none mb-0.5 px-4 py-0.5">⋮</span>
           <span className="truncate max-w-full">More</span>
         </button>
       </div>

@@ -1,3 +1,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Mobile interaction defaults (HIG / Material / WCAG mobile) ── */
+
+/* Kill the gray tap flash once; every tappable gets its own :active style */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove the 300ms tap delay on interactive elements */
+button, a, [role="button"], input, select, textarea, summary {
+  touch-action: manipulation;
+}
+
+/* Buttons are controls, not text: no selection callout on long-press */
+button, [role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Visible press feedback on touch (150ms ease-out per platform guidance) */
+@media (hover: none) {
+  button:active, a:active, [role="button"]:active {
+    transition: transform 150ms ease-out, background-color 150ms ease-out;
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+}
