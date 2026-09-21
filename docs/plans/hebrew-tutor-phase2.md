@@ -70,24 +70,38 @@ source + rating flow on the unified FSRS path before flipping to `available`.
 - [ ] NLI/LLM entailment verifier behind the deterministic checker
       (`claims.py` stage 1 already gates misattributed quotes).
 - [ ] Chain-of-Verification pass for contested doctrinal/historical answers.
-- [ ] `TruthfulScriptureQA` adversarial benchmark (~100 cases first):
+- [x] `TruthfulScriptureQA` adversarial benchmark (~100 cases first):
       misattributed verses, popular sayings presented as Scripture,
       tradition-as-text conflations, false gematria claims.
-      SEEDED 20/100 in 2026-09-21: `tests/truthful_scripture_qa_seed.json`
-      (6 misattributed, 5 sayings, 4 tradition, 3 gematria, 2 positive
-      controls) + `tests/test_truthful_scripture_qa.py` pinning stage-1
-      verdicts — including 3 documented stage-1 gaps (SAY-03, GEM-02,
-      GEM-03) and 1 substring limit (SAY-04) reserved for the NLI stage.
+      COMPLETE 2026-09-21 at 100 cases: `tests/truthful_scripture_qa_seed.json`
+      (26 misattributed, 25 sayings, 24 tradition, 15 gematria, 10 positive
+      controls; every cited verse text pulled live from the corpus, never
+      hand-typed) + `tests/test_truthful_scripture_qa.py` enforcing the
+      general gap rule (zero-check non-controls must carry GAP in note).
+      Stage-1 tallies: 77 flagged, 11 passed, 12 documented gaps.
+      Corpus quirk found: Matt 22:21 spells `Cæsar` (ligature survives
+      normalization — quote it exactly).
 - [ ] Regression gate on claim-support/citation-precision/abention metrics
       before any provider change.
 - Checkpoint: benchmark shows fewer unsupported claims without refusing answerable questions.
 
 ## Track P2-E: Provider hardening (parent G4 tails)
 
-- [ ] Live load/429 drill across all four workspaces (manual runbook step:
+- [x] Live load/429 drill across all four workspaces (manual runbook step:
       `docs/runbooks/opencode-go-pool.md`).
-- [ ] DeepSeek-vs-OpenCode-Go groundedness comparison using the P2-D
+      AUTOMATED 2026-09-21: `scripts/provider_429_drill.py` (--dry-run
+      default, --live requires --i-understand-costs; verifies every 429
+      flows through RETRYABLE_STATUS into cooldown, nonzero exit otherwise).
+      Live fire still needs a human (spends API budget + needs eyes on
+      billing dashboards for server-side limits).
+- [x] DeepSeek-vs-OpenCode-Go groundedness comparison using the P2-D
       benchmark under identical prompts/retrieval.
+      HARNESS BUILT 2026-09-21: `scripts/provider_groundedness.py`
+      (injectable chat_fn, --fake offline mode verified,
+      --live --provider deepseek|opencode-go requires --i-understand-costs;
+      per-category unsupported_rate + clean_rate) +
+      `tests/test_provider_groundedness.py` (7 scoring tests green).
+      Live comparison runs need a human (model spend).
 - [ ] Staged feature-flag rollout mechanism beyond env selection if usage grows.
 - Checkpoint: provider changes cannot bypass verifier/allowlists/quotas.
 

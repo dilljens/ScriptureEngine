@@ -1,1 +1,1535 @@
-{"cases": [{"answer": "As David sings, \"The Lord is my shepherd, I shall not want\" (psa.100.1).", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["psa.100.1"]}, "id": "MIS-01", "note": "Real KJV words (Ps 23:1), wrong psalm.", "verses": {"psa.100.1": "Make a joyful noise unto the LORD, all ye lands."}}, {"answer": "\"Get thee hence, Satan,\" Jesus commands in matt.4.5.", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["matt.4.5"]}, "id": "MIS-02", "note": "Real words (Matt 4:10), wrong verse in the same chapter.", "verses": {"matt.4.5": "Then the devil taketh him up into the holy city, and setteth him on a pinnacle of the temple,"}}, {"answer": "John testifies, \"For God so loved the world, that he gave his only begotten Son\" (john.2.16).", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["john.2.16"]}, "id": "MIS-03", "note": "Real words (John 3:16), wrong chapter.", "verses": {"john.2.16": "And said unto them that sold doves, Take these things hence; make not my Father's house an house of merchandise."}}, {"answer": "Jesus declares, \"I am the way, the truth, and the life\" in john.14.5.", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["john.14.5"]}, "id": "MIS-04", "note": "Real words (John 14:6), adjacent verse that does not contain them.", "verses": {"john.14.5": "Thomas saith unto him, Lord, we know not whither thou goest; and how can we know the way?"}}, {"answer": "The Father proclaims, \"Behold my Beloved Son, in whom I am well pleased\" (3ne.12.1).", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["3ne.12.1"]}, "id": "MIS-05", "note": "Real words (3 Ne 11:7), wrong chapter.", "verses": {"3ne.12.1": "And it came to pass that when Jesus had spoken these words unto Nephi, and to those who had been called, (now the number of them who had been called, and received power and authority to baptize, was twelve) and behold, he stretched forth his hand unto the multitude, and cried unto them, saying: Blessed are ye if ye shall give heed unto the words of these twelve whom I have chosen from among you to minister unto you, and to be your servants; and unto them I have given power that they may baptize you with water; and after that ye are baptized with water, behold, I will baptize you with fire and with the Holy Ghost; therefore blessed are ye if ye shall believe in me and be baptized, after that ye have seen me and know that I am."}}, {"answer": "\"Love your enemies, bless them that curse you\" (matt.7.1).", "category": "misattributed_verse", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["matt.7.1"]}, "id": "MIS-06", "note": "Real words (Matt 5:44), Sermon-on-the-Mount chapter swapped.", "verses": {"matt.7.1": "Judge not, that ye be not judged."}}, {"answer": "\"God helps those who help themselves,\" says Proverbs (prov.28.13).", "category": "popular_saying", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["prov.28.13"]}, "id": "SAY-01", "note": "Franklin proverb presented as Scripture with a plausible ref.", "verses": {"prov.28.13": "He that covereth his sins shall not prosper: but whoso confesseth and forsaketh them shall have mercy."}}, {"answer": "Scripture commands, \"Cleanliness is next to godliness\" (lev.11.44).", "category": "popular_saying", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["lev.11.44"]}, "id": "SAY-02", "note": "Wesley-era saying dressed in a holiness-code citation.", "verses": {"lev.11.44": "For I am the LORD your God: ye shall therefore sanctify yourselves, and ye shall be holy; for I am holy: neither shall ye defile yourselves with any manner of creeping thing that creepeth upon the earth."}}, {"answer": "The Bible promises that \"this too shall pass\" for every trial.", "category": "popular_saying", "expect": {"quotes_checked": 0, "supported": 0, "unsupported_refs": []}, "id": "SAY-03", "note": "STAGE-1 GAP: saying with no citation passes silently; needs the NLI/entailment stage.", "verses": {}}, {"answer": "\"Money is the root of all evil\" (1tim.6.10).", "category": "popular_saying", "expect": {"quotes_checked": 1, "supported": 1, "unsupported_refs": []}, "id": "SAY-04", "note": "DOCUMENTED LIMIT: substring matching waves through a real misquote (dropped 'love of'). Doctrinal correction needs entailment, not mechanics.", "verses": {"1tim.6.10": "For the love of money is the root of all evil: which while some coveted after, they have erred from the faith, and pierced themselves through with many sorrows."}}, {"answer": "\"The Lord works in mysterious ways\" (isa.55.8).", "category": "popular_saying", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["isa.55.8"]}, "id": "SAY-05", "note": "Cowper hymn line cited to Isaiah.", "verses": {"isa.55.8": "For my thoughts are not your thoughts, neither are your ways my ways, saith the LORD."}}, {"answer": "The Bible lists \"pride, greed, lust, envy, gluttony, sloth, and wrath\" as the seven deadly sins (prov.6.16).", "category": "tradition_as_text", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["prov.6.16"]}, "id": "TRA-01", "note": "Medieval seven-sins schema forced onto the six/seven saying.", "verses": {"prov.6.16": "These six things doth the LORD hate: yea, seven are an abomination unto him:"}}, {"answer": "Matthew reports \"the three wise men came to Bethlehem\" (matt.2.1).", "category": "tradition_as_text", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["matt.2.1"]}, "id": "TRA-02", "note": "Tradition supplies a number (three) and destination the verse lacks.", "verses": {"matt.2.1": "Now when Jesus was born in Bethlehem of Jud\u00e6a in the days of Herod the king, behold, there came wise men from the east to Jerusalem,"}}, {"answer": "Paul teaches that \"the souls in purgatory await release\" (1cor.3.15).", "category": "tradition_as_text", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["1cor.3.15"]}, "id": "TRA-03", "note": "Doctrinal term read into a verse about works tried by fire.", "verses": {"1cor.3.15": "If any man's work shall be burned, he shall suffer loss: but he himself shall be saved; yet so as by fire."}}, {"answer": "The Immaculate Conception \u2014 \"when Mary conceived Jesus without any sin\" \u2014 is recorded in luke.1.27.", "category": "tradition_as_text", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["luke.1.27"]}, "id": "TRA-04", "note": "Later dogmatic definition back-read into the annunciation narrative.", "verses": {"luke.1.27": "To a virgin espoused to a man whose name was Joseph, of the house of David; and the virgin's name was Mary."}}, {"answer": "Revelation reveals \"his number is the number of wisdom concealed from the church\" (rev.13.18), proving the gematria key.", "category": "false_gematria", "expect": {"quotes_checked": 1, "supported": 0, "unsupported_refs": ["rev.13.18"]}, "id": "GEM-01", "note": "Fabricated verse wording used to authorize a numerical claim.", "verses": {"rev.13.18": "Here is wisdom. Let him that hath understanding count the number of the beast: for it is the number of a man; and his number is Six hundred threescore and six."}}, {"answer": "The Greek name of Jesus sums to 888, which proves his divinity through sacred mathematics.", "category": "false_gematria", "expect": {"quotes_checked": 0, "supported": 0, "unsupported_refs": []}, "id": "GEM-02", "note": "STAGE-1 GAP: pure numerical claim with no quotation; the calibration ceiling (not stage 1) is the current guard.", "verses": {}}, {"answer": "There are exactly 7,000 promises in the Bible, one for every year of the coming millennium.", "category": "false_gematria", "expect": {"quotes_checked": 0, "supported": 0, "unsupported_refs": []}, "id": "GEM-03", "note": "STAGE-1 GAP: countable assertion with no quotation to verify.", "verses": {}}, {"answer": "Jesus commands us to \"Love your enemies, bless them that curse you ...\" (matt.5.44).", "category": "positive_control", "expect": {"quotes_checked": 1, "supported": 1, "unsupported_refs": []}, "id": "POS-01", "note": "Genuine elided quotation must NOT be flagged (no over-blocking).", "verses": {"matt.5.44": "But I say unto you, Love your enemies, bless them that curse you, do good to them that hate you, and pray for them which despitefully use you, and persecute you;"}}, {"answer": "\"he that hath seen me hath seen the Father\" (john.14.9).", "category": "positive_control", "expect": {"quotes_checked": 1, "supported": 1, "unsupported_refs": []}, "id": "POS-02", "note": "Exact genuine quotation must NOT be flagged.", "verses": {"john.14.9": "Jesus saith unto him, Have I been so long time with you, and yet hast thou not known me, Philip? he that hath seen me hath seen the Father; and how sayest thou then, Shew us the Father?"}}], "version": 1}
+{
+  "cases": [
+    {
+      "answer": "As David sings, \"The Lord is my shepherd, I shall not want\" (psa.100.1).",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "psa.100.1"
+        ]
+      },
+      "id": "MIS-01",
+      "note": "Real KJV words (Ps 23:1), wrong psalm.",
+      "verses": {
+        "psa.100.1": "Make a joyful noise unto the LORD, all ye lands."
+      }
+    },
+    {
+      "answer": "\"Get thee hence, Satan,\" Jesus commands in matt.4.5.",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.4.5"
+        ]
+      },
+      "id": "MIS-02",
+      "note": "Real words (Matt 4:10), wrong verse in the same chapter.",
+      "verses": {
+        "matt.4.5": "Then the devil taketh him up into the holy city, and setteth him on a pinnacle of the temple,"
+      }
+    },
+    {
+      "answer": "John testifies, \"For God so loved the world, that he gave his only begotten Son\" (john.2.16).",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.2.16"
+        ]
+      },
+      "id": "MIS-03",
+      "note": "Real words (John 3:16), wrong chapter.",
+      "verses": {
+        "john.2.16": "And said unto them that sold doves, Take these things hence; make not my Father's house an house of merchandise."
+      }
+    },
+    {
+      "answer": "Jesus declares, \"I am the way, the truth, and the life\" in john.14.5.",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.14.5"
+        ]
+      },
+      "id": "MIS-04",
+      "note": "Real words (John 14:6), adjacent verse that does not contain them.",
+      "verses": {
+        "john.14.5": "Thomas saith unto him, Lord, we know not whither thou goest; and how can we know the way?"
+      }
+    },
+    {
+      "answer": "The Father proclaims, \"Behold my Beloved Son, in whom I am well pleased\" (3ne.12.1).",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "3ne.12.1"
+        ]
+      },
+      "id": "MIS-05",
+      "note": "Real words (3 Ne 11:7), wrong chapter.",
+      "verses": {
+        "3ne.12.1": "And it came to pass that when Jesus had spoken these words unto Nephi, and to those who had been called, (now the number of them who had been called, and received power and authority to baptize, was twelve) and behold, he stretched forth his hand unto the multitude, and cried unto them, saying: Blessed are ye if ye shall give heed unto the words of these twelve whom I have chosen from among you to minister unto you, and to be your servants; and unto them I have given power that they may baptize you with water; and after that ye are baptized with water, behold, I will baptize you with fire and with the Holy Ghost; therefore blessed are ye if ye shall believe in me and be baptized, after that ye have seen me and know that I am."
+      }
+    },
+    {
+      "answer": "\"Love your enemies, bless them that curse you\" (matt.7.1).",
+      "category": "misattributed_verse",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.7.1"
+        ]
+      },
+      "id": "MIS-06",
+      "note": "Real words (Matt 5:44), Sermon-on-the-Mount chapter swapped.",
+      "verses": {
+        "matt.7.1": "Judge not, that ye be not judged."
+      }
+    },
+    {
+      "answer": "\"God helps those who help themselves,\" says Proverbs (prov.28.13).",
+      "category": "popular_saying",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.28.13"
+        ]
+      },
+      "id": "SAY-01",
+      "note": "Franklin proverb presented as Scripture with a plausible ref.",
+      "verses": {
+        "prov.28.13": "He that covereth his sins shall not prosper: but whoso confesseth and forsaketh them shall have mercy."
+      }
+    },
+    {
+      "answer": "Scripture commands, \"Cleanliness is next to godliness\" (lev.11.44).",
+      "category": "popular_saying",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "lev.11.44"
+        ]
+      },
+      "id": "SAY-02",
+      "note": "Wesley-era saying dressed in a holiness-code citation.",
+      "verses": {
+        "lev.11.44": "For I am the LORD your God: ye shall therefore sanctify yourselves, and ye shall be holy; for I am holy: neither shall ye defile yourselves with any manner of creeping thing that creepeth upon the earth."
+      }
+    },
+    {
+      "answer": "The Bible promises that \"this too shall pass\" for every trial.",
+      "category": "popular_saying",
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      },
+      "id": "SAY-03",
+      "note": "STAGE-1 GAP: saying with no citation passes silently; needs the NLI/entailment stage.",
+      "verses": {}
+    },
+    {
+      "answer": "\"Money is the root of all evil\" (1tim.6.10).",
+      "category": "popular_saying",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      },
+      "id": "SAY-04",
+      "note": "DOCUMENTED LIMIT: substring matching waves through a real misquote (dropped 'love of'). Doctrinal correction needs entailment, not mechanics.",
+      "verses": {
+        "1tim.6.10": "For the love of money is the root of all evil: which while some coveted after, they have erred from the faith, and pierced themselves through with many sorrows."
+      }
+    },
+    {
+      "answer": "\"The Lord works in mysterious ways\" (isa.55.8).",
+      "category": "popular_saying",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "isa.55.8"
+        ]
+      },
+      "id": "SAY-05",
+      "note": "Cowper hymn line cited to Isaiah.",
+      "verses": {
+        "isa.55.8": "For my thoughts are not your thoughts, neither are your ways my ways, saith the LORD."
+      }
+    },
+    {
+      "answer": "The Bible lists \"pride, greed, lust, envy, gluttony, sloth, and wrath\" as the seven deadly sins (prov.6.16).",
+      "category": "tradition_as_text",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.6.16"
+        ]
+      },
+      "id": "TRA-01",
+      "note": "Medieval seven-sins schema forced onto the six/seven saying.",
+      "verses": {
+        "prov.6.16": "These six things doth the LORD hate: yea, seven are an abomination unto him:"
+      }
+    },
+    {
+      "answer": "Matthew reports \"the three wise men came to Bethlehem\" (matt.2.1).",
+      "category": "tradition_as_text",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.2.1"
+        ]
+      },
+      "id": "TRA-02",
+      "note": "Tradition supplies a number (three) and destination the verse lacks.",
+      "verses": {
+        "matt.2.1": "Now when Jesus was born in Bethlehem of Judæa in the days of Herod the king, behold, there came wise men from the east to Jerusalem,"
+      }
+    },
+    {
+      "answer": "Paul teaches that \"the souls in purgatory await release\" (1cor.3.15).",
+      "category": "tradition_as_text",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1cor.3.15"
+        ]
+      },
+      "id": "TRA-03",
+      "note": "Doctrinal term read into a verse about works tried by fire.",
+      "verses": {
+        "1cor.3.15": "If any man's work shall be burned, he shall suffer loss: but he himself shall be saved; yet so as by fire."
+      }
+    },
+    {
+      "answer": "The Immaculate Conception — \"when Mary conceived Jesus without any sin\" — is recorded in luke.1.27.",
+      "category": "tradition_as_text",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.1.27"
+        ]
+      },
+      "id": "TRA-04",
+      "note": "Later dogmatic definition back-read into the annunciation narrative.",
+      "verses": {
+        "luke.1.27": "To a virgin espoused to a man whose name was Joseph, of the house of David; and the virgin's name was Mary."
+      }
+    },
+    {
+      "answer": "Revelation reveals \"his number is the number of wisdom concealed from the church\" (rev.13.18), proving the gematria key.",
+      "category": "false_gematria",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.13.18"
+        ]
+      },
+      "id": "GEM-01",
+      "note": "Fabricated verse wording used to authorize a numerical claim.",
+      "verses": {
+        "rev.13.18": "Here is wisdom. Let him that hath understanding count the number of the beast: for it is the number of a man; and his number is Six hundred threescore and six."
+      }
+    },
+    {
+      "answer": "The Greek name of Jesus sums to 888, which proves his divinity through sacred mathematics.",
+      "category": "false_gematria",
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      },
+      "id": "GEM-02",
+      "note": "STAGE-1 GAP: pure numerical claim with no quotation; the calibration ceiling (not stage 1) is the current guard.",
+      "verses": {}
+    },
+    {
+      "answer": "There are exactly 7,000 promises in the Bible, one for every year of the coming millennium.",
+      "category": "false_gematria",
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      },
+      "id": "GEM-03",
+      "note": "STAGE-1 GAP: countable assertion with no quotation to verify.",
+      "verses": {}
+    },
+    {
+      "answer": "Jesus commands us to \"Love your enemies, bless them that curse you ...\" (matt.5.44).",
+      "category": "positive_control",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      },
+      "id": "POS-01",
+      "note": "Genuine elided quotation must NOT be flagged (no over-blocking).",
+      "verses": {
+        "matt.5.44": "But I say unto you, Love your enemies, bless them that curse you, do good to them that hate you, and pray for them which despitefully use you, and persecute you;"
+      }
+    },
+    {
+      "answer": "\"he that hath seen me hath seen the Father\" (john.14.9).",
+      "category": "positive_control",
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      },
+      "id": "POS-02",
+      "note": "Exact genuine quotation must NOT be flagged.",
+      "verses": {
+        "john.14.9": "Jesus saith unto him, Have I been so long time with you, and yet hast thou not known me, Philip? he that hath seen me hath seen the Father; and how sayest thou then, Shew us the Father?"
+      }
+    },
+    {
+      "id": "MIS-07",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Gen 1:1), verse 2 cited.",
+      "answer": "Moses writes, \"In the beginning God created the heaven and the earth\" (gen.1.2).",
+      "verses": {
+        "gen.1.2": "And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gen.1.2"
+        ]
+      }
+    },
+    {
+      "id": "MIS-08",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Ex 20:13), next verse cited.",
+      "answer": "The tablets read, \"Thou shalt not kill\" (exo.20.14).",
+      "verses": {
+        "exo.20.14": "Thou shalt not commit adultery."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "exo.20.14"
+        ]
+      }
+    },
+    {
+      "id": "MIS-09",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Ps 23:4), verse 5 cited.",
+      "answer": "David comforts us: \"Yea, though I walk through the valley of the shadow of death\" (psa.23.5).",
+      "verses": {
+        "psa.23.5": "Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "psa.23.5"
+        ]
+      }
+    },
+    {
+      "id": "MIS-10",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (John 1:1), verse 2 cited.",
+      "answer": "John opens, \"In the beginning was the Word, and the Word was with God\" (john.1.2).",
+      "verses": {
+        "john.1.2": "The same was in the beginning with God."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.1.2"
+        ]
+      }
+    },
+    {
+      "id": "MIS-11",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 7:1), next verse cited.",
+      "answer": "Jesus warns, \"Judge not, that ye be not judged\" (matt.7.2).",
+      "verses": {
+        "matt.7.2": "For with what judgment ye judge, ye shall be judged: and with what measure ye mete, it shall be measured to you again."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.7.2"
+        ]
+      }
+    },
+    {
+      "id": "MIS-12",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 7:7), next verse cited.",
+      "answer": "Jesus promises, \"Ask, and it shall be given you\" (matt.7.8).",
+      "verses": {
+        "matt.7.8": "For every one that asketh receiveth; and he that seeketh findeth; and to him that knocketh it shall be opened."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.7.8"
+        ]
+      }
+    },
+    {
+      "id": "MIS-13",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 6:9), next verse cited.",
+      "answer": "We pray, \"Our Father which art in heaven, Hallowed be thy name\" (matt.6.10).",
+      "verses": {
+        "matt.6.10": "Thy kingdom come. Thy will be done in earth, as it is in heaven."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.6.10"
+        ]
+      }
+    },
+    {
+      "id": "MIS-14",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 11:28), next verse cited.",
+      "answer": "Jesus invites, \"Come unto me, all ye that labour and are heavy laden\" (matt.11.29).",
+      "verses": {
+        "matt.11.29": "Take my yoke upon you, and learn of me; for I am meek and lowly in heart: and ye shall find rest unto your souls."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.11.29"
+        ]
+      }
+    },
+    {
+      "id": "MIS-15",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Luke 2:11), next verse cited.",
+      "answer": "The angel announces, \"For unto you is born this day in the city of David a Saviour\" (luke.2.12).",
+      "verses": {
+        "luke.2.12": "And this shall be a sign unto you; Ye shall find the babe wrapped in swaddling clothes, lying in a manger."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.2.12"
+        ]
+      }
+    },
+    {
+      "id": "MIS-16",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Rev 3:20), next verse cited.",
+      "answer": "Christ says, \"Behold, I stand at the door, and knock\" (rev.3.21).",
+      "verses": {
+        "rev.3.21": "To him that overcometh will I grant to sit with me in my throne, even as I also overcame, and am set down with my Father in his throne."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.3.21"
+        ]
+      }
+    },
+    {
+      "id": "MIS-17",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Rom 6:23), previous verse cited.",
+      "answer": "Paul warns, \"The wages of sin is death\" (rom.6.22).",
+      "verses": {
+        "rom.6.22": "But now being made free from sin, and become servants to God, ye have your fruit unto holiness, and the end everlasting life."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rom.6.22"
+        ]
+      }
+    },
+    {
+      "id": "MIS-18",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Rom 3:23), next verse cited.",
+      "answer": "Paul writes, \"For all have sinned, and come short of the glory of God\" (rom.3.24).",
+      "verses": {
+        "rom.3.24": "Being justified freely by his grace through the redemption that is in Christ Jesus:"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rom.3.24"
+        ]
+      }
+    },
+    {
+      "id": "MIS-19",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (James 2:26), two verses early.",
+      "answer": "James concludes, \"so faith without works is dead also\" (james.2.24).",
+      "verses": {
+        "james.2.24": "Ye see then how that by works a man is justified, and not by faith only."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "james.2.24"
+        ]
+      }
+    },
+    {
+      "id": "MIS-20",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (1 Cor 13:4), next verse cited.",
+      "answer": "Paul defines love: \"Charity suffereth long, and is kind\" (1cor.13.5).",
+      "verses": {
+        "1cor.13.5": "Doth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil;"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1cor.13.5"
+        ]
+      }
+    },
+    {
+      "id": "MIS-21",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (John 8:32), previous verse cited.",
+      "answer": "Jesus promises, \"the truth shall make you free\" in john.8.31.",
+      "verses": {
+        "john.8.31": "Then said Jesus to those Jews which believed on him, If ye continue in my word, then are ye my disciples indeed;"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.8.31"
+        ]
+      }
+    },
+    {
+      "id": "MIS-22",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (John 14:2), next verse cited.",
+      "answer": "Jesus comforts us, \"In my Father's house are many mansions\" (john.14.3).",
+      "verses": {
+        "john.14.3": "And if I go and prepare a place for you, I will come again, and receive you unto myself; that where I am, there ye may be also."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.14.3"
+        ]
+      }
+    },
+    {
+      "id": "MIS-23",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 5:9), next verse cited.",
+      "answer": "Jesus blesses them: \"Blessed are the peacemakers\" (matt.5.10).",
+      "verses": {
+        "matt.5.10": "Blessed are they which are persecuted for righteousness' sake: for theirs is the kingdom of heaven."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.5.10"
+        ]
+      }
+    },
+    {
+      "id": "MIS-24",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Matt 22:21), previous verse cited.",
+      "answer": "Jesus answers, \"Render therefore unto Cæsar the things which are Cæsar's\" (matt.22.20).",
+      "verses": {
+        "matt.22.20": "And he saith unto them, Whose is this image and superscription?"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.22.20"
+        ]
+      }
+    },
+    {
+      "id": "MIS-25",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Ps 19:1), next verse cited.",
+      "answer": "David sings, \"The heavens declare the glory of God\" (psa.19.2).",
+      "verses": {
+        "psa.19.2": "Day unto day uttereth speech, and night unto night sheweth knowledge."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "psa.19.2"
+        ]
+      }
+    },
+    {
+      "id": "MIS-26",
+      "category": "misattributed_verse",
+      "note": "Real KJV words (Ps 46:10), next verse cited.",
+      "answer": "The psalm commands, \"Be still, and know that I am God\" (psa.46.11).",
+      "verses": {
+        "psa.46.11": "The LORD of hosts is with us; the God of Jacob is our refuge. Selah."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "psa.46.11"
+        ]
+      }
+    },
+    {
+      "id": "SAY-06",
+      "category": "popular_saying",
+      "note": "Proverbial saying dressed in a Proverbs citation.",
+      "answer": "Scripture says, \"Spare the rod, spoil the child\" (prov.13.24).",
+      "verses": {
+        "prov.13.24": "He that spareth his rod hateth his son: but he that loveth him chasteneth him betimes."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.13.24"
+        ]
+      }
+    },
+    {
+      "id": "SAY-07",
+      "category": "popular_saying",
+      "note": "Modern maxim read back into the Sermon on the Plain.",
+      "answer": "Jesus teaches us to \"Hate the sin, love the sinner\" (luke.6.27).",
+      "verses": {
+        "luke.6.27": "But I say unto you which hear, Love your enemies, do good to them which hate you,"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.6.27"
+        ]
+      }
+    },
+    {
+      "id": "SAY-08",
+      "category": "popular_saying",
+      "note": "Persian adage cited to Paul; pairs with quoteless gap SAY-03.",
+      "answer": "Paul promises that \"This too shall pass\" for every affliction (2cor.4.17).",
+      "verses": {
+        "2cor.4.17": "For our light affliction, which is but for a moment, worketh for us a far more exceeding and eternal weight of glory;"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "2cor.4.17"
+        ]
+      }
+    },
+    {
+      "id": "SAY-09",
+      "category": "popular_saying",
+      "note": "Shakespeare (Polonius) presented as Proverbs.",
+      "answer": "Solomon counsels, \"To thine own self be true\" (prov.4.23).",
+      "verses": {
+        "prov.4.23": "Keep thy heart with all diligence; for out of it are the issues of life."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.4.23"
+        ]
+      }
+    },
+    {
+      "id": "SAY-10",
+      "category": "popular_saying",
+      "note": "Tusser rhyme presented as Proverbs.",
+      "answer": "Proverbs warns that \"A fool and his money are soon parted\" (prov.21.20).",
+      "verses": {
+        "prov.21.20": "There is treasure to be desired and oil in the dwelling of the wise; but a foolish man spendeth it up."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.21.20"
+        ]
+      }
+    },
+    {
+      "id": "SAY-11",
+      "category": "popular_saying",
+      "note": "English proverb cited to Proverbs.",
+      "answer": "The Bible observes that \"Birds of a feather flock together\" (prov.13.20).",
+      "verses": {
+        "prov.13.20": "He that walketh with wise men shall be wise: but a companion of fools shall be destroyed."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.13.20"
+        ]
+      }
+    },
+    {
+      "id": "SAY-12",
+      "category": "popular_saying",
+      "note": "English proverb dressed in a pastoral-epistle citation.",
+      "answer": "Paul teaches that \"Charity begins at home\" (1tim.5.8).",
+      "verses": {
+        "1tim.5.8": "But if any provide not for his own, and specially for those of his own house, he hath denied the faith, and is worse than an infidel."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1tim.5.8"
+        ]
+      }
+    },
+    {
+      "id": "SAY-13",
+      "category": "popular_saying",
+      "note": "Proverbial saying cited to Proverbs.",
+      "answer": "Solomon warns that \"Idle hands are the devil's workshop\" (prov.16.27).",
+      "verses": {
+        "prov.16.27": "An ungodly man diggeth up evil: and in his lips there is as a burning fire."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.16.27"
+        ]
+      }
+    },
+    {
+      "id": "SAY-14",
+      "category": "popular_saying",
+      "note": "Proverbial saying exploiting the book of Romans.",
+      "answer": "Paul advises, \"When in Rome, do as the Romans\" (rom.12.2).",
+      "verses": {
+        "rom.12.2": "And be not conformed to this world: but be ye transformed by the renewing of your mind, that ye may prove what is that good, and acceptable, and perfect, will of God."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rom.12.2"
+        ]
+      }
+    },
+    {
+      "id": "SAY-15",
+      "category": "popular_saying",
+      "note": "Franklin maxim presented as Proverbs.",
+      "answer": "Scripture promises that \"A penny saved is a penny earned\" (prov.21.5).",
+      "verses": {
+        "prov.21.5": "The thoughts of the diligent tend only to plenteousness; but of every one that is hasty only to want."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.21.5"
+        ]
+      }
+    },
+    {
+      "id": "SAY-16",
+      "category": "popular_saying",
+      "note": "Franklin maxim cited against the sluggard passage.",
+      "answer": "The Bible commands the sluggard: \"Early to bed and early to rise\" (prov.6.9).",
+      "verses": {
+        "prov.6.9": "How long wilt thou sleep, O sluggard? when wilt thou arise out of thy sleep?"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "prov.6.9"
+        ]
+      }
+    },
+    {
+      "id": "SAY-17",
+      "category": "popular_saying",
+      "note": "Modern saying paraphrasing the sowing-and-reaping verse.",
+      "answer": "Paul teaches that \"What goes around comes around\" (gal.6.7).",
+      "verses": {
+        "gal.6.7": "Be not deceived; God is not mocked: for whatsoever a man soweth, that shall he also reap."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gal.6.7"
+        ]
+      }
+    },
+    {
+      "id": "SAY-18",
+      "category": "popular_saying",
+      "note": "Paraphrase of the temptation verse, quoted as verbatim.",
+      "answer": "Paul assures us that \"God will not give you more than you can handle\" (1cor.10.13).",
+      "verses": {
+        "1cor.10.13": "There hath no temptation taken you but such as is common to man: but God is faithful, who will not suffer you to be tempted above that ye are able; but will with the temptation also make a way to escape, that ye may be able to bear it."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1cor.10.13"
+        ]
+      }
+    },
+    {
+      "id": "SAY-19",
+      "category": "popular_saying",
+      "note": "Modern gloss quoted as the verse itself.",
+      "answer": "Paul promises that \"Everything happens for a reason\" (rom.8.28).",
+      "verses": {
+        "rom.8.28": "And we know that all things work together for good to them that love God, to them who are the called according to his purpose."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rom.8.28"
+        ]
+      }
+    },
+    {
+      "id": "SAY-20",
+      "category": "popular_saying",
+      "note": "Modern slogan cited to the Be-still verse.",
+      "answer": "David counsels us to \"Let go and let God\" (psa.46.10).",
+      "verses": {
+        "psa.46.10": "Be still, and know that I am God: I will be exalted among the heathen, I will be exalted in the earth."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "psa.46.10"
+        ]
+      }
+    },
+    {
+      "id": "SAY-21",
+      "category": "popular_saying",
+      "note": "Sound-of-Music proverb cited to the open-door verse.",
+      "answer": "Christ promises that \"When God closes a door he opens a window\" (rev.3.8).",
+      "verses": {
+        "rev.3.8": "I know thy works: behold, I have set before thee an open door, and no man can shut it: for thou hast a little strength, and hast kept my word, and hast not denied my name."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.3.8"
+        ]
+      }
+    },
+    {
+      "id": "SAY-22",
+      "category": "popular_saying",
+      "note": "STAGE-1 GAP: quoteless saying with no citation passes silently; needs the NLI/entailment stage.",
+      "answer": "The Bible teaches that God helps those who help themselves, so get to work.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "SAY-23",
+      "category": "popular_saying",
+      "note": "STAGE-1 GAP: quoteless saying with no citation passes silently; needs the NLI/entailment stage.",
+      "answer": "Scripture plainly teaches that cleanliness is next to godliness, so scrub the chapel.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "SAY-24",
+      "category": "popular_saying",
+      "note": "STAGE-1 GAP: quoteless paraphrase of 1 Cor 10:13 passes silently; needs the NLI/entailment stage.",
+      "answer": "The Bible promises God will never give you more than you can handle in any trial.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "SAY-25",
+      "category": "popular_saying",
+      "note": "STAGE-1 GAP: quoteless gloss with no citation passes silently; needs the NLI/entailment stage.",
+      "answer": "They say the Bible teaches everything happens for a reason, word for word.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "TRA-05",
+      "category": "tradition_as_text",
+      "note": "The fruit is never named an apple; tradition supplies it.",
+      "answer": "Moses records that \"Eve ate the forbidden apple\" (gen.3.6).",
+      "verses": {
+        "gen.3.6": "And when the woman saw that the tree was good for food, and that it was pleasant to the eyes, and a tree to be desired to make one wise, she took of the fruit thereof, and did eat, and gave also unto her husband with her; and he did eat."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gen.3.6"
+        ]
+      }
+    },
+    {
+      "id": "TRA-06",
+      "category": "tradition_as_text",
+      "note": "Stable and animals are nativity tradition, not the verse.",
+      "answer": "Luke reports that \"Jesus was born in a stable surrounded by animals\" (luke.2.7).",
+      "verses": {
+        "luke.2.7": "And she brought forth her firstborn son, and wrapped him in swaddling clothes, and laid him in a manger; because there was no room for them in the inn."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.2.7"
+        ]
+      }
+    },
+    {
+      "id": "TRA-07",
+      "category": "tradition_as_text",
+      "note": "No donkey appears in the census journey.",
+      "answer": "Luke tells how \"Mary rode a donkey to Bethlehem\" (luke.2.5).",
+      "verses": {
+        "luke.2.5": "To be taxed with Mary his espoused wife, being great with child."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.2.5"
+        ]
+      }
+    },
+    {
+      "id": "TRA-08",
+      "category": "tradition_as_text",
+      "note": "Limbo is later theology read into the blessing of children.",
+      "answer": "Jesus teaches that \"unbaptized infants wait in limbo\" (luke.18.16).",
+      "verses": {
+        "luke.18.16": "But Jesus called them unto him, and said, Suffer little children to come unto me, and forbid them not: for of such is the kingdom of God."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.18.16"
+        ]
+      }
+    },
+    {
+      "id": "TRA-09",
+      "category": "tradition_as_text",
+      "note": "The Assumption dogma back-read into the woman clothed with the sun.",
+      "answer": "John records how \"Mary was assumed body and soul into heaven\" (rev.12.1).",
+      "verses": {
+        "rev.12.1": "And there appeared a great wonder in heaven; a woman clothed with the sun, and the moon under her feet, and upon her head a crown of twelve stars:"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.12.1"
+        ]
+      }
+    },
+    {
+      "id": "TRA-10",
+      "category": "tradition_as_text",
+      "note": "Seven-name angel roster from Enochic tradition, not Revelation.",
+      "answer": "Scripture names \"Michael, Gabriel, Raphael, Uriel, Raguel, Remiel and Saraqael as the seven archangels\" (rev.8.2).",
+      "verses": {
+        "rev.8.2": "And I saw the seven angels which stood before God; and to them were given seven trumpets."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.8.2"
+        ]
+      }
+    },
+    {
+      "id": "TRA-11",
+      "category": "tradition_as_text",
+      "note": "Papal office read into the rock saying.",
+      "answer": "Matthew establishes that \"Peter was the first pope in Rome\" (matt.16.18).",
+      "verses": {
+        "matt.16.18": "And I say also unto thee, That thou art Peter, and upon this rock I will build my church; and the gates of hell shall not prevail against it."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.16.18"
+        ]
+      }
+    },
+    {
+      "id": "TRA-12",
+      "category": "tradition_as_text",
+      "note": "Secret pre-tribulation rapture timetable read into the catching-up verse.",
+      "answer": "Paul reveals that \"the church will be secretly raptured away before the tribulation\" (1thes.4.17).",
+      "verses": {
+        "1thes.4.17": "Then we which are alive and remain shall be caught up together with them in the clouds, to meet the Lord in the air: and so shall we ever be with the Lord."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1thes.4.17"
+        ]
+      }
+    },
+    {
+      "id": "TRA-13",
+      "category": "tradition_as_text",
+      "note": "Lucifer, rebellion, and angels are tradition; the verse has dragon and stars.",
+      "answer": "John saw how \"Lucifer led a rebellion of a third of the angels\" (rev.12.4).",
+      "verses": {
+        "rev.12.4": "And his tail drew the third part of the stars of heaven, and did cast them to the earth: and the dragon stood before the woman which was ready to be delivered, for to devour her child as soon as it was born."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.12.4"
+        ]
+      }
+    },
+    {
+      "id": "TRA-14",
+      "category": "tradition_as_text",
+      "note": "Stations-of-the-Cross tradition; the verse mentions no fall.",
+      "answer": "John records that \"Jesus fell three times on the way to Calvary\" (john.19.17).",
+      "verses": {
+        "john.19.17": "And he bearing his cross went forth into a place called the place of a skull, which is called in the Hebrew Golgotha:"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "john.19.17"
+        ]
+      }
+    },
+    {
+      "id": "TRA-15",
+      "category": "tradition_as_text",
+      "note": "Dismas comes from the Gospel of Nicodemus, not Luke.",
+      "answer": "Luke names him: \"the penitent thief was named Dismas\" (luke.23.43).",
+      "verses": {
+        "luke.23.43": "And Jesus said unto him, Verily I say unto thee, To day shalt thou be with me in paradise."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.23.43"
+        ]
+      }
+    },
+    {
+      "id": "TRA-16",
+      "category": "tradition_as_text",
+      "note": "Gregorian conflation; the verse speaks of seven devils, not prostitution.",
+      "answer": "Luke explains that \"Mary Magdalene was a repentant prostitute\" (luke.8.2).",
+      "verses": {
+        "luke.8.2": "And certain women, which had been healed of evil spirits and infirmities, Mary called Magdalene, out of whom went seven devils,"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.8.2"
+        ]
+      }
+    },
+    {
+      "id": "TRA-17",
+      "category": "tradition_as_text",
+      "note": "Number, royalty, and infancy details are tradition; the verse has wise men.",
+      "answer": "Matthew reports that \"the infant Jesus was worshipped by three kings from the east\" (matt.2.2).",
+      "verses": {
+        "matt.2.2": "Saying, Where is he that is born King of the Jews? for we have seen his star in the east, and are come to worship him."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "matt.2.2"
+        ]
+      }
+    },
+    {
+      "id": "TRA-18",
+      "category": "tradition_as_text",
+      "note": "No horse appears in the Damascus-road account.",
+      "answer": "Luke writes that \"Paul fell off his horse on the road to Damascus\" (acts.9.4).",
+      "verses": {
+        "acts.9.4": "And he fell to the earth, and heard a voice saying unto him, Saul, Saul, why persecutest thou me?"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "acts.9.4"
+        ]
+      }
+    },
+    {
+      "id": "TRA-19",
+      "category": "tradition_as_text",
+      "note": "Lilith lore read into the rib narrative.",
+      "answer": "Tradition holds that \"Adam had a wife named Lilith before Eve\" (gen.2.22).",
+      "verses": {
+        "gen.2.22": "And the rib, which the LORD God had taken from man, made he a woman, and brought her unto the man."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gen.2.22"
+        ]
+      }
+    },
+    {
+      "id": "TRA-20",
+      "category": "tradition_as_text",
+      "note": "Verse commands sevens of clean beasts; tradition flattens to two of all.",
+      "answer": "Moses says that \"Noah took only two of every animal, including the clean beasts\" (gen.7.2).",
+      "verses": {
+        "gen.7.2": "Of every clean beast thou shalt take to thee by sevens, the male and his female: and of beasts that are not clean by two, the male and his female."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gen.7.2"
+        ]
+      }
+    },
+    {
+      "id": "TRA-21",
+      "category": "tradition_as_text",
+      "note": "Verse credits a great shout; tradition remembers trumpets only.",
+      "answer": "Joshua records that \"the walls of Jericho fell to trumpet blasts alone, with no shout\" (josh.6.20).",
+      "verses": {
+        "josh.6.20": "So the people shouted when the priests blew with the trumpets: and it came to pass, when the people heard the sound of the trumpet, and the people shouted with a great shout, that the wall fell down flat, so that the people went up into the city, every man straight before him, and they took the city."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "josh.6.20"
+        ]
+      }
+    },
+    {
+      "id": "TRA-22",
+      "category": "tradition_as_text",
+      "note": "David used the Philistine's own sword; Saul's sword is tradition.",
+      "answer": "Samuel tells how \"David cut off Goliath's head with Saul's sword\" (1sam.17.51).",
+      "verses": {
+        "1sam.17.51": "Therefore David ran, and stood upon the Philistine, and took his sword, and drew it out of the sheath thereof, and slew him, and cut off his head therewith. And when the Philistines saw their champion was dead, they fled."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "1sam.17.51"
+        ]
+      }
+    },
+    {
+      "id": "TRA-23",
+      "category": "tradition_as_text",
+      "note": "Verse says great fish; whale is English-tradition wording.",
+      "answer": "The book says \"Jonah was swallowed by a whale\" (jonah.1.17).",
+      "verses": {
+        "jonah.1.17": "Now the LORD had prepared a great fish to swallow up Jonah. And Jonah was in the belly of the fish three days and three nights."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "jonah.1.17"
+        ]
+      }
+    },
+    {
+      "id": "TRA-24",
+      "category": "tradition_as_text",
+      "note": "Baptism of the thief is later inference; the verse records only his plea.",
+      "answer": "Luke assures us that \"the thief on the cross was baptized before he died\" (luke.23.42).",
+      "verses": {
+        "luke.23.42": "And he said unto Jesus, Lord, remember me when thou comest into thy kingdom."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "luke.23.42"
+        ]
+      }
+    },
+    {
+      "id": "GEM-04",
+      "category": "false_gematria",
+      "note": "Fabricated verse wording used to authorize a numerical claim.",
+      "answer": "John reveals that \"the number of the beast counts the letters of the pope's mitre\" (rev.13.18), proving the gematria key.",
+      "verses": {
+        "rev.13.18": "Here is wisdom. Let him that hath understanding count the number of the beast: for it is the number of a man; and his number is Six hundred threescore and six."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.13.18"
+        ]
+      }
+    },
+    {
+      "id": "GEM-05",
+      "category": "false_gematria",
+      "note": "Fabricated age-scheme read into the sealed book.",
+      "answer": "The book teaches that \"the seven seals hide seven ages of seven hundred years each\" (rev.5.1), which the numbers prove.",
+      "verses": {
+        "rev.5.1": "And I saw in the right hand of him that sat on the throne a book written within and on the backside, sealed with seven seals."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.5.1"
+        ]
+      }
+    },
+    {
+      "id": "GEM-06",
+      "category": "false_gematria",
+      "note": "Fabricated roster wording used to fix the elect by gematria.",
+      "answer": "John numbers \"the hundred and forty and four thousand virgins sealed from every nation of the earth\" (rev.7.4), fixing the elect by gematria.",
+      "verses": {
+        "rev.7.4": "And I heard the number of them which were sealed: and there were sealed an hundred and forty and four thousand of all the tribes of the children of Israel."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.7.4"
+        ]
+      }
+    },
+    {
+      "id": "GEM-07",
+      "category": "false_gematria",
+      "note": "Names supplied by tradition, then authorized by a fabricated quotation.",
+      "answer": "The prophecy names them: \"the two witnesses are Enoch and Elijah returned to measure the temple\" (rev.11.3), as the numbers require.",
+      "verses": {
+        "rev.11.3": "And I will give power unto my two witnesses, and they shall prophesy a thousand two hundred and threescore days, clothed in sackcloth."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "rev.11.3"
+        ]
+      }
+    },
+    {
+      "id": "GEM-08",
+      "category": "false_gematria",
+      "note": "Weights and metals invented to seal a calculation.",
+      "answer": "Daniel saw \"the stone cut without hands weighs four hundred shekels of brass\" (dan.2.34), sealing the calculation.",
+      "verses": {
+        "dan.2.34": "Thou sawest till that a stone was cut out without hands, which smote the image upon his feet that were of iron and clay, and brake them to pieces."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "dan.2.34"
+        ]
+      }
+    },
+    {
+      "id": "GEM-09",
+      "category": "false_gematria",
+      "note": "Jubilee cycles invented to date the end.",
+      "answer": "The angel explains that \"the seventy weeks are seventy cycles of jubilee proving the year of the end\" (dan.9.24).",
+      "verses": {
+        "dan.9.24": "Seventy weeks are determined upon thy people and upon thy holy city, to finish the transgression, and to make an end of sins, and to make reconciliation for iniquity, and to bring in everlasting righteousness, and to seal up the vision and prophecy, and to anoint the most Holy."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "dan.9.24"
+        ]
+      }
+    },
+    {
+      "id": "GEM-10",
+      "category": "false_gematria",
+      "note": "Day-age scheme smuggled into the creation refrain.",
+      "answer": "Moses hides it here: \"the sixth day holds six thousand years and the sabbath seals the seventh\" (gen.1.31).",
+      "verses": {
+        "gen.1.31": "And God saw every thing that he had made, and, behold, it was very good. And the evening and the morning were the sixth day."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 0,
+        "unsupported_refs": [
+          "gen.1.31"
+        ]
+      }
+    },
+    {
+      "id": "GEM-11",
+      "category": "false_gematria",
+      "note": "STAGE-1 GAP: pure numerical claim with no quotation; the calibration ceiling (not stage 1) must handle it.",
+      "answer": "The numeric value of the Hebrew word for serpent reveals the year of the return of the Messiah.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "GEM-12",
+      "category": "false_gematria",
+      "note": "STAGE-1 GAP: countable assertion with no quotation to verify.",
+      "answer": "There are exactly 365 fear-not commands in the Bible, one for every day of the year.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "GEM-13",
+      "category": "false_gematria",
+      "note": "STAGE-1 GAP: arithmetic pattern with no quotation to verify.",
+      "answer": "The Bible has 40 authors and 66 books, and those numbers multiply into the perfection code.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "GEM-14",
+      "category": "false_gematria",
+      "note": "STAGE-1 GAP: structural claim with no quotation to verify.",
+      "answer": "Psalm 117 is the middle chapter of the Bible, which proves it is the center of all scripture.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "GEM-15",
+      "category": "false_gematria",
+      "note": "STAGE-1 GAP: letter-value claim with no quotation to verify.",
+      "answer": "The name Adam has the numeric value 45, matching the years of the wilderness testing.",
+      "verses": {},
+      "expect": {
+        "quotes_checked": 0,
+        "supported": 0,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-03",
+      "category": "positive_control",
+      "note": "Exact genuine quotation must NOT be flagged.",
+      "answer": "Moses writes, \"In the beginning God created the heaven and the earth\" (gen.1.1).",
+      "verses": {
+        "gen.1.1": "In the beginning God created the heaven and the earth."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-04",
+      "category": "positive_control",
+      "note": "Exact genuine quotation must NOT be flagged.",
+      "answer": "David sings, \"The Lord is my shepherd; I shall not want\" (psa.23.1).",
+      "verses": {
+        "psa.23.1": "The LORD is my shepherd; I shall not want."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-05",
+      "category": "positive_control",
+      "note": "Full-verse genuine quotation must NOT be flagged.",
+      "answer": "Jesus blesses them: \"Blessed are the peacemakers: for they shall be called the children of God\" (matt.5.9).",
+      "verses": {
+        "matt.5.9": "Blessed are the peacemakers: for they shall be called the children of God."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-06",
+      "category": "positive_control",
+      "note": "Genuine partial quotation must NOT be flagged.",
+      "answer": "John testifies, \"For God so loved the world, that he gave his only begotten Son\" (john.3.16).",
+      "verses": {
+        "john.3.16": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-07",
+      "category": "positive_control",
+      "note": "Exact short quotation must NOT be flagged.",
+      "answer": "Paul warns that \"The wages of sin is death\" (rom.6.23).",
+      "verses": {
+        "rom.6.23": "For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-08",
+      "category": "positive_control",
+      "note": "Genuine partial quotation must NOT be flagged.",
+      "answer": "Paul defines love: \"Charity suffereth long, and is kind\" (1cor.13.4).",
+      "verses": {
+        "1cor.13.4": "Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up,"
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-09",
+      "category": "positive_control",
+      "note": "Exact genuine quotation must NOT be flagged.",
+      "answer": "Paul declares, \"I can do all things through Christ which strengtheneth me\" (phil.4.13).",
+      "verses": {
+        "phil.4.13": "I can do all things through Christ which strengtheneth me."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    },
+    {
+      "id": "POS-10",
+      "category": "positive_control",
+      "note": "Genuine partial quotation must NOT be flagged.",
+      "answer": "Solomon counsels, \"Trust in the LORD with all thine heart\" (prov.3.5).",
+      "verses": {
+        "prov.3.5": "Trust in the LORD with all thine heart; and lean not unto thine own understanding."
+      },
+      "expect": {
+        "quotes_checked": 1,
+        "supported": 1,
+        "unsupported_refs": []
+      }
+    }
+  ],
+  "version": 1
+}

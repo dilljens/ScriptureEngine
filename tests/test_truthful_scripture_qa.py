@@ -51,6 +51,10 @@ def test_positive_controls_never_flagged():
 def test_stage1_gaps_documented_not_silent():
     """Unquoted adversarial claims must be PRESENT in the seed as gaps (so the
     NLI stage knows its backlog), even though stage 1 cannot flag them."""
-    gaps = [c["id"] for c in _load()
-            if c["expect"]["quotes_checked"] == 0 and c["category"] != "positive_control"]
-    assert set(gaps) == {"SAY-03", "GEM-02", "GEM-03"}
+    for case in _load():
+        is_gap = case["expect"]["quotes_checked"] == 0
+        is_control = case["category"] == "positive_control"
+        if is_gap and not is_control:
+            assert "GAP" in case["note"], case["id"]
+        if "GAP" in case["note"]:
+            assert is_gap, case["id"]
