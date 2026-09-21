@@ -160,6 +160,11 @@ rsync -avz --delete \
 	--exclude '*.pyc' \
 	lib/ "$HOST:$REMOTE_DIR/lib/"
 
+# System prompts live at the repo root (chat.py loads CHAT_AGENTS*.md from
+# BASE_DIR at import) — sync them so prompt edits take effect on restart.
+echo "Syncing chat prompts..."
+rsync -avz CHAT_AGENTS.md CHAT_AGENTS_HEBREW.md CHAT_AGENTS_KNOWLEDGE.md "$HOST:$REMOTE_DIR/"
+
 echo "Syncing data files..."
 if [ "${FRONTEND_ONLY:-0}" = "1" ]; then
     echo "  (skipped — FRONTEND_ONLY)"

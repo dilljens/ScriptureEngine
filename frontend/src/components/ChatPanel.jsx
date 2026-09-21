@@ -297,6 +297,7 @@ const SYSTEM_PROMPT = `You are a scripture study assistant for the Scripture Eng
 3. All scripture testifies of Christ — show the connection when the text supports it
 4. Report confidence as percentage from tool results
 5. Use full book names: "Genesis 1:1", "D&C 76:22", "1 Nephi 3:7"
+6. End answers that used tools with a compact Research trail: line naming each tool + key arguments (e.g. scripture_connections(gen.1.1, layers=[linguistic])) so the user can recreate the research
 
 Be concise, accurate, and cite verse references.`
 
@@ -1786,35 +1787,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   ? 'bg-blue-600 text-white rounded-2xl rounded-br-md'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-2xl rounded-bl-md'
                 }`}>
-                {/* Copy button (top-right) — always visible on touch, hover-reveal on desktop */}
-                {msg.role === 'assistant' && !msg.streaming && (
-                  <button onClick={() => copyToClipboard(msg.content, i)}
-                    aria-label="Copy message"
-                    className="absolute -top-2 -right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
-                    title="Copy message">
-                    {copiedIdx === i ? (
-                      <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
-                    ) : (
-                      <span className="text-neutral-400 dark:text-neutral-400">📋</span>
-                    )}
-                  </button>
-                )}
-
-                {/* Share button (left of copy) — snapshot this response to an unlisted link */}
-                {msg.role === 'assistant' && !msg.streaming && (
-                  <button onClick={() => handleShare(msg, i)}
-                    aria-label="Share message"
-                    className="absolute -top-2 -right-11 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
-                    title="Share this response — copies an unlisted link">
-                    {sharedIdx === i ? (
-                      <span className="text-green-600 dark:text-green-400 text-[8px]">✓</span>
-                    ) : shareFlag?.idx === i ? (
-                      <span title={shareFlag.kind === 'failed' ? 'Share failed — try again' : 'Saving message… try again in a moment'}>{shareFlag.kind === 'failed' ? '⚠️' : '⏳'}</span>
-                    ) : (
-                      <span>🔗</span>
-                    )}
-                  </button>
-                )}
+                {/* Message actions live in the inline row at the bottom of the bubble. */}
 
                 {/* Reasoning — stream as one line; never expands into a box */}
                 {(msg.streaming ? streamingThinking : msg.reasoning_content) ? (
@@ -1888,14 +1861,46 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   )
                 })()}
 
-                {/* Edit button (bottom-right, on hover) — for user messages (not while waiting) */}
-                {msg.role === 'user' && !waiting && (
-                  <button onClick={() => startEditing(i, msg.content)}
-                    aria-label="Edit message"
-                    className="absolute -bottom-2 -right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-600 cursor-pointer text-[10px]"
-                    title="Edit message">
-                    Edit
-                  </button>
+                {/* Edit lives in the inline action row below (absolute buttons clip on mobile) */}
+
+                {/* Message actions — labeled inline row inside the bubble so
+                    nothing clips off-screen. Always visible on touch,
+                    hover-reveal on desktop. */}
+                {!msg.streaming && (
+                  <div className="flex items-center gap-1 mt-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 focus-within:opacity-100 transition-opacity">
+                    {msg.role === 'assistant' && (
+                      <>
+                        <button onClick={() => copyToClipboard(msg.content, i)}
+                          aria-label="Copy message"
+                          title="Copy message"
+                          className="flex items-center gap-1 px-2 h-8 rounded-lg text-[11px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors">
+                          <span>{copiedIdx === i ? '✓' : '📋'}</span>
+                          <span>{copiedIdx === i ? 'Copied' : 'Copy'}</span>
+                        </button>
+                        <button onClick={() => handleShare(msg, i)}
+                          aria-label="Share this response as an unlisted link"
+                          title="Share this response — copies an unlisted link"
+                          className="flex items-center gap-1 px-2 h-8 rounded-lg text-[11px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors">
+                          {sharedIdx === i ? (
+                            <><span>✓</span><span>Link copied</span></>
+                          ) : shareFlag?.idx === i ? (
+                            <><span>{shareFlag.kind === 'failed' ? '⚠️' : '⏳'}</span><span>{shareFlag.kind === 'failed' ? 'Failed — retry' : 'Saving…'}</span></>
+                          ) : (
+                            <><span>🔗</span><span>Share</span></>
+                          )}
+                        </button>
+                      </>
+                    )}
+                    {msg.role === 'user' && !waiting && (
+                      <button onClick={() => startEditing(i, msg.content)}
+                        aria-label="Edit message"
+                        title="Edit message"
+                        className="flex items-center gap-1 px-2 h-8 rounded-lg text-[11px] font-medium text-neutral-500 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors">
+                        <span>✏️</span>
+                        <span>Edit</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
