@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { parseStandardRef, resolveBook } from '../refParser'
+import { parseRef, resolveBookTitle, canonicalBookId } from '../bookNames'
 import CardQueue from './CardQueue'
 import { currentSessionToken } from '../api'
 
@@ -38,6 +39,19 @@ export default function MemorizeQueue({ onStartReview }) {
     const token = sessionToken()
     return token ? { Authorization: `Bearer ${token}` } : {}
   }
+
+  // Display verse ids in normal format ("D&C 19:16", "1 Nephi 3:7").
+  const fmtRef = (verseId) => {
+    try {
+      const info = parseRef(verseId)
+      if (info?.label) return info.label
+    } catch {}
+    return verseId
+  }
+
+  // Resolve a typed book name via parser aliases first, then library titles
+  // (covers DSS/descriptive names the alias table lacks: "Community Rule").
+  const resolveMemorizeBook = (text) => resolveBook(text) || resolveBookTitle(text)
 
   const loadQueue = async () => {
     setLoading(true)
@@ -94,6 +108,37 @@ export default function MemorizeQueue({ onStartReview }) {
     }
     const trimmed = searchQuery.trim()
 
+    // D&C forms the generic parsers miss ("D&C 19:16", "D&C 19").
+    const dcMatch = trimmed.match(/^D&C\s+(\d+)(?::(\d+(?:[-,]\d+)*))?$/i)
+    if (dcMatch) {
+      const sec = parseInt(dcMatch[1])
+      const vs = dcMatch[2]
+      const firstV = vs ? parseInt(vs.split(/[-,]/)[0]) : null
+      const lastV = vs ? (vs.includes('-') ? parseInt(vs.split('-')[1]) : firstV) : null
+      const verseId = firstV ? `dc${sec}.${sec}.${firstV}` : `dc${sec}.${sec}.1`
+      setRefResults([{
+        verseId, label: firstV ? `D&C ${sec}:${firstV}${lastV && lastV !== firstV ? `-${lastV}` : ''}` : `D&C ${sec}`,
+        book: `dc${sec}`, chapter: sec,
+        verseStart: firstV, verseEnd: lastV && lastV !== firstV ? lastV : null,
+      }])
+    } else {
+    // Dot form with any-case book id ("gen.1.1", "1QS.1.1", "dc76.76.22").
+    const dotMatch = trimmed.match(/^([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?$/)
+    const dotBook = dotMatch ? canonicalBookId(dotMatch[1]) : null
+    if (dotMatch && (resolveBookTitle(dotBook) || /^dc\d+$/i.test(dotMatch[1]))) {
+      const ch = parseInt(dotMatch[2])
+      const vsPart = dotMatch[3]
+      const firstV = vsPart ? parseInt(vsPart.split('-')[0]) : null
+      const lastV = vsPart && vsPart.includes('-') ? parseInt(vsPart.split('-')[1]) : null
+      const verseId = firstV ? `${dotBook}.${ch}.${firstV}` : `${dotBook}.${ch}.1`
+      const rangeSuffix = lastV && lastV !== firstV ? `-${lastV}` : ''
+      setRefResults([{
+        verseId,
+        label: firstV ? fmtRef(verseId) + rangeSuffix : (parseRef(`${dotBook}.${ch}`)?.label || `${dotBook} ${ch}`),
+        book: dotBook, chapter: ch,
+        verseStart: firstV, verseEnd: lastV && lastV !== firstV ? lastV : null,
+      }])
+    } else {
     // Parse as a verse reference first
     const parsed = parseStandardRef(trimmed)
     if (parsed) {
@@ -101,9 +146,9 @@ export default function MemorizeQueue({ onStartReview }) {
       const isRange = parsed.verses && parsed.verses.length > 1
       const lastVerse = isRange ? parsed.verses[parsed.verses.length - 1] : firstVerse
       const verseId = `${parsed.book}.${parsed.chapter}.${firstVerse}`
-      let label = `${parsed.book} ${parsed.chapter}:${firstVerse}`
+      let label = fmtRef(verseId)
       if (isRange) label += `-${lastVerse}`
-      else if (!parsed.verse) label = `${parsed.book} ${parsed.chapter}`
+      else if (!parsed.verse) label = parseRef(`${parsed.book}.${parsed.chapter}`)?.label || label
       setRefResults([{
         verseId, label,
         book: parsed.book, chapter: parsed.chapter,
@@ -113,7 +158,7 @@ export default function MemorizeQueue({ onStartReview }) {
       // Try natural language: "Genesis 1" or "Genesis 1:1-5"
       const bookMatch = trimmed.match(/^([\w\s]+?)\s*(\d+)(?::(\d+(?:[-,]\d+)*))?$/)
       if (bookMatch) {
-        const bookId = resolveBook(bookMatch[1].trim())
+        const bookId = resolveMemorizeBook(bookMatch[1].trim())
         if (bookId) {
           const ch = parseInt(bookMatch[2])
           const vs = bookMatch[3]
@@ -121,7 +166,10 @@ export default function MemorizeQueue({ onStartReview }) {
           const lastV = vs ? (vs.includes('-') ? parseInt(vs.split('-')[1]) : firstV) : null
           const verseId = firstV ? `${bookId}.${ch}.${firstV}` : `${bookId}.${ch}`
           setRefResults([{
-            verseId, label: trimmed,
+            verseId,
+            label: firstV
+              ? fmtRef(verseId) + (lastV && lastV !== firstV ? `-${lastV}` : '')
+              : (parseRef(`${bookId}.${ch}`)?.label || trimmed),
             book: bookId, chapter: ch,
             verseStart: firstV, verseEnd: lastV || null,
           }])
@@ -131,7 +179,9 @@ export default function MemorizeQueue({ onStartReview }) {
       } else {
         setRefResults([])
       }
-    }
+    } // end parseStandardRef else
+    } // end dot-form else
+    } // end D&C else
 
     // FTS5 text search as supplement
     const timer = setTimeout(async () => {
@@ -380,7 +430,7 @@ export default function MemorizeQueue({ onStartReview }) {
                 )}
               </div>
               <div className="flex gap-1.5">
-                {!r.verseEnd ? (
+                {r.verseStart && !r.verseEnd ? (
                   <button onClick={() => addVerse(r.verseId)}
                     className="px-2 py-1 rounded text-[10px] font-medium bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer transition-colors">
                     + Verse
@@ -390,7 +440,7 @@ export default function MemorizeQueue({ onStartReview }) {
                   className="px-2 py-1 rounded text-[10px] font-medium bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer transition-colors">
                   {r.verseEnd && r.verseStart
                     ? `+ Range (${r.verseEnd - r.verseStart + 1}v)`
-                    : '+ Chapter'}
+                    : String(r.book || '').startsWith('dc') ? '+ Section' : '+ Chapter'}
                 </button>
               </div>
             </div>
@@ -402,8 +452,8 @@ export default function MemorizeQueue({ onStartReview }) {
               {searchResults.slice(0, 8).map(r => (
                 <div key={r.verse || r.verse_id} className="flex items-center justify-between py-1.5 border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                   <div className="min-w-0 flex-1 mr-2">
-                    <button onClick={() => { const p = (r.verse || r.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: p[0], chapter: parseInt(p[1])}})) }}
-                      className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 cursor-pointer transition-colors">{r.verse || r.verse_id}</button>
+                    <button onClick={() => { const p = (r.verse || r.verse_id || '').split('.'); if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {detail: {book: canonicalBookId(p[0]), chapter: parseInt(p[1])}})) }}
+                      className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 cursor-pointer transition-colors">{fmtRef(r.verse || r.verse_id)}</button>
                     <span className="text-[10px] text-neutral-500 dark:text-neutral-400 ml-1">{(r.book || '').toUpperCase()}</span>
                     <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5 truncate">{(r.text || r.text_english || '').slice(0, 80)}</p>
                   </div>
@@ -494,14 +544,14 @@ export default function MemorizeQueue({ onStartReview }) {
               <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{v.verse_id}</span>
+                  <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{fmtRef(v.verse_id)}</span>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5 line-clamp-2" dir={displayLang === 'hebrew' ? 'rtl' : 'ltr'}>
                     {verseText(v)}
                   </p>
                 </div>
                 {!selectMode && (
                 <button onClick={(e) => { e.stopPropagation(); removeVerse(v.id) }}
-                  aria-label={`Remove ${v.verse_id} from queue`}
+                  aria-label={`Remove ${fmtRef(v.verse_id)} from queue`}
                   className="ml-2 text-neutral-300 hover:text-red-500 cursor-pointer text-sm shrink-0">✕</button>
                 )}
               </div>

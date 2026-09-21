@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRef, formatRef, BOOK_TITLES } from '../bookNames'
+import { parseRef, formatRef, BOOK_TITLES, canonicalBookId, resolveBookTitle } from '../bookNames'
 
 describe('parseRef', () => {
   it('parses a standard 3-part verse ref (gen.1.1)', () => {
@@ -107,5 +107,41 @@ describe('formatRef', () => {
 
   it('formats with undefined verse', () => {
     expect(formatRef('matt', 5, undefined)).toBe('matt.5')
+  })
+})
+
+describe('canonicalBookId', () => {
+  it('preserves lowercase ids', () => {
+    expect(canonicalBookId('gen')).toBe('gen')
+  })
+  it('restores uppercase DSS ids', () => {
+    expect(canonicalBookId('1qs')).toBe('1QS')
+    expect(canonicalBookId('cd')).toBe('CD')
+    expect(canonicalBookId('4q400')).toBe('4Q400')
+    expect(canonicalBookId('1QS')).toBe('1QS')
+  })
+  it('lowercases unknown ids', () => {
+    expect(canonicalBookId('GEN')).toBe('gen')
+  })
+})
+
+describe('resolveBookTitle', () => {
+  it('resolves full titles to ids', () => {
+    expect(resolveBookTitle('Community Rule')).toBe('1QS')
+    expect(resolveBookTitle('War Scroll')).toBe('1QM')
+    expect(resolveBookTitle('Genesis')).toBe('gen')
+    expect(resolveBookTitle('1 Nephi')).toBe('1ne')
+  })
+  it('resolves ids in any case', () => {
+    expect(resolveBookTitle('1qs')).toBe('1QS')
+    expect(resolveBookTitle('GEN')).toBe('gen')
+  })
+  it('handles singular/plural', () => {
+    expect(resolveBookTitle('Psalm')).toBe('psa')
+    expect(resolveBookTitle('Psalms')).toBe('psa')
+  })
+  it('returns null for unknown names', () => {
+    expect(resolveBookTitle('Fakebook')).toBeNull()
+    expect(resolveBookTitle('')).toBeNull()
   })
 })

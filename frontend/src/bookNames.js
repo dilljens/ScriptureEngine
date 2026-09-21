@@ -69,6 +69,25 @@ const WORK_MAP = {
  * ref the UI builds must use canonical case or chapter/verse fetches 404.
  * Unknown ids fall back to lowercase (matches the historic behavior).
  */
+/**
+ * Resolve a book display title (or id) to its canonical id:
+ * 'Community Rule' → '1QS', 'Psalms' → 'psa', 'genesis' → 'gen',
+ * with singular/plural forgiveness. Returns null when unknown.
+ */
+export function resolveBookTitle(name) {
+  const n = String(name || '').trim()
+  if (!n) return null
+  const lower = n.toLowerCase()
+  const keys = Object.keys(BOOK_TITLES)
+  const asId = keys.find(k => k.toLowerCase() === lower)
+  if (asId) return asId
+  const asTitle = keys.find(
+    k => BOOK_TITLES[k].toLowerCase() === lower
+      || BOOK_TITLES[k].toLowerCase() === lower + 's'
+      || BOOK_TITLES[k].toLowerCase() === lower.replace(/s$/, ''))
+  return asTitle || null
+}
+
 export function canonicalBookId(id) {
   if (id == null) return id
   const lower = String(id).toLowerCase()

@@ -16,7 +16,7 @@
  */
 
 import React from 'react'
-import { BOOK_TITLES, canonicalBookId } from '../bookNames'
+import { BOOK_TITLES, canonicalBookId, resolveBookTitle } from '../bookNames'
 import VerseRef from '../components/VerseRef'
 
 // Format a verse ref like "gen.1.1-12" into a readable name like "Genesis 1:1-12"
@@ -308,17 +308,7 @@ function autoLinkBareRefs(text) {
  *  canonical key. Canonical case matters: DSS ids are UPPERCASE in the
  *  corpus ('1QS'), and lowercase fetches 404. */
 function resolveBookKey(name) {
-  const n = String(name).trim()
-  const lower = n.toLowerCase()
-  // Book id in any case → canonical id ('1qs' → '1QS', 'GEN' → 'gen').
-  const asId = Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === lower)
-  if (asId) return asId
-  // Display title (any case), with singular/plural forgiveness.
-  const asTitle = Object.keys(BOOK_TITLES).find(
-    k => BOOK_TITLES[k].toLowerCase() === lower
-      || BOOK_TITLES[k].toLowerCase() === lower + 's'
-      || BOOK_TITLES[k].toLowerCase() === lower.replace(/s$/, ''))
-  return asTitle || null
+  return resolveBookTitle(name)
 }
 
 /**
