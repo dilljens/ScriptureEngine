@@ -518,7 +518,7 @@ def _ensure_hebrew_review_state(conn):
         conn.execute("ALTER TABLE hebrew_review_state_new RENAME TO hebrew_review_state")
 
 
-CARD_MODES = ("hearing", "reverse", "forward")
+CARD_MODES = ("hearing", "reverse", "forward", "visual_only")
 
 
 def _ensure_hebrew_prefs(conn):
@@ -807,7 +807,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     hint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)
     failure_location: 'start', 'middle', 'end', 'confusion', or '' for no failure.
     card_mode: Anki-style card direction — 'hearing', 'reverse', 'forward',
-      'drill', or '' (general). Each (node, mode) has its own FSRS schedule;
+      'visual_only', 'drill', or '' (general). Each (node, mode) has its own FSRS schedule;
       node-level mastery stays aggregated across modes.
     hebrew: optional Hebrew word used instead of node_id (audio review);
       resolved to a node via lesson content.
@@ -816,7 +816,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    if card_mode not in ("", "hearing", "reverse", "forward", "drill"):
+    if card_mode not in ("", "hearing", "reverse", "forward", "drill", "visual_only"):
         card_mode = ""
     user_id = _resolve_hebrew_user(user_id, session_token)
     rating = max(1, min(4, rating))
@@ -3106,6 +3106,213 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         "reviews_capped": capped,
         "reviews_remaining": max(0, len(compressed) - len(capped_reviews)),
     }}
+
+
+# ── Directed practice queues (P2-B modes) ─────────────────────────────
+# Queue sources for cloze / two-way translation / visual-only. Every item
+# rates through an existing FSRS path (progress for cloze answers,
+# fsrs/review for directed card modes) — no second scheduler.
+
+CLOZE_BLANK = "______"
+
+
+def _due_mode_rows(conn, user_id: str, modes: tuple, limit: int):
+    """Due hebrew_review_state rows restricted to the given card modes."""
+    placeholders = ",".join("?" for _ in modes)
+    return conn.execute(f"""
+        SELECT s.node_id, s.card_mode, s.stability, s.difficulty, s.due,
+               n.title, n.level, n.category
+        FROM hebrew_review_state s
+        JOIN hebrew_nodes n ON n.id=s.node_id
+        WHERE s.user_id=? AND s.card_mode IN ({placeholders})
+          AND s.due <= datetime('now','localtime')
+        ORDER BY s.due ASC LIMIT ?
+    """, (user_id, *modes, limit)).fetchall()
+
+
+def _new_practice_nodes(conn, user_id: str, limit: int, exclude=(),
+                        cloze_only: bool = False):
+    """Least-practiced nodes as fresh cards (a new mode has no rows yet)."""
+    cloze_filter = ("AND EXISTS (SELECT 1 FROM hebrew_practice_items p"
+                    " WHERE p.node_id=n.id AND p.question_type='cloze')"
+                    if cloze_only else "")
+    rows = conn.execute(f"""
+        SELECT n.id, n.title, n.level, n.category,
+               COALESCE(p.attempts, 0) as attempts
+        FROM hebrew_nodes n
+        LEFT JOIN hebrew_progress p
+          ON p.user_id=? AND p.node_id=n.id
+        WHERE 1=1 {cloze_filter}
+        ORDER BY attempts ASC, n.id ASC LIMIT ?
+    """, (user_id, max(limit * 3, limit))).fetchall()
+    excluded = set(exclude or ())
+    return [r for r in rows if r["id"] not in excluded][:limit]
+
+
+def _cloze_items_for_node(conn, node_id: str):
+    return conn.execute("""
+        SELECT id, question_text,
+               COALESCE(correct_answer, '') as correct_answer
+        FROM hebrew_practice_items
+        WHERE node_id=? AND question_type='cloze' ORDER BY id ASC
+    """, (node_id,)).fetchall()
+
+
+def _parse_cloze_item(question_text: str):
+    """Locate the blank in a cloze prompt.
+
+    The answer itself stays server-side (correct_answer column, graded via
+    /hebrew/progress); the client gets prompt + blank geometry for
+    explicit reveal.
+    """
+    prompt = question_text or ""
+    start = prompt.find(CLOZE_BLANK)
+    return {
+        "prompt": prompt,
+        "blank_start": start,
+        "blank_length": len(CLOZE_BLANK) if start >= 0 else 0,
+    }
+
+
+@router.get("/api/v1/hebrew/cloze/next")
+def get_cloze_next(user_id: str = "default", limit: int = 10, day: str = "",
+                   session_token: str = "", authorization: str = Header("")):
+    """Due-node cloze deletion cards with deterministic target metadata.
+
+    Same calendar day + same node → same question (stable target word,
+    stable blank). Answer stays server-side; rate via
+    POST /api/v1/hebrew/progress {node_id, question_id, answer}.
+    """
+    user_id = _require_hebrew_user(user_id, session_token)
+    try:
+        day_str = datetime.date.fromisoformat(day).isoformat() if day else None
+    except ValueError:
+        day_str = None
+    day_str = day_str or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        ensure_hebrew_schema_once()
+        # Cloze answers rate through /hebrew/progress, which schedules the
+        # general ('') FSRS row — so cloze due-ness keys off '' rows.
+        due_nodes = [r["node_id"] for r in _due_mode_rows(
+            conn, user_id, ("",), max(1, min(limit, 50)) * 2)]
+        if not due_nodes:
+            due_nodes = [r["id"] for r in _new_practice_nodes(
+                conn, user_id, max(1, min(limit, 50)), cloze_only=True)]
+        cards = []
+        seen_nodes = set()
+        for node_id in due_nodes:
+            items = _cloze_items_for_node(conn, node_id)
+            if not items:
+                continue
+            digest = hashlib.sha256(f"{day_str}:{node_id}".encode()).hexdigest()
+            item = items[int(digest, 16) % len(items)]
+            meta = _parse_cloze_item(item["question_text"])
+            if meta["blank_start"] < 0 or not item["correct_answer"].strip():
+                continue
+            seen_nodes.add(node_id)
+            cards.append({
+                "node_id": node_id, "question_id": item["id"],
+                "date": day_str, **meta,
+            })
+            if len(cards) >= max(1, min(limit, 50)):
+                break
+        # Due nodes without cloze items (or none due): top up from
+        # least-practiced nodes that actually have cloze cards.
+        if len(cards) < max(1, min(limit, 50)):
+            for n in _new_practice_nodes(conn, user_id,
+                                         max(1, min(limit, 50)) - len(cards),
+                                         exclude=seen_nodes, cloze_only=True):
+                items = _cloze_items_for_node(conn, n["id"])
+                if not items:
+                    continue
+                digest = hashlib.sha256(
+                    f"{day_str}:{n['id']}".encode()).hexdigest()
+                item = items[int(digest, 16) % len(items)]
+                meta = _parse_cloze_item(item["question_text"])
+                if meta["blank_start"] < 0 or not item["correct_answer"].strip():
+                    continue
+                cards.append({
+                    "node_id": n["id"], "question_id": item["id"],
+                    "date": day_str, **meta,
+                })
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"date": day_str, "cards": cards,
+                                 "count": len(cards)}}
+
+
+@router.get("/api/v1/hebrew/translation/next")
+def get_translation_next(user_id: str = "default", limit: int = 10,
+                         session_token: str = "", authorization: str = Header("")):
+    """Two-way translation queue: forward + reverse card modes scheduled as
+    distinct FSRS rows. Rate via POST /api/v1/hebrew/fsrs/review
+    {node_id, rating, card_mode: 'forward'|'reverse'}."""
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        ensure_hebrew_schema_once()
+        rows = _due_mode_rows(conn, user_id, ("forward", "reverse"),
+                              max(1, min(limit, 50)))
+        cards = [{
+            "node_id": r["node_id"], "title": r["title"],
+            "level": r["level"], "category": r["category"],
+            "direction": r["card_mode"], "is_new": False,
+            "stability": r["stability"], "due": r["due"],
+        } for r in rows]
+        if len(cards) < max(1, min(limit, 50)):
+            seen = {r["node_id"] for r in rows}
+            for n in _new_practice_nodes(conn, user_id,
+                                         max(1, min(limit, 50)) - len(cards),
+                                         exclude=seen):
+                cards.append({
+                    "node_id": n["id"], "title": n["title"],
+                    "level": n["level"], "category": n["category"],
+                    "direction": "forward", "is_new": True,
+                    "stability": None, "due": None,
+                })
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
+
+
+@router.get("/api/v1/hebrew/visual/next")
+def get_visual_next(user_id: str = "default", limit: int = 10,
+                    session_token: str = "", authorization: str = Header("")):
+    """Hebrew-only visual queue: distinct 'visual_only' FSRS rows (no
+    transliteration, no audio cue — explicit client-side reveal; screen
+    readers use the node title as the accessible name). Rate via
+    POST /api/v1/hebrew/fsrs/review {node_id, rating,
+    card_mode: 'visual_only'}."""
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        ensure_hebrew_schema_once()
+        rows = _due_mode_rows(conn, user_id, ("visual_only",),
+                              max(1, min(limit, 50)))
+        cards = [{
+            "node_id": r["node_id"], "title": r["title"],
+            "level": r["level"], "category": r["category"],
+            "is_new": False, "stability": r["stability"], "due": r["due"],
+            "a11y_name": r["title"],
+        } for r in rows]
+        if len(cards) < max(1, min(limit, 50)):
+            seen = {r["node_id"] for r in rows}
+            for n in _new_practice_nodes(conn, user_id,
+                                         max(1, min(limit, 50)) - len(cards),
+                                         exclude=seen):
+                cards.append({
+                    "node_id": n["id"], "title": n["title"],
+                    "level": n["level"], "category": n["category"],
+                    "is_new": True, "stability": None, "due": None,
+                    "a11y_name": n["title"],
+                })
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
 
 
 @router.get("/api/v1/hebrew/prefs")

@@ -30,13 +30,30 @@ closes with a true ledger. Nothing here blocks anything already shipped.
 Registered as `planned` in `/api/v1/memorize/modes`; each needs route + queue
 source + rating flow on the unified FSRS path before flipping to `available`.
 
-- [ ] Progressive hints beyond first-letter (P7): hint-level recorded for
-  analytics and rating policy.
-- [ ] Audio review mode (P8) submitting ratings to the same FSRS path.
-- [ ] Analytics/polish (P9): retention, due workload, per-mode performance.
+- [x] Progressive hints beyond first-letter (P7): hint-level recorded for
+  analytics and rating policy. (Pre-existing: preview_mode/level in
+  memorize submit + memorize_reviews; per-mode analytics now reads it.)
+- [x] Audio review mode (P8) submitting ratings to the same FSRS path.
+  SHIPPED 2026-09-21: GET /api/v1/memorize/audio/next (due queue filtered
+  to verses with read-along alignment audio + player URLs), rated via
+  unified submit with {"source": "audio_mode"}. No new enqueue (shared
+  queue); tests in tests/test_memorize_audio.py.
+- [x] Analytics/polish (P9): retention, due workload, per-mode performance.
+  SHIPPED 2026-09-21: GET /api/v1/memorize/analytics (overall + last-30d
+  retention, due workload, per-mode GROUP BY per-attempt rating_source
+  with queue-source fallback). Submit accepts an optional source override
+  so the surface that produced the rating is what gets audited.
 - [ ] PWA/push notifications (P10) only after permission/privacy review.
-- [ ] Hebrew cloze deletion cards with deterministic target/answer metadata.
-- [ ] Two-way translation cards scheduled as distinct items.
+- [x] Hebrew cloze deletion cards with deterministic target/answer metadata.
+  SHIPPED 2026-09-21: GET /api/v1/hebrew/cloze/next (same day+node →
+  same question; blank geometry returned, answer stays server-side),
+  rated via existing POST /api/v1/hebrew/progress (question_id+answer →
+  FSRS '' row + attempt event). Due-ness keys off the '' schedule the
+  mode itself writes. Tests in tests/test_hebrew_modes.py.
+- [x] Two-way translation cards scheduled as distinct items.
+  SHIPPED 2026-09-21: GET /api/v1/hebrew/translation/next serves due
+  forward/reverse card_mode rows (pre-existing distinct FSRS schedules)
+  + new-node fallback; rated via fsrs/review with card_mode.
 - [x] Daily maintenance / verse-of-day mode with grammar+vocab breakdown.
       SHIPPED 2026-09-21 as `daily_maintenance`: GET /api/v1/memorize/daily
       (deterministic date-seeded pick from Hebrew-text verses, enqueued with
@@ -46,9 +63,19 @@ source + rating flow on the unified FSRS path before flipping to `available`.
       (was reading the wrong DB, totals always null). Registry → available.
       5 tests in tests/test_memorize_daily.py. Follow-ups (not this slice):
       vocab/grammar breakdown on the daily payload, due-aware daily pick.
-- [ ] Audio-first commute mode reusing review events.
-- [ ] Hebrew-only visual mode with explicit reveal and a11y fallback.
+- [x] Audio-first commute mode reusing review events.
+  SHIPPED 2026-09-21: GET /api/v1/memorize/commute (due-with-audio stops
+  in review order + today's daily as final stop, every stop queue-backed
+  and rateable); each rating lands as a review event, no commute scheduler.
+- [x] Hebrew-only visual mode with explicit reveal and a11y fallback.
+  SHIPPED 2026-09-21 (backend): 'visual_only' added to CARD_MODES +
+  review allowlist (distinct FSRS rows); GET /api/v1/hebrew/visual/next
+  (due rows + new fallback, a11y_name per card); rated via fsrs/review.
+  Client-side reveal UI is a frontend follow-up (no frontend edits in
+  this slice — another track owns frontend right now).
 - Checkpoint: every mode auditable via attempt events; no second scheduler.
+  (Verse attempts: memorize_reviews.rating_source. Hebrew attempts:
+  hebrew_attempt_events with evaluator_version. No new scheduler built.)
 
 ## Track P2-C: Scheduler reconciliation (parent E1 tail) — DECIDED 2026-09-21
 

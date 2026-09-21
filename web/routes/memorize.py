@@ -106,6 +106,11 @@ def _ensure_memorize_schema(conn):
             reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
+    # Per-attempt source: which mode surface produced this rating. Queue rows
+    # outlive their source (shared queue), so audit lives on the attempt.
+    # (After the CREATE: on a fresh DB the table does not exist yet above.)
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE memorize_reviews ADD COLUMN rating_source TEXT DEFAULT 'manual'")
 
 
 def get_conn():
@@ -813,6 +818,10 @@ def submit_review(queue_id: int, body: dict, request: Request):
 
     verse_id = item["verse_id"]
     queue_source = item["source"] or "manual"
+    # Rating surface override (e.g. audio UI rating a manually-queued verse):
+    # the attempt is audited under the surface that produced it.
+    claimed = (body.get("source") or "").strip()
+    rating_source = claimed[:64] if claimed else queue_source
 
     # Get current progress
     prog = conn.execute(
@@ -855,9 +864,9 @@ def submit_review(queue_id: int, body: dict, request: Request):
     """, (user_id, verse_id, round(mastery, 3), a, c, round(new_s, 2), round(new_d, 2), now_str, next_review, preview_mode, preview_level))
     conn.execute("""
         INSERT INTO memorize_reviews
-            (user_id, verse_id, rating, effective_rating, preview_mode, preview_level)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (user_id, verse_id, rating, eff, preview_mode, preview_level))
+            (user_id, verse_id, rating, effective_rating, preview_mode, preview_level, rating_source)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, verse_id, rating, eff, preview_mode, preview_level, rating_source))
 
     # Unified FIRe credit propagation: verse review → credit to connected verses,
     # Hebrew concepts in this verse, and related learning modules
@@ -870,6 +879,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
 
     return {"ok": True, "data": {
         "verse_id": verse_id, "source": queue_source,
+        "rating_source": rating_source,
         "mastery": round(mastery, 3),
         "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": interval, "next_review": next_review,
@@ -1309,18 +1319,23 @@ def _mode_registry() -> list:
          "surface": "/api/v1/memorize/review (preview_mode/preview_level)",
          "scheduler": "fsrs-5", "status": "available"},
         {"id": "audio_mode", "label": "Audio review mode",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/memorize/audio/next", "scheduler": "fsrs-5",
+         "status": "available"},
         {"id": "hebrew_cloze", "label": "Hebrew cloze deletion cards",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/hebrew/cloze/next", "scheduler": "fsrs-5",
+         "status": "available"},
         {"id": "two_way_translation", "label": "Two-way translation cards",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/hebrew/translation/next", "scheduler": "fsrs-5",
+         "status": "available"},
         {"id": "daily_maintenance", "label": "Daily maintenance / verse of day",
          "surface": "/api/v1/memorize/daily", "scheduler": "fsrs-5",
          "status": "available"},
         {"id": "audio_first_commute", "label": "Audio-first commute mode",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/memorize/commute", "scheduler": "fsrs-5",
+         "status": "available"},
         {"id": "hebrew_visual_only", "label": "Hebrew-only visual mode",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/hebrew/visual/next", "scheduler": "fsrs-5",
+         "status": "available"},
     ]
 
 
@@ -1398,21 +1413,7 @@ def get_daily_verse(user_id: str = "default", day: str = "",
             ORDER BY rowid LIMIT 1 OFFSET ?
         """, (daily_verse_offset(day_str, count),)).fetchone()
         verse_id = row["id"]
-        conn.execute(
-            "INSERT OR IGNORE INTO memorize_queue (user_id, verse_id, source)"
-            " VALUES (?, ?, ?)",
-            (user_id, verse_id, DAILY_SOURCE),
-        )
-        conn.execute(
-            "INSERT OR IGNORE INTO memorize_progress"
-            " (user_id, verse_id, mastery, attempts, correct, difficulty)"
-            " VALUES (?, ?, 0.0, 0, 0, 5.0)",
-            (user_id, verse_id),
-        )
-        q = conn.execute(
-            "SELECT id, source FROM memorize_queue WHERE user_id=? AND verse_id=?",
-            (user_id, verse_id),
-        ).fetchone()
+        qid, qsource = _ensure_queued(conn, user_id, verse_id, DAILY_SOURCE)
         conn.commit()
     finally:
         conn.close()
@@ -1425,6 +1426,204 @@ def get_daily_verse(user_id: str = "default", day: str = "",
             "verse": row["verse"],
             "text": row["text_english"][:500],
         },
-        "queue_id": q["id"],
-        "source": q["source"],
+        "queue_id": qid,
+        "source": qsource,
+    }}
+
+
+def _ensure_queued(conn, user_id: str, verse_id: str, source: str):
+    """Ensure a queue+progress row exists; return (queue_id, source).
+
+    Existing rows keep their original source (a manually-queued verse is
+    not rebranded by the mode that happens to serve it)."""
+    conn.execute(
+        "INSERT OR IGNORE INTO memorize_queue (user_id, verse_id, source)"
+        " VALUES (?, ?, ?)",
+        (user_id, verse_id, source),
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO memorize_progress"
+        " (user_id, verse_id, mastery, attempts, correct, difficulty)"
+        " VALUES (?, ?, 0.0, 0, 0, 5.0)",
+        (user_id, verse_id),
+    )
+    q = conn.execute(
+        "SELECT id, source FROM memorize_queue WHERE user_id=? AND verse_id=?",
+        (user_id, verse_id),
+    ).fetchone()
+    return q["id"], (q["source"] or "manual")
+
+
+# ── Audio review + commute + analytics (P2-B) ──────────────────────────
+# Audio modes ride the shared memorize queue filtered to verses that have
+# read-along alignment audio (canonical player endpoints live in
+# web/routes/audio.py). Ratings flow through the unified submit with a
+# source override — no second scheduler.
+
+# Mirrors web/routes/audio.py ALIGN_DIR (kept local: memorize must not
+# import route modules at top level).
+AUDIO_ALIGN_DIR = BASE_DIR / "data" / "audio" / "alignments"
+
+_AUDIO_VERSE_IDS = None
+
+
+def _audio_verse_ids():
+    """Verse ids with read-along alignment audio. Built once per process."""
+    global _AUDIO_VERSE_IDS
+    if _AUDIO_VERSE_IDS is None:
+        ids = set()
+        try:
+            import re as _re
+            for f in AUDIO_ALIGN_DIR.glob("*.json"):
+                base = _re.sub(r"_(cloned|hybrid|ivrit|shmuelof)$", "", f.stem)
+                ids.add(base)
+        except OSError:
+            pass
+        _AUDIO_VERSE_IDS = ids
+    return _AUDIO_VERSE_IDS
+
+
+def _audio_urls(verse_id: str) -> dict:
+    return {
+        "play": f"/api/v1/audio/play/{verse_id}",
+        "align": f"/api/v1/audio/align/{verse_id}",
+    }
+
+
+def _due_audio_rows(conn, user_id: str, limit: int):
+    """Due queue items (never reviewed or least-recently reviewed first)
+    restricted to verses with alignment audio."""
+    rows = conn.execute("""
+        SELECT q.id, q.verse_id, q.source, v.text_english,
+               COALESCE(p.last_review, '') as last_review
+        FROM memorize_queue q
+        LEFT JOIN memorize_progress p
+          ON p.user_id=q.user_id AND p.verse_id=q.verse_id
+        JOIN verses v ON v.id=q.verse_id
+        WHERE q.user_id=?
+        ORDER BY last_review ASC LIMIT ?
+    """, (user_id, max(limit * 4, limit))).fetchall()
+    audio_ids = _audio_verse_ids()
+    return [r for r in rows if r["verse_id"] in audio_ids][:limit]
+
+
+@router.get("/api/v1/memorize/audio/next")
+def get_audio_next(user_id: str = "default", limit: int = 10,
+                   session_token: str = "", authorization: str = Header("")):
+    """Due queue items that have read-along audio. Rate each through the
+    unified submit with {"source": "audio_mode"}."""
+    user_id = _require_review_user(user_id, session_token, authorization)
+    conn = get_conn()
+    try:
+        items = [{
+            "queue_id": r["id"], "verse_id": r["verse_id"],
+            "source": r["source"] or "manual",
+            "text": (r["text_english"] or "")[:300],
+            "audio": _audio_urls(r["verse_id"]),
+        } for r in _due_audio_rows(conn, user_id, max(1, min(limit, 50)))]
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"items": items, "count": len(items)}}
+
+
+@router.get("/api/v1/memorize/commute")
+def get_commute_playlist(user_id: str = "default", limit: int = 10,
+                         day: str = "", session_token: str = "",
+                         authorization: str = Header("")):
+    """Audio-first commute playlist: due-with-audio items in review order,
+    then today's daily verse. The client auto-advances and rates every
+    stop through the unified submit with {"source": "audio_first_commute"};
+    each rating lands as a review event (no separate commute scheduler)."""
+    user_id = _require_review_user(user_id, session_token, authorization)
+    conn = get_conn()
+    try:
+        stops = [{
+            "queue_id": r["id"], "verse_id": r["verse_id"],
+            "kind": "due", "source": r["source"] or "manual",
+            "text": (r["text_english"] or "")[:300],
+            "audio": _audio_urls(r["verse_id"]),
+        } for r in _due_audio_rows(conn, user_id, max(1, min(limit, 50)))]
+        day_str = _resolve_daily_date(day)
+        count = conn.execute(
+            "SELECT COUNT(*) FROM verses WHERE text_hebrew IS NOT NULL").fetchone()[0]
+        if count:
+            row = conn.execute("""
+                SELECT id, text_english FROM verses
+                WHERE text_hebrew IS NOT NULL
+                ORDER BY rowid LIMIT 1 OFFSET ?
+            """, (daily_verse_offset(day_str, count),)).fetchone()
+            has_audio = row["id"] in _audio_verse_ids()
+            dqid, dqsource = _ensure_queued(conn, user_id, row["id"], DAILY_SOURCE)
+            conn.commit()
+            stops.append({
+                "queue_id": dqid, "verse_id": row["id"], "kind": "daily",
+                "source": dqsource,
+                "text": (row["text_english"] or "")[:300],
+                "audio": _audio_urls(row["id"]) if has_audio else None,
+            })
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"date": day_str, "stops": stops,
+                                 "count": len(stops)}}
+
+
+@router.get("/api/v1/memorize/analytics")
+def get_memorize_analytics(user_id: str = "default", session_token: str = "",
+                           authorization: str = Header("")):
+    """Retention, due workload, per-mode performance (P2-B/P9).
+
+    Per-mode groups by the per-attempt rating_source (falls back to the
+    queue row source for ratings recorded before the column existed).
+    Success proxy: effective_rating >= 3 (matches FSRS correct counting).
+    """
+    user_id = _require_review_user(user_id, session_token, authorization)
+    conn = get_conn()
+    try:
+        prog = conn.execute("""
+            SELECT COUNT(*) as n, COALESCE(SUM(attempts),0) as attempts,
+                   COALESCE(SUM(correct),0) as correct
+            FROM memorize_progress WHERE user_id=?
+        """, (user_id,)).fetchone()
+        recent = conn.execute("""
+            SELECT COUNT(*) as n,
+                   SUM(CASE WHEN effective_rating >= 3 THEN 1 ELSE 0 END) as ok
+            FROM memorize_reviews WHERE user_id=?
+              AND reviewed_at >= datetime('now','-30 days')
+        """, (user_id,)).fetchone()
+        due = conn.execute("""
+            SELECT COUNT(*) as n FROM memorize_queue q
+            LEFT JOIN memorize_progress p
+              ON p.user_id=q.user_id AND p.verse_id=q.verse_id
+            WHERE q.user_id=? AND (p.next_review IS NULL
+              OR p.next_review <= date('now','localtime'))
+        """, (user_id,)).fetchone()
+        per_mode = conn.execute("""
+            SELECT COALESCE(r.rating_source, q.source, 'manual') as mode,
+                   COUNT(*) as ratings,
+                   SUM(CASE WHEN r.effective_rating >= 3 THEN 1 ELSE 0 END) as ok,
+                   ROUND(AVG(r.effective_rating), 2) as avg_eff
+            FROM memorize_reviews r
+            LEFT JOIN memorize_queue q
+              ON q.user_id=r.user_id AND q.verse_id=r.verse_id
+            WHERE r.user_id=? GROUP BY mode ORDER BY ratings DESC
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+    attempts = prog["attempts"] or 0
+    return {"ok": True, "data": {
+        "retention": {
+            "attempts": attempts, "correct": prog["correct"] or 0,
+            "rate": round((prog["correct"] or 0) / max(attempts, 1), 3),
+            "last_30d": {
+                "ratings": recent["n"] or 0, "ok": recent["ok"] or 0,
+                "rate": round((recent["ok"] or 0) / max(recent["n"] or 0, 1), 3),
+            },
+        },
+        "due_workload": {"due": due["n"] or 0},
+        "per_mode": [{
+            "mode": m["mode"], "ratings": m["ratings"],
+            "success": m["ok"] or 0,
+            "success_rate": round((m["ok"] or 0) / max(m["ratings"], 1), 3),
+            "avg_effective_rating": m["avg_eff"],
+        } for m in per_mode],
     }}
