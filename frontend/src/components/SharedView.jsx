@@ -11,12 +11,16 @@ import React, { useState, useEffect } from 'react'
 import { sharedGet, sharedFork } from '../api'
 import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
+import VersePopup from './VersePopup'
 
 export default function SharedView({ slug, onNavigate, onAsk }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
+  // Verse taps open the same Gospel-Library drawer as chat (highlighted
+  // verse, click-out to dismiss, full-chapter open) — never a blind jump.
+  const [popupRef, setPopupRef] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -61,12 +65,9 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
   }
 
   // Same rendering pipeline as chat: markdown + linked verse chips.
-  // Tapping a ref jumps straight to the verse (with highlight).
+  // Tapping a ref opens the verse drawer (highlighted, dismissible).
   const comps = createComponents({
-    onOpenVerse: (ref) => {
-      const p = String(ref).split('.')
-      if (p.length >= 2) onNavigate?.(p[0], parseInt(p[1]) || 1, p.length >= 3 ? [parseInt(p[2])] : undefined)
-    },
+    onOpenVerse: (ref) => setPopupRef(ref),
   })
 
   return (
@@ -127,6 +128,16 @@ export default function SharedView({ slug, onNavigate, onAsk }) {
           Your question forks this snapshot into a new private conversation — the original stays untouched.
         </p>
       </div>
+      {popupRef && (
+        <VersePopup
+          verseRef={popupRef}
+          onClose={() => setPopupRef(null)}
+          onNavigate={(b, c, verses) => {
+            setPopupRef(null)
+            onNavigate?.(b, c, verses)
+          }}
+        />
+      )}
     </div>
   )
 }

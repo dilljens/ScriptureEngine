@@ -18,6 +18,8 @@ import {
 } from '../api'
 import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
+import { copyText } from '../lib/clipboard'
+import VersePopup from './VersePopup'
 
 const PER_PAGE = 20
 
@@ -54,6 +56,8 @@ export default function ConversationHistory({ onNavigate, onClose }) {
   const [connections, setConnections] = useState([])
   const [promoting, setPromoting] = useState(null) // connection id being promoted
   const [promoteForm, setPromoteForm] = useState(null) // {id, source, target} for modal
+  // Verse taps open the drawer (highlighted, dismissible) — never a blind jump.
+  const [popupRef, setPopupRef] = useState(null)
 
   // Fetch sessions
   const fetchList = useCallback(async (p = 1, q = '') => {
@@ -119,9 +123,15 @@ export default function ConversationHistory({ onNavigate, onClose }) {
     try {
       const res = await conversationShare(sid)
       if (res.ok && res.data?.url) {
-        try { await navigator.clipboard.writeText(`${window.location.origin}${res.data.url}`) } catch {}
-        setSharedSid(sid)
-        setTimeout(() => setSharedSid(null), 1500)
+        const url = `${window.location.origin}${res.data.url}`
+        const copied = await copyText(url)
+        if (copied) {
+          setSharedSid(sid)
+          setTimeout(() => setSharedSid(null), 1500)
+        } else {
+          // Clipboard denied (mobile browsers): show the link so it can be copied manually.
+          window.prompt('Copy share link:', url)
+        }
       } else {
         alert(res.error || 'Share failed')
       }
@@ -289,10 +299,7 @@ export default function ConversationHistory({ onNavigate, onClose }) {
                     </div>
                     <div className="prose prose-sm max-w-none [&_strong]:font-semibold [&_italic]:italic">
                       <ScriptureMarkdown raw components={createComponents({
-                        onOpenVerse: (ref) => {
-                          const p = String(ref).split('.')
-                          if (p.length >= 2) onNavigate?.(p[0], parseInt(p[1]) || 1, p.length >= 3 ? [parseInt(p[2])] : undefined)
-                        },
+                        onOpenVerse: (ref) => setPopupRef(ref),
                       })} urlTransform={safeUrlTransform}>
                         {preprocessScripture(escapeHtml(String(m.content || '')))}
                       </ScriptureMarkdown>
@@ -450,6 +457,16 @@ export default function ConversationHistory({ onNavigate, onClose }) {
             </div>
           </div>
         </div>
+      )}
+      {popupRef && (
+        <VersePopup
+          verseRef={popupRef}
+          onClose={() => setPopupRef(null)}
+          onNavigate={(b, c, verses) => {
+            setPopupRef(null)
+            onNavigate?.(b, c, verses)
+          }}
+        />
       )}
     </div>
   )

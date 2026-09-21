@@ -14,6 +14,7 @@ import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, conversationShare, chat, chatStream, getChatInstructions, currentUserId, currentSessionToken } from '../api'
 import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
+import { copyText } from '../lib/clipboard'
 import { parseStandardRef, resolveBook } from '../refParser'
 
 // ── Cross-instance message delivery ──
@@ -1019,7 +1020,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
 
   // ── Clipboard helpers ──
   const copyToClipboard = async (text, idx) => {
-    try { await navigator.clipboard.writeText(text) } catch {}
+    await copyText(text)
     setCopiedIdx(idx)
     setTimeout(() => setCopiedIdx(null), 1500)
   }
@@ -1033,22 +1034,6 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     clearTimeout(shareFlagTimer.current)
     setShareFlag({ idx, kind })
     shareFlagTimer.current = setTimeout(() => setShareFlag(null), 2200)
-  }
-  // Clipboard write must run inside the tap gesture on iOS — after an await
-  // it throws NotAllowedError. Try the modern API, fall back to execCommand.
-  const copyText = async (text) => {
-    try { await navigator.clipboard.writeText(text); return true } catch {}
-    try {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.cssText = 'position:fixed;opacity:0'
-      document.body.appendChild(ta)
-      ta.focus()
-      ta.select()
-      const ok = document.execCommand('copy')
-      ta.remove()
-      return ok
-    } catch { return false }
   }
   const handleShare = async (msg, idx) => {
     const sid = sessionRef.current
