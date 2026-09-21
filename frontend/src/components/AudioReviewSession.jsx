@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import RatingButtons from './RatingButtons'
+import { currentSessionToken } from '../api'
 
 /**
  * AudioReviewSession — eyes-free audio review for walking/driving/exercising.
@@ -20,6 +22,29 @@ export default function AudioReviewSession({ words, onRate, onComplete }) {
   const [paused, setPaused] = useState(false)
 
   const current = words?.[idx]
+
+  // Anki-style interval preview, same shared scheduler as every surface.
+  const [intervals, setIntervals] = useState(null)
+  const intervalsWord = useRef(null)
+  useEffect(() => {
+    const w = current?.hebrew
+    if (intervalsWord.current !== w) {
+      intervalsWord.current = w
+      setIntervals(null)
+    }
+    if (!w || phase !== 'answering') return
+    const token = currentSessionToken()
+    const params = new URLSearchParams({ hebrew: w })
+    fetch(`/api/v1/hebrew/fsrs/intervals?${params}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (intervalsWord.current !== w) return
+        setIntervals(d.ok ? d.data?.intervals || null : null)
+      })
+      .catch(() => { if (intervalsWord.current === w) setIntervals(null) })
+  }, [current?.hebrew, phase, idx])
 
   const speak = useCallback((text, lang = 'he-IL', rate = 0.8) => {
     return new Promise((resolve) => {
@@ -128,19 +153,7 @@ export default function AudioReviewSession({ words, onRate, onComplete }) {
 
       {/* Rating buttons — only phase after hearing answer */}
       {phase === 'answering' && rating === null && (
-        <div className="flex gap-2 justify-center">
-          {[
-            { val: 1, label: 'Again', color: 'bg-red-500 hover:bg-red-600' },
-            { val: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-600' },
-            { val: 3, label: 'Good', color: 'bg-green-500 hover:bg-green-600' },
-            { val: 4, label: 'Easy', color: 'bg-blue-500 hover:bg-blue-600' },
-          ].map(b => (
-            <button key={b.val} onClick={() => handleRate(b.val)}
-              className={`px-4 py-2 rounded-lg text-white text-sm font-medium cursor-pointer transition-colors ${b.color}`}>
-              {b.label}
-            </button>
-          ))}
-        </div>
+        <RatingButtons intervals={intervals} onRate={handleRate} variant="row" />
       )}
 
       {/* Pause/Resume */}

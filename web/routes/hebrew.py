@@ -682,7 +682,7 @@ def _resolve_hebrew_read_user(
 
 @router.get("/api/v1/hebrew/fsrs/intervals")
 def hebrew_fsrs_intervals(
-    node_id: str = "", card_mode: str = "",
+    node_id: str = "", card_mode: str = "", hebrew: str = "",
     user_id: str = "default", session_token: str = "",
     authorization: str = Header(""),
 ):
@@ -690,7 +690,9 @@ def hebrew_fsrs_intervals(
 
     Uses the exact computation post_hebrew_review applies (shared canonical
     FSRS core + per-node learning speed), so the labels on Again/Hard/Good/
-    Easy match what tapping each rating will schedule.
+    Easy match what tapping each rating will schedule. Accepts either a
+    node_id or a Hebrew word (audio-review path resolves it the same way
+    the review submit does).
     """
     session_token = _session_token_from_header(authorization) or session_token
     user_id = _require_hebrew_user(user_id, session_token)
@@ -700,6 +702,8 @@ def hebrew_fsrs_intervals(
         raise HTTPException(404, "Hebrew DB not found")
 
     conn = sqlite3.connect(str(MEM_DB))
+    if not node_id and hebrew:
+        node_id = resolve_hebrew_node(conn, hebrew)
     if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
         conn.close()
         raise HTTPException(400, "Unknown Hebrew node")
