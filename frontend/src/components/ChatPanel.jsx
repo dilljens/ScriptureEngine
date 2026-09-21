@@ -16,6 +16,7 @@ import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown 
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 import { copyText } from '../lib/clipboard'
 import { parseStandardRef, resolveBook } from '../refParser'
+import { canonicalBookId } from '../bookNames'
 
 // ── Cross-instance message delivery ──
 // The inline chat tab unmounts when the user navigates away mid-stream. The
@@ -227,7 +228,7 @@ function preprocessVerses(markdown) {
     (match, book, ch, vs, vsEnd) => {
       if (book) {
         const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
-        return `:verse[${book.toLowerCase()}.${ch}.${versePart}]`
+        return `:verse[${canonicalBookId(book)}.${ch}.${versePart}]`
       }
       return match // already a marker
     }
@@ -238,7 +239,7 @@ function preprocessVerses(markdown) {
   result = result.replace(
     /:verse\[[^\]]+\]|([a-z0-9_]*[a-z][a-z0-9_]*)\.(\d+)\b(?!\.\d+)/gi,
     (match, book, ch) => {
-      if (book) return `:verse[${book.toLowerCase()}.${ch}.1]`
+      if (book) return `:verse[${canonicalBookId(book)}.${ch}.1]`
       return match // already a marker
     }
   )

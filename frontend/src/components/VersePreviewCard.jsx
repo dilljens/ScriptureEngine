@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { groupVerses } from '../lib/verseGroups'
 
 /**
  * VersePreviewCard — shows a scrollable chapter preview with highlighted verse(s).
@@ -124,34 +125,38 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
         <span className="text-[9px] text-blue-600 dark:text-blue-400 shrink-0">↗</span>
       </button>
 
-      {/* Scrollable verses */}
+      {/* Scrollable verses — consecutive highlights merge into one block */}
       <div className="overflow-y-auto" style={{ maxHeight }} ref={scrollRef}>
         <div className="px-3 py-1.5 space-y-0.5">
-          {chapterData.verses.map(v => {
-            const isHighlighted = highlightVerses.has(v.verse)
-            return (
-              <div key={v.verse} data-verse={v.verse}
-                className={`flex items-start gap-2 px-2 py-1 rounded text-[11px] leading-relaxed transition-colors
-                  ${isHighlighted
-                    ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700'
-                    : 'text-neutral-500 dark:text-neutral-500'
-                  }`}>
-                <span className={`text-[9px] font-mono mt-0.5 shrink-0 w-5 text-right
-                  ${isHighlighted
-                    ? 'text-amber-700 dark:text-amber-400 font-bold'
-                    : 'text-neutral-400 dark:text-neutral-600'
-                  }`}>
-                  {isHighlighted ? '★' : ''}{v.verse}
-                </span>
-                <span className={isHighlighted
-                  ? 'text-neutral-800 dark:text-neutral-200'
-                  : 'text-neutral-500 dark:text-neutral-500'
-                }>
-                  {v.text_english}
-                </span>
+          {groupVerses(chapterData.verses, v => highlightVerses.has(v.verse)).map((seg, si) => (
+            seg.highlighted ? (
+              <div key={`hl-${si}`} className="rounded bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 px-1 py-0.5">
+                {seg.verses.map(v => (
+                  <div key={v.verse} data-verse={v.verse}
+                    className="flex items-start gap-2 px-2 py-1 rounded text-[11px] leading-relaxed">
+                    <span className="text-[9px] font-mono mt-0.5 shrink-0 w-5 text-right text-amber-700 dark:text-amber-400 font-bold">
+                      ★{v.verse}
+                    </span>
+                    <span className="text-neutral-800 dark:text-neutral-200">
+                      {v.text_english}
+                    </span>
+                  </div>
+                ))}
               </div>
+            ) : (
+              seg.verses.map(v => (
+                <div key={v.verse} data-verse={v.verse}
+                  className="flex items-start gap-2 px-2 py-1 rounded text-[11px] leading-relaxed transition-colors text-neutral-500 dark:text-neutral-500">
+                  <span className="text-[9px] font-mono mt-0.5 shrink-0 w-5 text-right text-neutral-400 dark:text-neutral-600">
+                    {v.verse}
+                  </span>
+                  <span>
+                    {v.text_english}
+                  </span>
+                </div>
+              ))
             )
-          })}
+          ))}
         </div>
       </div>
 

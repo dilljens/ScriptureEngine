@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { preprocess } from '../lib/scripture-markdown'
+import { BOOK_TITLES } from '../bookNames'
 
 describe('preprocess', () => {
   it('converts :verse[gen.1.1] to span tag', () => {
@@ -104,7 +105,7 @@ describe('preprocess', () => {
   })
 
   it('keeps DSS refs with digits in book id', () => {
-    expect(preprocess('The book of 1QS.1.1 matters')).toContain('data-ref="1qs.1.1"')
+    expect(preprocess('The book of 1QS.1.1 matters')).toContain('data-ref="1QS.1.1"')
   })
 
   it('auto-links numbered books like 1 Nephi and 2 Corinthians', () => {
@@ -175,5 +176,41 @@ describe('preprocess', () => {
     const r = preprocess('Genesis 1:1 and :verse[gen.1.2] together')
     expect(r).toContain('data-ref="gen.1.1"')
     expect(r).toContain('data-ref="gen.1.2"')
+  })
+})
+
+// ── Library-wide sweep: every book id must link by its full title ──
+// Several ids share one display title (Damascus Document, Songs of Sabbath
+// Sacrifice, 4QMMT) — the linker resolves those to the first id, so only
+// the first id per title is asserted.
+const SWEEP_SEEN_TITLES = new Set()
+const SWEEP_EXCLUDE = {
+  // Title is ambiguous with a ch:vs read: "Psalm 151 1:1" parses as
+  // Psalms ch.151, not book psa151. Genuinely ambiguous input — excluded.
+  psa151: true,
+}
+describe('every library book links', () => {
+  for (const [id, title] of Object.entries(BOOK_TITLES)) {
+    if (SWEEP_EXCLUDE[id]) continue
+    if (SWEEP_SEEN_TITLES.has(title)) continue
+    SWEEP_SEEN_TITLES.add(title)
+    it(`links "${title} 1:1" → ${id}.1.1`, () => {
+      expect(preprocess(`${title} 1:1`)).toContain(`data-ref="${id}.1.1"`)
+    })
+    it(`links chapter-only "${title} 3" → ${id}.3.1`, () => {
+      expect(preprocess(`${title} 3`)).toContain(`data-ref="${id}.3.1"`)
+    })
+  }
+
+  // D&C section ids (dcN) are dynamic — not in BOOK_TITLES. Spot-check the
+  // reported failure plus neighbors, colon and section-only forms.
+  it('links D&C 19:16 (reported failure)', () => {
+    expect(preprocess('Read D&C 19:16 today')).toContain('data-ref="dc19.19.16"')
+  })
+  it('links D&C section refs across a range of sections', () => {
+    for (const n of [1, 19, 76, 93, 121, 132, 138]) {
+      expect(preprocess(`See D&C ${n}:7 here`)).toContain(`data-ref="dc${n}.${n}.7"`)
+      expect(preprocess(`See D&C ${n} here`)).toContain(`data-ref="dc${n}.${n}.1"`)
+    }
   })
 })

@@ -16,7 +16,7 @@
  */
 
 import React from 'react'
-import { BOOK_TITLES } from '../bookNames'
+import { BOOK_TITLES, canonicalBookId } from '../bookNames'
 import VerseRef from '../components/VerseRef'
 
 // Format a verse ref like "gen.1.1-12" into a readable name like "Genesis 1:1-12"
@@ -49,7 +49,7 @@ export function openVerseRef(ref) {
   if (p.length < 2) return
   window.dispatchEvent(new CustomEvent('scripture-navigate', {
     detail: {
-      book: p[0].toLowerCase(),
+      book: canonicalBookId(p[0]),
       chapter: parseInt(p[1]) || 1,
       verse: p.length >= 3 ? (parseInt(p[2]) || undefined) : undefined,
     },
@@ -142,9 +142,9 @@ export function preprocess(text) {
 // known-book gate; the lookahead excludes ":./digits" so "Genesis 1" never
 // fires on the prefix of "Genesis 1:1" (the longer ch:vs hit wins dedupe).
 const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?(?![\w\u0590-\u05FF])/g
-const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z][A-Za-z ]{1,24})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z0-9][A-Za-z ()—–]{1,32})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
 const BARE_DC_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
-const BARE_CHAPTER_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z][A-Za-z ]{1,24})\s+(\d+)(?![\w\u0590-\u05FF:.\d])(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)/g
+const BARE_CHAPTER_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z0-9][A-Za-z ()—–]{1,32})\s+(\d+)(?![\w\u0590-\u05FF:.\d])(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)/g
 const BARE_DC_CH_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+)(?![\w\u0590-\u05FF:.\d])/g
 // Multi-verse continuations after a linked ref, same book context:
 // "Isaiah 52:1-2, 54:2", "Isaiah 53:5, 11", "Exodus 33:22–34:6".
@@ -167,7 +167,12 @@ export function findVerseRefs(text) {
   BARE_DOT_RE.lastIndex = 0
   while ((m = BARE_DOT_RE.exec(text)) !== null) {
     if (m[3]) {
-      hits.push({ index: m.index, len: m[0].length, ref: `${m[1].toLowerCase()}.${m[2]}.${m[3]}` })
+      // Gate on known books (D&C sections match /^dc\d+$/i) so dotted
+      // numbers like version strings never become dead chips.
+      const bookKey = canonicalBookId(m[1])
+      const known = BOOK_TITLES[bookKey] || /^dc\d+$/i.test(m[1])
+      if (!known) continue
+      hits.push({ index: m.index, len: m[0].length, ref: `${bookKey}.${m[2]}.${m[3]}` })
     } else {
       // chapter-only "gen.1" — skip (not a verse ref)
       continue
@@ -299,15 +304,21 @@ function autoLinkBareRefs(text) {
   return result
 }
 
-/** Resolve a display book name ("Psalm", "Psalms", "Genesis") to its key. */
+/** Resolve a display book name ("Psalm", "Psalms", "Genesis") or id to its
+ *  canonical key. Canonical case matters: DSS ids are UPPERCASE in the
+ *  corpus ('1QS'), and lowercase fetches 404. */
 function resolveBookKey(name) {
-  const n = name.toLowerCase()
-  if (BOOK_TITLES[n]) return n
-  const found = Object.keys(BOOK_TITLES).find(
-    k => BOOK_TITLES[k].toLowerCase() === n
-      || BOOK_TITLES[k].toLowerCase() === n + 's'
-      || BOOK_TITLES[k].toLowerCase() === n.replace(/s$/, ''))
-  return found ? found.toLowerCase() : null
+  const n = String(name).trim()
+  const lower = n.toLowerCase()
+  // Book id in any case → canonical id ('1qs' → '1QS', 'GEN' → 'gen').
+  const asId = Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === lower)
+  if (asId) return asId
+  // Display title (any case), with singular/plural forgiveness.
+  const asTitle = Object.keys(BOOK_TITLES).find(
+    k => BOOK_TITLES[k].toLowerCase() === lower
+      || BOOK_TITLES[k].toLowerCase() === lower + 's'
+      || BOOK_TITLES[k].toLowerCase() === lower.replace(/s$/, ''))
+  return asTitle || null
 }
 
 /**

@@ -63,6 +63,19 @@ const WORK_MAP = {
   apet:'expanded', barn:'expanded', gnic:'expanded',
 }
 
+/**
+ * Canonical book id for any-case input ('1qs' → '1QS', 'GEN' → 'gen').
+ * The backend corpus is case-sensitive with UPPERCASE DSS ids, so every
+ * ref the UI builds must use canonical case or chapter/verse fetches 404.
+ * Unknown ids fall back to lowercase (matches the historic behavior).
+ */
+export function canonicalBookId(id) {
+  if (id == null) return id
+  const lower = String(id).toLowerCase()
+  const hit = Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === lower)
+  return hit || lower
+}
+
 // Full book titles
 export const BOOK_TITLES = {
   gen:'Genesis', exo:'Exodus', lev:'Leviticus', num:'Numbers', deu:'Deuteronomy',
@@ -155,11 +168,14 @@ export function parseRef(ref) {
   if (!ref) return null
 
   // Handle D&C sections: "dc76", "dc76.1", "dc76.76.22"
+  // D&C chapters address as dcN.N (book dcN, chapter N) — the section
+  // number doubles as the chapter, matching normalize_ref and the chapter
+  // API (fetching dc76.1 404s; dc76.76 works).
   const dcMatch = ref.match(/^(dc)(\d+)(?:\.(\d+)(?:\.(\d+))?)?$/)
   if (dcMatch) {
     const sectionNum = dcMatch[2]
     const book = `dc${sectionNum}`
-    const chapter = 1  // D&C sections are single-chapter
+    const chapter = parseInt(sectionNum)
     // Group 4 = verse (3-part format "dc76.76.22"), Group 3 = single part ("dc76.1")
     const verse = dcMatch[4] ? parseInt(dcMatch[4]) : (dcMatch[3] ? parseInt(dcMatch[3]) : null)
     const label = `D&C ${sectionNum}${verse ? `:${verse}` : ''}`
@@ -169,17 +185,18 @@ export function parseRef(ref) {
   const parts = ref.split('.')
   if (parts.length < 2) return null
 
-  const bookId = parts[0].toLowerCase()
+  const bookId = canonicalBookId(parts[0])
   const chapter = parseInt(parts[1])
   const verse = parts[2] ? parseInt(parts[2]) : null
 
   if (isNaN(chapter)) return null
 
-  // D&C books are stored as dcN (e.g., "dc76") — handle general fallback
+  // D&C books are stored as dcN (e.g., "dc76") — chapter is the section number
   if (bookId.startsWith('dc')) {
     const sectionNum = bookId.replace('dc', '')
+    const sec = parseInt(sectionNum)
     const label = `D&C ${sectionNum}${verse != null ? `:${verse}` : ''}`
-    return { label, book: bookId, chapter: 1, verse, bookName: `D&C ${sectionNum}`, workId: 'dc' }
+    return { label, book: bookId, chapter: isNaN(sec) ? 1 : sec, verse, bookName: `D&C ${sectionNum}`, workId: 'dc' }
   }
 
   // Case-insensitive lookup (DSS books use uppercase IDs like '1QS')

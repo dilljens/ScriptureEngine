@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { parseRef } from '../bookNames'
+import { groupVerses } from '../lib/verseGroups'
 
 /**
  * VersePopup — Gospel-Library-style verse reference drawer.
@@ -151,37 +152,38 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
 
           {chapterData?.verses && (
             <div>
-              {/* Verse context list */}
+              {/* Verse context list — consecutive targets merge into one block */}
               <div className="space-y-1">
-                  {chapterData.verses.map(v => {
-                  const isTarget = targetVerses.includes(v.verse)
-
-                  return (
+                {groupVerses(chapterData.verses, v => targetVerses.includes(v.verse)).map((seg, si) => (
+                  seg.highlighted ? (
                     <div
-                      key={v.verse}
-                      data-verse={v.verse}
-                      className={`flex items-start gap-2 px-3 py-1.5 rounded-lg text-sm leading-relaxed transition-colors
-                        ${isTarget
-                          ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 -mx-1 px-4'
-                          : 'text-neutral-500 dark:text-neutral-500'
-                        }`}
+                      key={`hl-${si}`}
+                      className="rounded-lg bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 px-1 py-1"
                     >
-                      <span className={`text-[10px] font-mono mt-0.5 shrink-0 w-6 text-right
-                        ${isTarget
-                          ? 'text-amber-700 dark:text-amber-400 font-bold'
-                          : 'text-neutral-400 dark:text-neutral-600'
-                        }`}>
-                        {isTarget ? '★' : ''}{v.verse}
-                      </span>
-                      <span className={isTarget
-                        ? 'text-neutral-800 dark:text-neutral-200 font-medium'
-                        : 'text-neutral-500 dark:text-neutral-500'
-                      }>
-                        {v.text_english}
-                      </span>
+                      {seg.verses.map(v => (
+                        <div key={v.verse} data-verse={v.verse}
+                          className="flex items-start gap-2 px-3 py-1.5 rounded-lg text-sm leading-relaxed">
+                          <span className="text-[10px] font-mono mt-0.5 shrink-0 w-6 text-right text-amber-700 dark:text-amber-400 font-bold">
+                            ★{v.verse}
+                          </span>
+                          <span className="text-neutral-800 dark:text-neutral-200 font-medium">
+                            {v.text_english}
+                          </span>
+                        </div>
+                      ))}
                     </div>
+                  ) : (
+                    seg.verses.map(v => (
+                      <div key={v.verse} data-verse={v.verse}
+                        className="flex items-start gap-2 px-3 py-1.5 rounded-lg text-sm leading-relaxed text-neutral-500 dark:text-neutral-500">
+                        <span className="text-[10px] font-mono mt-0.5 shrink-0 w-6 text-right text-neutral-400 dark:text-neutral-600">
+                          {v.verse}
+                        </span>
+                        <span>{v.text_english}</span>
+                      </div>
+                    ))
                   )
-                })}
+                ))}
               </div>
 
               {/* Connections section placeholder */}

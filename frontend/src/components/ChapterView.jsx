@@ -8,6 +8,7 @@ import VerseAudioPlayer from './VerseAudioPlayer'
 import WikiLayout from './WikiLayout'
 import { useTabs } from '../tabContext'
 import { readScrollPos } from '../lib/scrollMemory'
+import { groupVerses } from '../lib/verseGroups'
 
 const LS_WIKI_KEY = 'scriptureengine.wikiMode'
 
@@ -318,18 +319,18 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         </div>
       )}
 
-      {data.verses?.map(v => {
-        const vs = String(v.verse)
-        const verseFns = footnotes?.filter(f => { const vn = f.verse_id?.split('.').pop(); return vn === vs }) || []
-        const verseTsk = tskRefs?.filter(r => { const vn = r.source_verse?.split('.').pop(); return vn === vs }) || []
-        const verseWords = wordData?.[`${book}.${chapter}.${v.verse}`] || null
-        const verseExtra = connectionsByVerse[vs] || null
-        const isHl = (highlightVerses.length > 0 ? highlightVerses.includes(v.verse) : highlightVerse === v.verse)
-        return (
-          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el}
-            className={isHl
-              ? 'scroll-mt-24 rounded-lg bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 px-2 -mx-2'
-              : 'scroll-mt-24'}>
+      {groupVerses(
+        data.verses,
+        v => (highlightVerses.length > 0 ? highlightVerses.includes(v.verse) : highlightVerse === v.verse)
+      ).map((seg, si) => {
+        // Render one verse (anchored for scroll-to-verse + position memory).
+        const renderVerse = (v) => {
+          const vs = String(v.verse)
+          const verseFns = footnotes?.filter(f => { const vn = f.verse_id?.split('.').pop(); return vn === vs }) || []
+          const verseTsk = tskRefs?.filter(r => { const vn = r.source_verse?.split('.').pop(); return vn === vs }) || []
+          const verseWords = wordData?.[`${book}.${chapter}.${v.verse}`] || null
+          const verseExtra = connectionsByVerse[vs] || null
+          return (
             <VerseBlock verse={v} toggles={toggles} poetryMode={poetryMode}
               chiasms={data.chiasms} highlights={[]}
               footnotes={toggles.footnotes ? verseFns : []}
@@ -339,8 +340,27 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
               displayLang={displayLang} showTranslit={showTranslit} showEnglish={showEnglish}
               hebrewDisplayMode={hebrewDisplayMode}
             />
+          )
+        }
+        // Consecutive highlighted verses share ONE block; anything else
+        // keeps the plain per-verse wrapper.
+        if (seg.highlighted) {
+          return (
+            <div key={`hl-${si}`}
+              className="scroll-mt-24 rounded-lg bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 px-2 -mx-2">
+              {seg.verses.map(v => (
+                <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el}>
+                  {renderVerse(v)}
+                </div>
+              ))}
+            </div>
+          )
+        }
+        return seg.verses.map(v => (
+          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el} className="scroll-mt-24">
+            {renderVerse(v)}
           </div>
-        )
+        ))
       })}
       {toggles.chiasmus && data.chiasms?.length > 0 && (
         <div className="mt-10 space-y-3">
