@@ -574,6 +574,46 @@ def remove_from_queue(
     return {"ok": True, "data": {"removed": True}}
 
 
+@router.post("/api/v1/memorize/queue/delete-batch")
+def delete_batch_from_queue(body: dict, request: Request):
+    """Remove multiple verses from the memorize queue in one call.
+
+    Body: { ids: [queue row ids], user_id?, session_token? }.
+    Ids are sanitized to positive ints and capped at 500 per call.
+    """
+    conn = get_conn()
+    user_id = _require_review_user(
+        body.get("user_id", "default"), body.get("session_token", ""),
+        request.headers.get("authorization", ""),
+    )
+    raw = body.get("ids", [])
+    if not isinstance(raw, list):
+        conn.close()
+        raise HTTPException(400, "ids must be a list")
+    clean = []
+    for i in raw:
+        if isinstance(i, bool):
+            continue
+        try:
+            n = int(i)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            clean.append(n)
+    clean = clean[:500]
+    removed = 0
+    if clean:
+        placeholders = ",".join("?" for _ in clean)
+        cur = conn.execute(
+            f"DELETE FROM memorize_queue WHERE id IN ({placeholders}) AND user_id=?",
+            (*clean, user_id),
+        )
+        removed = cur.rowcount
+        conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"removed": removed}}
+
+
 @router.post("/api/v1/memorize/queue/batch")
 def add_chapter_to_queue(body: dict, request: Request):
     """Add verses to the memorize queue — by chapter or by verse range.

@@ -1027,11 +1027,28 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Share (per-message snapshot → unlisted link) ──
   const [sharedIdx, setSharedIdx] = useState(null)
   const [shareFlag, setShareFlag] = useState(null) // {idx, kind:'saving'|'failed'} — transient inline feedback
+  const [shareLink, setShareLink] = useState(null) // {idx, url, copied} — visible link bar, survives clipboard denial
   const shareFlagTimer = useRef(null)
   const flashShareFlag = (idx, kind) => {
     clearTimeout(shareFlagTimer.current)
     setShareFlag({ idx, kind })
     shareFlagTimer.current = setTimeout(() => setShareFlag(null), 2200)
+  }
+  // Clipboard write must run inside the tap gesture on iOS — after an await
+  // it throws NotAllowedError. Try the modern API, fall back to execCommand.
+  const copyText = async (text) => {
+    try { await navigator.clipboard.writeText(text); return true } catch {}
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      const ok = document.execCommand('copy')
+      ta.remove()
+      return ok
+    } catch { return false }
   }
   const handleShare = async (msg, idx) => {
     const sid = sessionRef.current
@@ -1050,9 +1067,15 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
     try {
       const res = await conversationShare(sid, serverMsgId)
       if (res.ok && res.data?.url) {
-        try { await navigator.clipboard.writeText(`${window.location.origin}${res.data.url}`) } catch {}
-        setSharedIdx(idx)
-        setTimeout(() => setSharedIdx(null), 1500)
+        const url = `${window.location.origin}${res.data.url}`
+        const copied = await copyText(url)
+        // Always show the link bar: auto-copy is denied on some mobile
+        // browsers, and a ✓ alone leaves the user with nothing to paste.
+        setShareLink({ idx, url, copied })
+        if (copied) {
+          setSharedIdx(idx)
+          setTimeout(() => setSharedIdx(null), 1500)
+        }
       } else {
         flashShareFlag(idx, 'failed')
       }
@@ -1900,6 +1923,33 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                         <span>Edit</span>
                       </button>
                     )}
+                  </div>
+                )}
+                {/* Share link bar — always shown on success so the link itself
+                    is visible and copyable even when auto-copy was denied. */}
+                {shareLink?.idx === i && (
+                  <div className="mt-1.5 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <div className="text-[10px] font-medium text-blue-700 dark:text-blue-300 mb-1">
+                      {shareLink.copied ? '✓ Link copied — anyone with it can read & continue' : 'Share link ready — copy it below'}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input readOnly value={shareLink.url} onFocus={e => e.target.select()}
+                        aria-label="Share link"
+                        className="flex-1 min-w-0 px-2 py-1.5 rounded-md border border-blue-200 dark:border-blue-800 bg-white dark:bg-neutral-900 text-[11px] font-mono text-neutral-700 dark:text-neutral-300 outline-none" />
+                      <button onClick={async () => {
+                          const ok = await copyText(shareLink.url)
+                          if (ok) setShareLink({ ...shareLink, copied: true })
+                        }}
+                        aria-label="Copy share link"
+                        className="pressable px-2.5 h-8 rounded-md bg-blue-600 text-white text-[11px] font-medium hover:bg-blue-700 cursor-pointer transition-colors shrink-0">
+                        Copy
+                      </button>
+                      <button onClick={() => setShareLink(null)}
+                        aria-label="Dismiss share link"
+                        className="w-8 h-8 rounded-md text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors shrink-0">
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

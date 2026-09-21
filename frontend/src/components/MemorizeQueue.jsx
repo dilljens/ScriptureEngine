@@ -27,6 +27,11 @@ export default function MemorizeQueue({ onStartReview }) {
   const [masteryGroups, setMasteryGroups] = useState(null) // {group: count} for the LDS 100
   const [masteryMsg, setMasteryMsg] = useState('')
   const [masteryBusy, setMasteryBusy] = useState(false)
+  // Bulk select + delete (e.g. undo an accidental whole-chapter add)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState([]) // queue row ids
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState('')
 
   const sessionToken = () => currentSessionToken()
   const sessionHeaders = () => {
@@ -175,6 +180,34 @@ export default function MemorizeQueue({ onStartReview }) {
       })
       loadQueue()
     } catch {}
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const deleteSelected = async () => {
+    if (selected.length === 0 || bulkBusy) return
+    setBulkBusy(true)
+    setBulkMsg('')
+    try {
+      const r = await fetch('/api/v1/memorize/queue/delete-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ ids: selected, session_token: sessionToken() }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        setBulkMsg(`Removed ${d.data.removed} verse${d.data.removed === 1 ? '' : 's'}.`)
+        setSelected([])
+        loadQueue()
+      } else {
+        setBulkMsg('Could not remove verses.')
+      }
+    } catch {
+      setBulkMsg('Could not remove verses.')
+    }
+    setBulkBusy(false)
   }
 
   const dueCount = verses.filter(v => v.attempts === 0 || (v.mastery || 0) < 0.8).length
@@ -406,7 +439,16 @@ export default function MemorizeQueue({ onStartReview }) {
                 className="text-[10px] px-1.5 py-0.5 rounded border border-neutral-200 dark:border-neutral-700 bg-transparent text-neutral-500 dark:text-neutral-400 outline-none cursor-pointer">
                 {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
               </select>
-              {dueCount > 0 && (
+              <button onClick={() => { setSelectMode(m => !m); setSelected([]); setBulkMsg('') }}
+                aria-label={selectMode ? 'Done selecting' : 'Select verses to delete'}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                  selectMode
+                    ? 'bg-neutral-600 hover:bg-neutral-700 text-white'
+                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                }`}>
+                {selectMode ? 'Done' : 'Select'}
+              </button>
+              {dueCount > 0 && !selectMode && (
                 <button onClick={onStartReview}
                   className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium cursor-pointer transition-colors">
                   Start Review ({dueCount})
@@ -414,10 +456,42 @@ export default function MemorizeQueue({ onStartReview }) {
               )}
             </div>
           </div>
+          {/* Bulk action bar */}
+          {selectMode && (
+            <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300 mr-auto">
+                {selected.length === 0 ? 'Tap verses to select' : `${selected.length} selected`}
+              </span>
+              <button onClick={() => setSelected(verses.map(v => v.id))}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors min-h-[36px]">
+                Select all
+              </button>
+              <button onClick={deleteSelected} disabled={selected.length === 0 || bulkBusy}
+                className="pressable px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-[11px] font-medium cursor-pointer transition-colors min-h-[36px]">
+                {bulkBusy ? 'Removing…' : `Delete${selected.length ? ` (${selected.length})` : ''}`}
+              </button>
+            </div>
+          )}
+          {bulkMsg && <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">{bulkMsg}</p>}
           {verses.map(v => (
             <div key={v.id}
-              onClick={() => startVerseReview(v)}
-              className="p-3 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm cursor-pointer transition-all">
+              onClick={() => selectMode ? toggleSelect(v.id) : startVerseReview(v)}
+              className={`p-3 rounded-xl bg-white dark:bg-neutral-800 border cursor-pointer transition-all flex items-start gap-2.5 ${
+                selectMode && selected.includes(v.id)
+                  ? 'border-red-400 dark:border-red-600 ring-1 ring-red-300 dark:ring-red-800'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm'
+              }`}>
+              {selectMode && (
+                <span aria-hidden="true"
+                  className={`mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center text-sm shrink-0 transition-colors ${
+                    selected.includes(v.id)
+                      ? 'bg-red-600 border-red-600 text-white'
+                      : 'border-neutral-300 dark:border-neutral-600 text-transparent'
+                  }`}>
+                  ✓
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">{v.verse_id}</span>
@@ -425,13 +499,17 @@ export default function MemorizeQueue({ onStartReview }) {
                     {verseText(v)}
                   </p>
                 </div>
+                {!selectMode && (
                 <button onClick={(e) => { e.stopPropagation(); removeVerse(v.id) }}
+                  aria-label={`Remove ${v.verse_id} from queue`}
                   className="ml-2 text-neutral-300 hover:text-red-500 cursor-pointer text-sm shrink-0">✕</button>
+                )}
               </div>
               <div className="flex items-center gap-3 mt-2 text-[10px] text-neutral-400">
                 <span>Mastery: {Math.round((v.mastery || 0) * 100)}%</span>
                 <span>Attempts: {v.attempts || 0}</span>
-                <span className="ml-auto text-[9px] text-indigo-400 hover:text-indigo-600">Click to review →</span>
+                {!selectMode && <span className="ml-auto text-[9px] text-indigo-400 hover:text-indigo-600">Click to review →</span>}
+              </div>
               </div>
             </div>
           ))}
