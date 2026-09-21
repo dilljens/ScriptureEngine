@@ -1384,10 +1384,29 @@ def _prepare_chat_messages(body) -> list[dict]:
         snapshot = _hebrew_learner_snapshot(_chat_tool_user_id(body))
         if snapshot:
             msgs.insert(1, {"role": "system", "content": snapshot})
-    elif contains_tutor_marker(msgs):
+        # P2-A durable memory: goals + session summary, same trust boundary
+        # (server-derived, identity-bound). Never breaks the request.
+        try:
+            from lib.api import tutor_memory as _tutor_memory
+            _mem_conn = _tutor_memory.connect()
+            try:
+                _mem_block = _tutor_memory.hydrate(
+                    _mem_conn, _chat_tool_user_id(body),
+                    getattr(body, "session_id", "") or "")
+            finally:
+                _mem_conn.close()
+            if _mem_block:
+                msgs.insert(2 if snapshot else 1,
+                            {"role": "system", "content": _mem_block})
+        except Exception:  # noqa: BLE001, S110 — hydration must never break chat
+            pass
+    elif contains_tutor_marker(msgs) or any(
+            "[TUTOR MEMORY" in str(m.get("content", ""))
+            for m in msgs if isinstance(m, dict)):
         bump_p2_counter("tutor_memory_leak_probe")
         msgs = [m for m in msgs
-                if TUTOR_SNAPSHOT_MARKER not in str(m.get("content", ""))]
+                if TUTOR_SNAPSHOT_MARKER not in str(m.get("content", ""))
+                and "[TUTOR MEMORY" not in str(m.get("content", ""))]
 
     body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
     return apply_context_budget(msgs)
@@ -2366,6 +2385,34 @@ async def _stream_final_response(body, msgs, tool_results):
 
     final_content = _sanitize_chat_content(final_content, body.mode)
     cost = _compute_cost(usage, body.model)
+
+    # P2-A transcript archive: Hebrew turns only, raw user+response pair.
+    # Best-effort — archiving must never break the response.
+    try:
+        if _effective_mode(getattr(body, "mode", "chat")) == "hebrew":
+            from lib.api import tutor_memory as _tutor_memory
+            _arch_user = _chat_tool_user_id(body)
+            _arch_session = getattr(body, "session_id", "") or ""
+            if not _arch_session:
+                _arch_session = f"user:{_arch_user}"
+            _arch_prompt = ""
+            for _m in msgs:
+                if isinstance(_m, dict) and _m.get("role") == "user":
+                    _c = _m.get("content", "")
+                    _arch_prompt = _c if isinstance(_c, str) else str(_c)
+            _arch_conn = _tutor_memory.connect()
+            try:
+                if _arch_prompt:
+                    _tutor_memory.record_turn(_arch_conn, _arch_session,
+                                              _arch_user, "user", _arch_prompt)
+                if final_content:
+                    _tutor_memory.record_turn(_arch_conn, _arch_session,
+                                              _arch_user, "assistant",
+                                              final_content)
+            finally:
+                _arch_conn.close()
+    except Exception:  # noqa: BLE001, S110 — archiving must never break chat
+        pass
 
     yield {
         "type": "done",

@@ -14,16 +14,32 @@ and the C1/C2/E1 cores are implemented and verified; the items below are what
 remained after the 2026-08-24 verification pass, split out so the parent plan
 closes with a true ledger. Nothing here blocks anything already shipped.
 
-## Track P2-A: Tutor memory and evaluation (parent C3)
+## Track P2-A: Tutor memory and evaluation (parent C3) — SHIPPED 2026-09-21
 
-- [ ] Layered tutor memory: recent working turns, session summary, durable
+- [x] Layered tutor memory: recent working turns, session summary, durable
   learner preferences/goals, pedagogical state, raw transcript archive.
-- [ ] Stage candidate tutor notes; dedupe/conflict-resolve before durable
+  (`lib/api/tutor_memory.py`: working = live message list (no storage);
+  transcript archive auto-written at the pipeline `done` point for Hebrew
+  mode (all paths: stream + jobs); session summaries via explicit-write
+  endpoint + hydration; durable key/value store with source + evidence +
+  date. Hydration appended to the Hebrew system prompt server-side,
+  identity-bound.)
+- [x] Stage candidate tutor notes; dedupe/conflict-resolve before durable
   storage; latest explicit learner correction wins.
-- [ ] Long-context tests: recall a prior correction, respect a changed goal,
-  reject stale memory, cite evidence/date.
+  (Two-step stage→promote; learner source auto-promotes; staged tutor
+  notes conflicting with durable learner rows reject as superseded;
+  same-source latest wins. Routes: stage/staged/promote/memory.)
+- [x] Long-context tests: recall a prior correction, respect a changed goal,
+  reject stale memory, cite evidence/date. (tests/test_tutor_memory.py:
+  10 tests incl. correction recall, goal change, stale rejection,
+  evidence+date citation, forget scopes, transcript round-trip,
+  Hebrew-only hydration + smuggled-state probe.)
 - [ ] "Forget this" / stale-memory correction surface in the Hebrew UI.
+  (Backend DONE: POST /api/v1/hebrew/tutor/forget key|all. UI button is a
+  frontend follow-up — another track owns frontend right now.)
 - Checkpoint: multi-session resume with bounded context; zero leakage into general chat.
+  (Resume via transcript+summary endpoints; hydration bounded at 12 items;
+  general-chat probe extended to the TUTOR MEMORY marker + tested.)
 
 ## Track P2-B: Remaining memorization modes (parent E2/E3 tails)
 

@@ -3315,6 +3315,155 @@ def get_visual_next(user_id: str = "default", limit: int = 10,
     return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
 
 
+# ── Tutor memory surfaces (P2-A) ─────────────────────────────────────
+# Thin routes over lib/api/tutor_memory.py: durable learner state with
+# staged writes + conflict resolution, session summaries, transcripts,
+# and the 'Forget this' surface. Reads/writes use this module's MEM_DB
+# (same file lib.config resolves for the chat hydration hook).
+
+def _tutor_conn():
+    from lib.api import tutor_memory as _tm
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    _tm.ensure_tutor_schema(conn)
+    return conn
+
+
+@router.get("/api/v1/hebrew/tutor/memory")
+def get_tutor_memory(user_id: str = "default", session_token: str = "",
+                     authorization: str = Header("")):
+    """Durable tutor memory rows (structured, for UI + audit)."""
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = _tutor_conn()
+    try:
+        rows = conn.execute("""
+            SELECT key, value, source, evidence, updated_at FROM tutor_memory
+            WHERE user_id=? ORDER BY updated_at DESC
+        """, (user_id,)).fetchall()
+        staged = conn.execute(
+            "SELECT COUNT(*) FROM tutor_memory_staging"
+            " WHERE user_id=? AND status='staged'", (user_id,)).fetchone()[0]
+    finally:
+        conn.close()
+    return {"ok": True, "data": {
+        "memory": [dict(r) for r in rows], "staged_pending": staged}}
+
+
+@router.post("/api/v1/hebrew/tutor/stage")
+def post_tutor_stage(body: dict, authorization: str = Header("")):
+    """Stage a candidate memory. source='learner' (explicit correction)
+    auto-promotes; tutor inferences wait for /promote."""
+    from lib.api import tutor_memory as _tm
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    try:
+        conn = _tutor_conn()
+        try:
+            out = _tm.stage_note(
+                conn, user_id, body.get("key", ""), body.get("value", ""),
+                source=body.get("source", "tutor"),
+                evidence=body.get("evidence", ""))
+        finally:
+            conn.close()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "data": out}
+
+
+@router.get("/api/v1/hebrew/tutor/staged")
+def get_tutor_staged(user_id: str = "default", session_token: str = "",
+                     authorization: str = Header("")):
+    """Staged notes awaiting promote/reject (review surface)."""
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = _tutor_conn()
+    try:
+        rows = conn.execute("""
+            SELECT id, key, value, source, evidence, status, reason, created_at
+            FROM tutor_memory_staging WHERE user_id=?
+            ORDER BY id DESC LIMIT 50
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"staged": [dict(r) for r in rows]}}
+
+
+@router.post("/api/v1/hebrew/tutor/promote")
+def post_tutor_promote(body: dict, authorization: str = Header("")):
+    """Conflict-resolve one staged note into durable memory."""
+    from lib.api import tutor_memory as _tm
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    _require_hebrew_user(body.get("user_id", "default"), session_token)
+    try:
+        staging_id = int(body.get("staging_id", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "staging_id required")
+    conn = _tutor_conn()
+    try:
+        out = _tm.promote_note(conn, staging_id, reviewer="api")
+    finally:
+        conn.close()
+    return {"ok": True, "data": out}
+
+
+@router.post("/api/v1/hebrew/tutor/forget")
+def post_tutor_forget(body: dict, authorization: str = Header("")):
+    """'Forget this' surface: scope = a memory key, or 'all' (durable +
+    staging + summaries + transcripts)."""
+    from lib.api import tutor_memory as _tm
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    conn = _tutor_conn()
+    try:
+        out = _tm.forget(conn, user_id, scope=body.get("scope", "all"))
+    finally:
+        conn.close()
+    return {"ok": True, "data": out}
+
+
+@router.post("/api/v1/hebrew/tutor/summary")
+def post_tutor_summary(body: dict, authorization: str = Header("")):
+    """Write (or refresh) a session summary rollup."""
+    from lib.api import tutor_memory as _tm
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    session_key = (body.get("session_key") or "").strip()
+    if not session_key:
+        raise HTTPException(400, "session_key required")
+    conn = _tutor_conn()
+    try:
+        _tm.write_summary(conn, session_key, user_id,
+                          body.get("summary", ""),
+                          int(body.get("turn_count", 0) or 0))
+        out = _tm.get_summary(conn, session_key)
+    finally:
+        conn.close()
+    return {"ok": True, "data": out}
+
+
+@router.get("/api/v1/hebrew/tutor/transcript")
+def get_tutor_transcript(session_key: str = "", user_id: str = "default",
+                         limit: int = 20, session_token: str = "",
+                         authorization: str = Header("")):
+    """Raw archived turns for a session (multi-session resume)."""
+    from lib.api import tutor_memory as _tm
+    user_id = _require_hebrew_user(user_id, session_token)
+    if not session_key.strip():
+        raise HTTPException(400, "session_key required")
+    conn = _tutor_conn()
+    try:
+        turns = _tm.recent_turns(conn, session_key.strip(),
+                                 max(1, min(limit, 100)))
+        summary = _tm.get_summary(conn, session_key.strip())
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"session_key": session_key.strip(),
+                                 "turns": turns, "summary": summary}}
+
+
 @router.get("/api/v1/hebrew/prefs")
 def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
                      authorization: str = Header("")):
