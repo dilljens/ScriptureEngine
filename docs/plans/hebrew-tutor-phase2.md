@@ -42,11 +42,20 @@ source + rating flow on the unified FSRS path before flipping to `available`.
 - [ ] Hebrew-only visual mode with explicit reveal and a11y fallback.
 - Checkpoint: every mode auditable via attempt events; no second scheduler.
 
-## Track P2-C: Scheduler reconciliation (parent E1 tail)
+## Track P2-C: Scheduler reconciliation (parent E1 tail) — DECIDED 2026-09-21
 
-- [ ] Decide Python vs Go ownership for scripture-memorize FSRS state;
+- [x] Decide Python vs Go ownership for scripture-memorize FSRS state;
   implement compatibility adapters; document the decision.
+  DECISION: Python owns all FSRS state; Go demoted to dormant backend
+  (no scheduling authority). No adapter: disjoint stores, divergent math,
+  zero cross-consumers — verified, nothing to adapt. Full rationale,
+  evidence (file:line), and rules in
+  `docs/adr/0001-fsrs-scheduler-ownership.md`. Latent trap documented
+  there: dev `/api/memorize/*` → Go while prod → Python-404 (orphaned
+  Go-only UI); fix deferred to palace/push revival.
 - Checkpoint: one authoritative scheduler; the other proxied or retired.
+  (Python authoritative; Go neither proxied nor retired — dormant by
+  decision, revisit triggers listed in the ADR.)
 
 ## Track P2-D: Truth pipeline stages 2+ (parent A3/A4 tails)
 
