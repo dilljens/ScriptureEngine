@@ -37,7 +37,15 @@ source + rating flow on the unified FSRS path before flipping to `available`.
 - [ ] PWA/push notifications (P10) only after permission/privacy review.
 - [ ] Hebrew cloze deletion cards with deterministic target/answer metadata.
 - [ ] Two-way translation cards scheduled as distinct items.
-- [ ] Daily maintenance / verse-of-day mode with grammar+vocab breakdown.
+- [x] Daily maintenance / verse-of-day mode with grammar+vocab breakdown.
+      SHIPPED 2026-09-21 as `daily_maintenance`: GET /api/v1/memorize/daily
+      (deterministic date-seeded pick from Hebrew-text verses, enqueued with
+      source tag) rated through the unified POST /api/v1/memorize/review
+      submit — no second scheduler. Review items + submit responses now
+      carry `source`; modes matrix fixed to count the real queue table
+      (was reading the wrong DB, totals always null). Registry → available.
+      5 tests in tests/test_memorize_daily.py. Follow-ups (not this slice):
+      vocab/grammar breakdown on the daily payload, due-aware daily pick.
 - [ ] Audio-first commute mode reusing review events.
 - [ ] Hebrew-only visual mode with explicit reveal and a11y fallback.
 - Checkpoint: every mode auditable via attempt events; no second scheduler.

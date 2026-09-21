@@ -12,6 +12,7 @@ Endpoints:
 """
 import contextlib
 import datetime
+import hashlib
 import logging
 import math
 import os
@@ -52,10 +53,9 @@ def _require_review_user(
     return "default"
 
 
-def get_conn():
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+def _ensure_memorize_schema(conn):
+    """Create memorize tables + additive migrations. Idempotent; extracted
+    so tests can build the identical schema on an isolated DB."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS memorize_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,6 +90,10 @@ def get_conn():
         conn.execute("ALTER TABLE memorize_progress ADD COLUMN last_preview_mode TEXT DEFAULT 'none'")
     with contextlib.suppress(Exception):
         conn.execute("ALTER TABLE memorize_progress ADD COLUMN last_preview_level INTEGER DEFAULT 0")
+    # Queue source: which mode queued the verse ('manual', 'daily_maintenance',
+    # ...). Lets per-mode ratings stay auditable via queue+reviews join.
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE memorize_queue ADD COLUMN source TEXT DEFAULT 'manual'")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS memorize_reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,6 +106,13 @@ def get_conn():
             reviewed_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
+
+
+def get_conn():
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    _ensure_memorize_schema(conn)
     return conn
 
 
@@ -638,7 +649,7 @@ def get_due_reviews(
     now = datetime.datetime.now()
 
     rows = conn.execute("""
-        SELECT q.id, q.verse_id,
+        SELECT q.id, q.verse_id, q.source,
                COALESCE(p.mastery, 0) as mastery,
                COALESCE(p.attempts, 0) as attempts,
                COALESCE(p.correct, 0) as correct,
@@ -691,6 +702,7 @@ def get_due_reviews(
         reviews.append({
             "queue_id": r["id"],
             "verse_id": r["verse_id"],
+            "source": r["source"] or "manual",
             "text": text[:300] if text else "",
             "mastery": r["mastery"],
             "attempts": r["attempts"],
@@ -791,7 +803,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
 
     conn = get_conn()
     item = conn.execute(
-        "SELECT verse_id FROM memorize_queue WHERE id=? AND user_id=?",
+        "SELECT verse_id, source FROM memorize_queue WHERE id=? AND user_id=?",
         (queue_id, user_id)
     ).fetchone()
 
@@ -800,6 +812,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
         raise HTTPException(404, "Queue item not found")
 
     verse_id = item["verse_id"]
+    queue_source = item["source"] or "manual"
 
     # Get current progress
     prog = conn.execute(
@@ -856,7 +869,8 @@ def submit_review(queue_id: int, body: dict, request: Request):
     conn.close()
 
     return {"ok": True, "data": {
-        "verse_id": verse_id, "mastery": round(mastery, 3),
+        "verse_id": verse_id, "source": queue_source,
+        "mastery": round(mastery, 3),
         "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": interval, "next_review": next_review,
         "fi_re_credit_propagated": True,
@@ -1301,7 +1315,8 @@ def _mode_registry() -> list:
         {"id": "two_way_translation", "label": "Two-way translation cards",
          "surface": None, "scheduler": "fsrs-5", "status": "planned"},
         {"id": "daily_maintenance", "label": "Daily maintenance / verse of day",
-         "surface": None, "scheduler": "fsrs-5", "status": "planned"},
+         "surface": "/api/v1/memorize/daily", "scheduler": "fsrs-5",
+         "status": "available"},
         {"id": "audio_first_commute", "label": "Audio-first commute mode",
          "surface": None, "scheduler": "fsrs-5", "status": "planned"},
         {"id": "hebrew_visual_only", "label": "Hebrew-only visual mode",
@@ -1314,7 +1329,9 @@ def list_memorize_modes():
     """Capability matrix for every memorization mode (plan Track E1)."""
     queued = None
     try:
-        conn = sqlite3.connect(str(_memorize_db_path()))
+        # NOTE: the queue lives in DB_PATH (scripture.db) via get_conn() —
+        # not in _memorize_db_path(). Counting anywhere else stays null.
+        conn = get_conn()
         try:
             queued = conn.execute(
                 "SELECT COUNT(*) FROM memorize_queue").fetchone()[0]
@@ -1330,3 +1347,84 @@ def list_memorize_modes():
             "totals": {"scripture_queued": queued},
         },
     }
+
+
+# ── Daily maintenance (P2-B: daily_maintenance mode) ────────────────────
+# One deterministic verse per calendar day, enqueued with
+# source='daily_maintenance' so its ratings stay auditable via the
+# queue+reviews join. Rating flows through the unified submit endpoint
+# (POST /api/v1/memorize/review/{queue_id}) — no second scheduler.
+
+DAILY_SOURCE = "daily_maintenance"
+
+
+def daily_verse_offset(day_str: str, count: int) -> int:
+    """Deterministic rotation offset: same date → same verse."""
+    digest = hashlib.sha256(day_str.encode("utf-8")).hexdigest()
+    return int(digest, 16) % max(count, 1)
+
+
+def _resolve_daily_date(day: str = "") -> str:
+    """Accept YYYY-MM-DD (for tests/backfill); garbage falls back to today."""
+    if day:
+        try:
+            return datetime.date.fromisoformat(day).isoformat()
+        except ValueError:
+            pass
+    return datetime.date.today().isoformat()
+
+
+@router.get("/api/v1/memorize/daily")
+def get_daily_verse(user_id: str = "default", day: str = "",
+                    session_token: str = "", authorization: str = Header("")):
+    """Today's maintenance verse, enqueued for FSRS review.
+
+    Deterministic per calendar day (same date → same verse for everyone;
+    per-user queue rows). Returns the queue_id so the client rates it
+    through the unified review submit endpoint.
+    """
+    user_id = _require_review_user(user_id, session_token, authorization)
+    day_str = _resolve_daily_date(day)
+    conn = get_conn()
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM verses WHERE text_hebrew IS NOT NULL"
+        ).fetchone()[0]
+        if not count:
+            raise HTTPException(404, "No verses available for daily maintenance")
+        row = conn.execute("""
+            SELECT id, book_id, chapter, verse, text_english
+            FROM verses WHERE text_hebrew IS NOT NULL
+            ORDER BY rowid LIMIT 1 OFFSET ?
+        """, (daily_verse_offset(day_str, count),)).fetchone()
+        verse_id = row["id"]
+        conn.execute(
+            "INSERT OR IGNORE INTO memorize_queue (user_id, verse_id, source)"
+            " VALUES (?, ?, ?)",
+            (user_id, verse_id, DAILY_SOURCE),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO memorize_progress"
+            " (user_id, verse_id, mastery, attempts, correct, difficulty)"
+            " VALUES (?, ?, 0.0, 0, 0, 5.0)",
+            (user_id, verse_id),
+        )
+        q = conn.execute(
+            "SELECT id, source FROM memorize_queue WHERE user_id=? AND verse_id=?",
+            (user_id, verse_id),
+        ).fetchone()
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "data": {
+        "date": day_str,
+        "verse": {
+            "id": verse_id,
+            "book_id": row["book_id"],
+            "chapter": row["chapter"],
+            "verse": row["verse"],
+            "text": row["text_english"][:500],
+        },
+        "queue_id": q["id"],
+        "source": q["source"],
+    }}
