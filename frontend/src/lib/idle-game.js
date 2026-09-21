@@ -1339,15 +1339,6 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
   const correct = !expired && quiz && quiz.options[choiceIdx] === answer
   state.golden = null
   if (expired) return { fizzled: true, reason: 'expired' }
-  // The golden question owns the game streak: only golden answers move it.
-  // Study answers elsewhere never touch streak, Ohr, or milestones.
-  if (correct) {
-    state.streak = (state.streak || 0) + 1
-    state.bestStreak = Math.max(state.bestStreak || 0, state.streak)
-    state.correct = (state.correct || 0) + 1
-  } else {
-    state.streak = 0
-  }
   // Letter quizzes feed the letter deck; words and roots feed their own SRS
   // tracks — partial correctness is the point: strong items graduate while
   // weak ones keep coming back, each on its own streak.
@@ -1357,27 +1348,19 @@ export function answerGoldenQuiz(state, choiceIdx, now = Date.now(), perSec = 0)
     else if (typeof quiz.letter === 'number') recordGoldenAnswer(state, quiz.letter, !!correct, now)
   }
   if (!correct) return { fizzled: true, reason: 'wrong' }
-  if (g.id === 'prophet') return { choice: [...(g.options || [])] }
-  const p = GOLDEN_PROMPTS.find(x => x.id === g.id)
-  if (!p) return { fizzled: true, reason: 'unknown' }
-  // Purim mishloach manot: every claimed golden pays +5 Kavod. One point
-  // covers all kinds (mult/tap/blast/hours).
-  if (isFeastDay('purim', now)) state.kavod = (state.kavod || 0) + 5
-  if (p.kind === 'mult') {
-    state.buffs = { ...(state.buffs || {}), galeEndsAt: now + p.seconds * 1000 }
-    return { claimed: p, granted: 0 }
+  if (g.id === 'prophet') return { choice: [...(g.options || [])], title: '🔮 The Prophet offers — take one blessing:', snooze: '🔮 The Prophet waits — choose your blessing' }
+  // A correct golden answer offers pick-1-of-3: the prompt's own bonus plus
+  // two other blessings. Nothing auto-grants, no streak/Ohr — the choice IS
+  // the reward. Study answers elsewhere own Ohr and streak.
+  const own = { gale: 'gale', dew: 'dew', rush: 'rush', shofar: 'shofar' }[g.id]
+  if (!own) return { fizzled: true, reason: 'unknown' }
+  const rest = sampleBlessings().filter(id => id !== own).slice(0, 2)
+  return {
+    choice: [own, ...rest],
+    title: '🌟 Golden answered — take one blessing:',
+    snooze: '🌟 A blessing awaits — choose',
+    golden: true,
   }
-  if (p.kind === 'tap') {
-    state.buffs = { ...(state.buffs || {}), tapEndsAt: now + p.seconds * 1000 }
-    return { claimed: p, granted: 0 }
-  }
-  if (p.kind === 'hours') {
-    const granted = perSec * 3600 * (p.hours || 0)
-    state.ohr += granted
-    state.lifetimeOhr = (state.lifetimeOhr || 0) + granted
-    return { claimed: p, granted }
-  }
-  return { fizzled: true, reason: 'unknown' }
 }
 
 /** Clear a prompt whose claim window elapsed (fizzle — nothing lost). */
@@ -2556,15 +2539,17 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   a(gqD.quizDeck.newLetters.length === 3 && !gqD.quizDeck.newLetters.includes(0), 'seen letters are not re-dealt')
   const gq2 = defaultIdleState()
   gq2.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
-  a(answerGoldenQuiz(gq2, 0, 1000, 0).claimed?.id === 'gale', 'right option claims the buff')
+  const gq2res = answerGoldenQuiz(gq2, 0, 1000, 0)
   a(gq2.golden === null, 'quiz answer clears the prompt')
-  a(gq2.streak === 1 && gq2.bestStreak === 1, 'golden correct owns the streak')
-  a(gq2.correct === 1, 'golden correct feeds quest progress')
+  a(Array.isArray(gq2res.choice) && gq2res.choice.length === 3, 'correct golden offers pick-1-of-3')
+  a(gq2res.choice[0] === 'gale', 'prompt keeps its own bonus first')
+  a(new Set(gq2res.choice).size === 3, 'the three choices are distinct')
+  a(gq2.streak === 0, 'golden grants no streak — the choice is the reward')
   const gq2b = defaultIdleState()
   gq2b.streak = 7; gq2b.bestStreak = 7
   gq2b.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
-  a(answerGoldenQuiz(gq2b, 2, 1000, 0).fizzled === true, 'golden wrong resets the streak')
-  a(gq2b.streak === 0 && gq2b.bestStreak === 7, 'best streak survives a golden miss')
+  a(answerGoldenQuiz(gq2b, 2, 1000, 0).fizzled === true, 'golden wrong fizzles without touching streak')
+  a(gq2b.streak === 7, 'streak survives a golden miss')
   const gq3 = defaultIdleState()
   gq3.golden = { id: 'gale', expiresAt: 99999, quiz: { letter: 3, options: [3, 7, 11, 0, 1, 2] } }
   a(answerGoldenQuiz(gq3, 2, 1000, 0).fizzled === true, 'wrong option fizzles, never drains')
@@ -2627,7 +2612,8 @@ if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('idle-game.js'
   const gwA = defaultIdleState()
   const ai = wq.options.indexOf(wq.answer)
   gwA.golden = { id: 'dew', expiresAt: 99999, quiz: wq }
-  a(answerGoldenQuiz(gwA, ai, 1000, 10).claimed?.id === 'dew', 'right word answer claims the buff')
+  const dewRes = answerGoldenQuiz(gwA, ai, 1000, 10)
+  a(Array.isArray(dewRes.choice) && dewRes.choice[0] === 'dew', 'right word answer offers its bonus first')
   // Word/root SRS: partial correctness lives per item
   const gwS = defaultIdleState()
   recordWordAnswer(gwS, 5, true, 1000)
