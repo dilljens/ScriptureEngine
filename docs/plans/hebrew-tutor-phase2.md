@@ -56,6 +56,11 @@ source + rating flow on the unified FSRS path before flipping to `available`.
 - [ ] `TruthfulScriptureQA` adversarial benchmark (~100 cases first):
       misattributed verses, popular sayings presented as Scripture,
       tradition-as-text conflations, false gematria claims.
+      SEEDED 20/100 in 2026-09-21: `tests/truthful_scripture_qa_seed.json`
+      (6 misattributed, 5 sayings, 4 tradition, 3 gematria, 2 positive
+      controls) + `tests/test_truthful_scripture_qa.py` pinning stage-1
+      verdicts — including 3 documented stage-1 gaps (SAY-03, GEM-02,
+      GEM-03) and 1 substring limit (SAY-04) reserved for the NLI stage.
 - [ ] Regression gate on claim-support/citation-precision/abention metrics
       before any provider change.
 - Checkpoint: benchmark shows fewer unsupported claims without refusing answerable questions.
