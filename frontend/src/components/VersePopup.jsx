@@ -4,12 +4,31 @@ import { parseRef } from '../bookNames'
 /**
  * VersePopup — Gospel-Library-style verse reference drawer.
  *
- * A panel anchored to the left covering most of the viewport, showing the
+ * A panel anchored to the right covering most of the viewport, showing the
  * full chapter (scrollable) with the referenced verse highlighted.
  * Click the backdrop, press Escape, or hit ✕ to dismiss.
  */
 export default function VersePopup({ verseRef, onClose, onNavigate }) {
   const info = parseRef(verseRef)
+  // Verse ranges ("1john.4.7-8"): parseRef keeps only the first verse, so
+  // expand the range here for highlighting, scrolling, and handoff.
+  const targetVerses = (() => {
+    const vpart = String(verseRef).split('.')[2] || ''
+    const m = vpart.match(/^(\d+)(?:-(\d+))?$/)
+    if (m) {
+      const out = []
+      for (let v = parseInt(m[1]); v <= (m[2] ? parseInt(m[2]) : parseInt(m[1])); v++) out.push(v)
+      return out
+    }
+    return info?.verse != null ? [info.verse] : []
+  })()
+  // Show the full range in the header ("1 John 4:7-8", not "1 John 4:7").
+  const label = (() => {
+    if (!info) return verseRef
+    const vpart = String(verseRef).split('.')[2] || ''
+    const m = vpart.match(/^(\d+)-(\d+)$/)
+    return m ? `${info.label}-${m[2]}` : info.label
+  })()
   const [chapterData, setChapterData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -39,7 +58,7 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
   // Auto-scroll to the referenced verse
   useEffect(() => {
     if (!scrollRef.current || !chapterData?.verses) return
-    const el = scrollRef.current.querySelector(`[data-verse="${info?.verse}"]`)
+    const el = targetVerses.length > 0 ? scrollRef.current.querySelector(`[data-verse="${targetVerses[0]}"]`) : null
     if (el) {
       // Same containment as VersePreviewCard: scroll the popup's own
       // container only, never the page behind it.
@@ -63,7 +82,7 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
   if (!info) {
     return (
       <div className="fixed inset-0 z-[70] bg-black/30" onClick={onClose}>
-        <div className="absolute left-0 top-0 h-full w-[min(560px,94vw)] bg-white dark:bg-neutral-900 p-6 text-sm text-red-500">Invalid reference: {verseRef}</div>
+        <div className="absolute right-0 top-0 h-full w-[94vw] sm:w-[min(75vw,860px)] bg-white dark:bg-neutral-900 p-6 text-sm text-red-500">Invalid reference: {verseRef}</div>
       </div>
     )
   }
@@ -74,31 +93,31 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={info.label}
+      aria-label={label}
     >
       <div
         onClick={e => e.stopPropagation()}
         className={`
-          absolute left-0 top-0 h-full w-[min(560px,94vw)]
+          absolute right-0 top-0 h-full w-[94vw] sm:w-[min(75vw,860px)]
           bg-white dark:bg-neutral-900
-          border-r border-neutral-200 dark:border-neutral-700
+          border-l border-neutral-200 dark:border-neutral-700
           shadow-2xl
           flex flex-col
           overflow-hidden
           transition-transform duration-200 ease-out
-          ${mounted ? 'translate-x-0' : '-translate-x-full'}
+          ${mounted ? 'translate-x-0' : 'translate-x-full'}
         `}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-              📖 {info.label}
+              📖 {label}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => onNavigate && onNavigate(info.book, info.chapter)}
+              onClick={() => onNavigate && onNavigate(info.book, info.chapter, targetVerses.length > 0 ? targetVerses : undefined)}
               className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               title="Open full chapter"
             >
@@ -135,7 +154,7 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
               {/* Verse context list */}
               <div className="space-y-1">
                   {chapterData.verses.map(v => {
-                  const isTarget = v.verse === info.verse
+                  const isTarget = targetVerses.includes(v.verse)
 
                   return (
                     <div
@@ -168,7 +187,7 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
               {/* Connections section placeholder */}
               <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-700">
                 <button
-                  onClick={() => onNavigate && onNavigate(info.book, info.chapter)}
+                  onClick={() => onNavigate && onNavigate(info.book, info.chapter, targetVerses.length > 0 ? targetVerses : undefined)}
                   className="w-full text-center text-xs text-blue-600 dark:text-blue-400 hover:underline py-2 cursor-pointer"
                 >
                   Open full {info.bookName} {info.chapter} →

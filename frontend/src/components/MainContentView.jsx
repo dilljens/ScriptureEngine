@@ -64,6 +64,7 @@ export default function MainContentView(props) {
   const viewRef = currentTab?.viewRef ?? null
   const bookTitle = book
   const highlightVerse = currentTab?.highlights?.[0] || null
+  const highlightVerses = currentTab?.highlights || []
 
   if (showHebrewDiagnostic) {
     return (
@@ -305,7 +306,7 @@ export default function MainContentView(props) {
     return (
       <div className="flex h-full">
         <div className="flex-1 min-w-0 overflow-y-auto border-r border-neutral-200 dark:border-neutral-700">
-          <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse}
+          <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse} highlightVerses={highlightVerses}
             onSplit={null}
             companionLabel={null}
             onCloseCompanion={() => {
@@ -313,7 +314,7 @@ export default function MainContentView(props) {
             }} />
         </div>
         <div className="flex-1 min-w-0 overflow-y-auto bg-neutral-50/50 dark:bg-neutral-900/50">
-          <ChapterView book={companion.book} chapter={companion.chapter} poetryMode={poetryMode} highlightVerse={null}
+          <ChapterView book={companion.book} chapter={companion.chapter} poetryMode={poetryMode} highlightVerse={null} highlightVerses={[]}
             onSplit={null}
             companionLabel={`${companion.book} ${companion.chapter}`}
             onCloseCompanion={() => {
@@ -323,7 +324,7 @@ export default function MainContentView(props) {
       </div>
     )
   }
-  return <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse}
+  return <ChapterView book={book} chapter={chapter} poetryMode={poetryMode} highlightVerse={highlightVerse} highlightVerses={highlightVerses}
     onSplit={handleOpenSplitPicker}
     companionLabel={null}
     onCloseCompanion={null} />

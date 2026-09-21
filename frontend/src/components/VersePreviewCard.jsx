@@ -25,7 +25,14 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
       if (!locations[key]) {
         locations[key] = { book: parts[0], chapter: parseInt(parts[1]), verses: [] }
       }
-      locations[key].verses.push(parseInt(parts[2]))
+      // Verse ranges ("isa.55.6-8"): highlight every verse, not just the first.
+      const m = String(parts[2]).match(/^(\d+)(?:-(\d+))?$/)
+      if (m) {
+        const end = m[2] ? parseInt(m[2]) : parseInt(m[1])
+        for (let v = parseInt(m[1]); v <= end; v++) locations[key].verses.push(v)
+      } else if (!isNaN(parseInt(parts[2]))) {
+        locations[key].verses.push(parseInt(parts[2]))
+      }
     }
   }
 

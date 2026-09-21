@@ -47,7 +47,7 @@ function useChapterData(book, chapter) {
   return { data: d, loading: l, error: e, retry }
 }
 
-export default function ChapterView({ book, chapter, poetryMode, highlightVerse, onSplit, companionLabel, onCloseCompanion }) {
+export default function ChapterView({ book, chapter, poetryMode, highlightVerse, highlightVerses = [], onSplit, companionLabel, onCloseCompanion }) {
   const { toggles, displayLang, setDisplayLang, showTranslit, setShowTranslit, showEnglish, setShowEnglish, hebrewDisplayMode } = useToggles()
   const { data, loading, error, retry } = useChapterData(book, chapter)
   const [footnotes, setFootnotes] = useState(null)
@@ -64,14 +64,14 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
   const restoredRef = useRef(false)
   useEffect(() => { restoredRef.current = false }, [book, chapter])
   useEffect(() => {
-    if (!data || highlightVerse || restoredRef.current) return
+    if (!data || highlightVerse || highlightVerses.length > 0 || restoredRef.current) return
     restoredRef.current = true
     const sv = readScrollPos(currentTab?.id)
     if (sv && sv.book === book && sv.chapter === chapter && sv.verse) {
       const el = verseRefs.current[sv.verse] || document.getElementById(`verse-${book}.${chapter}.${sv.verse}`)
       el?.scrollIntoView({ block: 'start' })
     }
-  }, [data, book, chapter, highlightVerse])
+  }, [data, book, chapter, highlightVerse, highlightVerses])
 
   useEffect(() => {
     const handler = (e) => {
@@ -138,11 +138,14 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
 
   const verseRefs = useRef({})
   useEffect(() => {
-    if (highlightVerse && verseRefs.current[highlightVerse]) {
-      verseRefs.current[highlightVerse].scrollIntoView({ behavior: 'smooth', block: 'center' })
-      markReviewed(`${book}.${chapter}.${highlightVerse}`)
+    const targets = highlightVerses.length > 0 ? highlightVerses : (highlightVerse ? [highlightVerse] : [])
+    if (targets.length === 0) return
+    const first = verseRefs.current[targets[0]]
+    if (first) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      for (const v of targets) markReviewed(`${book}.${chapter}.${v}`)
     }
-  }, [highlightVerse, book, chapter])
+  }, [highlightVerse, highlightVerses, book, chapter])
 
   const LAYER_MAP = {
     intertextual: [
@@ -321,8 +324,12 @@ export default function ChapterView({ book, chapter, poetryMode, highlightVerse,
         const verseTsk = tskRefs?.filter(r => { const vn = r.source_verse?.split('.').pop(); return vn === vs }) || []
         const verseWords = wordData?.[`${book}.${chapter}.${v.verse}`] || null
         const verseExtra = connectionsByVerse[vs] || null
+        const isHl = (highlightVerses.length > 0 ? highlightVerses.includes(v.verse) : highlightVerse === v.verse)
         return (
-          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el} className="scroll-mt-24">
+          <div key={v.verse} id={`verse-${book}.${chapter}.${v.verse}`} ref={el => verseRefs.current[v.verse] = el}
+            className={isHl
+              ? 'scroll-mt-24 rounded-lg bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700 px-2 -mx-2'
+              : 'scroll-mt-24'}>
             <VerseBlock verse={v} toggles={toggles} poetryMode={poetryMode}
               chiasms={data.chiasms} highlights={[]}
               footnotes={toggles.footnotes ? verseFns : []}
