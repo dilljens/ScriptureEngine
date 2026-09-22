@@ -153,6 +153,19 @@ describe('parseAndFuzzy', () => {
     expect(r.results[0].chapter).toBe(55)
   })
 
+  it('tags exact-match items with per-item navigate type', () => {
+    // Mobile Go-to executes on the ITEM's type — an exact match without it
+    // silently does nothing (no branch matches, no error).
+    for (const q of ['isa 55:6', 'isa 55', 'genesis 1', 'isaiah']) {
+      const r = parseAndFuzzy(q, mockBooks)
+      expect(r.type).toBe('navigate')
+      expect(r.results.length).toBeGreaterThan(0)
+      for (const item of r.results) {
+        expect(item.type).toBe('navigate')
+      }
+    }
+  })
+
   it('returns navigate result for chapter only', () => {
     const r = parseAndFuzzy('isa 55', mockBooks)
     expect(r.type).toBe('navigate')

@@ -211,16 +211,17 @@ test.describe('Mobile — nav search bar', () => {
   test('nav search shows book results for "isa"', async ({ page }) => {
     const navSearch = page.locator('input[placeholder*="Go to"]')
     await navSearch.fill('isa')
-    // Should see a dropdown with Isaiah
-    const result = page.locator('button').filter({ hasText: /Isaiah/i }).first()
+    // Scoped to the nav dropdown: unscoped button queries match the hidden
+    // desktop header first (same "Isaiah" breadcrumb text, display:none).
+    const result = page.getByTestId('mobile-nav-dropdown').locator('button').filter({ hasText: /Isaiah/i }).first()
     await expect(result).toBeVisible({ timeout: 5000 })
   })
 
   test('nav search enter navigates to chapter', async ({ page }) => {
     const navSearch = page.locator('input[placeholder*="Go to"]')
     await navSearch.fill('isa 55')
-    // Wait for dropdown to appear
-    const dropdownResult = page.locator('button').filter({ hasText: /go/i }).first()
+    // Wait for dropdown to appear (scoped: the "↵ go" hint lives in the row)
+    const dropdownResult = page.getByTestId('mobile-nav-dropdown').locator('button').filter({ hasText: /go/i }).first()
     await expect(dropdownResult).toBeVisible({ timeout: 5000 })
     await navSearch.press('Enter')
     // Should navigate to Isaiah 55

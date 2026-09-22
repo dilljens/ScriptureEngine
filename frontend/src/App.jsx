@@ -680,7 +680,10 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (!result) return
     setShowMobileNav(false)
     setMobileNavVal('')
-    if (result.type === 'navigate' && result.book) {
+    // Per-item type is the contract (refParser sets it), but a book-bearing
+    // item without one is unambiguously a navigation target — never strand it.
+    const kind = result.type || (result.book ? 'navigate' : null)
+    if (kind === 'navigate' && result.book) {
       if (result.newTab) handleCommandNav(result.book, result.chapter, true)
       // handleChatNavigate applies verse highlights (scrolls to the verse);
       // handleCommandNav drops them, so only use it for new-tab opens.
@@ -1097,7 +1100,7 @@ const [showAssessment, setShowAssessment] = useState(false)
               className="w-24 text-base px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" />
             </form>
             {showMobileNav && mobileNavResults.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-h-72 overflow-y-auto z-50 min-w-[220px]">
+              <div data-testid="mobile-nav-dropdown" className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-h-72 overflow-y-auto z-50 min-w-[220px]">
                 {mobileNavResults.map((r, i) => (
                   <button key={i}
                     onClick={() => { executeMobileNav(r); setShowMobileNav(false) }}

@@ -1,12 +1,17 @@
 /**
  * Parse scripture references and paths.
  *
+ * Book titles fall back to the static BOOK_TITLES map (bookNames.js has no
+ * dependencies, so this import is cycle-free).
+ *
  * Formats:
  *   "isa 55:6"      → navigate
  *   "/ot/isa/55"    → path-style
  *   "/chat ..."     → chat
  *   "/help"         → help
  */
+
+import { BOOK_TITLES } from './bookNames'
 
 const COLLECTION_MAP = {
   'ot': 'ot', 'old_testament': 'ot', 'oldtestament': 'ot', 'old testament': 'ot',
@@ -390,7 +395,9 @@ export function parseAndFuzzy(input, allBooks) {
   if (exact) {
     // Look up the full book title from allBooks for a nicer label
     const bookInfo = allBooks.find(b => b.bookId === exact.book)
-    const title = bookInfo?.bookTitle || exact.book.toUpperCase()
+    // Static titles as fallback: bookData may still be loading (or failed),
+    // and the label must not depend on that race.
+    const title = bookInfo?.bookTitle || BOOK_TITLES[exact.book] || exact.book.toUpperCase()
     // Build label with verse info
     let label = `${title} ${exact.chapter}`
     if (exact.verses?.length === 1) {
@@ -402,7 +409,7 @@ export function parseAndFuzzy(input, allBooks) {
         : `${exact.verses[0]}-${exact.verses[exact.verses.length-1]}`
       label += `:${compact}`
     }
-    return { type: 'navigate', results: [{ ...exact, matchIdxs: [], label, newTab: isNewTab }] }
+    return { type: 'navigate', results: [{ ...exact, type: 'navigate', matchIdxs: [], label, newTab: isNewTab }] }
   }
 
   // ── Fuzzy search across all books (scored, sorted, top 20) ──
