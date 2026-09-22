@@ -225,7 +225,15 @@ export default function AppOverlays(props) {
             break
           }
           case 'hebrew':
-            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null); openHebrewTab()
+            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null)
+            // Re-tap while already viewing a Hebrew lesson pops back to the
+            // dashboard (game mode persists via localStorage) — otherwise a
+            // stale lesson viewRef strands the user away from their game.
+            if (currentTab?.view === 'hebrew' && currentTab?.viewRef) {
+              updateTab(currentTab.id, { viewRef: null, label: 'Hebrew' })
+            } else {
+              openHebrewTab()
+            }
             break
           case 'learn':
             setShowMobileMenu(false); setShowHebrewDiagnostic(false); openLearnTab()

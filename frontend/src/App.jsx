@@ -226,7 +226,11 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
   const tabLabel = currentTab?.label || ''
-  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : viewLevel === 'chapter' || viewLevel === 'book' || viewLevel === 'work' || viewLevel === 'library' ? 'read' : viewLevel === 'chat' ? 'chat' : viewLevel === 'tiles' ? 'tiles' : viewLevel === 'wiki' ? 'wiki' : 'read'
+  // Bottom-tab highlight must match the visible content: hebrew/learn/review
+  // are their own tabs (not Read), and the legacy Hebrew overlays render
+  // Hebrew content above whatever tab sits underneath.
+  const _tabForView = { chapter: 'read', book: 'read', work: 'read', library: 'read', chat: 'chat', hebrew: 'hebrew', learn: 'learn', memorize: 'memorize', tiles: 'tiles', wiki: 'wiki' }
+  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : (showHebrewDiagnostic || hebrewLessonId !== null || showHebrewLearn) ? 'hebrew' : (_tabForView[viewLevel] || 'read')
   window.__bookData = bookData
 
   const nav = useMemo(() => {
