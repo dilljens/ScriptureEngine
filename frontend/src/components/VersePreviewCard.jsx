@@ -6,7 +6,7 @@ import { groupVerses } from '../lib/verseGroups'
  *
  * Props:
  *   refs: string | string[] — verse reference(s) like "isa.55.6" or ["isa.55.6", "isa.55.7"]
- *   onNavigate: (book, chapter) => void — called when user clicks to open full chapter
+ *   onNavigate: (book, chapter, verses) => void — called when user clicks to open the chapter
  *   maxHeight?: string — CSS max-height for the scrollable container (default "12rem")
  */
 export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem', compact }) {
@@ -115,7 +115,7 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
   return (
     <div className={`bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm ${compact ? 'inline-block' : ''}`}>
       {/* Header */}
-      <button onClick={() => onNavigate && primary && onNavigate(primary.book, primary.chapter)}
+      <button onClick={() => onNavigate && primary && onNavigate(primary.book, primary.chapter, primary.verses)}
         className={`w-full flex items-center gap-2 ${compact ? 'px-2 py-1' : 'px-3 py-2'} bg-neutral-50 dark:bg-neutral-800/50
           hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer text-left border-b border-neutral-200 dark:border-neutral-700`}>
         <span className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">📖 {bookTitle}</span>
@@ -162,7 +162,7 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
 
       {/* Footer */}
       <div className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-700">
-        <button onClick={() => onNavigate && primary && onNavigate(primary.book, primary.chapter)}
+        <button onClick={() => onNavigate && primary && onNavigate(primary.book, primary.chapter, primary.verses)}
           className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
           Open full chapter →
         </button>

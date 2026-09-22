@@ -23,7 +23,6 @@ import VerseRef from '../components/VerseRef'
 function formatVerseRef(ref) {
   if (!ref) return ref
   const parts = ref.split('.')
-  if (parts.length < 2) return ref
   const [bookId, chapter, ...rest] = parts
   // D&C special case: "dc76" → "D&C 76"
   if (bookId.startsWith('dc')) {
@@ -31,6 +30,7 @@ function formatVerseRef(ref) {
     const verse = rest.join('.')
     return verse ? `D&C ${section}:${verse}` : `D&C ${section}`
   }
+  if (parts.length < 2) return ref
   // Case-insensitive lookup (DSS books use uppercase IDs like '1QS')
   const bookName = BOOK_TITLES[bookId] || BOOK_TITLES[Object.keys(BOOK_TITLES).find(k => k.toLowerCase() === bookId.toLowerCase())]
   if (!bookName) return ref
@@ -40,18 +40,27 @@ function formatVerseRef(ref) {
 
 /**
  * Default verse-open handler: dispatch a scripture-navigate event so the app
- * opens the chapter and scrolls to the verse. Used by surfaces that render
+ * opens the chapter and scrolls to the verse(s). Used by surfaces that render
  * scripture-markdown without a custom onOpenVerse.
  */
 export function openVerseRef(ref) {
   if (!ref) return
   const p = String(ref).split('.')
-  if (p.length < 2) return
+  const dcSection = p.length === 1 && /^dc\d+$/i.test(p[0])
+  if (p.length < 2 && !dcSection) return
+  const verseSpec = p[2] || ''
+  const parts = verseSpec ? verseSpec.split(',').flatMap(part => {
+    const [start, end] = part.split('-').map(Number)
+    if (!Number.isInteger(start)) return []
+    if (!Number.isInteger(end) || end < start) return [start]
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  }) : []
   window.dispatchEvent(new CustomEvent('scripture-navigate', {
     detail: {
       book: canonicalBookId(p[0]),
-      chapter: parseInt(p[1]) || 1,
-      verse: p.length >= 3 ? (parseInt(p[2]) || undefined) : undefined,
+      chapter: dcSection ? parseInt(p[0].slice(2)) : parseInt(p[1]) || 1,
+      verse: parts[0],
+      verses: parts.length > 0 ? parts : undefined,
     },
   }))
 }
@@ -201,9 +210,8 @@ export function findVerseRefs(text) {
       }
     }
   }
-  // Chapter-only refs ("1 John 3", "Psalm 23") — same prose-tolerant retry,
-  // linked at verse 1 (chapter opens at the top, matching ChatPanel's
-  // existing chapter-only convention).
+  // Chapter-only refs ("1 John 3", "Psalm 23") — link the chapter without
+  // inventing a verse target, so chapter navigation does not highlight verse 1.
   BARE_CHAPTER_RE.lastIndex = 0
   while ((m = BARE_CHAPTER_RE.exec(text)) !== null) {
     const words = m[1].trim().split(/\s+/)
@@ -215,7 +223,7 @@ export function findVerseRefs(text) {
         hits.push({
           index: m.index + startInMatch,
           len: m[0].length - startInMatch,
-          ref: `${bookKey}.${m[2]}.1`,
+          ref: `${bookKey}.${m[2]}`,
         })
         break
       }
@@ -223,7 +231,7 @@ export function findVerseRefs(text) {
   }
   BARE_DC_CH_RE.lastIndex = 0
   while ((m = BARE_DC_CH_RE.exec(text)) !== null) {
-    hits.push({ index: m.index, len: m[0].length, ref: `dc${m[1]}.${m[1]}.1` })
+    hits.push({ index: m.index, len: m[0].length, ref: `dc${m[1]}` })
   }
   // sort by index, drop overlaps (keep the earliest/longest)
   hits.sort((a, b) => a.index - b.index || b.len - a.len)

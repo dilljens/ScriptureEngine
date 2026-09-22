@@ -259,9 +259,10 @@ export function TabProvider({ children }) {
     }, []),
 
     // Convenience: navigate to chapter view
-    goToChapter: useCallback((tabId, book, chapter, label) => {
+    goToChapter: useCallback((tabId, book, chapter, label, highlights = []) => {
       dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
-        book, chapter, view: 'chapter', viewRef: null, highlights: [],
+        book, chapter, view: 'chapter', viewRef: null,
+        highlights: Array.isArray(highlights) ? highlights : [],
         label: label || `${book} ${chapter}`,
       }})
     }, []),
@@ -271,7 +272,7 @@ export function TabProvider({ children }) {
     goToVerse: useCallback((tabId, book, chapter, verse, label) => {
       dispatch({ type: 'UPDATE_TAB', id: tabId, updates: {
         book, chapter, view: 'chapter', viewRef: null,
-        highlights: verse ? [verse] : undefined,
+        highlights: verse ? [verse] : [],
         label: label || `${book} ${chapter}${verse ? `:${verse}` : ''}`,
       }})
     }, []),

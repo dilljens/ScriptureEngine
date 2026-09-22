@@ -179,7 +179,7 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
       const book = parts[0]; const chapter = parseInt(parts[1]); const verse = parts[2] ? parseInt(parts[2]) : null
       const label = `${book} ${chapter}${verse ? `:${verse}` : ''}`
       if (e.ctrlKey || e.metaKey) { onOpenTab?.(book, chapter, { label, highlights: verse ? [verse] : [] }) }
-      else { onNavigate?.(book, chapter) }
+      else { onNavigate?.(book, chapter, verse ? [verse] : []) }
     }
     setShowDropdown(false)
     setQuery('')
@@ -302,7 +302,7 @@ export default function SearchBar({ onNavigate, onOpenTab, bookData, onCommand }
                     <div className="px-4 pb-2">
                       <VersePreviewCard
                         refs={r.verses?.length > 0 ? r.verses.map(v => `${r.book}.${r.chapter}.${v}`) : `${r.book}.${r.chapter}`}
-                        onNavigate={(b, c) => { onNavigate?.(b, c); setShowDropdown(false); setQuery('') }}
+                        onNavigate={(b, c, verses) => { onNavigate?.(b, c, verses); setShowDropdown(false); setQuery('') }}
                         maxHeight="8rem"
                         compact
                       />

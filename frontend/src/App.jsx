@@ -53,7 +53,7 @@ function AppInner() {
     workspaces, activeWorkspace, activeTab, currentWorkspace, currentTab,
     viewLevel, isChapterView, isLibraryView,
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
-    openTab, closeTab, selectTab, updateTab, goToChapter, goToVerse, goToBook, goToWork, openChatTab,
+    openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
     moveTab, openMemorizeTab, openWikiTab, openHebrewTab, openKnowledgeTab, openLearnTab, openHubNoteTab, openStudiesTab, openArticlesTab,
   } = useTabs()
 
@@ -254,11 +254,10 @@ const [showAssessment, setShowAssessment] = useState(false)
         return
       }
       if (currentTab?.id && e.detail?.book && e.detail?.chapter) {
-        if (e.detail?.verse != null) {
-          goToVerse(currentTab.id, e.detail.book, e.detail.chapter, e.detail.verse)
-        } else {
-          goToChapter(currentTab.id, e.detail.book, e.detail.chapter)
-        }
+        const highlights = Array.isArray(e.detail.verses)
+          ? e.detail.verses
+          : e.detail.verse != null ? [e.detail.verse] : []
+        goToChapter(currentTab.id, e.detail.book, e.detail.chapter, undefined, highlights)
       }
     }
     const handleTab = (e) => {
@@ -559,14 +558,15 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   const handleChatNavigate = (b, ch, highlights) => {
     const bt = resolveBookTitle(b)
+    const selectedVerses = Array.isArray(highlights)
+      ? highlights.filter(v => Number.isInteger(v) && v > 0)
+      : highlights == null ? [] : [highlights]
     if (currentTab?.id) {
-      goToChapter(currentTab.id, b, ch, `${bt} ${ch}`)
-      // Set highlights after navigation
-      if (highlights) {
-        setTimeout(() => updateTab(currentTab.id, { highlights }), 50)
-      }
+      // Navigate and set highlights atomically. Chapter-only navigation passes
+      // an empty list, which also clears any prior verse selection.
+      goToChapter(currentTab.id, b, ch, `${bt} ${ch}`, selectedVerses)
     } else {
-      openTab(b, ch, { label: `${bt} ${ch}`, highlights: highlights || [] })
+      openTab(b, ch, { label: `${bt} ${ch}`, highlights: selectedVerses })
     }
   }
 
@@ -578,21 +578,25 @@ const [showAssessment, setShowAssessment] = useState(false)
     if (p.length < 2) return
     const b = p[0].toLowerCase()
     const ch = parseInt(p[1]) || 1
-    const vs = p.length >= 3 ? parseInt(p[2]) || null : null
+    const verseSpec = p.length >= 3 ? p[2] : ''
+    const vs = verseSpec ? verseSpec.split('-').map(Number).filter(Number.isInteger) : []
+    const highlights = vs.length === 2 && vs[1] >= vs[0]
+      ? Array.from({ length: vs[1] - vs[0] + 1 }, (_, i) => vs[0] + i)
+      : vs.slice(0, 1)
     if (newTab) {
-      openTab(b, ch, { label: `${resolveBookTitle(b)} ${ch}`, highlights: vs ? [vs] : [] })
+      openTab(b, ch, { label: `${resolveBookTitle(b)} ${ch}`, highlights })
     } else if (currentTab?.id) {
-      if (vs != null) goToVerse(currentTab.id, b, ch, vs)
-      else goToChapter(currentTab.id, b, ch)
+      goToChapter(currentTab.id, b, ch, undefined, highlights)
     }
-  }, [currentTab?.id, goToVerse, goToChapter, openTab, resolveBookTitle])
+  }, [currentTab?.id, goToChapter, openTab, resolveBookTitle])
   const handleChatOpenTab = (b, ch, opts = {}) => { openTab(b, ch, { ...opts, label: `${resolveBookTitle(b)} ${ch}` }) }
-  const handleCommandNav = useCallback((bookId, chapter, isNewTab) => {
+  const handleCommandNav = useCallback((bookId, chapter, highlights = [], isNewTab = false) => {
     const bt = resolveBookTitle(bookId)
-    if (isNewTab) openTab(bookId, chapter, { label: `${bt} ${chapter}` })
-    else if (currentTab?.id) goToChapter(currentTab.id, bookId, chapter)
+    const selectedVerses = Array.isArray(highlights) ? highlights : []
+    if (isNewTab) openTab(bookId, chapter, { label: `${bt} ${chapter}`, highlights: selectedVerses })
+    else if (currentTab?.id) goToChapter(currentTab.id, bookId, chapter, undefined, selectedVerses)
     setShowCommand(false)
-  }, [currentTab?.id, openTab, resolveBookTitle])
+  }, [currentTab?.id, goToChapter, openTab, resolveBookTitle])
 
   // Open a chat tab (clears any stale initialMessage)
   const handleOpenChat = useCallback(() => {

@@ -1955,7 +1955,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         {/* Verse preview inline */}
         {previewRef && (
           <div className="mb-3">
-            <VersePreviewCard refs={previewRef.ref} onNavigate={(b, c) => { onNavigate(b, c); handleClose() }} maxHeight="10rem" compact />
+            <VersePreviewCard refs={previewRef.ref} onNavigate={(b, c, verses) => { onNavigate(b, c, verses); handleClose() }} maxHeight="10rem" compact />
             <div className="flex items-center gap-2 mt-1.5">
               <button onClick={() => {
                 const refs = Array.isArray(previewRef.ref) ? previewRef.ref : [previewRef.ref]
@@ -2100,9 +2100,9 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
         <VersePopup
           verseRef={activeVerse.ref}
           onClose={() => setActiveVerse(null)}
-          onNavigate={(b, c) => {
+          onNavigate={(b, c, verses) => {
             setActiveVerse(null)
-            if (onNavigate) onNavigate(b, c)
+            if (onNavigate) onNavigate(b, c, verses)
             if (variant === 'overlay') handleClose()
           }}
         />

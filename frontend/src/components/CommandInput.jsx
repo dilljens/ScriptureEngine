@@ -124,7 +124,7 @@ const executeResult = (r) => {
   if (!r) return
   switch (r.type) {
     case 'navigate':
-      onNavigate(r.book, r.chapter, r.newTab || false)
+      onNavigate(r.book, r.chapter, r.verses || [], r.newTab || false)
       onClose(); break
     case 'chat':
       onChat(r.message || '')

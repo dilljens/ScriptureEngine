@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { preprocess } from '../lib/scripture-markdown'
+import { openVerseRef, preprocess } from '../lib/scripture-markdown'
 import { BOOK_TITLES } from '../bookNames'
 
 describe('preprocess', () => {
@@ -114,23 +114,23 @@ describe('preprocess', () => {
     expect(preprocess('Hear Him in 3 Nephi 11:7')).toContain('data-ref="3ne.11.7"')
   })
 
-  it('auto-links chapter-only refs like 1 John 3', () => {
-    expect(preprocess('Read 1 John 3 today')).toContain('data-ref="1john.3.1"')
-    expect(preprocess('In Genesis 1 we read')).toContain('data-ref="gen.1.1"')
-    expect(preprocess('Read Psalm 23 tonight')).toContain('data-ref="psa.23.1"')
-    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="2pet.1.1"')
-    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="jude.3.1"')
+  it('auto-links chapter-only refs without inventing verse 1', () => {
+    expect(preprocess('Read 1 John 3 today')).toContain('data-ref="1john.3"')
+    expect(preprocess('In Genesis 1 we read')).toContain('data-ref="gen.1"')
+    expect(preprocess('Read Psalm 23 tonight')).toContain('data-ref="psa.23"')
+    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="2pet.1"')
+    expect(preprocess('as in 2 Peter 1 and Jude 3')).toContain('data-ref="jude.3"')
   })
 
   it('links chapter-only refs preceded by prose without eating the prose', () => {
     const r = preprocess('we see in 1 John 3 the love of God')
-    expect(r).toContain('data-ref="1john.3.1"')
+    expect(r).toContain('data-ref="1john.3"')
     expect(r).toContain('we see in ')
     expect(r).toContain(' the love of God')
   })
 
   it('auto-links section-only D&C refs', () => {
-    expect(preprocess('See D&C 76 for context')).toContain('data-ref="dc76.76.1"')
+    expect(preprocess('See D&C 76 for context')).toContain('data-ref="dc76"')
   })
 
   it('does not double-link chapter-only prefixes of ch:vs refs', () => {
@@ -179,6 +179,33 @@ describe('preprocess', () => {
   })
 })
 
+describe('openVerseRef', () => {
+  it('dispatches verse targets but leaves chapter-only refs unhighlighted', () => {
+    const events = []
+    const previousWindow = globalThis.window
+    const previousCustomEvent = globalThis.CustomEvent
+    globalThis.CustomEvent = class CustomEvent {
+      constructor(type, init) { this.type = type; this.detail = init.detail }
+    }
+    globalThis.window = { dispatchEvent: event => events.push(event) }
+
+    try {
+      openVerseRef('gen.1')
+      openVerseRef('gen.1.2-4')
+      openVerseRef('dc76')
+
+      expect(events[0].detail).toMatchObject({ book: 'gen', chapter: 1 })
+      expect(events[0].detail.verses).toBeUndefined()
+      expect(events[1].detail).toMatchObject({ book: 'gen', chapter: 1, verse: 2, verses: [2, 3, 4] })
+      expect(events[2].detail).toMatchObject({ book: 'dc76', chapter: 76 })
+      expect(events[2].detail.verses).toBeUndefined()
+    } finally {
+      globalThis.window = previousWindow
+      globalThis.CustomEvent = previousCustomEvent
+    }
+  })
+})
+
 // ── Library-wide sweep: every book id must link by its full title ──
 // Several ids share one display title (Damascus Document, Songs of Sabbath
 // Sacrifice, 4QMMT) — the linker resolves those to the first id, so only
@@ -197,8 +224,8 @@ describe('every library book links', () => {
     it(`links "${title} 1:1" → ${id}.1.1`, () => {
       expect(preprocess(`${title} 1:1`)).toContain(`data-ref="${id}.1.1"`)
     })
-    it(`links chapter-only "${title} 3" → ${id}.3.1`, () => {
-      expect(preprocess(`${title} 3`)).toContain(`data-ref="${id}.3.1"`)
+    it(`links chapter-only "${title} 3" → ${id}.3`, () => {
+      expect(preprocess(`${title} 3`)).toContain(`data-ref="${id}.3"`)
     })
   }
 
@@ -210,7 +237,7 @@ describe('every library book links', () => {
   it('links D&C section refs across a range of sections', () => {
     for (const n of [1, 19, 76, 93, 121, 132, 138]) {
       expect(preprocess(`See D&C ${n}:7 here`)).toContain(`data-ref="dc${n}.${n}.7"`)
-      expect(preprocess(`See D&C ${n} here`)).toContain(`data-ref="dc${n}.${n}.1"`)
+      expect(preprocess(`See D&C ${n} here`)).toContain(`data-ref="dc${n}"`)
     }
   })
 })
