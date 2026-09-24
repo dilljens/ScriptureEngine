@@ -1,0 +1,235 @@
+JSF Teachings Personal Research Archive — Manifest
+==================================================
+Date (UTC): 2026-09-23T19:42:21Z
+Source: https://josephsmithfoundation.org/teachings/
+Output dir: /tmp/opencode/jsf-teachings
+
+Counts:
+  all-urls: 2045
+  teachings-urls: 189
+  teachings attempted (cap 250): 189
+  html saved: 189
+  core-assets files: core-assets/discernment.crawled.html core-assets/discernment.html core-assets/holy-ghost.crawled.html core-assets/holy-ghost.html core-assets/intelligence.crawled.html core-assets/intelligence.html core-assets/prayer.crawled.html core-assets/prayer.html core-assets/revelation.crawled.html core-assets/revelation.html core-assets/spirit-of-god.crawled.html core-assets/spirit-of-god.html 
+  core-assets wget partial dir: discernment.crawled.html discernment.html holy-ghost holy-ghost.crawled.html holy-ghost.html intelligence.crawled.html intelligence.html prayer.crawled.html prayer.html revelation revelation.crawled.html revelation.html spirit-of-god.crawled.html spirit-of-god.html 
+  ebook links found: 0
+  ebooks downloaded: 0
+
+Sizes:
+48M	/tmp/opencode/jsf-teachings
+164K	/tmp/opencode/jsf-teachings/all-urls.txt
+6.1M	/tmp/opencode/jsf-teachings/core-assets
+36K	/tmp/opencode/jsf-teachings/crawl.log
+0	/tmp/opencode/jsf-teachings/ebook-links-40.txt
+0	/tmp/opencode/jsf-teachings/ebook-links-raw.txt
+0	/tmp/opencode/jsf-teachings/ebook-links.txt
+0	/tmp/opencode/jsf-teachings/ebooks
+424K	/tmp/opencode/jsf-teachings/ebooks-index.html
+0	/tmp/opencode/jsf-teachings/failures.txt
+41M	/tmp/opencode/jsf-teachings/html
+4.0K	/tmp/opencode/jsf-teachings/manifest.txt
+0	/tmp/opencode/jsf-teachings/retry.txt
+1.2M	/tmp/opencode/jsf-teachings/sitemaps
+12K	/tmp/opencode/jsf-teachings/teachings-urls-250.txt
+12K	/tmp/opencode/jsf-teachings/teachings-urls.txt
+
+Failures (failures.txt):
+(no failures — all 200)
+
+URLs fetched:
+https://josephsmithfoundation.org/teachings/
+https://josephsmithfoundation.org/teachings/aaronic-priesthood/
+https://josephsmithfoundation.org/teachings/abel/
+https://josephsmithfoundation.org/teachings/abrahamic-covenant
+https://josephsmithfoundation.org/teachings/adam
+https://josephsmithfoundation.org/teachings/adam-ondi-ahman
+https://josephsmithfoundation.org/teachings/adultery
+https://josephsmithfoundation.org/teachings/agency
+https://josephsmithfoundation.org/teachings/agriculture
+https://josephsmithfoundation.org/teachings/ancient-of-days
+https://josephsmithfoundation.org/teachings/angels
+https://josephsmithfoundation.org/teachings/apostate
+https://josephsmithfoundation.org/teachings/aspiring-men
+https://josephsmithfoundation.org/teachings/astronomy
+https://josephsmithfoundation.org/teachings/atonement-of-jesus-christ
+https://josephsmithfoundation.org/teachings/authority/
+https://josephsmithfoundation.org/teachings/baptism
+https://josephsmithfoundation.org/teachings/bible
+https://josephsmithfoundation.org/teachings/blood
+https://josephsmithfoundation.org/teachings/born-again
+https://josephsmithfoundation.org/teachings/burial
+https://josephsmithfoundation.org/teachings/callings
+https://josephsmithfoundation.org/teachings/celestial-marriage
+https://josephsmithfoundation.org/teachings/charity
+https://josephsmithfoundation.org/teachings/church-organization
+https://josephsmithfoundation.org/teachings/commandments
+https://josephsmithfoundation.org/teachings/covenant
+https://josephsmithfoundation.org/teachings/cowdery-oliver
+https://josephsmithfoundation.org/teachings/creation
+https://josephsmithfoundation.org/teachings/creeds
+https://josephsmithfoundation.org/teachings/cursings
+https://josephsmithfoundation.org/teachings/damnation
+https://josephsmithfoundation.org/teachings/daniel
+https://josephsmithfoundation.org/teachings/david-king
+https://josephsmithfoundation.org/teachings/death-physical
+https://josephsmithfoundation.org/teachings/debt
+https://josephsmithfoundation.org/teachings/degrees-of-glory
+https://josephsmithfoundation.org/teachings/devil
+https://josephsmithfoundation.org/teachings/discernment
+https://josephsmithfoundation.org/teachings/disease
+https://josephsmithfoundation.org/teachings/disfellowshipment
+https://josephsmithfoundation.org/teachings/dispensationofthegospel
+https://josephsmithfoundation.org/teachings/dispensations-of-the-fulness-of-times/
+https://josephsmithfoundation.org/teachings/doctors
+https://josephsmithfoundation.org/teachings/doctrine
+https://josephsmithfoundation.org/teachings/earth
+https://josephsmithfoundation.org/teachings/economy
+https://josephsmithfoundation.org/teachings/election
+https://josephsmithfoundation.org/teachings/elias-spirit-of
+https://josephsmithfoundation.org/teachings/elijah
+https://josephsmithfoundation.org/teachings/elijah-spirit-of
+https://josephsmithfoundation.org/teachings/elohim
+https://josephsmithfoundation.org/teachings/emergency-preparedness
+https://josephsmithfoundation.org/teachings/endowment
+https://josephsmithfoundation.org/teachings/enemy
+https://josephsmithfoundation.org/teachings/enoch
+https://josephsmithfoundation.org/teachings/eternal-life
+https://josephsmithfoundation.org/teachings/evangelist
+https://josephsmithfoundation.org/teachings/evil
+https://josephsmithfoundation.org/teachings/evil-speaking-of-the-lords-annointed
+https://josephsmithfoundation.org/teachings/exaltation
+https://josephsmithfoundation.org/teachings/faith
+https://josephsmithfoundation.org/teachings/faith-works
+https://josephsmithfoundation.org/teachings/fall-of-adam
+https://josephsmithfoundation.org/teachings/fault-finding
+https://josephsmithfoundation.org/teachings/first-presidency
+https://josephsmithfoundation.org/teachings/first-principles-of-the-gospel
+https://josephsmithfoundation.org/teachings/first-vision
+https://josephsmithfoundation.org/teachings/force
+https://josephsmithfoundation.org/teachings/foreordination
+https://josephsmithfoundation.org/teachings/forgiveness
+https://josephsmithfoundation.org/teachings/freemasonry
+https://josephsmithfoundation.org/teachings/friendship
+https://josephsmithfoundation.org/teachings/gabriel
+https://josephsmithfoundation.org/teachings/gathering-of-israel
+https://josephsmithfoundation.org/teachings/giving
+https://josephsmithfoundation.org/teachings/god
+https://josephsmithfoundation.org/teachings/god-character-attributes-of
+https://josephsmithfoundation.org/teachings/godhead-trinity
+https://josephsmithfoundation.org/teachings/god-omnipresence-of
+https://josephsmithfoundation.org/teachings/god-presence-of
+https://josephsmithfoundation.org/teachings/gods-plurality-of
+https://josephsmithfoundation.org/teachings/god-the-father
+https://josephsmithfoundation.org/teachings/gospel
+https://josephsmithfoundation.org/teachings/gossip
+https://josephsmithfoundation.org/teachings/government
+https://josephsmithfoundation.org/teachings/grace
+https://josephsmithfoundation.org/teachings/gratitude
+https://josephsmithfoundation.org/teachings/hauns-mill-massacre
+https://josephsmithfoundation.org/teachings/healing
+https://josephsmithfoundation.org/teachings/health
+https://josephsmithfoundation.org/teachings/heaven
+https://josephsmithfoundation.org/teachings/heirs
+https://josephsmithfoundation.org/teachings/hell
+https://josephsmithfoundation.org/teachings/high-council
+https://josephsmithfoundation.org/teachings/holiness
+https://josephsmithfoundation.org/teachings/holy-ghost/
+https://josephsmithfoundation.org/teachings/honesty/
+https://josephsmithfoundation.org/teachings/house-of-israel/
+https://josephsmithfoundation.org/teachings/humility/
+https://josephsmithfoundation.org/teachings/hypocrisy/
+https://josephsmithfoundation.org/teachings/intelligence/
+https://josephsmithfoundation.org/teachings/jesus-christ/
+https://josephsmithfoundation.org/teachings/jews/
+https://josephsmithfoundation.org/teachings/john-revelations-of/
+https://josephsmithfoundation.org/teachings/john-the-baptist/
+https://josephsmithfoundation.org/teachings/judgement/
+https://josephsmithfoundation.org/teachings/judgment-day-final/
+https://josephsmithfoundation.org/teachings/justice
+https://josephsmithfoundation.org/teachings/just-men-made-perfect/
+https://josephsmithfoundation.org/teachings/keys-of-the-priesthood
+https://josephsmithfoundation.org/teachings/kingdom-of-god/
+https://josephsmithfoundation.org/teachings/kingdom-of-heaven/
+https://josephsmithfoundation.org/teachings/knowledge/
+https://josephsmithfoundation.org/teachings/last-days
+https://josephsmithfoundation.org/teachings/law/
+https://josephsmithfoundation.org/teachings/law-of-consecration
+https://josephsmithfoundation.org/teachings/law-of-moses
+https://josephsmithfoundation.org/teachings/leadership
+https://josephsmithfoundation.org/teachings/levitical-priesthood/
+https://josephsmithfoundation.org/teachings/light-mindedness
+https://josephsmithfoundation.org/teachings/love
+https://josephsmithfoundation.org/teachings/marriage
+https://josephsmithfoundation.org/teachings/matter
+https://josephsmithfoundation.org/teachings/melchizedek
+https://josephsmithfoundation.org/teachings/men-roles-of
+https://josephsmithfoundation.org/teachings/mercy
+https://josephsmithfoundation.org/teachings/messiah
+https://josephsmithfoundation.org/teachings/millennium
+https://josephsmithfoundation.org/teachings/miracles
+https://josephsmithfoundation.org/teachings/missionary-work
+https://josephsmithfoundation.org/teachings/mormonism
+https://josephsmithfoundation.org/teachings/mount-of-transfiguration/
+https://josephsmithfoundation.org/teachings/murder
+https://josephsmithfoundation.org/teachings/murmuring
+https://josephsmithfoundation.org/teachings/music
+https://josephsmithfoundation.org/teachings/mysteries
+https://josephsmithfoundation.org/teachings/noah
+https://josephsmithfoundation.org/teachings/obedience
+https://josephsmithfoundation.org/teachings/order
+https://josephsmithfoundation.org/teachings/ordinances
+https://josephsmithfoundation.org/teachings/ordinances-for-the-dead
+https://josephsmithfoundation.org/teachings/original-sin
+https://josephsmithfoundation.org/teachings/parables-of-jesus-christ/
+https://josephsmithfoundation.org/teachings/parenting
+https://josephsmithfoundation.org/teachings/patriarchal-order-of-the-priesthood
+https://josephsmithfoundation.org/teachings/patriarch-office-of
+https://josephsmithfoundation.org/teachings/paul
+https://josephsmithfoundation.org/teachings/pentecost
+https://josephsmithfoundation.org/teachings/persecution
+https://josephsmithfoundation.org/teachings/persuasion
+https://josephsmithfoundation.org/teachings/peter
+https://josephsmithfoundation.org/teachings/plan-of-salvation
+https://josephsmithfoundation.org/teachings/politics
+https://josephsmithfoundation.org/teachings/power
+https://josephsmithfoundation.org/teachings/prayer
+https://josephsmithfoundation.org/teachings/predestination
+https://josephsmithfoundation.org/teachings/premortal-life
+https://josephsmithfoundation.org/teachings/pride/
+https://josephsmithfoundation.org/teachings/priesthood/
+https://josephsmithfoundation.org/teachings/principles/
+https://josephsmithfoundation.org/teachings/prophecy
+https://josephsmithfoundation.org/teachings/prophet
+https://josephsmithfoundation.org/teachings/protection/
+https://josephsmithfoundation.org/teachings/relief-society
+https://josephsmithfoundation.org/teachings/remission-of-sins
+https://josephsmithfoundation.org/teachings/repentance
+https://josephsmithfoundation.org/teachings/resurrection-2
+https://josephsmithfoundation.org/teachings/revelation
+https://josephsmithfoundation.org/teachings/reverence
+https://josephsmithfoundation.org/teachings/rigdon-sidney/
+https://josephsmithfoundation.org/teachings/righteousness
+https://josephsmithfoundation.org/teachings/sacrifice/
+https://josephsmithfoundation.org/teachings/salvation
+https://josephsmithfoundation.org/teachings/sectarianism
+https://josephsmithfoundation.org/teachings/sickness
+https://josephsmithfoundation.org/teachings/sin
+https://josephsmithfoundation.org/teachings/spirit-of-god
+https://josephsmithfoundation.org/teachings/stakes-church-organization
+https://josephsmithfoundation.org/teachings/tongues-gift-of
+https://josephsmithfoundation.org/teachings/trials
+https://josephsmithfoundation.org/teachings/truth
+https://josephsmithfoundation.org/teachings/unpardonable-sin
+https://josephsmithfoundation.org/teachings/virtue
+https://josephsmithfoundation.org/teachings/war
+https://josephsmithfoundation.org/teachings/wealth
+https://josephsmithfoundation.org/teachings/young-men
+https://josephsmithfoundation.org/teachings/zion
+https://josephsmithfoundation.org/teachings/zion-responsibility-to-build/
+
+Ebook links:
+
+Ebooks downloaded:
+
+Notes: polite crawl UA=research-archive-personal, 2s delay single-threaded. Core pages saved as plain HTML (full-asset wget skipped after 1 partial to stay polite/fast; all 6 cores present from main crawl + fresh curl). Local research only, do not republish.
+
+Update $(date): core-pages-combined.md written (55KB, 6 core pages text). Ebook link list saved (category pages; no direct free PDFs; 0 downloads).

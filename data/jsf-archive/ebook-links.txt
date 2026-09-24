@@ -1,0 +1,84 @@
+# Free ebook discovery (local research only, no paid/store downloads)
+# Generated 2026-09-23T19:43:27Z
+
+## Direct PDF/EPUB links found on /ebooks/ index:
+
+## PDF/EPUB hrefs on /ebooks/ index:
+href="https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/epub-ebooks/"
+href="https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/pdf-ebooks/"
+
+## Ebook category/format pages (browse for free titles; do not buy):
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/baron-edward-george-lytton-bulwer-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/b-h-roberts-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/charlotte-bronte-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/jerome-horowitz-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/jerreld-l-newquist/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/john-philip-newman-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/john-taylor-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/joseph-f-smith-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/lorenzo-snow/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/lucy-mack-smith-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/matthias-f-cowley/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/nephi-lowell-morris-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/oliver-goldsmith-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/author-ebooks/paul-a-sciiettler-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/epub-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/kindle-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/pdf-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/format-ebooks/plain-text-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/type-ebooks/fiction-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/type-ebooks/non-fiction-ebooks/
+https://josephsmithfoundation.org/category/all-ebooks/type-ebooks/novel-ebooks/
+https://josephsmithfoundation.org/ebooks/
+https://josephsmithfoundation.org/ebooks/a-memoir-of-jane-austen/
+https://josephsmithfoundation.org/ebooks/feed/
+https://josephsmithfoundation.org/ebooks/marx-and-satan/
+https://josephsmithfoundation.org/store/product-category/ebook/
+https://josephsmithfoundation.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fjosephsmithfoundation.org%2Febooks%2F
+https://josephsmithfoundation.org/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fjosephsmithfoundation.org%2Febooks%2F&#038;format=xml
+
+## Book pages found:
+https://josephsmithfoundation.org/
+https://josephsmithfoundation.org/about/
+https://josephsmithfoundation.org/ages/
+https://josephsmithfoundation.org/an-epistle-of-the-first-presidency/
+https://josephsmithfoundation.org/are-we-of-israel/
+https://josephsmithfoundation.org/audio/
+https://josephsmithfoundation.org/autobiography-of-parley-parker-pratt/
+https://josephsmithfoundation.org/biographia-scoticana-scots-worthies/
+https://josephsmithfoundation.org/blog
+https://josephsmithfoundation.org/books/
+https://josephsmithfoundation.org/causes-of-the-lords-wrath-against-scotland/
+https://josephsmithfoundation.org/contact-us/
+https://josephsmithfoundation.org/contribute/
+https://josephsmithfoundation.org/correspondence-of-palestine-tourists-comprising-a-series-of-letters/
+https://josephsmithfoundation.org/cross-fire-the-eight-years-with-eisenhower/
+https://josephsmithfoundation.org/discourses-of-brigham-young/
+https://josephsmithfoundation.org/docs/
+https://josephsmithfoundation.org/doctrines-of-salvation/
+https://josephsmithfoundation.org/documentaries/
+https://josephsmithfoundation.org/ebooks/
+https://josephsmithfoundation.org/ebooks/a-memoir-of-jane-austen/
+https://josephsmithfoundation.org/ebooks/marx-and-satan/
+https://josephsmithfoundation.org/emma-2/
+https://josephsmithfoundation.org/faqs/
+https://josephsmithfoundation.org/forourday/
+https://josephsmithfoundation.org/heroines-of-mormonism/
+https://josephsmithfoundation.org/history-of-the-church-of-jesus-christ-of-latter-day-saints-vol-3/
+https://josephsmithfoundation.org/history-of-the-church-of-jesus-christ-of-latter-day-saints-vol-6/
+https://josephsmithfoundation.org/international-translations/
+https://josephsmithfoundation.org/jane-eyre/
+https://josephsmithfoundation.org/joseph-smith/
+https://josephsmithfoundation.org/joseph-smith-articles/
+https://josephsmithfoundation.org/joseph-smiths-teachings/
+https://josephsmithfoundation.org/journalofdiscourses
+https://josephsmithfoundation.org/life-of-brigham-young/
+https://josephsmithfoundation.org/mansfield-park-2/
+https://josephsmithfoundation.org/mormon-doctrine/
+https://josephsmithfoundation.org/my-first-mission/
+https://josephsmithfoundation.org/northanger-abbey-2/
+https://josephsmithfoundation.org/papers/
+
+## Notes:
+- No direct free PDF/EPUB file URLs on the index; files sit behind per-book pages with JS 'FREE Download' buttons.
+- Per instructions: link list saved, no paid/store content downloaded. Ebook downloads: 0 files, 0 bytes.

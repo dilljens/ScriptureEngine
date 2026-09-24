@@ -21,6 +21,7 @@ from lib.api import call_tool
 from lib.api.staging import stage_connection, stage_study
 from lib.chat_cache import tool_cache
 from lib.db import get_db
+from lib.flags import is_enabled as _flag_enabled
 from lib.monitoring import (
     TUTOR_SNAPSHOT_MARKER,
     bump_p2_counter,
@@ -1724,6 +1725,62 @@ async def _verify_citations(content: str, mode: str):
     return await loop.run_in_executor(None, _verify_citations_sync, content, mode)
 
 
+async def _second_opinion_on_flags(unsupported, body, user_id: str):
+    """P2-D chain-of-verification: LLM second opinion on stage-1 flags.
+
+    Returns {ref: verdict} or None when the flag is off / nothing is
+    checkable. Fail-open: verifier abstains keep their stage-1 flags;
+    any failure here returns None (stage-1 verdicts stand untouched).
+    Bounded: MAX_ITEMS verse fetches + short LLM judgments.
+    """
+    try:
+        from lib.controls import entailment as _ent
+        if not _flag_enabled("truth_entailment", user_id):
+            return None
+        items = (unsupported or [])[:_ent.MAX_ITEMS]
+        if not items:
+            return None
+        texts = {}
+        for u in items:
+            ref = (u or {}).get("ref", "")
+            parts = ref.split(".")
+            if len(parts) != 3 or not parts[1].isdigit() or not parts[2].isdigit():
+                continue
+            try:
+                res = _run_tool_thread(
+                    "scripture_verse",
+                    {"book": parts[0], "chapter": int(parts[1]),
+                     "verse": int(parts[2])},
+                    [], "cove-check", body.mode)
+                if isinstance(res, dict) and not res.get("error") \
+                        and res.get("text_english"):
+                    texts[ref] = res["text_english"]
+            except Exception:  # noqa: BLE001 — per-verse isolation
+                continue
+        verdicts = {}
+        for u in items:
+            ref = (u or {}).get("ref", "")
+            quote = (u or {}).get("quote", "")
+            if ref not in texts or not quote:
+                continue
+            try:
+                resp = await call_deepseek({
+                    "model": body.model,
+                    "messages": [{"role": "user", "content":
+                                  _ent.entailment_prompt(quote, ref, texts[ref])}],
+                    "max_tokens": 200, "temperature": 0.0,
+                })
+                content = (resp.get("choices", [{}])[0]
+                           .get("message", {}).get("content", ""))
+            except Exception:  # noqa: BLE001 — per-item isolation
+                content = ""
+            verdicts[ref] = _ent.parse_verdict(content)["verdict"]
+        return verdicts or None
+    except Exception as e:  # noqa: BLE001 — CoVe must never break the answer
+        logger.warning("cove_failed", exc_info=True)
+        return None
+
+
 def _contributor_disclosure() -> str | None:
     """Contributor-tier data-handling disclosure (Track G3).
 
@@ -2016,10 +2073,21 @@ async def llm_chat(body: ChatRequest, request: Request):
     claim_check = await _verify_citations(final_content, body.mode)
     if claim_check and claim_check["unsupported"]:
         refs = ", ".join(sorted({u["ref"] for u in claim_check["unsupported"]}))
-        final_content = (
-            "⚠️ Some quotations could not be verified against the cited verses "
-            f"({refs}); treat those citations as provisional.\n\n" + final_content
-        )
+        # P2-D chain-of-verification: an LLM second opinion on stage-1 flags
+        # (default OFF via flag; bounded, fail-open — abstains keep the flag).
+        cove = await _second_opinion_on_flags(
+            claim_check["unsupported"], body, _chat_tool_user_id(body))
+        if cove:
+            claim_check["entailment"] = cove
+            surviving = [u for u in claim_check["unsupported"]
+                         if cove.get(u["ref"], "unsupported") != "supported"]
+            claim_check["unsupported"] = surviving
+            refs = ", ".join(sorted({u["ref"] for u in surviving}))
+        if refs:
+            final_content = (
+                "⚠️ Some quotations could not be verified against the cited verses "
+                f"({refs}); treat those citations as provisional.\n\n" + final_content
+            )
 
     cost = _compute_cost(usage, body.model)
 
