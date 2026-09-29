@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { openVerseRef, preprocess } from '../lib/scripture-markdown'
+import { findVerseRefs, openVerseRef, preprocess } from '../lib/scripture-markdown'
 import { BOOK_TITLES } from '../bookNames'
 
 describe('preprocess', () => {
@@ -104,6 +104,18 @@ describe('preprocess', () => {
     expect(preprocess('Exodus 20:3-17 lists commands')).toContain('data-ref="exo.20.3-17"')
   })
 
+  it('normalizes spaced and typographic multi-verse ranges', () => {
+    for (const text of ['1 Nephi 3:1-7', '1 Nephi 3: 1 - 7', '1 Nephi 3:1–7']) {
+      expect(preprocess(text)).toContain('data-ref="1ne.3.1-7"')
+    }
+    expect(findVerseRefs('1 Nephi 3: 1 - 7')[0].ref).toBe('1ne.3.1-7')
+  })
+
+  it('keeps explicit verse lists together for drawer highlighting', () => {
+    const result = preprocess(':verse[1ne.3.1, 5, 7]')
+    expect(result).toContain('data-ref="1ne.3.1, 5, 7"')
+  })
+
   it('keeps DSS refs with digits in book id', () => {
     expect(preprocess('The book of 1QS.1.1 matters')).toContain('data-ref="1QS.1.1"')
   })
@@ -166,6 +178,13 @@ describe('preprocess', () => {
     const r = preprocess('Read Exodus 33:22–34:6 tonight')
     expect(r).toContain('data-ref="exo.33.22"')
     expect(r).toContain('data-ref="exo.34.6"')
+  })
+
+  it('links spaced cross-chapter ranges without leaving verse digits behind', () => {
+    const r = preprocess('Read Exodus 33: 22 – 34: 6 tonight')
+    expect(r).toContain('data-ref="exo.33.22"')
+    expect(r).toContain('data-ref="exo.34.6"')
+    expect(r).toContain('>34: 6</span>')
   })
 
   it('does not link numbers glued to words', () => {

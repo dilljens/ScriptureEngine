@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { groupVerses } from '../lib/verseGroups'
+import { getCachedChapter, setCachedChapter } from '../lib/chapterCache'
 
 /**
  * VersePreviewCard — shows a scrollable chapter preview with highlighted verse(s).
@@ -26,13 +27,14 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
       if (!locations[key]) {
         locations[key] = { book: parts[0], chapter: parseInt(parts[1]), verses: [] }
       }
-      // Verse ranges ("isa.55.6-8"): highlight every verse, not just the first.
-      const m = String(parts[2]).match(/^(\d+)(?:-(\d+))?$/)
-      if (m) {
-        const end = m[2] ? parseInt(m[2]) : parseInt(m[1])
-        for (let v = parseInt(m[1]); v <= end; v++) locations[key].verses.push(v)
-      } else if (!isNaN(parseInt(parts[2]))) {
-        locations[key].verses.push(parseInt(parts[2]))
+      // Verse ranges/lists ("isa.55.6-8" or "isa.55.6,10"): highlight
+      // every verse, not just the first. Normalize typographic dashes too.
+      for (const spec of String(parts[2]).replace(/[–—]/g, '-').replace(/\s+/g, '').split(/[,;]/)) {
+        const m = spec.match(/^(\d+)(?:-(\d+))?$/)
+        if (m) {
+          const end = m[2] ? parseInt(m[2]) : parseInt(m[1])
+          for (let v = parseInt(m[1]); v <= end; v++) locations[key].verses.push(v)
+        }
       }
     }
   }
@@ -44,6 +46,12 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
 
   useEffect(() => {
     if (!primary) return
+    const cached = getCachedChapter(primary.book, primary.chapter)
+    if (cached) {
+      setChapterData(cached)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -52,6 +60,7 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
       .then(d => {
         if (d.ok) {
           setChapterData(d.data)
+          setCachedChapter(primary.book, primary.chapter, d.data)
         } else {
           setError(d.detail || 'Failed to load chapter')
         }
@@ -82,6 +91,8 @@ export default function VersePreviewCard({ refs, onNavigate, maxHeight = '12rem'
   }, [chapterData, highlightVerses])
 
   if (loading) {
+    // Chapter-only refs ("gen.1") carry no verse part — nothing to preview.
+    if (!primary) return null
     return (
       <div className="bg-neutral-50 dark:bg-neutral-900/50 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4">
         <div className="flex items-center gap-2 text-xs text-neutral-400 dark:text-neutral-500">

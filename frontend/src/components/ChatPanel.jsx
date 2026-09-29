@@ -12,9 +12,10 @@ import VersePreviewCard from './VersePreviewCard'
 import VersePopup from './VersePopup'
 import { useToggles } from './ToggleProvider'
 import { conversationCreate, conversationAddMessage, conversationGet, conversationList, conversationShare, chat, chatStream, getChatInstructions, currentUserId, currentSessionToken } from '../api'
-import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown } from '../lib/scripture-markdown'
+import { preprocess as preprocessScripture, createComponents, ScriptureMarkdown, findVerseRefs } from '../lib/scripture-markdown'
 import { escapeHtml, safeUrlTransform } from '../lib/sanitize'
 import { copyText } from '../lib/clipboard'
+import { prefetchChapter, bookChapterOf } from '../lib/chapterCache'
 import { parseStandardRef, resolveBook } from '../refParser'
 import { canonicalBookId } from '../bookNames'
 
@@ -173,7 +174,7 @@ function resolveBookName(name) {
 }
 
 /** Pre-process markdown to detect verse references in 📖 format + gen.1.1 */
-function preprocessVerses(markdown) {
+export function preprocessVerses(markdown) {
   if (!markdown) return ''
   let result = markdown
 
@@ -196,10 +197,10 @@ function preprocessVerses(markdown) {
   // with leading words stripped until a known book resolves, and keep the
   // stripped prose in the output (never delete the user's words).
   result = result.replace(
-    /\*{0,2}(?:📖)?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&.-]+?)\s*(\d+)(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)(?:([:.])(\d+(?:\s*[-,]\s*\d+)*))?\*{0,2}/g,
+    /\*{0,2}(?:📖)?\s*(?:(?:[1-5]\s+)?[A-Za-z][A-Za-z\s—–&.-]+?)\s*(\d+)(?!\d)(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)(?:\s*([:.])\s*(\d+(?!\d)(?:\s*(?:[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+)|[,;]\s*\d+))*))?(?!\s*:\s*\d+)(?!\s*[-–—]\s*\d+(?!\d)\s*:\s*\d+)\s*\*{0,2}/g,
     (match, chapter, _sep, verseStr) => {
       // Extract the book name: strip leading ** and 📖, take everything before the chapter number
-      let clean = match.replace(/^\*{0,2}(?:📖)?\s*/, '').replace(/\s*\d+(?:[:.]\d+(?:\s*[-,]\s*\d+)*)?\*{0,2}$/, '').trim()
+      let clean = match.replace(/^\*{0,2}(?:📖)?\s*/, '').replace(/\s*\d+(?:\s*[:.]\s*\d+(?:\s*(?:[-–—]\s*\d+|[,;]\s*\d+))*)?\s*\*{0,2}$/, '').trim()
       // Strip leading > blockquote markers for resolution (they stay in the
       // output — they sit outside the match). Do NOT strip noise words here:
       // the drop-loop below preserves them as prefix text instead of eating them.
@@ -214,7 +215,7 @@ function preprocessVerses(markdown) {
         const bookId = resolveBookName(words.slice(drop).join(' '))
         if (!bookId) continue
         const prefix = words.slice(0, drop).join(' ')
-        const versePart = verseStr ? verseStr.replace(/,.*$/, '').replace(/\s*-\s*/g, '-').trim() : '1'
+        const versePart = verseStr ? verseStr.replace(/\s+/g, '').replace(/[–—]/g, '-').replace(/;/g, ',') : '1'
         return `${lead}${prefix ? `${prefix} ` : ''}:verse[${bookId}.${chapter}.${versePart}]`
       }
       return match
@@ -224,7 +225,7 @@ function preprocessVerses(markdown) {
   // 2. Replace gen.1.1 or gen:1:1 format (book.chapter.verse)
   // Also captures ranges like gen.1.1-12 or exo.25.18-22
   result = result.replace(
-    /:verse\[[^\]]+\]|([a-z0-9_]+)[.:](\d+)[.:](\d+)(?:[-,](\d+))?/gi,
+    /:verse\[[^\]]+\]|([a-z0-9_]+)[.:](\d+)[.:](\d+)(?:\s*[-–—]\s*(\d+))?/gi,
     (match, book, ch, vs, vsEnd) => {
       if (book) {
         const versePart = vsEnd ? `${vs}-${vsEnd}` : vs
@@ -249,7 +250,7 @@ function preprocessVerses(markdown) {
   // Same prose-tolerant retry as pass 1: strip leading words until a known
   // book resolves, preserving the stripped prose.
   result = result.replace(
-    /:verse\[[^\]]+\]|([a-zA-Z][a-zA-Z\s]*?)\.?\s*(\d+)[.:](\d+)(?:[-,]\s*(\d+))?/g,
+    /:verse\[[^\]]+\]|([a-zA-Z][a-zA-Z\s]*?)\.?\s*(\d+)(?!\d)\s*[.:]\s*(\d+)(?!\d)(?:\s*[-–—]\s*(\d+)(?!\d)(?!\s*:\s*\d+))?(?!\s*:\s*\d+)(?!\s*[-–—]\s*\d+(?!\d)\s*:\s*\d+)/g,
     (match, book, ch, vs, vsEnd) => {
       if (!book) return match // already a :verse[...] marker
       let clean = book.trim().replace(/[.,;:!?)\]}>"']+$/, '').trim()
@@ -339,7 +340,37 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   const [editingIdx, setEditingIdx] = useState(null)   // index of user message being edited, or null
   const [editText, setEditText] = useState('')          // text while editing
   const [copiedIdx, setCopiedIdx] = useState(null)      // index of just-copied message for feedback
-  const [visitedRefs, setVisitedRefs] = useState(new Set())
+  const [visitedRefs, setVisitedRefs] = useState(() => {
+    // Refs the user already opened turn green. Persisted globally (capped)
+    // so visited state survives reloads and new sessions.
+    try {
+      const raw = JSON.parse(localStorage.getItem('chat_visited_refs') || '[]')
+      return new Set(Array.isArray(raw) ? raw.slice(-500) : [])
+    } catch { return new Set() }
+  })
+  // Mark a ref visited (green) + warm the chapter cache so the drawer
+  // opens instantly, then open the right-side VersePopup drawer.
+  const openVerseDrawer = useCallback((ref) => {
+    if (!ref) return
+    setVisitedRefs(prev => {
+      if (prev.has(ref)) return prev
+      const next = new Set(prev)
+      next.add(ref)
+      try {
+        const arr = [...next].slice(-500)
+        localStorage.setItem('chat_visited_refs', JSON.stringify(arr))
+      } catch {}
+      return next
+    })
+    const loc = bookChapterOf(ref)
+    if (loc) prefetchChapter(loc.book, loc.chapter)
+    setActiveVerse({ ref })
+  }, [])
+  // Hover intent: prefetch the chapter before the tap lands.
+  const prefetchVerse = useCallback((ref) => {
+    const loc = bookChapterOf(ref)
+    if (loc) prefetchChapter(loc.book, loc.chapter)
+  }, [])
   const [previewRef, setPreviewRef] = useState(null) // { ref: "gen.1.1", label: "Genesis 1:1" }
   const [responseMode, setResponseMode] = useState('auto') // 'auto', 'short', 'medium', 'deep'
   const [showModeMenu, setShowModeMenu] = useState(false)
@@ -413,6 +444,42 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
   }, [initialMode, chatMode, switchChatMode])
 
   useEffect(() => { messagesRef.current = messages }, [messages])
+  // Idle sweep: prefetch chapters for every verse ref visible in the
+  // conversation, so tapping one opens the drawer with text ready.
+  // Dedupes by book.chapter, caps the sweep, and yields to the browser.
+  useEffect(() => {
+    if (!messages?.length) return
+    let cancelled = false
+    const run = () => {
+      if (cancelled) return
+      const seen = new Set()
+      for (const m of messages) {
+        if (typeof m?.content !== 'string' || !m.content.includes('.')) continue
+        for (const hit of findVerseRefs(m.content)) {
+          const loc = bookChapterOf(hit.ref)
+          if (!loc) continue
+          const key = `${loc.book}.${loc.chapter}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          if (seen.size > 12) break
+        }
+        if (seen.size > 12) break
+      }
+      for (const key of seen) {
+        const [book, ch] = key.split('.')
+        prefetchChapter(book, parseInt(ch))
+      }
+    }
+    const schedule = typeof requestIdleCallback === 'function'
+      ? requestIdleCallback(run, { timeout: 3000 })
+      : setTimeout(run, 800)
+    return () => {
+      cancelled = true
+      if (typeof cancelIdleCallback === 'function' && typeof schedule === 'number') {
+        try { cancelIdleCallback(schedule) } catch {}
+      } else clearTimeout(schedule)
+    }
+  }, [messages])
   useEffect(() => { sessionRef.current = sessionId }, [sessionId])
   useEffect(() => { waitingRef.current = waiting }, [waiting])
   // Clear any pending-marker recovery poll on unmount
@@ -1481,7 +1548,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Markdown components with scripture integration ──
   // Uses the shared scripture-markdown module for :verse[], :entity[], :gematria[], etc.
   // Tapping a verse chip opens a Gospel-Library-style drawer (VersePopup):
-  // a left-anchored scrollable chapter panel dismissed by click-out / Esc / ✕.
+  // a right-anchored scrollable chapter panel dismissed by click-out / Esc / ✕.
   const chatMarkdownOverrides = {
       // Chat-specific overrides for standard elements
       p: ({ children }) => (
@@ -1696,9 +1763,13 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
       ? content.replace(/%%%(?:QUIZ|HEBREW_QUIZ):[\s\S]*?%%%/g, '[Interactive quizzes are available in the Hebrew/Learn section.]')
       : content
 
-    // Per-message components: verse chip taps open the VersePopup drawer.
+    // Per-message components: verse chip taps open the right-side
+    // VersePopup drawer (scrollable chapter, verse highlighted) — never a
+    // small hover popup. Opened refs turn green; hover warms the cache.
     const comps = createComponents({
-      onOpenVerse: (ref) => setActiveVerse({ ref }),
+      onOpenVerse: openVerseDrawer,
+      onHoverVerse: prefetchVerse,
+      visited: visitedRefs,
       customComponents: chatMarkdownOverrides,
     })
 
@@ -2139,7 +2210,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   if (variant === 'tab') {
     return (
       <div className="flex flex-col h-[calc(100dvh-7.5rem)] min-h-[420px] bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700 max-w-5xl mx-auto w-full">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
+        <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 rounded-t-lg flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Chat</h2>
             {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
@@ -2156,13 +2227,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                 {copiedIdx === -1 ? '✓ Copied' : 'Copy all'}
               </button>
             )}
-            {messages.length > 0 && (
-              <button onClick={startNewChat}
-                className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
-                title="Start a new chat">
-                + New
-              </button>
-            )}
+            <button onClick={startNewChat}
+              className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
+              title="Start a new chat">
+              + New
+            </button>
             <button onClick={loadRecent}
               className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
               Recent
@@ -2183,7 +2252,7 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           onClick={e => e.stopPropagation()}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
+          <div className="sticky top-0 z-10 bg-white dark:bg-neutral-900 rounded-t-xl flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Scripture Chat</h2>
               {saving && <span className="text-[10px] text-neutral-400 dark:text-neutral-500 italic">saving...</span>}
@@ -2200,13 +2269,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
                   {copiedIdx === -1 ? '✓ Copied' : 'Copy all'}
                 </button>
               )}
-              {messages.length > 0 && (
-                <button onClick={startNewChat}
-                  className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
-                  title="Start a new chat">
-                  + New
-                </button>
-              )}
+              <button onClick={startNewChat}
+                className="text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer px-2 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-medium"
+                title="Start a new chat">
+                + New
+              </button>
               <button onClick={loadRecent}
                 className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 cursor-pointer px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                 Recent

@@ -48,8 +48,8 @@ export function openVerseRef(ref) {
   const p = String(ref).split('.')
   const dcSection = p.length === 1 && /^dc\d+$/i.test(p[0])
   if (p.length < 2 && !dcSection) return
-  const verseSpec = p[2] || ''
-  const parts = verseSpec ? verseSpec.split(',').flatMap(part => {
+  const verseSpec = normalizeVerseSpec(p[2] || '')
+  const parts = verseSpec ? verseSpec.split(/[,;]/).flatMap(part => {
     const [start, end] = part.split('-').map(Number)
     if (!Number.isInteger(start)) return []
     if (!Number.isInteger(end) || end < start) return [start]
@@ -70,7 +70,7 @@ export function openVerseRef(ref) {
 const RULES = [
   {
     // :verse[gen.1.1] or :verse[gen.1.1-12]
-    pattern: /:verse\[([a-z0-9_]+\.\d+(?:\.\d+(?:-\d+)?)?)\]/g,
+    pattern: /:verse\[([a-z0-9_]+\.\d+(?:\.\d+(?:\s*(?:[-–—]\s*\d+|[,;]\s*\d+))*)?)\]/g,
     type: 'verse',
     attr: 'data-ref',
   },
@@ -150,16 +150,22 @@ export function preprocess(text) {
 // Chapter-only form: "Genesis 1", "1 John 3", "Psalm 23", "D&C 76" — same
 // known-book gate; the lookahead excludes ":./digits" so "Genesis 1" never
 // fires on the prefix of "Genesis 1:1" (the longer ch:vs hit wins dedupe).
-const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?:-\d+)?))?(?![\w\u0590-\u05FF])/g
-const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z0-9][A-Za-z ()—–]{1,32})\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
-const BARE_DC_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/g
+const BARE_DOT_RE = /(?<![\w\u0590-\u05FF])([A-Za-z0-9_]{1,8})\.(\d+)(?:\.(\d+(?!\d)(?:\s*[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+))?))?(?![\w\u0590-\u05FF])/g
+const BARE_COLON_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z0-9][A-Za-z ()—–]{1,32})\s+(\d+)\s*:\s*(\d+(?!\d)(?:\s*[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+))?)(?![\w\u0590-\u05FF])(?!\s*:\s*\d+)/g
+const BARE_DC_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+)\s*:\s*(\d+(?!\d)(?:\s*[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+))?)(?![\w\u0590-\u05FF])(?!\s*:\s*\d+)/g
 const BARE_CHAPTER_RE = /(?<![\w\u0590-\u05FF])((?:[12345]\s)?[A-Za-z0-9][A-Za-z ()—–]{1,32})\s+(\d+)(?![\w\u0590-\u05FF:.\d])(?!\s+[A-Z][A-Za-z ]{0,24}?\s+\d+)/g
 const BARE_DC_CH_RE = /(?<![\w\u0590-\u05FF])D&C\s+(\d+)(?![\w\u0590-\u05FF:.\d])/g
 // Multi-verse continuations after a linked ref, same book context:
 // "Isaiah 52:1-2, 54:2", "Isaiah 53:5, 11", "Exodus 33:22–34:6".
 // Verse-only continuations ("53:5, 11") must not run into prose ("66 chapters").
-const CONT_CHVS_RE = /^(?:\s*[,;]\s*|\s+and\s+|\s*[–—]\s*)(\d+):(\d+(?:-\d+)?)(?![\w\u0590-\u05FF])/
-const CONT_VS_RE = /^(?:\s*[,;]\s*|\s+and\s+)(\d+(?:-\d+)?)(?![\w\u0590-\u05FF:])/
+const CONT_CHVS_RE = /^(?:\s*[,;]\s*|\s+and\s+|\s*[-–—]\s*)(\d+)\s*:\s*(\d+(?:\s*[-–—]\s*\d+)?)(?![\w\u0590-\u05FF])/
+const CONT_VS_RE = /^(?:\s*[,;]\s*|\s+and\s+)(\d+(?:\s*[-–—]\s*\d+)?)(?![\w\u0590-\u05FF:])/
+
+// Keep refs in canonical dot form even when users or model output add spaces
+// around a range dash or use an en/em dash.
+function normalizeVerseSpec(spec) {
+  return String(spec || '').replace(/\s+/g, '').replace(/[–—]/g, '-')
+}
 
 /**
  * Find all verse references in plain text.
@@ -181,7 +187,7 @@ export function findVerseRefs(text) {
       const bookKey = canonicalBookId(m[1])
       const known = BOOK_TITLES[bookKey] || /^dc\d+$/i.test(m[1])
       if (!known) continue
-      hits.push({ index: m.index, len: m[0].length, ref: `${bookKey}.${m[2]}.${m[3]}` })
+      hits.push({ index: m.index, len: m[0].length, ref: `${bookKey}.${m[2]}.${normalizeVerseSpec(m[3])}` })
     } else {
       // chapter-only "gen.1" — skip (not a verse ref)
       continue
@@ -204,7 +210,7 @@ export function findVerseRefs(text) {
         hits.push({
           index: m.index + startInMatch,
           len: m[0].length - startInMatch,
-          ref: `${bookKey}.${m[2]}.${m[3]}`,
+          ref: `${bookKey}.${m[2]}.${normalizeVerseSpec(m[3])}`,
         })
         break
       }
@@ -256,19 +262,22 @@ export function findVerseRefs(text) {
       let cm = tail.match(CONT_CHVS_RE)
       if (cm) {
         const ch = cm[1]
-        const vs = cm[2]
+        const rawVs = cm[2]
+        const vs = normalizeVerseSpec(rawVs)
         // D&C continuations name a new section ("D&C 38:42; 133:5").
         const ref = bookKey
           ? `${bookKey}.${ch}.${vs}`
           : `dc${ch}.${ch}.${vs}`
-        out.push({ index: pos + cm[0].indexOf(ch), len: `${ch}:${vs}`.length, ref })
+        const refOffset = cm[0].indexOf(ch)
+        out.push({ index: pos + refOffset, len: cm[0].length - refOffset, ref })
         pos += cm[0].length
         continue
       }
       cm = tail.match(CONT_VS_RE)
       if (cm && baseCh) {
-        const vs = cm[1]
-        out.push({ index: pos + cm[0].indexOf(vs), len: vs.length, ref: `${bookKey}.${baseCh}.${vs}` })
+        const rawVs = cm[1]
+        const vs = normalizeVerseSpec(rawVs)
+        out.push({ index: pos + cm[0].indexOf(rawVs), len: rawVs.length, ref: `${bookKey}.${baseCh}.${vs}` })
         pos += cm[0].length
         continue
       }
@@ -344,10 +353,12 @@ function extractValue(node) {
  * @param {Function} options.onOpenVerse — called with (ref) when a verse chip is clicked
  * @param {Function} options.onOpenEntity — called with (entityId) when an entity link is clicked
  * @param {boolean} options.hoverPreview — render verse chips with hover text preview (default false)
+ * @param {Set} options.visited — refs already opened; those chips render green
+ * @param {Function} options.onHoverVerse — called with (ref) on mouse-enter (prefetch hook)
  * @param {Object} options.customComponents — additional component overrides (merged in)
  */
 export function createComponents(options = {}) {
-  const { onOpenVerse, onOpenEntity, hoverPreview, customComponents } = options
+  const { onOpenVerse, onOpenEntity, hoverPreview, visited, onHoverVerse, customComponents } = options
 
   const base = {
     // ── Scripture custom spans ──
@@ -361,7 +372,8 @@ export function createComponents(options = {}) {
       const value = extractValue({ props })
 
       switch (type) {
-        case 'verse':
+        case 'verse': {
+          const seen = visited instanceof Set ? visited.has(value) : !!visited?.has?.(value)
           if (hoverPreview) {
             return <VerseRef refId={value} label={formatVerseRef(value)} onOpen={onOpenVerse} />
           }
@@ -371,14 +383,18 @@ export function createComponents(options = {}) {
                 e.stopPropagation()
                 if (onOpenVerse) onOpenVerse(value)
               }}
+              onMouseEnter={() => { if (onHoverVerse) onHoverVerse(value) }}
               className={`inline align-baseline font-medium cursor-pointer transition-colors
-                text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline
+                ${seen
+                  ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline'
+                  : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline'}
                 ${className || ''}`}
               title={`Click to view ${formatVerseRef(value)}`}
             >
               {formatVerseRef(value)}
             </span>
           )
+        }
 
         case 'entity':
           return (

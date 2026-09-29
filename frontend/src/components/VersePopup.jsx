@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { parseRef } from '../bookNames'
 import { groupVerses } from '../lib/verseGroups'
+import { getCachedChapter, setCachedChapter } from '../lib/chapterCache'
 
 /**
  * VersePopup — Gospel-Library-style verse reference drawer.
@@ -15,20 +16,21 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
   // expand the range here for highlighting, scrolling, and handoff.
   const targetVerses = (() => {
     const vpart = String(verseRef).split('.')[2] || ''
-    const m = vpart.match(/^(\d+)(?:-(\d+))?$/)
-    if (m) {
-      const out = []
+    const out = []
+    for (const part of vpart.replace(/[–—]/g, '-').replace(/\s+/g, '').split(/[,;]/)) {
+      const m = part.match(/^(\d+)(?:-(\d+))?$/)
+      if (!m) continue
       for (let v = parseInt(m[1]); v <= (m[2] ? parseInt(m[2]) : parseInt(m[1])); v++) out.push(v)
-      return out
     }
-    return info?.verse != null ? [info.verse] : []
+    return out.length > 0 ? [...new Set(out)] : (info?.verse != null ? [info.verse] : [])
   })()
   // Show the full range in the header ("1 John 4:7-8", not "1 John 4:7").
   const label = (() => {
     if (!info) return verseRef
     const vpart = String(verseRef).split('.')[2] || ''
-    const m = vpart.match(/^(\d+)-(\d+)$/)
-    return m ? `${info.label}-${m[2]}` : info.label
+    const normalized = vpart.replace(/[–—]/g, '-').replace(/\s+/g, '')
+    const chapterLabel = info.workId === 'dc' ? info.bookName : `${info.bookName} ${info.chapter}`
+    return normalized ? `${chapterLabel}:${normalized}` : info.label
   })()
   const [chapterData, setChapterData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -42,14 +44,24 @@ export default function VersePopup({ verseRef, onClose, onNavigate }) {
     return () => cancelAnimationFrame(t)
   }, [])
 
-  // Fetch chapter data
+  // Fetch chapter data (read-through shared cache, so hover/idle
+  // prefetches from chat render instantly here).
   useEffect(() => {
     if (!info) return
+    const cached = getCachedChapter(info.book, info.chapter)
+    if (cached) {
+      setChapterData(cached)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     fetch(`/api/v1/chapter/${info.book}.${info.chapter}`)
       .then(r => r.json())
       .then(d => {
-        if (d.ok) setChapterData(d.data)
+        if (d.ok) {
+          setChapterData(d.data)
+          setCachedChapter(info.book, info.chapter, d.data)
+        }
         else setError(d.detail || 'Failed to load')
       })
       .catch(err => setError(err.message))
