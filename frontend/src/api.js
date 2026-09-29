@@ -41,10 +41,6 @@ export async function fetchJSON(url, options = {}, _retry = 0) {
   }
 }
 
-export function getParallelism(book, chapter) {
-  return fetchJSON(`/parallelism/${book}/${chapter}`)
-}
-
 export function getChapterParallelism(book, chapter) {
   if (book === 'isa') {
     return fetchJSON(`/parallelism/isaiah/${chapter}`)

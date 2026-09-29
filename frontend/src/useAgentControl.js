@@ -38,10 +38,14 @@ export default function useAgentControl({ currentTab, toggles, navigate, openTab
       } catch {}
     }, KEEPALIVE_INTERVAL)
 
-    // Poll for actions
+    // Poll for actions — no /api/v1/agent/* routes exist server-side, so
+    // back off and stop after repeated failures instead of 404ing forever.
+    let failures = 0
     const poll = setInterval(async () => {
       try {
         const res = await fetch(`/api/v1/agent/actions?after=${cursorRef.current}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        failures = 0
         const data = await res.json()
         if (!data.ok) return
 
@@ -50,7 +54,15 @@ export default function useAgentControl({ currentTab, toggles, navigate, openTab
           cursorRef.current = Math.max(cursorRef.current, action.id)
           executeAction(action)
         }
-      } catch {}
+      } catch {
+        // Backend has no agent routes — stop polling after 3 straight
+        // failures instead of spamming 404s every 2s indefinitely.
+        if (++failures >= 3) {
+          clearInterval(poll)
+          clearInterval(keepalive)
+          if (import.meta.env.DEV) { console.log('[agent] No agent backend — polling stopped') }
+        }
+      }
     }, POLL_INTERVAL)
 
     return () => {

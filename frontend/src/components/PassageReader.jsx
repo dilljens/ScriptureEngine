@@ -194,13 +194,8 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
         base.transliteration = entry.transliteration || base.transliteration
         base.frequency = entry.frequency || base.frequency
       } else {
-        // Try Strong's lookup
-        const gem = await fetch(`/api/v1/strongs?word=${encodeURIComponent(cleaned)}`)
-        const gd = await gem.json()
-        if (gd.ok) {
-          base.definition = gd.data?.definition || base.definition
-          base.lemma = gd.data?.lemma || base.lemma
-        }
+        // No /api/v1/strongs route exists — the lexicon miss above is the
+        // final word; leave the grammar-derived definition as-is.
       }
     } catch {
       base.definition = base.definition || 'Lookup failed'

@@ -10,7 +10,7 @@ const TABS = [
   { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'hebrew', label: 'Hebrew', icon: 'א' },
   { id: 'learn', label: 'Learn', icon: '📚' },
-  { id: 'memorize', label: 'Review', icon: '🧠' },
+  { id: 'memorize', label: 'Memorize', icon: '🧠' },
 ]
 
 export default function MobileBottomNav({ activeTab, onTab, visible = true }) {

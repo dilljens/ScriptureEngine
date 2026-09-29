@@ -69,7 +69,7 @@ export default function KnowledgeGraphView({ centerVerse, onNavigate, onOpenTab 
     setLoading(true)
     setError(null)
     try {
-      const layerStr = [...activeLayers].join(',')
+      const layerStr = [...(layers || activeLayers)].join(',')
       const res = await fetch(`/api/v1/graph/explore?verse=${encodeURIComponent(verse)}&depth=${d}&layers=${layerStr}&min_quality=${quality}&limit=150`)
       const json = await res.json()
       if (json.ok) {
@@ -303,11 +303,9 @@ export default function KnowledgeGraphView({ centerVerse, onNavigate, onOpenTab 
       if (!ref) return
       // If already center, navigate; else expand
       if (n.data('depth') === 0) {
-        // Navigate to verse
-        if (ref.startsWith('tg:')) {
-          window.open(`/graph?verse=${ref}`, '_blank')
-        } else if (ref.startsWith('bd:')) {
-          window.open(`/graph?verse=${ref}`, '_blank')
+        // Navigate to verse, or recenter the graph on topic/BD nodes
+        if (ref.startsWith('tg:') || ref.startsWith('bd:')) {
+          fetchGraph(ref, depth, activeLayers, minQuality)
         } else {
           const parts = ref.split('.')
           if (parts.length >= 2) onNavigate?.(parts[0], parseInt(parts[1]) || 1)
@@ -334,7 +332,7 @@ export default function KnowledgeGraphView({ centerVerse, onNavigate, onOpenTab 
       cy.destroy()
       cyRef.current = null
     }
-  }, [graphData, buildElements, onNavigate, onOpenTab])
+  }, [graphData, buildElements, onNavigate, onOpenTab, fetchGraph, depth, activeLayers, minQuality])
 
   // ── Layer toggle ──
   const toggleLayer = (layer) => {
@@ -357,7 +355,7 @@ export default function KnowledgeGraphView({ centerVerse, onNavigate, onOpenTab 
         const parts = result.id.split('.')
         if (parts.length >= 2) onOpenTab(parts[0], parseInt(parts[1]) || 1, { label: result.title })
       } else {
-        window.open(`/graph?verse=${result.id}`, '_blank')
+        fetchGraph(result.id, depth, activeLayers, minQuality)
       }
     }
   }
@@ -528,18 +526,18 @@ export default function KnowledgeGraphView({ centerVerse, onNavigate, onOpenTab 
             </div>
             {contextMenu.nodeType === 'verse' && (
               <>
-                <button onClick={() => { setContextMenu(null); window.open(`/graph?verse=${contextMenu.ref}`, '_blank') }}
+                <button onClick={() => { setContextMenu(null); fetchGraph(contextMenu.ref, depth, activeLayers, minQuality) }}
                   className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">🔍 Explore connections</button>
                 <button onClick={() => { setContextMenu(null); const p = contextMenu.ref.split('.'); if (p.length >= 2) onNavigate?.(p[0], parseInt(p[1]) || 1) }}
                   className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">📖 Open verse</button>
               </>
             )}
             {contextMenu.nodeType === 'topic' && (
-              <button onClick={() => { setContextMenu(null); window.open(`/graph?verse=${contextMenu.ref}`, '_blank') }}
+              <button onClick={() => { setContextMenu(null); fetchGraph(contextMenu.ref, depth, activeLayers, minQuality) }}
                 className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">🏷️ Explore TG topic</button>
             )}
             {contextMenu.nodeType === 'bd_entry' && (
-              <button onClick={() => { setContextMenu(null); window.open(`/graph?verse=${contextMenu.ref}`, '_blank') }}
+              <button onClick={() => { setContextMenu(null); fetchGraph(contextMenu.ref, depth, activeLayers, minQuality) }}
                 className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">📚 Open BD entry</button>
             )}
           </div>

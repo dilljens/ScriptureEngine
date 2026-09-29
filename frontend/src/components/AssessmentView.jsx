@@ -46,9 +46,10 @@ export default function AssessmentView({ user_id = 'default', onBack }) {
       const hebData = await hebRes.json()
 
       const assessmentCards = quizData.ok ? assessmentToCards(quizData.data?.questions || []) : []
-      const verseCards = (verseData.ok ? (verseData.data?.results || verseData.data?.cards || []) : []).map(v => ({
+      const verseCards = (verseData.ok ? (verseData.data?.reviews || verseData.data?.results || verseData.data?.cards || []) : []).map(v => ({
         id: `verse-${v.verse_id || v.id}`,
         type: 'verse',
+        queueId: v.queue_id || null,
         data: { reference: v.verse_id || v.id, text: v.text_english || v.text || '' },
       }))
       const hebCards = (hebData.ok ? (hebData.data?.cards || hebData.data?.results || []) : []).map(h => ({
@@ -95,17 +96,37 @@ export default function AssessmentView({ user_id = 'default', onBack }) {
           body: JSON.stringify({ user_id: owner, session_token: token, question_id: qid, rating }),
         })
       } else if (card.type === 'verse') {
-        // POST to memorize review endpoint
+        // Resolve the real queue row: prefer the queue_id carried from the
+        // review list; otherwise ensure the verse is queued and look it up.
+        // POSTing to /review/0 always 404s (no row has id 0).
         const token = currentSessionToken()
         const owner = token ? user_id : 'default'
-        await fetch('/api/v1/memorize/review/0', {
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
+        const postReview = (qid) => fetch(`/api/v1/memorize/review/${qid}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          headers,
           body: JSON.stringify({ user_id: owner, verse_id: card.data?.reference, rating, session_token: token }),
-        }).catch(() => {})
+        })
+        let qid = card.queueId || null
+        try {
+          if (!qid && card.data?.reference) {
+            await fetch('/api/v1/memorize/queue', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ user_id: owner, verse_id: card.data.reference, session_token: token }),
+            }).catch(() => {})
+            const r = await fetch(`/api/v1/memorize/review?limit=100&user_id=${encodeURIComponent(owner)}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            }).catch(() => null)
+            const d = r ? await r.json().catch(() => null) : null
+            const list = d?.ok ? (d.data?.reviews || d.data?.results || []) : []
+            qid = list.find(v => (v.verse_id || v.id) === card.data.reference)?.queue_id || null
+          }
+          if (qid) await postReview(qid).catch(() => {})
+        } catch {}
       }
     } catch {}
   }, [user_id])

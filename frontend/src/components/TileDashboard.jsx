@@ -9,8 +9,7 @@ import SubjectTile from './SubjectTile'
 export default function TileDashboard({
   workspaces, activeWorkspace, activeTab,
   onSelectWorkspace, onNewWorkspace, onRenameWorkspace, onDeleteWorkspace,
-  onSelectTab, onCloseTab, onMoveTab, onOpenTab,
-  book, chapter, bookTitle,
+  onSelectTab, onCloseTab, onMoveTab,
 }) {
   const [newName, setNewName] = useState('')
 
@@ -63,19 +62,6 @@ export default function TileDashboard({
         </div>
       )}
 
-      {/* Mobile: compact now-reading bar */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-neutral-950/90 backdrop-blur border-t border-neutral-200 dark:border-neutral-800 px-3 py-2">
-        <div className="flex items-center gap-2 max-w-5xl mx-auto">
-          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium uppercase tracking-wider">Now reading</span>
-          <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate">
-            {bookTitle} {chapter}
-          </span>
-          <button onClick={() => onOpenTab?.(book, chapter, { label: `${bookTitle} ${chapter}` })}
-            className="ml-auto px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-medium hover:bg-blue-700 cursor-pointer transition-colors">
-            Open
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

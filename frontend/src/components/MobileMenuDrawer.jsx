@@ -26,13 +26,13 @@ export default function MobileMenuDrawer({
         {/* Learning Row */}
         <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Learning</p>
         <div className="grid grid-cols-4 gap-3 mb-4">
-          <MenuButton icon="📖" label="Hebrew" onClick={onHebrew} badge="new" />
+          <MenuButton icon="א" label="Hebrew" onClick={onHebrew} badge="new" />
           <MenuButton icon="🧠" label="Memorize" onClick={onMemorize} badge="" />
           <MenuButton icon="📚" label="Learn" onClick={onKnowledge} badge="" />
           <MenuButton icon="🗺️" label="Paths" onClick={onHubNotes} />
           <MenuButton icon="📜" label="Articles" onClick={onArticles} />
           <MenuButton icon="📖" label="Wiki" onClick={onWiki} />
-          <MenuButton icon="📚" label="Studies" onClick={onStudies} />
+          <MenuButton icon="🎓" label="Studies" onClick={onStudies} />
         </div>
 
         {/* Tools Row */}

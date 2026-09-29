@@ -9,7 +9,6 @@ export default defineConfig({
       '/api/memorize': {
         target: 'http://localhost:8090',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/memorize/, ''),
       },
       '/api': {
         target: 'http://localhost:5174',

@@ -83,7 +83,7 @@ export default function MainContentView(props) {
   if (showHubNotes) {
     return (
       <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading paths...</div>}>
-        <HubNoteView hubId={hubNoteId} onNavigate={(v) => navigateRef(v)} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
+        <HubNoteView hubId={hubNoteId} onNavigate={(v) => navigateRef(v)} onGraph={(v) => navigateRef(v, true)} />
       </Suspense>
     )
   }
@@ -215,7 +215,7 @@ export default function MainContentView(props) {
   if (viewLevel === 'hubnote') {
     return (
       <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading study path...</div>}>
-        <HubNoteView hubId={viewRef} onNavigate={(v) => navigateRef(v)} onGraph={(v) => window.open(`/graph?verse=${v}`, '_blank')} />
+        <HubNoteView hubId={viewRef} onNavigate={(v) => navigateRef(v)} onGraph={(v) => navigateRef(v, true)} />
       </Suspense>
     )
   }
