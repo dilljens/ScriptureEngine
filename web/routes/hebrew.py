@@ -1170,9 +1170,14 @@ def get_hebrew_diagnostic(
 def _normalize_hebrew_answer(value):
     text = re.sub(r"\s+", " ", str(value if value is not None else "").strip().casefold())
     if re.search(r"[\u0590-\u05ff]", text):
-        # Strip all Hebrew marks (niqqud, cantillation, dagesh, shin/sin
-        # dots — the old range stopped at \u05af and missed vowel points).
-        text = re.sub(r"[\u0591-\u05C7]", "", text)
+        # Strip Hebrew vowel points and cantillation (the old range stopped
+        # at \u05af and missed them) but KEEP dagesh (U+05BC) and shin/sin
+        # dots (U+05C1/U+05C2): ב vs בּ and שׂ vs שׁ are real distinctions
+        # the diagnostic spec requires not to match. If stripping leaves
+        # nothing (a lone vowel point), keep the original so identical
+        # mark-only answers still match each other.
+        stripped = re.sub(r"[\u0591-\u05BB\u05BD-\u05C0\u05C3-\u05C7]", "", text)
+        text = stripped if stripped else text
         text = text.replace("/", "")
     # Fold final (sofit) letters: typing mem instead of mem-sofit (or the
     # reverse) must not fail grading. Applied to both sides equally.
