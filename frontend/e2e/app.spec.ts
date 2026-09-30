@@ -53,7 +53,7 @@ test.describe('App — page load & default state', () => {
   test('verse text is rendered after loading', async ({ page }) => {
     // Wait for book data to load
     await expect(page.locator('h1').first()).toContainText('Isaiah', { timeout: 20000 })
-    const verseText = page.locator('p.text-sm.leading-relaxed')
+    const verseText = page.locator('p.text-base').first()
     await expect(verseText.first()).toBeVisible({ timeout: 15000 })
     const text = await verseText.first().textContent()
     expect(text?.length).toBeGreaterThan(20)
