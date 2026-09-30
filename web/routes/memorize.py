@@ -874,7 +874,10 @@ def submit_review(queue_id: int, body: dict, request: Request):
         (body or {}).get("session_token", ""),
         request.headers.get("authorization", ""),
     )
-    rating = max(1, min(4, body.get("rating", 3)))
+    try:
+        rating = max(1, min(4, int(body.get("rating", 3))))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "rating must be an integer 1-4")
     preview_mode = body.get("preview_mode", "none")
     if preview_mode not in PREVIEW_MODES:
         preview_mode = "none"

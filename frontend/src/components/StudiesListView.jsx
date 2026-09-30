@@ -26,7 +26,7 @@ export default function StudiesListView({ onOpenStudy }) {
           className="w-full text-left p-4 rounded-xl bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer space-y-1">
           <div className="font-medium text-sm text-neutral-800 dark:text-neutral-100">{s.title}</div>
           {s.description && <div className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2">{s.description}</div>}
-          {s.author?.name && <div className="text-[10px] text-neutral-400 dark:text-neutral-500">by {s.author.name}</div>}
+          {(s.author?.name || s.author_name) && <div className="text-[10px] text-neutral-400 dark:text-neutral-500">by {s.author?.name || s.author_name}</div>}
         </button>
       ))}
     </div>
