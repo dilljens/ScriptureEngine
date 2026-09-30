@@ -109,14 +109,46 @@ BOOK_ALIASES = {
     "articles of faith": "aoff", "aoff": "aoff",
 }
 
-# Pattern: "book.chapter.verse" (gen.1.1, isa.55.6) — also handle (gen.1.1) [gen.1.1] "gen.1.1"
+# Pattern: "book.chapter.verse" (gen.1.1, isa.55.6), including ranges and
+# comma lists such as lev.14.10-12 and lev.14.10,23.
 REF_PATTERN_DOT = re.compile(
-    r'(?:^|\s|\(|\[|\")([a-z0-9_]+)\.(\d+)\.(\d+)(?=\s|$|\.|,|;|\)|\]|\"|\?|!)',
+    r'(?:^|\s|\(|\[|\")([a-z0-9_]+)\.(\d+)\.(\d+(?!\d)(?:\s*[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+)|\s*[,;]\s*\d+)*)(?=\s|$|\.|,|;|\)|\]|\"|\?|!)',
     re.IGNORECASE
 )
-# Pattern: find "Chapter:Verse" (1:1, 55:6) then look backwards for a book name
-# This is more reliable than trying to capture book names greedily
-REF_CHAPTER_VERSE = re.compile(r'(\d+):(\d+)')
+# Pattern: find "Chapter:Verse" (1:1, 55:6) then look backwards for a book name.
+# Spaces around the colon/dash are accepted. Cross-chapter refs stop before
+# the dash endpoint (e.g. 33:22–34:6), allowing the next chapter to be found.
+REF_CHAPTER_VERSE = re.compile(
+    r'(\d+)\s*:\s*(\d+(?!\d)(?:\s*[-–—]\s*\d+(?!\d)(?!\s*:\s*\d+)|\s*[,;]\s*\d+(?!\d)(?!\s*:\s*\d+))*)'
+)
+
+
+def _expand_verse_spec(spec):
+    """Expand a verse, range, or list into bounded individual verse numbers."""
+    verses = []
+    for part in re.split(r'[,;]', str(spec)):
+        part = part.strip()
+        if not part:
+            continue
+        range_match = re.fullmatch(r'(\d+)\s*[-–—]\s*(\d+)', part)
+        if range_match:
+            start_text, end_text = range_match.groups()
+            if len(start_text) > 5 or len(end_text) > 5:
+                continue
+            start, end = int(start_text), int(end_text)
+            if start > 10000 or end > 10000:
+                continue
+            # Keep malformed descending ranges useful and cap untrusted input.
+            end = max(start, min(end, start + 199))
+            candidates = range(start, end + 1)
+        elif part.isdigit() and len(part) <= 5 and int(part) <= 10000:
+            candidates = (int(part),)
+        else:
+            continue
+        for verse in candidates:
+            if verse not in verses:
+                verses.append(verse)
+    return verses
 
 
 def resolve_book_name(name):
@@ -144,46 +176,41 @@ def resolve_book_name(name):
 def _extract_text_refs(text, seen):
     """Extract 'Book Chapter:Verse' refs by looking backwards from chapter:verse patterns."""
     refs = []
-    # Split into words for backwards scanning
-    words = text.split()
-    word_positions = []  # (word, start_char, end_char)
-    pos = 0
-    for w in words:
-        start = text.find(w, pos)
-        end = start + len(w)
-        word_positions.append((w, start, end))
-        pos = end
-
-    # Find book/chapter/verse patterns
-    # Look for patterns like: "Genesis 1:1", "isa 55:6", "1 Nephi 3:7"
-    for i, (word, _ws, we) in enumerate(word_positions):
-        # Check if this word starts a "Chapter:Verse" or "Chapter:verse" pattern
-        cv_match = REF_CHAPTER_VERSE.match(word)
-        if not cv_match:
+    # Scan the full string (rather than split words) so `3: 1 - 7` works.
+    for cv_match in REF_CHAPTER_VERSE.finditer(text):
+        chapter_text = cv_match.group(1)
+        if len(chapter_text) > 5 or int(chapter_text) > 10000:
             continue
+        chapter = int(chapter_text)
+        spec = cv_match.group(2)
+        prefix = text[:cv_match.start()]
+        tokens = re.findall(r"[A-Za-z0-9][A-Za-z0-9&'’—–-]*", prefix[-120:])
+        # A cross-chapter continuation leaves the prior chapter/verse just
+        # before this match (e.g. `Exodus 33:22–34:6`). Ignore those numeric
+        # tokens so the original book name remains the lookup candidate.
+        while tokens and re.fullmatch(r"\d+(?:[-–—]\d+)?[-–—]?", tokens[-1]):
+            tokens.pop()
 
-        chapter, verse = int(cv_match.group(1)), int(cv_match.group(2))
-
-        # Look backwards at the preceding 1-3 words for a book name
-        for lookback in range(1, 4):
-            if i - lookback < 0:
-                break
-            candidate_words = word_positions[i - lookback:i]
-            candidate = " ".join(w[0] for w in candidate_words)
-
-            # Also try removing trailing "the", "of", etc.
+        # Look backwards at the preceding 1-3 words for a book name.
+        # Prefer the longest candidate first (`1 John` before `John`).
+        for lookback in range(min(3, len(tokens)), 0, -1):
+            candidate = " ".join(tokens[-lookback:])
             book_id = resolve_book_name(candidate)
-            if book_id:
+            if not book_id:
+                continue
+            if book_id == "dc":
+                book_id = f"dc{chapter}"
+            context_start = max(0, cv_match.start() - 50)
+            context_end = min(len(text), cv_match.end() + 50)
+            for verse in _expand_verse_spec(spec):
                 verse_id = f"{book_id}.{chapter}.{verse}"
                 if verse_id not in seen:
                     seen.add(verse_id)
-                    start = max(0, candidate_words[0][2] - 50)
-                    end = min(len(text), we + 50)
                     refs.append({
                         "verse_id": verse_id,
-                        "context": text[start:end].strip(),
+                        "context": text[context_start:context_end].strip(),
                     })
-                break  # Found the book name, don't look further back
+            break  # Found the book name, don't look further back
 
     return refs
 
@@ -192,7 +219,8 @@ def extract_verse_refs(text):
     """Extract verse references from text.
 
     Returns list of {"verse_id": str, "context": str} dicts.
-    Supports: gen.1.1, gen 1:1, Genesis 1:1, 1ne 3:7, etc.
+    Supports named/dotted references, verse ranges, comma/semicolon lists,
+    and whitespace around separators (e.g. `1 Nephi 3: 1 - 7`).
     """
     refs = []
     seen = set()
@@ -200,17 +228,20 @@ def extract_verse_refs(text):
     # Pattern 1: book.chapter.verse (gen.1.1, isa.55.6)
     for m in REF_PATTERN_DOT.finditer(text):
         book_id = m.group(1).lower()
-        chapter = int(m.group(2))
-        verse = int(m.group(3))
-        verse_id = f"{book_id}.{chapter}.{verse}"
-        if verse_id not in seen:
-            seen.add(verse_id)
-            start = max(0, m.start() - 40)
-            end = min(len(text), m.end() + 40)
-            refs.append({
-                "verse_id": verse_id,
-                "context": text[start:end].strip(),
-            })
+        chapter_text = m.group(2)
+        if len(chapter_text) > 5 or int(chapter_text) > 10000:
+            continue
+        chapter = int(chapter_text)
+        start = max(0, m.start() - 40)
+        end = min(len(text), m.end() + 40)
+        for verse in _expand_verse_spec(m.group(3)):
+            verse_id = f"{book_id}.{chapter}.{verse}"
+            if verse_id not in seen:
+                seen.add(verse_id)
+                refs.append({
+                    "verse_id": verse_id,
+                    "context": text[start:end].strip(),
+                })
 
     # Pattern 2: Book Chapter:Verse (Isaiah 55:6, Genesis 1:1, 1ne 3:7)
     refs.extend(_extract_text_refs(text, seen))
