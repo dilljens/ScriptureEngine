@@ -262,9 +262,7 @@ export default function AppOverlays(props) {
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
         onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
-        onHebrew={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
-        onMemorize={() => { setShowMobileMenu(false); openMemorizeTab() }}
-        onKnowledge={() => { setShowMobileMenu(false); openLearnTab() }}
+        onPlacement={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
         onHubNotes={() => { setShowMobileMenu(false); openHubNoteTab() }}
         onStudies={() => { setShowMobileMenu(false); openStudiesTab() }}
         darkMode={darkMode}

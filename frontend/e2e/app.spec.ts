@@ -67,10 +67,9 @@ test.describe('App — page load & default state', () => {
     await expect(menuBtn).toBeVisible()
     await menuBtn.click()
 
-    // Menu should show Study options
-    await expect(page.getByText('Learn').first()).toBeVisible()
-    await expect(page.getByText('Hebrew').first()).toBeVisible()
-    await expect(page.getByText('Memorize').first()).toBeVisible()
+    // Menu should show Study options (primary Learn/Hebrew/Memorize live in
+    // the tab strip + bottom nav, not the overflow menu)
+    await expect(page.getByText('Assess').first()).toBeVisible()
     await expect(page.getByText('Study Paths').first()).toBeVisible()
     await expect(page.getByText('Wiki').first()).toBeVisible()
 

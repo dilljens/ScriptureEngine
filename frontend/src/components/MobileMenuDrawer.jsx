@@ -1,8 +1,9 @@
 import React from 'react'
 
 /**
- * Mobile menu drawer — slide-out panel with navigation options.
- * Includes Hebrew, Memorize, Knowledge, Wiki, and settings.
+ * Mobile menu drawer — slide-out panel with overflow navigation.
+ * Primary destinations (Hebrew, Memorize, Learn) live in the bottom nav;
+ * this drawer holds everything else: placement quiz, paths, reading, tools.
  */
 export default function MobileMenuDrawer({
   open, onClose,
@@ -10,7 +11,7 @@ export default function MobileMenuDrawer({
   darkMode, onToggleDarkMode,
   fontSize, onChangeFontSize,
   onSettings,
-  onHebrew, onMemorize, onKnowledge, onHubNotes, onStudies, onArticles,
+  onPlacement, onHubNotes, onStudies, onArticles,
   authUser, authAvatar, onSignIn, onSignOut,
 }) {
   if (!open) return null
@@ -26,9 +27,7 @@ export default function MobileMenuDrawer({
         {/* Learning Row */}
         <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Learning</p>
         <div className="grid grid-cols-4 gap-3 mb-4">
-          <MenuButton icon="א" label="Hebrew" onClick={onHebrew} badge="new" />
-          <MenuButton icon="🧠" label="Memorize" onClick={onMemorize} badge="" />
-          <MenuButton icon="📚" label="Learn" onClick={onKnowledge} badge="" />
+          <MenuButton icon="📝" label="Placement" onClick={onPlacement} badge="new" />
           <MenuButton icon="🗺️" label="Paths" onClick={onHubNotes} />
           <MenuButton icon="📜" label="Articles" onClick={onArticles} />
           <MenuButton icon="📖" label="Wiki" onClick={onWiki} />
