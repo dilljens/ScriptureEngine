@@ -108,8 +108,10 @@ test.describe('Navigation — D&C sections', () => {
   })
 
   test('navigate to D&C section via command palette', async ({ page }) => {
-    // Open command palette — it's a modal overlay with a unique placeholder
-    await page.locator('button[title*="Go to"]').click()
+    // Open command palette — it's a modal overlay with a unique placeholder.
+    // Two buttons open it (toolbar icon + text button for small screens),
+    // so click whichever is visible at this viewport.
+    await page.locator('button[title*="Go to"]:visible').click()
     const cmdInput = page.getByPlaceholder('isa 55:6 · /search · /chat · /help')
     await expect(cmdInput).toBeVisible({ timeout: 5000 })
     await cmdInput.fill('/dc/138')
