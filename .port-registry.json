@@ -13,9 +13,9 @@
       "description": "Go SRS server"
     },
     "vite-frontend": {
-      "port": 5175,
+      "port": 5176,
       "protocol": "http",
-      "description": "Vite dev server for frontend (leased pool port, owner scriptureengine)"
+      "description": "Vite dev server for frontend (pinned 5176 with strictPort; 5175 is held by axe-viewer's sticky lease)"
     }
   }
 }

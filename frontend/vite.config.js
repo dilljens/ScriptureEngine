@@ -4,7 +4,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5175,
+    // NOTE: 5175 is held by axe-viewer's sticky lease (running with
+    // --strictPort). Pinned to 5176 so a silent auto-bump never lands on a
+    // port the chat origin allowlist rejects (web/routes/chat.py).
+    port: 5176,
+    strictPort: true,
     proxy: {
       '/api/memorize': {
         target: 'http://localhost:8090',

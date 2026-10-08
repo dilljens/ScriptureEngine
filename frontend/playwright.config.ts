@@ -13,16 +13,16 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:5175',
+    baseURL: 'http://127.0.0.1:5176',
     headless: true,
     viewport: { width: 1280, height: 800 },
     trace: 'retain-on-failure',
   screenshot: 'only-on-failure',
-  // The deploy gate runs this suite right after a frontend build while the
-  // API is still cold-loading its RAM cache; first-attempt UI timing flakes
-  // under that load are common. One retry absorbs them; real breakage still
-  // fails both attempts.
-  retries: process.env.CI ? 2 : 1,
+  // NOTE: `retries` is a top-level Playwright option (see above) — a copy
+  // previously lived here inside `use`, where it is silently ignored. The
+  // deploy gate runs this suite right after a frontend build while the API
+  // is still cold-loading its RAM cache; the top-level retry absorbs the
+  // resulting first-attempt UI timing flakes.
 },
   projects: [
     {
@@ -49,8 +49,8 @@ export default defineConfig({
       cwd: '/home/dillon/_code/ScriptureEngine',
     },
     {
-      command: 'npx vite --port 5175 --host 127.0.0.1',
-      url: 'http://127.0.0.1:5175',
+      command: 'npx vite --port 5176 --host 127.0.0.1',
+      url: 'http://127.0.0.1:5176',
       reuseExistingServer: true,
       timeout: 30000,
       cwd: '/home/dillon/_code/ScriptureEngine/frontend',

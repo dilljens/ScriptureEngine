@@ -1452,6 +1452,10 @@ ALLOWED_ORIGINS = {
     "http://localhost:5174",   # local API dev (leased port)
     "http://127.0.0.1:5175",   # dev Vite frontend (loopback)
     "http://127.0.0.1:5174",   # local API dev (loopback)
+    # NOTE: 5175 is held by axe-viewer (sticky lease, --strictPort), so this
+    # project's Vite frontend is pinned to 5176 (see frontend/vite.config.js).
+    "http://localhost:5176",   # dev Vite frontend (pinned; avoids 5175 clash)
+    "http://127.0.0.1:5176",   # dev Vite frontend (pinned loopback)
 }
 
 
@@ -1769,6 +1773,7 @@ async def _second_opinion_on_flags(unsupported, body, user_id: str):
                     "messages": [{"role": "user", "content":
                                   _ent.entailment_prompt(quote, ref, texts[ref])}],
                     "max_tokens": 200, "temperature": 0.0,
+                    "session_id": body.session_id or "",
                 })
                 content = (resp.get("choices", [{}])[0]
                            .get("message", {}).get("content", ""))
@@ -2053,6 +2058,7 @@ async def llm_chat(body: ChatRequest, request: Request):
         retry = await call_deepseek({
             "model": body.model, "messages": msgs,
             "max_tokens": body.max_tokens, "temperature": body.temperature,
+            "session_id": body.session_id or "",
         })
         if retry.get("choices"):
             rc_msg = retry["choices"][0].get("message", {})
@@ -2120,8 +2126,13 @@ async def call_deepseek(req_payload):
     The historical function name is retained because the subagent/job modules
     patch it in tests and use it as their provider callback.
     """
+    # Routing-only metadata (never sent upstream): pop before either branch.
+    session_id = ""
+    if isinstance(req_payload, dict) and "session_id" in req_payload:
+        req_payload = dict(req_payload)
+        session_id = req_payload.pop("session_id") or ""
     if _llm_provider.is_opencode_go_model(req_payload.get("model")):
-        return await _llm_provider.complete(req_payload)
+        return await _llm_provider.complete(req_payload, session_id=session_id)
     valid, model = _llm_provider.validate_model(req_payload.get("model"))
     if not valid:
         return {"error": {"code": 400, "message": model}}
@@ -2148,6 +2159,9 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
         "max_tokens": body.max_tokens,
         "temperature": body.temperature,
         "stream": stream,
+        # Routing-only metadata for the opencode-go worker pool
+        # (x-opencode-session header). Stripped before anything upstream.
+        "session_id": body.session_id or "",
     }
     if body.tools_enabled:
         payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
@@ -2328,6 +2342,8 @@ async def _stream_final_response(body, msgs, tool_results):
     # (finish_reason="length"), discard the partial and retry with more room.
     while True:
         stream_payload = _build_payload(body, msgs, stream=True)
+        # Routing-only metadata: header for the worker pool, never upstream.
+        stream_session_id = stream_payload.pop("session_id", "")
         if not _llm_provider.is_opencode_go_model(body.model):
             valid, model = _llm_provider.validate_model(body.model)
             if not valid:
@@ -2342,7 +2358,7 @@ async def _stream_final_response(body, msgs, tool_results):
         yield {"type": "heartbeat"}
         try:
             if _llm_provider.is_opencode_go_model(body.model):
-                stream_context = _llm_provider.stream(stream_payload)
+                stream_context = _llm_provider.stream(stream_payload, session_id=stream_session_id)
             else:
                 stream_context = _http_client.stream(
                     "POST", f"{DEEPSEEK_BASE}/chat/completions",
