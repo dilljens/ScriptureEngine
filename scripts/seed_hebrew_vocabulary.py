@@ -66,7 +66,7 @@ def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
             OR (instr(l.lemma, '/') > 0 AND
                 substr(l.lemma, instr(l.lemma, '/') + 1) = lg.lemma)
         WHERE l.lemma NOT IN ('b', 'c', 'd', 'H', 'G', 'l', 'm', 'k', 'H')
-          AND l.frequency > ?
+          AND l.frequency >= ?
           AND l.hebrew_plain IS NOT NULL AND l.hebrew_plain != ''
           AND instr(l.lemma, '/') = 0
         ORDER BY l.frequency DESC
@@ -89,15 +89,17 @@ def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
     for surface, candidates in sorted(
         by_surface.items(), key=lambda kv: -max(c["lex_freq"] or 0 for c in kv[1])
     ):
-        gloss = (candidates[0]["gloss"] or "").strip()
-        if len(surface) <= 1 or not gloss or gloss.replace(" ", "").isdigit():
+        if len(surface) <= 1:
             continue
         best = max(candidates, key=lambda c: ((c["lex_freq"] or 0), -_row_preference(c, canonical_base(c["lemma"]))))
+        gloss = _clean_gloss(best["gloss"]) or _derived_gloss(best["definition"])
+        if not gloss:
+            continue
         words.append({
             'lemma': best["lemma"],
             'hebrew': surface,
             'transliteration': (best["transliteration"] or "").strip(),
-            'gloss': (best["gloss"] or "").strip(),
+            'gloss': gloss,
             'root': (best["root"] or "").strip(),
             'definition': (best["definition"] or "").strip()[:200],
             'morphology': (best["morphology"] or "").strip(),
@@ -107,6 +109,19 @@ def get_top_words(count=500, cutoff=10, db_path=DB_PATH):
             break
 
     return words
+
+
+def _derived_gloss(definition: str) -> str:
+    """First clause of the lexicon definition (same convention as build_top500)."""
+    if not definition:
+        return ""
+    head = definition.split("—")[0].split(".")[0].strip()
+    return re.sub(r"\s+", " ", head)[:80]
+
+
+def _clean_gloss(value: str) -> str:
+    gloss = (value or "").strip()
+    return "" if gloss.replace(" ", "").isdigit() else gloss
 
 
 def find_verse_example(hebrew_word):
@@ -262,6 +277,10 @@ def main():
     parser.add_argument("--count", type=int, default=520, help="Number of word lessons to create")
     parser.add_argument("--db", default=str(MEM_DB), help="Path to memorize.db")
     parser.add_argument("--min-frequency", type=int, default=10, help="Minimum word frequency")
+    parser.add_argument("--allow-shared-base", action="store_true",
+                        help="Seed a node per surface even when its Strong's base already "
+                             "has a lesson (surface-keyed cards à la WHV; raises "
+                             "schedulable coverage for inflected/high-freq forms)")
     args = parser.parse_args()
 
     mem_db = Path(args.db)
@@ -341,7 +360,8 @@ def main():
         surface_key = re.sub(r"[\u0591-\u05c7]", "", w['hebrew']).replace("/", "")
         base_key = canonical_base(w['lemma'])
         language = "aramaic" if (w['morphology'] or '').startswith('A') else "hebrew"
-        if surface_key in existing_surfaces or (language, base_key) in existing_bases:
+        if surface_key in existing_surfaces or (
+                not args.allow_shared_base and (language, base_key) in existing_bases):
             continue
         # Skip if practice items already exist for this node
         existing_items = conn.execute("SELECT id FROM hebrew_practice_items WHERE node_id=? LIMIT 1", (lid,)).fetchone()

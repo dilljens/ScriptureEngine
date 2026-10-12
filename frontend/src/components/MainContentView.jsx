@@ -39,13 +39,12 @@ const SharedView = React.lazy(() => import('./SharedView'))
  */
 export default function MainContentView(props) {
   const {
-    bookData, bookError, chatInitialMsg, collection, hebrewLessonId,
-    hubNoteId, passageStudyRef, readingLessonId, poetryMode,
-    showHebrewDiagnostic, showHebrewLearn, showHistory, showHubNotes,
+    bookData, bookError, chatInitialMsg, collection,
+    passageStudyRef, readingLessonId, poetryMode,
     studyWeek, userId,
     setBookData, setBookError, setChatInitialMsg, setCollection,
-    setHebrewLessonId, setPassageStudyRef, setReadingLessonId, setShowChat,
-    setShowHebrewDiagnostic, setShowHebrewLearn, setShowHistory, setStudyWeek,
+    setPassageStudyRef, setReadingLessonId, setShowChat,
+    setStudyWeek,
     handleChatNavigate, handleChatOpenTab, handleOpenSplitPicker,
     navigateRef, studyFromCollection,
   } = props
@@ -66,35 +65,16 @@ export default function MainContentView(props) {
   const highlightVerse = currentTab?.highlights?.[0] || null
   const highlightVerses = currentTab?.highlights || []
 
-  if (showHebrewDiagnostic) {
+  if (viewLevel === 'history') {
     return (
-      <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading diagnostic...</div>}>
-        <HebrewDiagnostic onComplete={() => { setShowHebrewDiagnostic(false); setShowHebrewLearn(true) }} />
-      </Suspense>
+      <ErrorBoundary>
+        <ConversationHistory
+          onNavigate={handleChatNavigate}
+          onClose={() => { if (currentTab?.id) updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' }) }}
+        />
+      </ErrorBoundary>
     )
   }
-  if (hebrewLessonId !== null) {
-    return (
-      <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading lesson...</div>}>
-        <HebrewLessonView nodeId={hebrewLessonId} onBack={() => setHebrewLessonId(null)} />
-      </Suspense>
-    )
-  }
-  if (showHubNotes) {
-    return (
-      <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading paths...</div>}>
-        <HubNoteView hubId={hubNoteId} onNavigate={(v) => navigateRef(v)} onGraph={(v) => navigateRef(v, true)} />
-      </Suspense>
-    )
-  }
-  if (showHebrewLearn) {
-    return (
-      <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading curriculum...</div>}>
-        <HebrewLearnView onOpenLesson={(nodeId) => setHebrewLessonId(nodeId)} onOpenPassage={(ref, lessonId) => { setPassageStudyRef(ref); setReadingLessonId(lessonId || null) }} />
-      </Suspense>
-    )
-  }
-  if (showHistory) return <ErrorBoundary><ConversationHistory onNavigate={handleChatNavigate} onClose={() => setShowHistory(false)} /></ErrorBoundary>
   if (viewLevel === 'library') {
     if (studyWeek) {
       return (
@@ -220,8 +200,17 @@ export default function MainContentView(props) {
     )
   }
 
-  // Hebrew view — if viewRef is set, show lesson; otherwise show curriculum
+  // Hebrew view — diagnostic, lesson, or curriculum (all tabs, no overlays)
   if (viewLevel === 'hebrew') {
+    if (viewRef === 'diagnostic') {
+      return (
+        <Suspense fallback={<div className="p-8 text-sm text-neutral-400 animate-pulse">Loading diagnostic...</div>}>
+          <HebrewDiagnostic onComplete={() => {
+            if (currentTab?.id) updateTab(currentTab.id, { viewRef: null, label: 'Hebrew' })
+          }} />
+        </Suspense>
+      )
+    }
     if (viewRef && typeof viewRef === 'string' && !viewRef.startsWith('heb-')) {
       const HebrewLessonView = React.lazy(() => import('./HebrewLessonView'))
       return (

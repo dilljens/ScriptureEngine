@@ -89,6 +89,7 @@ node_modules/.vite/
 !.env.example
 *.py[cod]
 venv/
+venv-align/
 /bin/
 /dist/
 .venv*/

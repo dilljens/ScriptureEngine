@@ -80,8 +80,11 @@ All switches are env-only — no code change needed. Verified by
 
 ## Contributor-tier disclosure
 
-The default Go model is contributor-tier. `/api/v1/chat/instructions` returns
-`data_handling` text whenever the configured model id contains
+The previous Go default (`muse-spark-1.2-contributor`) was contributor-tier.
+The current default (`deepseek-v4-flash`, chat-completions-native) is not:
+muse/grok/gpt-luna live on `/responses` and minimax/qwen on `/messages`,
+which the worker pool does not translate. `/api/v1/chat/instructions`
+returns `data_handling` text whenever the configured model id contains
 "contributor"; keep that true if the model id changes.
 
 ## Known gaps (tracked in plan follow-ups)

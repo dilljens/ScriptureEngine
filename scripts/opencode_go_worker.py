@@ -15,12 +15,17 @@ import signal
 import socketserver
 import sys
 import threading
+import uuid
 from contextlib import suppress
 from http.server import BaseHTTPRequestHandler
 
 import httpx
 
 DEFAULT_BASE_URL = "https://opencode.ai/zen/go/v1"
+# Stable per-process fallback for x-opencode-session when the parent sends
+# none (opencode.ai/docs/go requires a stable per-conversation id).
+WORKER_SESSION_ID = uuid.uuid4().hex
+WORKER_USER_AGENT = "ScriptureEngine-opencode-go-worker/1.0"
 
 
 class _WorkerHandler(BaseHTTPRequestHandler):
@@ -64,6 +69,7 @@ class _WorkerHandler(BaseHTTPRequestHandler):
             return
 
         base_url = os.environ.get("OPENCODE_GO_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+        session_id = (self.headers.get("x-opencode-session") or "").strip() or WORKER_SESSION_ID
         try:
             with (
                 httpx.Client(timeout=600.0) as client,
@@ -73,6 +79,12 @@ class _WorkerHandler(BaseHTTPRequestHandler):
                     headers={
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
+                        "x-opencode-session": session_id,
+                        "User-Agent": WORKER_USER_AGENT,
+                        # Byte-passthrough proxy (iter_raw): forbid compression
+                        # upstream, otherwise we forward gzip bytes labeled as
+                        # application/json and callers fail to parse them.
+                        "Accept-Encoding": "identity",
                     },
                     json=request_body,
                 ) as upstream,

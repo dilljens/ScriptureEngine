@@ -1735,13 +1735,14 @@ def get_info():
     layers = conn.execute("SELECT layer, COUNT(*) as c FROM connections GROUP BY layer ORDER BY layer").fetchall()
     quality = conn.execute("SELECT quality_level, COUNT(*) as c FROM connections GROUP BY quality_level").fetchall()
     pg = conn.execute("SELECT COUNT(*) as c FROM passage_guides").fetchone()["c"]
+    nv = conn.execute("SELECT COUNT(*) as c FROM verses").fetchone()["c"]
     conn.close()
 
     INFO_CACHE = {
         "ok": True,
         "data": {
             "total_connections": sum(r["c"] for r in layers),
-            "total_verses": 42054,
+            "total_verses": nv,
             "hebrew_gematria": 305507,
             "greek_isopsephy": 137536,
             "passage_guides": pg,
@@ -3548,7 +3549,8 @@ if WORDS_IMAGE_DIR.is_dir():
     app.mount("/images/words", StaticFiles(directory=str(WORDS_IMAGE_DIR)), name="word_images")
 
 if FRONTEND_DIR.is_dir():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="frontend_assets")
+    if (FRONTEND_DIR / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="frontend_assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_frontend(full_path: str):
@@ -3563,4 +3565,7 @@ if FRONTEND_DIR.is_dir():
         target = FRONTEND_DIR / full_path
         if target.is_file():
             return FileResponse(str(target))
-        return FileResponse(str(FRONTEND_DIR / "index.html"))
+        index = FRONTEND_DIR / "index.html"
+        if index.is_file():
+            return FileResponse(str(index))
+        return _teaching_404(f"No frontend build at /{full_path} (dist incomplete)")

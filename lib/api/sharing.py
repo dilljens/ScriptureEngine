@@ -8,7 +8,7 @@ owned by the asker; the original conversation is never touched.
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from lib.api.conversations import add_message, create_session, get_session
 
@@ -67,7 +67,7 @@ def share_conversation(conn, session_id, created_by="anonymous", message_id=None
 
     content = {
         "title": title,
-        "shared_at": datetime.utcnow().isoformat(),
+        "shared_at": datetime.now(timezone.utc).isoformat(),
         "messages": [
             {"role": m["role"], "content": m["content"], "timestamp": m.get("timestamp")}
             for m in messages

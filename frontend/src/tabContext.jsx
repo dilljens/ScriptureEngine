@@ -359,22 +359,39 @@ export function TabProvider({ children }) {
       }
     }, [state]),
 
-    openHebrewTab: useCallback((lessonId) => {
+    openHebrewTab: useCallback((lessonId, label) => {
       const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
       const existing = ws?.tabs.find(t => t.view === 'hebrew')
       if (existing) {
         dispatch({ type: 'SELECT_TAB', id: existing.id })
         if (lessonId) {
-          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: lessonId, label: `Hebrew: ${lessonId}` } })
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: lessonId, label: label || `Hebrew: ${lessonId}` } })
         }
       } else {
         dispatch({
           type: 'NEW_TAB',
           book: 'gen',
           chapter: 1,
-          label: lessonId ? `Hebrew: ${lessonId}` : 'Hebrew',
+          label: label || (lessonId ? `Hebrew: ${lessonId}` : 'Hebrew'),
           view: 'hebrew',
           viewRef: lessonId || null,
+        })
+      }
+    }, [state]),
+
+    // Open (or focus) a history tab — conversation history as a tab, not an overlay
+    openHistoryTab: useCallback(() => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'history')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: '🕐 History',
+          view: 'history',
         })
       }
     }, [state]),
@@ -472,7 +489,7 @@ export function TabProvider({ children }) {
 
   // Current view level — reading + essays + studies + solo views all ladder to tiles
   const viewLevel = currentTab?.view || 'chapter'
-  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : viewLevel === 'wiki' ? 'articles' : viewLevel === 'articles' ? 'tiles' : viewLevel === 'study' ? 'studies' : viewLevel === 'studies' ? 'tiles' : (viewLevel === 'hebrew' && currentTab?.viewRef) ? 'hebrew' : ['hebrew', 'learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study'].includes(viewLevel) ? 'tiles' : null
+  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : viewLevel === 'wiki' ? 'articles' : viewLevel === 'articles' ? 'tiles' : viewLevel === 'study' ? 'studies' : viewLevel === 'studies' ? 'tiles' : (viewLevel === 'hebrew' && currentTab?.viewRef) ? 'hebrew' : ['hebrew', 'learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study', 'history'].includes(viewLevel) ? 'tiles' : null
   const isLibraryView = viewLevel === 'library'
 
   // Is the current view a chapter (showing verses)?

@@ -112,3 +112,13 @@ def test_bogus_card_mode_still_coerces_to_general(hebdb):
     out = H.process_hebrew_review(node_id=node, rating=3, user_id="default",
                                   card_mode="bogus")
     assert out["data"]["card_mode"] == ""
+
+
+def test_picture_schedules_distinct_rows(hebdb):
+    node = _rows(hebdb, "SELECT id FROM hebrew_nodes ORDER BY id LIMIT 1")[0][0]
+    out = H.process_hebrew_review(node_id=node, rating=3, user_id="default",
+                                  card_mode="picture")
+    assert out["data"]["card_mode"] == "picture"
+    rows = _rows(hebdb, "SELECT card_mode FROM hebrew_review_state"
+                        " WHERE user_id='default' AND node_id=?", (node,))
+    assert "picture" in {r[0] for r in rows}

@@ -1,4 +1,5 @@
 """LLM Chat proxy with function calling."""
+
 import asyncio
 import json
 import logging
@@ -28,8 +29,8 @@ from lib.monitoring import (
     contains_tutor_marker,
 )
 from web.lib import jobs as _jobs
-from web.lib.llm_provider import ProviderRouter
 from web.lib import subagents as _subagents
+from web.lib.llm_provider import ProviderRouter
 
 router = APIRouter()
 
@@ -44,7 +45,9 @@ _llm_provider = ProviderRouter()
 _INTERACTIVE_MARKER_RE = re.compile(r"%%%(?:QUIZ|HEBREW_QUIZ):.*?%%%", re.DOTALL)
 
 # Reusable HTTP client for DeepSeek API calls (avoids creating a new connection each time)
-_http_client = httpx.AsyncClient(timeout=600.0)  # 10 min — DeepSeek thinking mode can take 8+ min
+_http_client = httpx.AsyncClient(
+    timeout=600.0
+)  # 10 min — DeepSeek thinking mode can take 8+ min
 
 # Pricing per 1M tokens. OpenCode Go is subscription-backed by default, so its
 # accounting values are zero unless an operator supplies internal prices.
@@ -82,10 +85,16 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "book": {"type": "string", "description": "Book ID (gen, exo, isa, matt, 1ne, 1QS, 1en, wis, etc.)"},
+                    "book": {
+                        "type": "string",
+                        "description": "Book ID (gen, exo, isa, matt, 1ne, 1QS, 1en, wis, etc.)",
+                    },
                     "chapter": {"type": "integer"},
                     "verse": {"type": "integer"},
-                    "version": {"type": "string", "description": "Bible version (WEB, KJV, etc.)"},
+                    "version": {
+                        "type": "string",
+                        "description": "Bible version (WEB, KJV, etc.)",
+                    },
                 },
                 "required": ["book", "chapter", "verse"],
             },
@@ -99,10 +108,37 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search term (e.g., 'atonement', 'covenant', 'Son of Man')"},
-                    "book": {"type": "string", "description": "Optional book filter. Use 'dc' for all D&C sections, '1en' for 1 Enoch, '1QS' for Community Rule. NOT needed for broad searches."},
-                    "works": {"type": "array", "items": {"type": "string", "enum": ["ot", "nt", "bom", "dc", "pgp", "dss", "apoc", "pseu", "expanded"]}, "description": "Optional: filter by specific works (e.g., ['ot','nt']). NOT needed for broad searches."},
-                    "limit": {"type": "integer", "default": 25, "description": "Results per call (max 50). Default 25 is enough to see results from multiple works."},
+                    "query": {
+                        "type": "string",
+                        "description": "Search term (e.g., 'atonement', 'covenant', 'Son of Man')",
+                    },
+                    "book": {
+                        "type": "string",
+                        "description": "Optional book filter. Use 'dc' for all D&C sections, '1en' for 1 Enoch, '1QS' for Community Rule. NOT needed for broad searches.",
+                    },
+                    "works": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "ot",
+                                "nt",
+                                "bom",
+                                "dc",
+                                "pgp",
+                                "dss",
+                                "apoc",
+                                "pseu",
+                                "expanded",
+                            ],
+                        },
+                        "description": "Optional: filter by specific works (e.g., ['ot','nt']). NOT needed for broad searches.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Results per call (max 50). Default 25 is enough to see results from multiple works.",
+                    },
                 },
                 "required": ["query"],
             },
@@ -116,9 +152,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "verses": {"type": "array", "items": {"type": "string"},
-                               "description": "Verse refs like 'gen.1.1', 'john.3.16' (max 50)"},
-                    "version": {"type": "string", "description": "Preferred Bible version (WEB, KJV, etc.)"},
+                    "verses": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Verse refs like 'gen.1.1', 'john.3.16' (max 50)",
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": "Preferred Bible version (WEB, KJV, etc.)",
+                    },
                 },
                 "required": ["verses"],
             },
@@ -146,9 +188,18 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "start": {"type": "string", "description": "Start verse ID (e.g. 'gen.1.1')"},
-                    "end": {"type": "string", "description": "End verse ID (e.g. 'gen.1.31')"},
-                    "min_density": {"type": "number", "description": "Minimum density filter (0-1)"},
+                    "start": {
+                        "type": "string",
+                        "description": "Start verse ID (e.g. 'gen.1.1')",
+                    },
+                    "end": {
+                        "type": "string",
+                        "description": "End verse ID (e.g. 'gen.1.31')",
+                    },
+                    "min_density": {
+                        "type": "number",
+                        "description": "Minimum density filter (0-1)",
+                    },
                 },
                 "required": ["start", "end"],
             },
@@ -162,7 +213,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+                    "book": {
+                        "type": "string",
+                        "description": "Book ID (e.g. 'gen', 'isa')",
+                    },
                     "chapter": {"type": "integer", "description": "Chapter number"},
                 },
                 "required": ["book", "chapter"],
@@ -177,7 +231,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "book": {"type": "string", "description": "Book ID (e.g. 'gen', 'isa')"},
+                    "book": {
+                        "type": "string",
+                        "description": "Book ID (e.g. 'gen', 'isa')",
+                    },
                 },
                 "required": ["book"],
             },
@@ -191,9 +248,19 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "word": {"type": "string", "description": "Hebrew word (e.g., יהוה)"},
-                    "value": {"type": "integer", "description": "Look up verses with this gematria value"},
-                    "system": {"type": "string", "enum": ["standard", "ordinal", "reduced"], "default": "standard"},
+                    "word": {
+                        "type": "string",
+                        "description": "Hebrew word (e.g., יהוה)",
+                    },
+                    "value": {
+                        "type": "integer",
+                        "description": "Look up verses with this gematria value",
+                    },
+                    "system": {
+                        "type": "string",
+                        "enum": ["standard", "ordinal", "reduced"],
+                        "default": "standard",
+                    },
                 },
             },
         },
@@ -207,8 +274,14 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
-                    "layer": {"type": "string", "description": "Filter by connection layer"},
-                    "min_quality": {"type": "string", "description": "Minimum quality level (pattern, suggested, verified, scholarly)"},
+                    "layer": {
+                        "type": "string",
+                        "description": "Filter by connection layer",
+                    },
+                    "min_quality": {
+                        "type": "string",
+                        "description": "Minimum quality level (pattern, suggested, verified, scholarly)",
+                    },
                 },
                 "required": ["verse"],
             },
@@ -237,7 +310,11 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse": {"type": "string", "description": "Verse ID"},
-                    "level": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "description": "Filter to one PaRDeS level"},
+                    "level": {
+                        "type": "string",
+                        "enum": ["pshat", "remez", "drash", "sod"],
+                        "description": "Filter to one PaRDeS level",
+                    },
                 },
                 "required": ["verse"],
             },
@@ -252,8 +329,14 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse": {"type": "string", "description": "Verse to analyze"},
-                    "atbash_word": {"type": "string", "description": "Hebrew word to decode via Atbash"},
-                    "acrostic_book": {"type": "string", "description": "Book ID to scan for acrostics"},
+                    "atbash_word": {
+                        "type": "string",
+                        "description": "Hebrew word to decode via Atbash",
+                    },
+                    "acrostic_book": {
+                        "type": "string",
+                        "description": "Book ID to scan for acrostics",
+                    },
                 },
             },
         },
@@ -266,9 +349,16 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "start": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
+                    "start": {
+                        "type": "string",
+                        "description": "Starting verse ID (gen.1.1)",
+                    },
                     "end": {"type": "string", "description": "Target verse ID"},
-                    "max_depth": {"type": "integer", "default": 3, "description": "Maximum path length in hops"},
+                    "max_depth": {
+                        "type": "integer",
+                        "default": 3,
+                        "description": "Maximum path length in hops",
+                    },
                 },
                 "required": ["start", "end"],
             },
@@ -342,8 +432,14 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "scholar_tag": {"type": "string", "description": "Scholar tag (e.g., barker_temple, beale_temple, heiser_council)"},
-                    "scholar_name": {"type": "string", "description": "Scholar name (e.g., Margaret Barker)"},
+                    "scholar_tag": {
+                        "type": "string",
+                        "description": "Scholar tag (e.g., barker_temple, beale_temple, heiser_council)",
+                    },
+                    "scholar_name": {
+                        "type": "string",
+                        "description": "Scholar name (e.g., Margaret Barker)",
+                    },
                 },
             },
         },
@@ -356,8 +452,14 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "lemma": {"type": "string", "description": "Strong's number (e.g., H430, G26)"},
-                    "word": {"type": "string", "description": "Hebrew or Greek word text"},
+                    "lemma": {
+                        "type": "string",
+                        "description": "Strong's number (e.g., H430, G26)",
+                    },
+                    "word": {
+                        "type": "string",
+                        "description": "Hebrew or Greek word text",
+                    },
                 },
             },
         },
@@ -387,7 +489,10 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "seed_verse": {"type": "string"},
-                    "theme": {"type": "string", "description": "Optional theme (e.g., angel_of_yhwh, temple, covenant)"},
+                    "theme": {
+                        "type": "string",
+                        "description": "Optional theme (e.g., angel_of_yhwh, temple, covenant)",
+                    },
                 },
                 "required": ["seed_verse"],
             },
@@ -401,7 +506,6 @@ TOOL_DEFINITIONS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
-
     # ── Additional search & source tools ──
     {
         "type": "function",
@@ -412,7 +516,11 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string"},
-                    "language": {"type": "string", "enum": ["all", "english", "hebrew", "greek"], "default": "all"},
+                    "language": {
+                        "type": "string",
+                        "enum": ["all", "english", "hebrew", "greek"],
+                        "default": "all",
+                    },
                 },
                 "required": ["query"],
             },
@@ -426,7 +534,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "entity": {"type": "string", "description": "Entity ID (e.g., 'person.abraham')"},
+                    "entity": {
+                        "type": "string",
+                        "description": "Entity ID (e.g., 'person.abraham')",
+                    },
                     "limit": {"type": "integer", "default": 50},
                 },
                 "required": ["entity"],
@@ -441,7 +552,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "book": {"type": "string", "description": "Optional book ID to scope analysis"},
+                    "book": {
+                        "type": "string",
+                        "description": "Optional book ID to scope analysis",
+                    },
                     "layer": {"type": "string", "description": "Optional layer scope"},
                     "limit": {"type": "integer", "default": 10},
                 },
@@ -507,13 +621,16 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
-                    "version": {"type": "string", "description": "Bible version (WEB, KJV, etc.)", "default": "WEB"},
+                    "version": {
+                        "type": "string",
+                        "description": "Bible version (WEB, KJV, etc.)",
+                        "default": "WEB",
+                    },
                 },
                 "required": ["verse"],
             },
         },
     },
-
     # ── Study guide tools ──
     {
         "type": "function",
@@ -578,7 +695,6 @@ TOOL_DEFINITIONS = [
             },
         },
     },
-
     # ── Staging — propose new data (web UI / LLM → staging table → dev review) ──
     {
         "type": "function",
@@ -588,10 +704,19 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "source_verse": {"type": "string", "description": "Source verse ID (gen.1.1)"},
-                    "target_verse": {"type": "string", "description": "Target verse ID"},
+                    "source_verse": {
+                        "type": "string",
+                        "description": "Source verse ID (gen.1.1)",
+                    },
+                    "target_verse": {
+                        "type": "string",
+                        "description": "Target verse ID",
+                    },
                     "layer": {"type": "string", "description": "Connection layer"},
-                    "type_name": {"type": "string", "description": "Connection type (direct_quotation, allusion, etc.)"},
+                    "type_name": {
+                        "type": "string",
+                        "description": "Connection type (direct_quotation, allusion, etc.)",
+                    },
                     "subtype": {"type": "string", "default": ""},
                     "strength": {"type": "number", "default": 0.5},
                     "confidence": {"type": "number", "default": 0.5},
@@ -613,7 +738,10 @@ TOOL_DEFINITIONS = [
                     "description": {"type": "string", "default": ""},
                     "theme": {"type": "string", "default": ""},
                     "seed_verse": {"type": "string", "default": ""},
-                    "steps_json": {"type": "string", "description": "JSON array of steps: [{\"step_number\":1, \"verse\":\"gen.1.1\", \"title\":\"...\", \"explanation\":\"...\"}]"},
+                    "steps_json": {
+                        "type": "string",
+                        "description": 'JSON array of steps: [{"step_number":1, "verse":"gen.1.1", "title":"...", "explanation":"..."}]',
+                    },
                 },
                 "required": ["title"],
             },
@@ -650,9 +778,19 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "verse_a": {"type": "string", "description": "First verse ID (gen.1.1)"},
-                    "verse_b": {"type": "string", "description": "Second verse ID (john.1.1)"},
-                    "max_path_depth": {"type": "integer", "default": 4, "description": "Max path length in hops"},
+                    "verse_a": {
+                        "type": "string",
+                        "description": "First verse ID (gen.1.1)",
+                    },
+                    "verse_b": {
+                        "type": "string",
+                        "description": "Second verse ID (john.1.1)",
+                    },
+                    "max_path_depth": {
+                        "type": "integer",
+                        "default": 4,
+                        "description": "Max path length in hops",
+                    },
                 },
                 "required": ["verse_a", "verse_b"],
             },
@@ -666,11 +804,29 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "seed_verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
-                    "theme": {"type": "string", "description": "Optional theme description"},
-                    "max_depth": {"type": "integer", "default": 3, "description": "Max hops to traverse"},
-                    "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
-                    "max_verses": {"type": "integer", "default": 30, "description": "Max verses to collect"},
+                    "seed_verse": {
+                        "type": "string",
+                        "description": "Starting verse ID (gen.1.1)",
+                    },
+                    "theme": {
+                        "type": "string",
+                        "description": "Optional theme description",
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "default": 3,
+                        "description": "Max hops to traverse",
+                    },
+                    "layers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional layer filter",
+                    },
+                    "max_verses": {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Max verses to collect",
+                    },
                 },
                 "required": ["seed_verse"],
             },
@@ -684,7 +840,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "The research question to parallelize (e.g. 'trace atonement imagery from Leviticus through Hebrews')"},
+                    "query": {
+                        "type": "string",
+                        "description": "The research question to parallelize (e.g. 'trace atonement imagery from Leviticus through Hebrews')",
+                    },
                 },
                 "required": ["query"],
             },
@@ -699,7 +858,11 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse": {"type": "string", "description": "Verse ID (gen.1.1)"},
-                    "max_reachable": {"type": "integer", "default": 10, "description": "Max 1-hop neighbor verses to include"},
+                    "max_reachable": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Max 1-hop neighbor verses to include",
+                    },
                 },
                 "required": ["verse"],
             },
@@ -714,7 +877,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "entity": {"type": "string", "description": "Entity ID (person.abraham, place.zion, concept.covenant)"},
+                    "entity": {
+                        "type": "string",
+                        "description": "Entity ID (person.abraham, place.zion, concept.covenant)",
+                    },
                     "min_confidence": {"type": "number", "default": 0.3},
                     "limit": {"type": "integer", "default": 100},
                 },
@@ -730,8 +896,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "entity_id": {"type": "string", "description": "Entity ID (person.abraham)"},
-                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
+                    "entity_id": {
+                        "type": "string",
+                        "description": "Entity ID (person.abraham)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max results",
+                    },
                 },
                 "required": ["entity_id"],
             },
@@ -746,9 +919,21 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query (auto-detects verse refs, Hebrew, Greek, natural language)"},
-                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
-                    "mode": {"type": "string", "enum": ["hybrid", "vector", "keyword"], "default": "hybrid", "description": "Search mode: hybrid (RRF fusion), vector (pure semantic), keyword (pure BM25)"},
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (auto-detects verse refs, Hebrew, Greek, natural language)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max results",
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["hybrid", "vector", "keyword"],
+                        "default": "hybrid",
+                        "description": "Search mode: hybrid (RRF fusion), vector (pure semantic), keyword (pure BM25)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -763,8 +948,16 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "verse_id": {"type": "string", "description": "Verse ID (gen.1.1)"},
-                    "limit": {"type": "integer", "default": 20, "description": "Max results"},
-                    "min_score": {"type": "number", "default": 0.1, "description": "Minimum similarity score (0-1)"},
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max results",
+                    },
+                    "min_score": {
+                        "type": "number",
+                        "default": 0.1,
+                        "description": "Minimum similarity score (0-1)",
+                    },
                 },
                 "required": ["verse_id"],
             },
@@ -779,10 +972,25 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "verse": {"type": "string", "description": "Starting verse ID (gen.1.1)"},
-                    "depth": {"type": "integer", "default": 2, "description": "How many hops to traverse"},
-                    "layers": {"type": "array", "items": {"type": "string"}, "description": "Optional layer filter"},
-                    "limit": {"type": "integer", "default": 20, "description": "Max verses to include"},
+                    "verse": {
+                        "type": "string",
+                        "description": "Starting verse ID (gen.1.1)",
+                    },
+                    "depth": {
+                        "type": "integer",
+                        "default": 2,
+                        "description": "How many hops to traverse",
+                    },
+                    "layers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional layer filter",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max verses to include",
+                    },
                 },
                 "required": ["verse"],
             },
@@ -813,7 +1021,11 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "guide_id": {"type": "integer"},
-                    "steps": {"type": "array", "items": {"type": "object"}, "description": "Array of step objects with verse_id, title, explanation"},
+                    "steps": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "Array of step objects with verse_id, title, explanation",
+                    },
                 },
                 "required": ["guide_id", "steps"],
             },
@@ -888,7 +1100,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "json_str": {"type": "string", "description": "Full study JSON string"},
+                    "json_str": {
+                        "type": "string",
+                        "description": "Full study JSON string",
+                    },
                     "created_by": {"type": "string", "default": "user"},
                 },
                 "required": ["json_str"],
@@ -932,9 +1147,26 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "claim": {"type": "string", "description": "The scholarly claim to evaluate (e.g., 'The Angel of YHWH is a created being')"},
-                    "verses": {"type": "array", "items": {"type": "string"}, "description": "Verse references the claim relates to (e.g., ['gen.16.7', 'exo.3.2'])"},
-                    "claim_type": {"type": "string", "enum": ["linguistic", "historical", "theological", "textual", "interpretive"], "description": "Optional claim type override"},
+                    "claim": {
+                        "type": "string",
+                        "description": "The scholarly claim to evaluate (e.g., 'The Angel of YHWH is a created being')",
+                    },
+                    "verses": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Verse references the claim relates to (e.g., ['gen.16.7', 'exo.3.2'])",
+                    },
+                    "claim_type": {
+                        "type": "string",
+                        "enum": [
+                            "linguistic",
+                            "historical",
+                            "theological",
+                            "textual",
+                            "interpretive",
+                        ],
+                        "description": "Optional claim type override",
+                    },
                 },
                 "required": ["claim"],
             },
@@ -948,7 +1180,19 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "topic": {"type": "string", "enum": ["temple_microcosm", "angel_yhwh_divine_council", "josiah_reform", "queen_of_heaven_asherah", "two_yahwehs_origins", "atonement_theosis", "bom_temple"], "description": "Topic to analyze"},
+                    "topic": {
+                        "type": "string",
+                        "enum": [
+                            "temple_microcosm",
+                            "angel_yhwh_divine_council",
+                            "josiah_reform",
+                            "queen_of_heaven_asherah",
+                            "two_yahwehs_origins",
+                            "atonement_theosis",
+                            "bom_temple",
+                        ],
+                        "description": "Topic to analyze",
+                    },
                 },
                 "required": ["topic"],
             },
@@ -965,9 +1209,18 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "year": {"type": "integer", "description": "Manual year (default: current year)"},
-                    "week": {"type": "string", "description": "Week slug, e.g. '03' (default: current calendar week)"},
-                    "ref_id": {"type": "string", "description": "Exact ref, e.g. 'cfm.2026.03'"},
+                    "year": {
+                        "type": "integer",
+                        "description": "Manual year (default: current year)",
+                    },
+                    "week": {
+                        "type": "string",
+                        "description": "Week slug, e.g. '03' (default: current calendar week)",
+                    },
+                    "ref_id": {
+                        "type": "string",
+                        "description": "Exact ref, e.g. 'cfm.2026.03'",
+                    },
                 },
             },
         },
@@ -980,12 +1233,30 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "year": {"type": "integer", "description": "Conference year, e.g. 2025"},
-                    "month": {"type": "integer", "description": "Conference month: 4 (April) or 10 (October)"},
-                    "session": {"type": "string", "description": "Session name, e.g. 'Saturday Morning'"},
-                    "speaker": {"type": "string", "description": "Speaker name (substring match), e.g. 'Holland'"},
-                    "title": {"type": "string", "description": "Talk title (substring match)"},
-                    "ref_id": {"type": "string", "description": "Exact ref, e.g. 'gc.2025.04.13holland'"},
+                    "year": {
+                        "type": "integer",
+                        "description": "Conference year, e.g. 2025",
+                    },
+                    "month": {
+                        "type": "integer",
+                        "description": "Conference month: 4 (April) or 10 (October)",
+                    },
+                    "session": {
+                        "type": "string",
+                        "description": "Session name, e.g. 'Saturday Morning'",
+                    },
+                    "speaker": {
+                        "type": "string",
+                        "description": "Speaker name (substring match), e.g. 'Holland'",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Talk title (substring match)",
+                    },
+                    "ref_id": {
+                        "type": "string",
+                        "description": "Exact ref, e.g. 'gc.2025.04.13holland'",
+                    },
                 },
             },
         },
@@ -999,9 +1270,18 @@ TOOL_DEFINITIONS = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search term"},
-                    "corpus": {"type": "string", "enum": ["cfm", "conference", "both"], "default": "both", "description": "Which corpus to search"},
+                    "corpus": {
+                        "type": "string",
+                        "enum": ["cfm", "conference", "both"],
+                        "default": "both",
+                        "description": "Which corpus to search",
+                    },
                     "year": {"type": "integer", "description": "Optional year filter"},
-                    "limit": {"type": "integer", "default": 10, "description": "Max results (max 30)"},
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Max results (max 30)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -1015,8 +1295,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "limit": {"type": "integer", "default": 10, "description": "How many recent answers to include"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "How many recent answers to include",
+                    },
                 },
             },
         },
@@ -1029,8 +1316,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "limit": {"type": "integer", "default": 10, "description": "How many practiced/due nodes to include"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "How many practiced/due nodes to include",
+                    },
                 },
             },
         },
@@ -1043,7 +1337,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
                 },
             },
         },
@@ -1056,7 +1353,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Optional category filter"},
+                    "category": {
+                        "type": "string",
+                        "description": "Optional category filter",
+                    },
                 },
             },
         },
@@ -1069,7 +1369,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "node_id": {"type": "string", "description": "Node ID (e.g. 'aleph', 'bet', 'qal_verb', 'construct_chain')"},
+                    "node_id": {
+                        "type": "string",
+                        "description": "Node ID (e.g. 'aleph', 'bet', 'qal_verb', 'construct_chain')",
+                    },
                 },
                 "required": ["node_id"],
             },
@@ -1083,8 +1386,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "category": {"type": "string", "description": "Category: consonant, vowel, word, grammar, phrase, reading"},
-                    "count": {"type": "integer", "default": 5, "description": "Number of questions"},
+                    "category": {
+                        "type": "string",
+                        "description": "Category: consonant, vowel, word, grammar, phrase, reading",
+                    },
+                    "count": {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "Number of questions",
+                    },
                 },
             },
         },
@@ -1097,8 +1407,15 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "target_layer": {"type": "string", "enum": ["pshat", "remez", "drash", "sod"], "description": "Optional PaRDeS layer filter"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
+                    "target_layer": {
+                        "type": "string",
+                        "enum": ["pshat", "remez", "drash", "sod"],
+                        "description": "Optional PaRDeS layer filter",
+                    },
                     "max_items": {"type": "integer", "default": 20},
                 },
             },
@@ -1112,8 +1429,13 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "answer": {"description": "Selected option, option index, or free-text answer"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
+                    "answer": {
+                        "description": "Selected option, option index, or free-text answer"
+                    },
                 },
                 "required": ["answer"],
             },
@@ -1127,7 +1449,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
                 },
             },
         },
@@ -1140,7 +1465,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
                     "max_items": {"type": "integer", "default": 30},
                 },
             },
@@ -1154,8 +1482,13 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
-                    "answer": {"description": "Selected option, option index, or free-text answer"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
+                    "answer": {
+                        "description": "Selected option, option index, or free-text answer"
+                    },
                 },
                 "required": ["answer"],
             },
@@ -1169,7 +1502,10 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "User id (defaults to the chatting user)"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "User id (defaults to the chatting user)",
+                    },
                 },
             },
         },
@@ -1193,37 +1529,41 @@ SCOPED_TOOLS = {
 # General Scripture chat is intentionally not a learning/progress surface.
 # Keep these definitions registered for the dedicated Hebrew/Learn routes, but
 # never advertise or execute them from the general chat mode.
-GENERAL_CHAT_BLOCKED_TOOLS = frozenset({
-    "scripture_quiz_progress",
-    "scripture_hebrew_progress",
-    "scripture_hebrew_placement",
-    "scripture_hebrew_lessons",
-    "scripture_hebrew_lesson",
-    "scripture_hebrew_quiz",
-    "scripture_assess_start",
-    "scripture_assess_answer",
-    "scripture_assess_progress",
-    "scripture_diagnostic_start",
-    "scripture_diagnostic_answer",
-    "scripture_diagnostic_report",
-})
+GENERAL_CHAT_BLOCKED_TOOLS = frozenset(
+    {
+        "scripture_quiz_progress",
+        "scripture_hebrew_progress",
+        "scripture_hebrew_placement",
+        "scripture_hebrew_lessons",
+        "scripture_hebrew_lesson",
+        "scripture_hebrew_quiz",
+        "scripture_assess_start",
+        "scripture_assess_answer",
+        "scripture_assess_progress",
+        "scripture_diagnostic_start",
+        "scripture_diagnostic_answer",
+        "scripture_diagnostic_report",
+    }
+)
 
 # Hebrew Tutor gets only language-learning/reference tools.  In particular,
 # it cannot stage studies or invoke the general Scripture assessment system.
-HEBREW_TOOL_ALLOWLIST = frozenset({
-    "scripture_verse",
-    "scripture_search",
-    "scripture_search_xlingual",
-    "scripture_gematria",
-    "scripture_interlinear",
-    "scripture_strongs",
-    "scripture_hebrew_progress",
-    "scripture_hebrew_placement",
-    "scripture_hebrew_lessons",
-    "scripture_hebrew_lesson",
-    "scripture_hebrew_quiz",
-    "scripture_quiz_progress",
-})
+HEBREW_TOOL_ALLOWLIST = frozenset(
+    {
+        "scripture_verse",
+        "scripture_search",
+        "scripture_search_xlingual",
+        "scripture_gematria",
+        "scripture_interlinear",
+        "scripture_strongs",
+        "scripture_hebrew_progress",
+        "scripture_hebrew_placement",
+        "scripture_hebrew_lessons",
+        "scripture_hebrew_lesson",
+        "scripture_hebrew_quiz",
+        "scripture_quiz_progress",
+    }
+)
 
 
 def _scope_allowed(tool_name: str, scopes: list) -> bool:
@@ -1263,13 +1603,18 @@ def _mode_allowed(tool_name: str, mode: str = "chat") -> bool:
     return False
 
 
-def _filter_tools(tools: list, scopes: list, disabled_tools: list, mode: str = "chat") -> list:
+def _filter_tools(
+    tools: list, scopes: list, disabled_tools: list, mode: str = "chat"
+) -> list:
     """Drop disabled, scoped, and mode-incompatible tools."""
     disabled = set(disabled_tools or [])
-    return [t for t in tools
-            if t["function"]["name"] not in disabled
-            and _scope_allowed(t["function"]["name"], scopes)
-            and _mode_allowed(t["function"]["name"], mode)]
+    return [
+        t
+        for t in tools
+        if t["function"]["name"] not in disabled
+        and _scope_allowed(t["function"]["name"], scopes)
+        and _mode_allowed(t["function"]["name"], mode)
+    ]
 
 
 def _effective_mode(mode: str) -> str:
@@ -1307,10 +1652,7 @@ def _hebrew_learner_snapshot(user_id: str) -> str | None:
     placement = data.get("placement") or {}
     levels = placement.get("level_estimates") if isinstance(placement, dict) else None
     if isinstance(levels, dict) and levels:
-        parts = [
-            f"{skill} L{lvl}"
-            for skill, lvl in list(levels.items())[:4]
-        ]
+        parts = [f"{skill} L{lvl}" for skill, lvl in list(levels.items())[:4]]
         lines.append("Placement: " + ", ".join(parts))
 
     cats = data.get("by_category") or []
@@ -1319,7 +1661,9 @@ def _hebrew_learner_snapshot(user_id: str) -> str | None:
         total = c.get("total", 0) or 0
         mastered = c.get("mastered", 0) or 0
         avg = int(round((c.get("avg_mastery", 0) or 0) * 100))
-        cat_parts.append(f"{c.get('category', '?')} {avg}% ({mastered}/{total} mastered)")
+        cat_parts.append(
+            f"{c.get('category', '?')} {avg}% ({mastered}/{total} mastered)"
+        )
     if cat_parts:
         lines.append("Mastery by category: " + "; ".join(cat_parts))
 
@@ -1330,10 +1674,15 @@ def _hebrew_learner_snapshot(user_id: str) -> str | None:
             i.get("title", i.get("node_id", "?"))
             for i in (due.get("next_items") or [])[:_SNAPSHOT_MAX_DUE]
         )
-        lines.append(f"Due reviews: {due_count} item(s)" + (f" — next: {next_items}" if next_items else ""))
+        lines.append(
+            f"Due reviews: {due_count} item(s)"
+            + (f" — next: {next_items}" if next_items else "")
+        )
 
     practiced = data.get("practiced_nodes") or []
-    recent = [p.get("title", p.get("node_id", "?")) for p in practiced[:_SNAPSHOT_MAX_RECENT]]
+    recent = [
+        p.get("title", p.get("node_id", "?")) for p in practiced[:_SNAPSHOT_MAX_RECENT]
+    ]
     if recent:
         lines.append("Recent practice: " + ", ".join(recent))
 
@@ -1389,25 +1738,34 @@ def _prepare_chat_messages(body) -> list[dict]:
         # (server-derived, identity-bound). Never breaks the request.
         try:
             from lib.api import tutor_memory as _tutor_memory
+
             _mem_conn = _tutor_memory.connect()
             try:
                 _mem_block = _tutor_memory.hydrate(
-                    _mem_conn, _chat_tool_user_id(body),
-                    getattr(body, "session_id", "") or "")
+                    _mem_conn,
+                    _chat_tool_user_id(body),
+                    getattr(body, "session_id", "") or "",
+                )
             finally:
                 _mem_conn.close()
             if _mem_block:
-                msgs.insert(2 if snapshot else 1,
-                            {"role": "system", "content": _mem_block})
+                msgs.insert(
+                    2 if snapshot else 1, {"role": "system", "content": _mem_block}
+                )
         except Exception:  # noqa: BLE001, S110 — hydration must never break chat
             pass
     elif contains_tutor_marker(msgs) or any(
-            "[TUTOR MEMORY" in str(m.get("content", ""))
-            for m in msgs if isinstance(m, dict)):
+        "[TUTOR MEMORY" in str(m.get("content", ""))
+        for m in msgs
+        if isinstance(m, dict)
+    ):
         bump_p2_counter("tutor_memory_leak_probe")
-        msgs = [m for m in msgs
-                if TUTOR_SNAPSHOT_MARKER not in str(m.get("content", ""))
-                and "[TUTOR MEMORY" not in str(m.get("content", ""))]
+        msgs = [
+            m
+            for m in msgs
+            if TUTOR_SNAPSHOT_MARKER not in str(m.get("content", ""))
+            and "[TUTOR MEMORY" not in str(m.get("content", ""))
+        ]
 
     body.max_tokens = min(body.max_tokens, MAX_OUTPUT_TOKENS)
     return apply_context_budget(msgs)
@@ -1448,14 +1806,14 @@ def _compute_cost(usage: dict, model: str = "") -> dict:
 ALLOWED_ORIGINS = {
     "https://scriptureengine.org",
     "https://www.scriptureengine.org",
-    "http://localhost:5175",   # dev Vite frontend (leased port)
-    "http://localhost:5174",   # local API dev (leased port)
-    "http://127.0.0.1:5175",   # dev Vite frontend (loopback)
-    "http://127.0.0.1:5174",   # local API dev (loopback)
+    "http://localhost:5175",  # dev Vite frontend (leased port)
+    "http://localhost:5174",  # local API dev (leased port)
+    "http://127.0.0.1:5175",  # dev Vite frontend (loopback)
+    "http://127.0.0.1:5174",  # local API dev (loopback)
     # NOTE: 5175 is held by axe-viewer (sticky lease, --strictPort), so this
     # project's Vite frontend is pinned to 5176 (see frontend/vite.config.js).
-    "http://localhost:5176",   # dev Vite frontend (pinned; avoids 5175 clash)
-    "http://127.0.0.1:5176",   # dev Vite frontend (pinned loopback)
+    "http://localhost:5176",  # dev Vite frontend (pinned; avoids 5175 clash)
+    "http://127.0.0.1:5176",  # dev Vite frontend (pinned loopback)
 }
 
 
@@ -1476,6 +1834,7 @@ def _origin_allowed(value: str) -> bool:
         return False
     host = (parts.hostname or "").lower()
     return host.endswith(".scriptureengine.org") and parts.scheme in ("https", "http")
+
 
 # Simple in-memory rate limiter (per IP, sliding 60s window). General chat and
 # Hebrew Tutor carry separate budgets so one heavy mode cannot exhaust the
@@ -1504,7 +1863,9 @@ def _check_rate_limit(ip: str, limit: int | None = None) -> bool:
     timestamps = _rate_limits.get(ip, [])
     # Prune expired entries
     timestamps = [t for t in timestamps if now - t < RATE_WINDOW]
-    if len(timestamps) >= (limit if limit is not None else _env_int("CHAT_RATE_LIMIT", 20)):
+    if len(timestamps) >= (
+        limit if limit is not None else _env_int("CHAT_RATE_LIMIT", 20)
+    ):
         return False
     timestamps.append(now)
     _rate_limits[ip] = timestamps
@@ -1518,6 +1879,7 @@ def _chat_disabled(mode: str) -> str | None:
     Tutor only. Scripture lookup endpoints are unaffected either way.
     Returns a user-facing error message, or None when chat may proceed.
     """
+
     def _flag_set(name: str) -> bool:
         return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
 
@@ -1582,7 +1944,9 @@ def apply_context_budget(message_list: list[dict]) -> list[dict]:
     after = exchanges[keep_from:]
 
     # Strip tool-related messages from the 'before' portion
-    cleaned_before = [m for m in before if m["role"] in ("user", "assistant") and m.get("content")]
+    cleaned_before = [
+        m for m in before if m["role"] in ("user", "assistant") and m.get("content")
+    ]
     cleaned_all = cleaned_before + after
     total_est = sum(_estimate_tokens(m.get("content", "") or "") for m in cleaned_all)
 
@@ -1593,13 +1957,15 @@ def apply_context_budget(message_list: list[dict]) -> list[dict]:
     if exchange_count > KEEP_EXCHANGES:
         # Take the last KEEP_EXCHANGES exchanges from the 'after' portion
         if len(exchanges) > KEEP_EXCHANGES * 2:
-            final_after = exchanges[-(KEEP_EXCHANGES * 2):]
+            final_after = exchanges[-(KEEP_EXCHANGES * 2) :]
         else:
-            final_after = exchanges[-(KEEP_EXCHANGES * 2):]
-        system.append({
-            "role": "system",
-            "content": "[Earlier conversation context omitted to stay within token budget.]"
-        })
+            final_after = exchanges[-(KEEP_EXCHANGES * 2) :]
+        system.append(
+            {
+                "role": "system",
+                "content": "[Earlier conversation context omitted to stay within token budget.]",
+            }
+        )
         return system + final_after
 
     return system + after
@@ -1614,12 +1980,14 @@ class ChatRequest(BaseModel):
     disabled_tools: list[str] = []
     scopes: list[str] = []  # opt-in scopes: "cfm", "conference" (default none = off)
     mode: str = "chat"  # "chat", "hebrew", "knowledge"
-    subagents: bool = True  # planner → parallel workers → synthesizer for research questions
-    session_id: str = ""            # conversation session — job saves the completed answer here
-    client_message_id: str = ""     # user message id (idempotency context for the save)
-    user_id: str = ""               # who is chatting — Hebrew Tutor tools are mode-scoped
-    session_token: str = ""         # optional auth token; resolved server-side
-    tool_user_id: str = ""           # server-bound identity for user-scoped tools
+    subagents: bool = (
+        True  # planner → parallel workers → synthesizer for research questions
+    )
+    session_id: str = ""  # conversation session — job saves the completed answer here
+    client_message_id: str = ""  # user message id (idempotency context for the save)
+    user_id: str = ""  # who is chatting — Hebrew Tutor tools are mode-scoped
+    session_token: str = ""  # optional auth token; resolved server-side
+    tool_user_id: str = ""  # server-bound identity for user-scoped tools
 
 
 def _normalize_user_id(user_id: str) -> str:
@@ -1646,6 +2014,7 @@ def _bind_chat_identity(body: ChatRequest, request: Request) -> str:
     if token:
         try:
             from web.routes.auth import _resolve_user_from_token
+
             resolved = _resolve_user_from_token(token)
         except Exception:
             resolved = None
@@ -1739,9 +2108,10 @@ async def _second_opinion_on_flags(unsupported, body, user_id: str):
     """
     try:
         from lib.controls import entailment as _ent
+
         if not _flag_enabled("truth_entailment", user_id):
             return None
-        items = (unsupported or [])[:_ent.MAX_ITEMS]
+        items = (unsupported or [])[: _ent.MAX_ITEMS]
         if not items:
             return None
         texts = {}
@@ -1753,11 +2123,20 @@ async def _second_opinion_on_flags(unsupported, body, user_id: str):
             try:
                 res = _run_tool_thread(
                     "scripture_verse",
-                    {"book": parts[0], "chapter": int(parts[1]),
-                     "verse": int(parts[2])},
-                    [], "cove-check", body.mode)
-                if isinstance(res, dict) and not res.get("error") \
-                        and res.get("text_english"):
+                    {
+                        "book": parts[0],
+                        "chapter": int(parts[1]),
+                        "verse": int(parts[2]),
+                    },
+                    [],
+                    "cove-check",
+                    body.mode,
+                )
+                if (
+                    isinstance(res, dict)
+                    and not res.get("error")
+                    and res.get("text_english")
+                ):
                     texts[ref] = res["text_english"]
             except Exception:  # noqa: BLE001 — per-verse isolation
                 continue
@@ -1768,20 +2147,30 @@ async def _second_opinion_on_flags(unsupported, body, user_id: str):
             if ref not in texts or not quote:
                 continue
             try:
-                resp = await call_deepseek({
-                    "model": body.model,
-                    "messages": [{"role": "user", "content":
-                                  _ent.entailment_prompt(quote, ref, texts[ref])}],
-                    "max_tokens": 200, "temperature": 0.0,
-                    "session_id": body.session_id or "",
-                })
-                content = (resp.get("choices", [{}])[0]
-                           .get("message", {}).get("content", ""))
+                resp = await call_deepseek(
+                    {
+                        "model": body.model,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": _ent.entailment_prompt(
+                                    quote, ref, texts[ref]
+                                ),
+                            }
+                        ],
+                        "max_tokens": 200,
+                        "temperature": 0.0,
+                        "session_id": body.session_id or "",
+                    }
+                )
+                content = (
+                    resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+                )
             except Exception:  # noqa: BLE001 — per-item isolation
                 content = ""
             verdicts[ref] = _ent.parse_verdict(content)["verdict"]
         return verdicts or None
-    except Exception as e:  # noqa: BLE001 — CoVe must never break the answer
+    except Exception:
         logger.warning("cove_failed", exc_info=True)
         return None
 
@@ -1793,9 +2182,11 @@ def _contributor_disclosure() -> str | None:
     before sending material — the tier may be training-opt-in upstream.
     """
     if "contributor" in (_llm_provider.default_model or "").lower():
-        return ("This model runs on a contributor service tier: conversation "
-                "content may be used for provider training. Do not send "
-                "private or sensitive material.")
+        return (
+            "This model runs on a contributor service tier: conversation "
+            "content may be used for provider training. Do not send "
+            "private or sensitive material."
+        )
     return None
 
 
@@ -1870,11 +2261,15 @@ async def llm_chat(body: ChatRequest, request: Request):
     }
     if body.tools_enabled:
         # Filter out disabled tools + scope-gated tools the request didn't opt into
-        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
+        payload["tools"] = _filter_tools(
+            TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode
+        )
         payload["tool_choice"] = "auto"
 
     tool_results = []
-    max_tool_rounds = 15  # prevent infinite loops; 10 was too low for multi-work searches
+    max_tool_rounds = (
+        15  # prevent infinite loops; 10 was too low for multi-work searches
+    )
 
     data = await call_deepseek(payload)
 
@@ -1914,7 +2309,9 @@ async def llm_chat(body: ChatRequest, request: Request):
             data = await call_deepseek(payload)
             if "error" in data:
                 err = data["error"]
-                msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                msg = (
+                    err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                )
                 return {"ok": False, "error": f"DeepSeek API error: {msg}"}
             continue
 
@@ -1929,14 +2326,17 @@ async def llm_chat(body: ChatRequest, request: Request):
         # Dedup: skip tool calls that were already made in this round with same name+args
         existing_calls = set()
         for existing_tc in tool_calls:
-            existing_calls.add((existing_tc["function"]["name"], existing_tc["function"]["arguments"]))
+            existing_calls.add(
+                (existing_tc["function"]["name"], existing_tc["function"]["arguments"])
+            )
 
         # Track progress for frontend display
         round_tool_names = [tc["function"]["name"] for tc in tool_calls]
 
         # Separate staging (write) tools from read-only tools
         staging_calls = [
-            tc for tc in tool_calls
+            tc
+            for tc in tool_calls
             if tc["function"]["name"] in STAGING_TOOLS
             and _mode_allowed(tc["function"]["name"], body.mode)
         ]
@@ -1976,7 +2376,9 @@ async def llm_chat(body: ChatRequest, request: Request):
                     result = stage_connection(conn, submitted_by="llm", **fn_args)
                 elif fn_name == "scripture_stage_study":
                     steps = json.loads(fn_args.pop("steps_json", "[]"))
-                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                    result = stage_study(
+                        conn, steps=steps, submitted_by="llm", **fn_args
+                    )
                 else:
                     result = {"error": f"Unknown staging tool: {fn_name}"}
             except Exception as e:
@@ -1986,7 +2388,6 @@ async def llm_chat(body: ChatRequest, request: Request):
         # Combine all results
         all_results = ro_results + staging_results
         for tc, result in all_results:
-
             # Truncate large results to avoid overflowing context
             result_str = json.dumps(result, default=str, ensure_ascii=False)
             if len(result_str) > 3000:
@@ -1994,27 +2395,41 @@ async def llm_chat(body: ChatRequest, request: Request):
 
             # Also truncate the tool_result sent to frontend (saves context bandwidth + metadata bloat)
             tool_result_data = result
-            if len(json.dumps(tool_result_data, default=str, ensure_ascii=False)) > 3000:
+            if (
+                len(json.dumps(tool_result_data, default=str, ensure_ascii=False))
+                > 3000
+            ):
                 import copy
+
                 trunced = copy.copy(result) if isinstance(result, dict) else result
                 if isinstance(trunced, dict):
                     # Return truncated instead of the full result
-                    tool_result_data = {"_truncated": True, "data_preview": result_str[:500]}
+                    tool_result_data = {
+                        "_truncated": True,
+                        "data_preview": result_str[:500],
+                    }
                 else:
-                    tool_result_data = {"_truncated": True, "data_preview": result_str[:500]}
-            tool_results.append({
-                "id": tc["id"],
-                "name": tc["function"]["name"],
-                "args": json.loads(tc["function"]["arguments"]),
-                "result": tool_result_data,
-            })
+                    tool_result_data = {
+                        "_truncated": True,
+                        "data_preview": result_str[:500],
+                    }
+            tool_results.append(
+                {
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"]),
+                    "result": tool_result_data,
+                }
+            )
 
             # Add tool result message (one per tool call, with matching call_id)
-            msgs.append({
-                "role": "tool",
-                "content": result_str,
-                "tool_call_id": tc["id"],
-            })
+            msgs.append(
+                {
+                    "role": "tool",
+                    "content": result_str,
+                    "tool_call_id": tc["id"],
+                }
+            )
 
         conn.close()
 
@@ -2047,19 +2462,29 @@ async def llm_chat(body: ChatRequest, request: Request):
     # Also force summary if the content is just planning text (starts with "Let me")
     # Or if it's a stub response like "Looked up N sources..." (tool listing without synthesis)
     is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
-    is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    is_stub = (
+        tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    )
     if (not final_content or is_planning or is_stub) and tool_results:
-        msgs.append({"role": "user", "content":
-            "You have all the data you need from the tool calls above. "
-            "Now synthesize a complete thorough answer in natural language based on the information you found. "
-            "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
-            "Include specific gematria values, verse quotations, and connection details from the tool results. "
-            "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
-        retry = await call_deepseek({
-            "model": body.model, "messages": msgs,
-            "max_tokens": body.max_tokens, "temperature": body.temperature,
-            "session_id": body.session_id or "",
-        })
+        msgs.append(
+            {
+                "role": "user",
+                "content": "You have all the data you need from the tool calls above. "
+                "Now synthesize a complete thorough answer in natural language based on the information you found. "
+                "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
+                "Include specific gematria values, verse quotations, and connection details from the tool results. "
+                "Do not list the tools you used or say 'I looked up...' — just present the findings directly.",
+            }
+        )
+        retry = await call_deepseek(
+            {
+                "model": body.model,
+                "messages": msgs,
+                "max_tokens": body.max_tokens,
+                "temperature": body.temperature,
+                "session_id": body.session_id or "",
+            }
+        )
         if retry.get("choices"):
             rc_msg = retry["choices"][0].get("message", {})
             if rc_msg.get("content") or rc_msg.get("reasoning_content"):
@@ -2067,7 +2492,12 @@ async def llm_chat(body: ChatRequest, request: Request):
                 final_reasoning = rc_msg.get("reasoning_content") or final_reasoning
             # Merge usage from the retry call
             retry_usage = retry.get("usage", {})
-            for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
+            for k in (
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "prompt_cache_hit_tokens",
+            ):
                 if retry_usage.get(k):
                     usage[k] = usage.get(k, 0) + retry_usage[k]
 
@@ -2082,11 +2512,15 @@ async def llm_chat(body: ChatRequest, request: Request):
         # P2-D chain-of-verification: an LLM second opinion on stage-1 flags
         # (default OFF via flag; bounded, fail-open — abstains keep the flag).
         cove = await _second_opinion_on_flags(
-            claim_check["unsupported"], body, _chat_tool_user_id(body))
+            claim_check["unsupported"], body, _chat_tool_user_id(body)
+        )
         if cove:
             claim_check["entailment"] = cove
-            surviving = [u for u in claim_check["unsupported"]
-                         if cove.get(u["ref"], "unsupported") != "supported"]
+            surviving = [
+                u
+                for u in claim_check["unsupported"]
+                if cove.get(u["ref"], "unsupported") != "supported"
+            ]
             claim_check["unsupported"] = surviving
             refs = ", ".join(sorted({u["ref"] for u in surviving}))
         if refs:
@@ -2164,7 +2598,9 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
         "session_id": body.session_id or "",
     }
     if body.tools_enabled:
-        payload["tools"] = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
+        payload["tools"] = _filter_tools(
+            TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode
+        )
         payload["tool_choice"] = "auto"
     if stream:
         # Guarantees a usage chunk (incl. finish_reason + reasoning_tokens) before [DONE]
@@ -2193,7 +2629,9 @@ def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat"):
             return _run_research_parallel(fn_args)
         return _run_research_parallel(fn_args, mode=mode)
     if not _scope_allowed(fn_name, scopes):
-        return {"error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."}
+        return {
+            "error": "This tool is disabled — enable the matching scope (Come Follow Me / Conference Talks) in chat settings."
+        }
     # Per-user tools always use the server-bound chatting user. Never honor an
     # LLM/client-supplied user_id, even when it is present in tool arguments.
     if _tool_accepts_user_id(fn_name):
@@ -2228,7 +2666,10 @@ async def _research_llm(payload):
     async with httpx.AsyncClient(timeout=300.0) as client:
         resp = await client.post(
             f"{DEEPSEEK_BASE}/chat/completions",
-            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
             json=payload,
         )
         return resp.json()
@@ -2250,22 +2691,30 @@ def _run_research_parallel(args, call_llm=None, mode="chat"):
     async def _inner():
         tool_defs = _filter_tools(TOOL_DEFINITIONS, [], [], mode)
         plan = await _subagents.plan_research(
-            llm, [{"role": "user", "content": query}],
-            [t["function"]["name"] for t in tool_defs])
+            llm,
+            [{"role": "user", "content": query}],
+            [t["function"]["name"] for t in tool_defs],
+        )
         if not plan:
-            return {"error": "planner could not break down the query — try scripture_research instead"}
+            return {
+                "error": "planner could not break down the query — try scripture_research instead"
+            }
 
         async def _run_tool(tc):
             try:
                 fn_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
                 fn_args = {}
-            return await asyncio.to_thread(_run_tool_thread, tc["function"]["name"], fn_args, [], "", mode)
+            return await asyncio.to_thread(
+                _run_tool_thread, tc["function"]["name"], fn_args, [], "", mode
+            )
 
         async def _noop(ev):
             pass
 
-        reports = await _subagents.run_workers(plan, tool_defs, [], llm, _run_tool, _noop)
+        reports = await _subagents.run_workers(
+            plan, tool_defs, [], llm, _run_tool, _noop
+        )
         parts = []
         for r in reports:
             if r.get("error") and not r.get("content"):
@@ -2358,11 +2807,17 @@ async def _stream_final_response(body, msgs, tool_results):
         yield {"type": "heartbeat"}
         try:
             if _llm_provider.is_opencode_go_model(body.model):
-                stream_context = _llm_provider.stream(stream_payload, session_id=stream_session_id)
+                stream_context = _llm_provider.stream(
+                    stream_payload, session_id=stream_session_id
+                )
             else:
                 stream_context = _http_client.stream(
-                    "POST", f"{DEEPSEEK_BASE}/chat/completions",
-                    headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
+                    "POST",
+                    f"{DEEPSEEK_BASE}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
                     json=stream_payload,
                 )
             async with stream_context as resp:
@@ -2377,7 +2832,10 @@ async def _stream_final_response(body, msgs, tool_results):
                         error_message = error_value.get("message") or str(error_value)
                     else:
                         error_message = str(error_value)
-                    yield {"type": "error", "message": f"Upstream chat error ({resp.status_code}): {error_message}"}
+                    yield {
+                        "type": "error",
+                        "message": f"Upstream chat error ({resp.status_code}): {error_message}",
+                    }
                     return
                 async for kind, value in _heartbeat_lines(resp):
                     if kind == "hb":
@@ -2418,7 +2876,7 @@ async def _stream_final_response(body, msgs, tool_results):
                         usage = chunk_data["usage"]
 
         except Exception as e:
-            yield {"type": "error", "message": f"Stream error: {str(e)}"}
+            yield {"type": "error", "message": f"Stream error: {e!s}"}
             return
 
         # Truncation guard: regenerate once with a bigger budget
@@ -2438,15 +2896,21 @@ async def _stream_final_response(body, msgs, tool_results):
 
     # Force summary if content is stub (tool listing), planning text, or empty
     is_planning = final_content.strip()[:20].lstrip().startswith("Let me")
-    is_stub = tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    is_stub = (
+        tool_results and len(final_content.strip()) < 300 and len(tool_results) > 2
+    )
     if (not final_content or is_planning or is_stub) and tool_results:
         # LLM returned only tool results without synthesis — force a summary
-        msgs.append({"role": "user", "content":
-            "You have all the data you need from the tool calls above. "
-            "Now synthesize a complete thorough answer in natural language based on the information you found. "
-            "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
-            "Include specific gematria values, verse quotations, and connection details from the tool results. "
-            "Do not list the tools you used or say 'I looked up...' — just present the findings directly."})
+        msgs.append(
+            {
+                "role": "user",
+                "content": "You have all the data you need from the tool calls above. "
+                "Now synthesize a complete thorough answer in natural language based on the information you found. "
+                "Cite the specific verses and data you found with full book names like 'Genesis 1:1'. "
+                "Include specific gematria values, verse quotations, and connection details from the tool results. "
+                "Do not list the tools you used or say 'I looked up...' — just present the findings directly.",
+            }
+        )
         retry_payload = _build_payload(body, msgs, stream=False)
         retry_data = await call_deepseek(retry_payload)
         if _finish_reason(retry_data) == "length":
@@ -2463,7 +2927,12 @@ async def _stream_final_response(body, msgs, tool_results):
             final_content = retry_content or final_content
             final_reasoning = retry_reasoning or final_reasoning
             retry_usage = retry_data.get("usage", {})
-            for k in ("prompt_tokens", "completion_tokens", "total_tokens", "prompt_cache_hit_tokens"):
+            for k in (
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "prompt_cache_hit_tokens",
+            ):
                 if retry_usage.get(k):
                     usage[k] = usage.get(k, 0) + retry_usage[k]
 
@@ -2475,6 +2944,7 @@ async def _stream_final_response(body, msgs, tool_results):
     try:
         if _effective_mode(getattr(body, "mode", "chat")) == "hebrew":
             from lib.api import tutor_memory as _tutor_memory
+
             _arch_user = _chat_tool_user_id(body)
             _arch_session = getattr(body, "session_id", "") or ""
             if not _arch_session:
@@ -2487,12 +2957,17 @@ async def _stream_final_response(body, msgs, tool_results):
             _arch_conn = _tutor_memory.connect()
             try:
                 if _arch_prompt:
-                    _tutor_memory.record_turn(_arch_conn, _arch_session,
-                                              _arch_user, "user", _arch_prompt)
+                    _tutor_memory.record_turn(
+                        _arch_conn, _arch_session, _arch_user, "user", _arch_prompt
+                    )
                 if final_content:
-                    _tutor_memory.record_turn(_arch_conn, _arch_session,
-                                              _arch_user, "assistant",
-                                              final_content)
+                    _tutor_memory.record_turn(
+                        _arch_conn,
+                        _arch_session,
+                        _arch_user,
+                        "assistant",
+                        final_content,
+                    )
             finally:
                 _arch_conn.close()
     except Exception:  # noqa: BLE001, S110 — archiving must never break chat
@@ -2533,10 +3008,17 @@ async def _chat_pipeline(body, msgs):
     # For research-shaped questions, replace the sequential tool loop with one
     # planner call, ≤3 concurrent worker tool-loops, then the shared final
     # stream. Wall-clock ≈ 3 sequential LLM calls instead of up to 15.
-    if getattr(body, "subagents", True) and body.tools_enabled and _subagents.should_plan(msgs):
-        tool_defs = _filter_tools(TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode)
+    if (
+        getattr(body, "subagents", True)
+        and body.tools_enabled
+        and _subagents.should_plan(msgs)
+    ):
+        tool_defs = _filter_tools(
+            TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode
+        )
         plan = await _subagents.plan_research(
-            call_deepseek, msgs, [t["function"]["name"] for t in tool_defs])
+            call_deepseek, msgs, [t["function"]["name"] for t in tool_defs]
+        )
         if plan:
             yield {"type": "plan", "tasks": plan}
 
@@ -2559,8 +3041,11 @@ async def _chat_pipeline(body, msgs):
             async def _emit(ev):
                 await queue.put(ev)
 
-            workers_task = asyncio.create_task(_subagents.run_workers(
-                plan, tool_defs, body.scopes, call_deepseek, _run_worker_tool, _emit))
+            workers_task = asyncio.create_task(
+                _subagents.run_workers(
+                    plan, tool_defs, body.scopes, call_deepseek, _run_worker_tool, _emit
+                )
+            )
 
             # Drain worker progress events until the pool finishes.
             while True:
@@ -2570,8 +3055,9 @@ async def _chat_pipeline(body, msgs):
                 if workers_task.done():
                     break
                 getter = asyncio.ensure_future(queue.get())
-                done, _ = await asyncio.wait({workers_task, getter},
-                                             return_when=asyncio.FIRST_COMPLETED)
+                done, _ = await asyncio.wait(
+                    {workers_task, getter}, return_when=asyncio.FIRST_COMPLETED
+                )
                 if getter in done:
                     try:
                         yield getter.result()
@@ -2581,7 +3067,9 @@ async def _chat_pipeline(body, msgs):
                     getter.cancel()
 
             reports = workers_task.result()
-            worker_tool_results = [tr for r in reports for tr in r.get("tool_results", [])]
+            worker_tool_results = [
+                tr for r in reports for tr in r.get("tool_results", [])
+            ]
 
             # Fall back to the sequential loop when every worker failed.
             if any(r.get("content") for r in reports):
@@ -2608,7 +3096,9 @@ async def _chat_pipeline(body, msgs):
 
         if "error" in data:
             err = data["error"]
-            message = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            message = (
+                err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            )
             yield {"type": "error", "message": message}
             return
 
@@ -2621,16 +3111,23 @@ async def _chat_pipeline(body, msgs):
             break
 
         # Yield tool progress
-        yield {"type": "tool_progress", "tools": [
-            {"name": tc["function"]["name"], "args": json.loads(tc["function"]["arguments"])}
-            for tc in tool_calls
-        ]}
+        yield {
+            "type": "tool_progress",
+            "tools": [
+                {
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"]),
+                }
+                for tc in tool_calls
+            ],
+        }
 
         msgs.append(msg)
         conn = get_db()
 
         staging_calls = [
-            tc for tc in tool_calls
+            tc
+            for tc in tool_calls
             if tc["function"]["name"] in STAGING_TOOLS
             and _mode_allowed(tc["function"]["name"], body.mode)
         ]
@@ -2650,7 +3147,9 @@ async def _chat_pipeline(body, msgs):
                 body.mode,
             )
 
-        ro_results = await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
+        ro_results = (
+            await asyncio.gather(*[run_ro(tc) for tc in ro_calls]) if ro_calls else []
+        )
 
         staging_results = []
         for tc in staging_calls:
@@ -2664,7 +3163,9 @@ async def _chat_pipeline(body, msgs):
                     result = stage_connection(conn, submitted_by="llm", **fn_args)
                 elif fn_name == "scripture_stage_study":
                     steps = json.loads(fn_args.pop("steps_json", "[]"))
-                    result = stage_study(conn, steps=steps, submitted_by="llm", **fn_args)
+                    result = stage_study(
+                        conn, steps=steps, submitted_by="llm", **fn_args
+                    )
                 else:
                     result = {"error": f"Unknown staging tool: {fn_name}"}
             except Exception as e:
@@ -2676,17 +3177,23 @@ async def _chat_pipeline(body, msgs):
             result_str = json.dumps(result, default=str, ensure_ascii=False)
             if len(result_str) > 3000:
                 result_str = result_str[:3000] + '..." [truncated]'
-            tool_results.append({
-                "id": tc["id"],
-                "name": tc["function"]["name"],
-                "args": json.loads(tc["function"]["arguments"]),
-                "result": result if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000 else {"_truncated": True, "preview": result_str[:500]},
-            })
-            msgs.append({
-                "role": "tool",
-                "content": result_str,
-                "tool_call_id": tc["id"],
-            })
+            tool_results.append(
+                {
+                    "id": tc["id"],
+                    "name": tc["function"]["name"],
+                    "args": json.loads(tc["function"]["arguments"]),
+                    "result": result
+                    if len(json.dumps(result, default=str, ensure_ascii=False)) <= 3000
+                    else {"_truncated": True, "preview": result_str[:500]},
+                }
+            )
+            msgs.append(
+                {
+                    "role": "tool",
+                    "content": result_str,
+                    "tool_call_id": tc["id"],
+                }
+            )
 
         conn.close()
 
@@ -2721,13 +3228,27 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     """
     if not _provider_configured(body.model):
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": _provider_error(body.model), "message": _provider_error(body.model)}),
+            _sse_yield(
+                {
+                    "type": "error",
+                    "ok": False,
+                    "error": _provider_error(body.model),
+                    "message": _provider_error(body.model),
+                }
+            ),
             media_type="text/event-stream",
         )
     identity_error = _bind_chat_identity(body, request)
     if identity_error:
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": identity_error, "message": identity_error}),
+            _sse_yield(
+                {
+                    "type": "error",
+                    "ok": False,
+                    "error": identity_error,
+                    "message": identity_error,
+                }
+            ),
             media_type="text/event-stream",
         )
 
@@ -2736,7 +3257,14 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     referer = (request.headers.get("referer") or "").lower().rstrip("/")
     if not (_origin_allowed(origin) or _origin_allowed(referer)):
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": "Chat is only available from scriptureengine.org", "message": "Chat is only available from scriptureengine.org"}),
+            _sse_yield(
+                {
+                    "type": "error",
+                    "ok": False,
+                    "error": "Chat is only available from scriptureengine.org",
+                    "message": "Chat is only available from scriptureengine.org",
+                }
+            ),
             media_type="text/event-stream",
         )
 
@@ -2744,7 +3272,14 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     disable_msg = _chat_disabled(body.mode)
     if disable_msg:
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": disable_msg, "message": disable_msg}),
+            _sse_yield(
+                {
+                    "type": "error",
+                    "ok": False,
+                    "error": disable_msg,
+                    "message": disable_msg,
+                }
+            ),
             media_type="text/event-stream",
         )
 
@@ -2756,7 +3291,14 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
     )
     if not _check_rate_limit(client_ip, _mode_rate_limit(body.mode)):
         return StreamingResponse(
-            _sse_yield({"type": "error", "ok": False, "error": "Rate limit exceeded. Try again in a minute.", "message": "Rate limit exceeded. Try again in a minute."}),
+            _sse_yield(
+                {
+                    "type": "error",
+                    "ok": False,
+                    "error": "Rate limit exceeded. Try again in a minute.",
+                    "message": "Rate limit exceeded. Try again in a minute.",
+                }
+            ),
             media_type="text/event-stream",
         )
 
@@ -2768,10 +3310,14 @@ async def llm_chat_stream(body: ChatRequest, request: Request):
         async for event in _chat_pipeline(body, msgs):
             yield _sse_event(event)
 
-    return StreamingResponse(stream_generator(), media_type="text/event-stream", headers={
-        "Cache-Control": "no-cache",
-        "X-Accel-Buffering": "no",
-    })
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ─── Chat Background Jobs (decoupled runs) ───

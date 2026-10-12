@@ -21,7 +21,7 @@ Modes:
 Usage:
     python3 scripts/provider_429_drill.py --dry-run --duration-s 5
     python3 scripts/provider_429_drill.py --live --i-understand-costs \
-        --rpm 60 --duration-s 30 --model opencode-go/muse-spark-1.2-contributor
+        --rpm 60 --duration-s 30 --model opencode-go/deepseek-v4-flash
 """
 
 from __future__ import annotations

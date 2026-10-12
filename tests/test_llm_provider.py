@@ -18,10 +18,10 @@ def test_native_model_is_allowlisted_and_stripped_for_upstream(monkeypatch):
     monkeypatch.delenv("CHAT_ALLOWED_MODELS", raising=False)
     router = ProviderRouter()
 
-    provider, model, targets = router.targets_for("opencode-go/muse-spark-1.2-contributor")
+    provider, model, targets = router.targets_for("opencode-go/deepseek-v4-flash")
 
     assert provider == "opencode-go"
-    assert model == "muse-spark-1.2-contributor"
+    assert model == "deepseek-v4-flash"
     assert targets[0].base_url.endswith("/v1")
 
 
@@ -37,7 +37,7 @@ def test_complete_uses_mock_transport_and_native_model(monkeypatch):
             200,
             json={
                 "id": "chatcmpl-test",
-                "model": "muse-spark-1.2-contributor",
+                "model": "deepseek-v4-flash",
                 "choices": [
                     {
                         "message": {"role": "assistant", "content": "grounded"},
@@ -51,7 +51,7 @@ def test_complete_uses_mock_transport_and_native_model(monkeypatch):
         router = ProviderRouter(httpx.MockTransport(handler))
         result = await router.complete(
             {
-                "model": "opencode-go/muse-spark-1.2-contributor",
+                "model": "opencode-go/deepseek-v4-flash",
                 "messages": [{"role": "user", "content": "hello"}],
             }
         )
@@ -61,7 +61,7 @@ def test_complete_uses_mock_transport_and_native_model(monkeypatch):
     result = asyncio.run(run())
     assert result["choices"][0]["message"]["content"] == "grounded"
     assert seen["authorization"] == "Bearer test-key"
-    assert seen["body"]["model"] == "muse-spark-1.2-contributor"
+    assert seen["body"]["model"] == "deepseek-v4-flash"
 
 
 def test_worker_socket_pool_is_configured_without_exposing_keys(monkeypatch, tmp_path):
@@ -79,8 +79,8 @@ def test_worker_socket_pool_is_configured_without_exposing_keys(monkeypatch, tmp
 
     try:
         router = ProviderRouter()
-        assert router.configured("opencode-go/muse-spark-1.2-contributor")
-        _, _, targets = router.targets_for("opencode-go/muse-spark-1.2-contributor")
+        assert router.configured("opencode-go/deepseek-v4-flash")
+        _, _, targets = router.targets_for("opencode-go/deepseek-v4-flash")
         assert [target.uds for target in targets] == [str(socket_a), str(socket_b)]
         assert all(not target.api_key for target in targets)
     finally:
@@ -93,7 +93,7 @@ def test_worker_socket_pool_is_not_configured_when_paths_are_missing(monkeypatch
     monkeypatch.setenv("OPENCODE_GO_WORKER_SOCKETS", str(socket_path))
     monkeypatch.delenv("OPENCODE_API_KEY", raising=False)
 
-    assert not ProviderRouter().configured("opencode-go/muse-spark-1.2-contributor")
+    assert not ProviderRouter().configured("opencode-go/deepseek-v4-flash")
 
 
 def test_worker_health_is_checked_before_completion(monkeypatch, tmp_path):
@@ -121,7 +121,7 @@ def test_worker_health_is_checked_before_completion(monkeypatch, tmp_path):
         try:
             return await router.complete(
                 {
-                    "model": "opencode-go/muse-spark-1.2-contributor",
+                    "model": "opencode-go/deepseek-v4-flash",
                     "messages": [{"role": "user", "content": "hello"}],
                 }
             )
@@ -137,6 +137,45 @@ def test_worker_health_is_checked_before_completion(monkeypatch, tmp_path):
     assert paths == ["/health", "/chat/completions"]
 
 
+def test_worker_request_carries_stable_session_header(monkeypatch, tmp_path):
+    socket_path = tmp_path / "worker.sock"
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(socket_path))
+    listener.listen()
+    monkeypatch.setenv("OPENCODE_GO_WORKER_SOCKETS", str(socket_path))
+    seen = {}
+
+    def handler(request):
+        if request.url.path == "/health":
+            return httpx.Response(200, json={"ok": True, "ready": True})
+        seen.update(request.headers)
+        return httpx.Response(200, json={
+            "id": "chatcmpl-worker",
+            "choices": [{"message": {"role": "assistant", "content": "hi"}}],
+        })
+
+    async def run():
+        router = ProviderRouter(httpx.MockTransport(handler))
+        try:
+            return await router.complete(
+                {
+                    "model": "opencode-go/deepseek-v4-flash",
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+                session_id="conv-123",
+            )
+        finally:
+            await router.aclose()
+
+    try:
+        result = asyncio.run(run())
+    finally:
+        listener.close()
+
+    assert result["choices"][0]["message"]["content"] == "hi"
+    assert seen.get("x-opencode-session") == "conv-123"
+
+
 def test_complete_returns_structured_error_for_malformed_success(monkeypatch):
     monkeypatch.setenv("OPENCODE_API_KEY", "test-key")
 
@@ -148,7 +187,7 @@ def test_complete_returns_structured_error_for_malformed_success(monkeypatch):
         try:
             return await router.complete(
                 {
-                    "model": "opencode-go/muse-spark-1.2-contributor",
+                    "model": "opencode-go/deepseek-v4-flash",
                     "messages": [{"role": "user", "content": "hello"}],
                 }
             )
@@ -208,11 +247,11 @@ def test_complete_429_sets_cooldown_and_returns_provider_error(monkeypatch):
         router = ProviderRouter(httpx.MockTransport(handler))
         try:
             _, _, targets = router.targets_for(
-                "opencode-go/muse-spark-1.2-contributor"
+                "opencode-go/deepseek-v4-flash"
             )
             result = await router.complete(
                 {
-                    "model": "opencode-go/muse-spark-1.2-contributor",
+                    "model": "opencode-go/deepseek-v4-flash",
                     "messages": [{"role": "user", "content": "hello"}],
                 }
             )
@@ -241,7 +280,7 @@ def test_network_timeout_falls_through_to_structured_503(monkeypatch):
         try:
             return await router.complete(
                 {
-                    "model": "opencode-go/muse-spark-1.2-contributor",
+                    "model": "opencode-go/deepseek-v4-flash",
                     "messages": [{"role": "user", "content": "hello"}],
                 }
             )
@@ -290,7 +329,7 @@ def test_stream_fails_over_to_second_account_after_429(monkeypatch, tmp_path):
         try:
             async with router.stream(
                 {
-                    "model": "opencode-go/muse-spark-1.2-contributor",
+                    "model": "opencode-go/deepseek-v4-flash",
                     "messages": [{"role": "user", "content": "hello"}],
                 }
             ) as response:

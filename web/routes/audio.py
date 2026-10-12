@@ -186,6 +186,22 @@ def play_anki_audio(filename: str):
                         headers={"Content-Disposition": _inline_disposition(safe_name)})
 
 
+@router.get("/api/v1/image/anki/{filename:path}")
+def serve_anki_image(filename: str):
+    """Serve Anki-imported deck pictures (local personal-use pngs, data/audio/anki/)."""
+    base = BASE_DIR / "data" / "audio" / "anki"
+    safe_name = audio_os.path.basename(filename)
+    image_file = base / safe_name
+    if not safe_name or not image_file.exists():
+        raise HTTPException(404, f"Anki image not found: {filename}")
+    media_type = {
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml",
+    }.get(image_file.suffix.lower(), "image/png")
+    return FileResponse(str(image_file), media_type=media_type,
+                        headers={"Content-Disposition": _inline_disposition(safe_name)})
+
+
 @router.get("/api/v1/audio/letter/{letter_id}")
 def play_letter_audio(letter_id: str):
     """Serve pre-generated Hebrew letter audio."""

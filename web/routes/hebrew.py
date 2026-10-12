@@ -69,6 +69,11 @@ def _public_options_json(raw_options):
 # reaches 21+ days. The float `mastery` column stays for backward compat.
 WORD_MATURE_INTERVAL_DAYS = 21
 
+# Anki-standard leech threshold: 8 lapses flags a card for attention.
+LEECH_LAPSE_THRESHOLD = 8
+# Default desired retention (Anki 23.10+ default 0.90).
+DEFAULT_DESIRED_RETENTION = 0.9
+
 # ── Student-Topic Learning Speeds (Math Academy Ch. 29) ──
 # learning_speed = speedup_due_to_ability / slowdown_due_to_difficulty
 # ability = user's weighted accuracy across all topics
@@ -473,9 +478,12 @@ def _ensure_hebrew_prefs(conn):
         CREATE TABLE IF NOT EXISTS hebrew_prefs (
             user_id TEXT PRIMARY KEY,
             new_cards_per_day INTEGER NOT NULL DEFAULT 10,
-            max_reviews_per_day INTEGER NOT NULL DEFAULT 100
+            max_reviews_per_day INTEGER NOT NULL DEFAULT 100,
+            desired_retention REAL NOT NULL DEFAULT 0.9
         )
     """)
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE hebrew_prefs ADD COLUMN desired_retention REAL NOT NULL DEFAULT 0.9")
 
 
 def _ensure_hebrew_progress_source(conn):
@@ -607,11 +615,19 @@ def ensure_hebrew_schema_once(conn=None):
 def read_hebrew_prefs(conn, user_id: str) -> dict:
     ensure_hebrew_schema_once(conn)
     row = conn.execute(
-        "SELECT new_cards_per_day, max_reviews_per_day FROM hebrew_prefs WHERE user_id=?",
+        "SELECT new_cards_per_day, max_reviews_per_day, desired_retention"
+        " FROM hebrew_prefs WHERE user_id=?",
         (user_id,)).fetchone()
     if row:
-        return {"new_cards_per_day": max(0, row[0]), "max_reviews_per_day": max(0, row[1])}
-    return {"new_cards_per_day": 10, "max_reviews_per_day": 100}
+        try:
+            retention = float(row[2] if len(row) > 2 else DEFAULT_DESIRED_RETENTION)
+        except (TypeError, ValueError):
+            retention = DEFAULT_DESIRED_RETENTION
+        retention = min(0.99, max(0.7, retention or DEFAULT_DESIRED_RETENTION))
+        return {"new_cards_per_day": max(0, row[0]), "max_reviews_per_day": max(0, row[1]),
+                "desired_retention": round(retention, 2)}
+    return {"new_cards_per_day": 10, "max_reviews_per_day": 100,
+            "desired_retention": DEFAULT_DESIRED_RETENTION}
 
 
 def resolve_pacing(new_param: int = -1, max_param: int = -1, prefs: dict = None) -> tuple:
@@ -683,6 +699,7 @@ def _resolve_hebrew_read_user(
 @router.get("/api/v1/hebrew/fsrs/intervals")
 def hebrew_fsrs_intervals(
     node_id: str = "", card_mode: str = "", hebrew: str = "",
+    lemma: str = "",
     user_id: str = "default", session_token: str = "",
     authorization: str = Header(""),
 ):
@@ -696,20 +713,21 @@ def hebrew_fsrs_intervals(
     """
     session_token = _session_token_from_header(authorization) or session_token
     user_id = _require_hebrew_user(user_id, session_token)
-    if card_mode not in ("", "hearing", "reverse", "forward", "drill", "visual_only"):
+    if card_mode not in ("", "hearing", "reverse", "forward", "picture", "drill", "visual_only"):
         card_mode = ""
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
 
     conn = sqlite3.connect(str(MEM_DB))
     if not node_id and hebrew:
-        node_id = resolve_hebrew_node(conn, hebrew)
+        node_id = resolve_hebrew_node(conn, hebrew, lemma)
     if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
         conn.close()
         raise HTTPException(400, "Unknown Hebrew node")
 
     speeds, _, _ = compute_learning_speed(user_id)
     learning_speed = clamp_learning_speed(speeds.get(node_id, 1.0))
+    retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
 
     state = conn.execute("""
         SELECT stability,difficulty,last_review FROM hebrew_review_state
@@ -721,10 +739,11 @@ def hebrew_fsrs_intervals(
     for rating in (1, 2, 3, 4):
         if state:
             days_elapsed = days_since(state[2])
-            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed)
+            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed,
+                                               retention)
         else:
             new_s = fsrs_initial_stability(rating)
-            interval = fsrs_next_interval(new_s)
+            interval = fsrs_next_interval(new_s, retention)
         adjusted = max(1, round(interval * learning_speed))
         out[str(rating)] = {"days": adjusted, "label": fsrs_humanize_interval(adjusted)}
     return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "intervals": out}}
@@ -741,10 +760,19 @@ def post_hebrew_review(body: dict, authorization: str = Header("")):
         failure_location=body.get("failure_location", ""),
         card_mode=body.get("card_mode", "") or "",
         hebrew=body.get("hebrew", "") or "",
+        lemma=body.get("lemma", "") or "",
     )
 
 
-_HEBREW_NODE_MAP: dict = {"count": -1, "map": {}}
+_HEBREW_NODE_MAP: dict = {"count": -1, "map": {}, "folded": {}}
+
+# Common affixes for the last-resort strip fallback in resolve_hebrew_node.
+# Only consulted on exact/folded miss; first folded-map hit wins.
+# IMPERFECT_PREFIXES handles narrative/imperfect surfaces (וישמע → שמע):
+# outer prefix (conjunction/preposition) + inner tense letter + root.
+_HEBREW_PREFIXES = ("מת", "ו", "ה", "ב", "ל", "כ", "מ", "ש")
+_HEBREW_IMPERFECT_PREFIXES = ("י", "ת", "נ")
+_HEBREW_SUFFIXES = ("תיך", "יך", "ך", "נו", "הם", "הן", "יה", "יו", "תי", "י", "ה", "ו", "ת", "ם")
 
 
 def hebrew_node_map(conn):
@@ -758,6 +786,7 @@ def hebrew_node_map(conn):
         return {}
     if count != _HEBREW_NODE_MAP["count"]:
         m = {}
+        f = {}
         try:
             rows = conn.execute("SELECT node_id, content_json FROM hebrew_lessons").fetchall()
         except Exception:
@@ -770,14 +799,28 @@ def hebrew_node_map(conn):
             for key in (c.get("hebrew"), c.get("glyph"), c.get("bare"), c.get("root")):
                 if key and key not in m:
                     m[key] = node_id
-        _HEBREW_NODE_MAP.update(count=count, map=m)
+                fk = _anki_fold(key) if key else ""
+                if fk and fk not in f:
+                    f[fk] = node_id
+        _HEBREW_NODE_MAP.update(count=count, map=m, folded=f)
     return _HEBREW_NODE_MAP["map"]
 
 
-def resolve_hebrew_node(conn, hebrew: str) -> str:
+def _hebrew_folded_map(conn):
+    """Folded (niqqud-stripped, finals-folded) surface -> node_id."""
+    hebrew_node_map(conn)  # ensure built
+    return _HEBREW_NODE_MAP["folded"]
+
+
+def resolve_hebrew_node(conn, hebrew: str, lemma: str = "") -> str:
     """Resolve a Hebrew word to a node id via lesson content (audio-review path).
 
-    Map lookup first (exact surface/glyph/bare); LIKE fallback only on miss.
+    Layers: exact surface/glyph/bare map hit → folded (niqqud-stripped,
+    finals-folded) hit → common-affix strip on the folded form (inflected
+    vocab surfaces like שמעתי → שמע; narrative/imperfect like וישמע → שמע
+    via outer prefix + tense letter) → Strong's lemma match (inflected
+    surfaces whose root spelling shifts, e.g. ראיתי → H7200) → LIKE
+    fallback only on miss.
     """
     word = (hebrew or "").strip()
     if not word:
@@ -785,6 +828,44 @@ def resolve_hebrew_node(conn, hebrew: str) -> str:
     hit = hebrew_node_map(conn).get(word)
     if hit:
         return hit
+    fmap = _hebrew_folded_map(conn)
+    folded = _anki_fold(word)
+    hit = fmap.get(folded)
+    if hit:
+        return hit
+    for pre in ("",) + _HEBREW_PREFIXES:
+        if pre and not folded.startswith(pre):
+            continue
+        stem = folded[len(pre):] if pre else folded
+        for inner in ("",) + _HEBREW_IMPERFECT_PREFIXES:
+            if inner:
+                if not stem.startswith(inner) or len(stem) < 4:
+                    continue
+                stem2 = stem[1:]
+            else:
+                stem2 = stem
+            for suf in ("",) + _HEBREW_SUFFIXES:
+                if not suf:
+                    cand = stem2
+                elif not stem2.endswith(suf) or len(stem2) <= len(suf) + 1:
+                    continue
+                else:
+                    cand = stem2[: -len(suf)]
+                hit = fmap.get(cand)
+                if hit:
+                    return hit
+    if lemma and str(lemma).strip().isdigit():
+        num = str(lemma).strip()
+        for (nid, cj) in conn.execute(
+            "SELECT node_id, content_json FROM hebrew_lessons WHERE content_json LIKE ?",
+            (f'%"lemma": "{num}"%',),
+        ).fetchall():
+            try:
+                c = json.loads(cj or "{}")
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if c.get("lemma") == num or c.get("lemma_key") == num:
+                return nid
     row = conn.execute("""
         SELECT n.id FROM hebrew_nodes n
         JOIN hebrew_lessons l ON l.node_id=n.id
@@ -796,23 +877,25 @@ def resolve_hebrew_node(conn, hebrew: str) -> str:
 def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default",
                           session_token: str = "", hint_level: int = 0,
                           failure_location: str = "", card_mode: str = "",
-                          hebrew: str = ""):
+                          hebrew: str = "", lemma: str = ""):
     """Process a persisted adaptive review with FIRe and failure tracking.
 
     Rating: 1=Again, 2=Hard, 3=Good, 4=Easy.
     hint_level: which hint level was used (0=no hint, 1=first letters, 2=image, etc.)
     failure_location: 'start', 'middle', 'end', 'confusion', or '' for no failure.
     card_mode: Anki-style card direction — 'hearing', 'reverse', 'forward',
-      'visual_only', 'drill', or '' (general). Each (node, mode) has its own FSRS schedule;
+      'picture', 'visual_only', 'drill', or '' (general). Each (node, mode) has its own FSRS schedule;
       node-level mastery stays aggregated across modes.
     hebrew: optional Hebrew word used instead of node_id (audio review);
       resolved to a node via lesson content.
+    lemma: optional Strong's number refining hebrew resolution for inflected
+      surfaces (e.g. ראיתי → H7200).
     Learning speed adjusts the interval: faster learners → longer intervals.
     If learning_speed < 0.5, FIRe credit is skipped (force explicit reviews).
     """
     if not MEM_DB.exists():
         raise HTTPException(404, "Hebrew DB not found")
-    if card_mode not in ("", "hearing", "reverse", "forward", "drill", "visual_only"):
+    if card_mode not in ("", "hearing", "reverse", "forward", "picture", "drill", "visual_only"):
         card_mode = ""
     user_id = _resolve_hebrew_user(user_id, session_token)
     rating = max(1, min(4, rating))
@@ -826,7 +909,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     conn = sqlite3.connect(str(MEM_DB))
     ensure_hebrew_schema_once()
     if not node_id and hebrew:
-        node_id = resolve_hebrew_node(conn, hebrew)
+        node_id = resolve_hebrew_node(conn, hebrew, lemma)
     conn.execute("BEGIN IMMEDIATE")
     if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
         conn.rollback()
@@ -841,14 +924,16 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?
     """, (user_id, node_id, card_mode)).fetchone()
     stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
+    retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
 
     if state:
         days_elapsed = days_since(state[2])
-        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed)
+        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed,
+                                              retention)
     else:
         new_s = fsrs_initial_stability(rating)
         new_d = fsrs_initial_difficulty(rating)
-        interval = fsrs_next_interval(new_s)
+        interval = fsrs_next_interval(new_s, retention)
     adjusted_interval = max(1, round(interval * learning_speed))
     reviewed_at = datetime.datetime.now()
     due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
@@ -960,6 +1045,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
         "due": due_at.strftime("%Y-%m-%d %H:%M:%S"), "scheduler": "adaptive-v1",
         "retrievability": 1.0, "reps": reps, "lapses": lapses,
+        "is_leech": lapses >= LEECH_LAPSE_THRESHOLD,
         "learning_speed": round(learning_speed, 3),
         "user_ability": ability,
         "failure_pattern": failure_pattern,
@@ -999,7 +1085,8 @@ def get_hebrew_learning_speeds(
 # ── Vocabulary ──
 
 @router.get("/api/v1/vocabulary")
-def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
+def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False,
+                   schedulable: bool = False):
     conn = get_db()
     rows = conn.execute("""
         SELECT DISTINCT
@@ -1035,6 +1122,13 @@ def get_vocabulary(top: int = 100, cutoff: int = 47, by_root: bool = False):
         })
         if rank >= top:
             break
+    if schedulable and MEM_DB.exists():
+        # Keep only words that resolve to a lesson node, so every card's
+        # ratings persist into the FSRS schedule (see hebrew-card-rules.md).
+        mconn = sqlite3.connect(str(MEM_DB))
+        words = [w for w in words
+                 if resolve_hebrew_node(mconn, w["hebrew"], str(w.get("lemma", "")))]
+        mconn.close()
     if by_root:
         from collections import defaultdict
         groups = defaultdict(list)
@@ -1411,6 +1505,7 @@ def _placement_apply_results(conn, user_id, results):
     per-skill 'start at lesson N' mapping. Test-out rows are marked
     source='placement' so the UI can show 'tested out' instead of 'mastered'."""
     ensure_hebrew_schema_once(conn)
+    retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
     applied = {"nodes_tested_out": 0, "srs_seeded": 0, "skills": {}}
     for skill, cats, lo, hi, _start in PLACEMENT_SKILLS:
         est, conf = _placement_estimate(results[skill], (lo, hi))
@@ -1448,7 +1543,7 @@ def _placement_apply_results(conn, user_id, results):
                 rating = 1
                 mastery = 0.2
             new_d = fsrs_next_difficulty(5.0, rating)
-            interval = fsrs_next_interval(new_s)
+            interval = fsrs_next_interval(new_s, retention)
             due = datetime.datetime.now() + datetime.timedelta(days=max(1, interval))
             ensure_hebrew_schema_once()
             conn.execute("""
@@ -1972,18 +2067,20 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
     # dropdown wrote it, leaving the main learning loop decoupled from SRS.
     try:
         ensure_hebrew_schema_once()
+        retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
         rating = 3 if correct else 1  # correct → Good, incorrect → Again
         state = conn.execute(
             "SELECT stability,difficulty,reps,lapses FROM hebrew_review_state WHERE user_id=? AND node_id=?",
             (user_id, node_id)).fetchone()
         if state:
-            new_s, new_d, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating)
+            new_s, new_d, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating,
+                                                   None, retention)
             reps = state[2] + 1
             lapses = state[3] + (1 if rating == 1 else 0)
         else:
             new_s = fsrs_initial_stability(rating)
             new_d = fsrs_next_difficulty(5.0, rating)
-            interval = fsrs_next_interval(new_s)
+            interval = fsrs_next_interval(new_s, retention)
             reps, lapses = 1, (1 if rating == 1 else 0)
         _reviewed = datetime.datetime.now()
         _due = _reviewed + datetime.timedelta(days=max(1, interval))
@@ -2454,6 +2551,44 @@ def _match_anki_audio(word_clean: str) -> str:
     return ""
 
 
+_ANKI_PACK_CACHE: dict = {}
+_ANKI_PACK_MTIME: float = 0.0
+
+
+def _load_anki_pack() -> dict:
+    """Cached pack entries {hebrew: {gloss, audio, images}} with stored filenames."""
+    global _ANKI_PACK_CACHE, _ANKI_PACK_MTIME
+    path = BASE_DIR / "data" / "audio" / "anki" / "pack.json"
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return {}
+    if mtime != _ANKI_PACK_MTIME:
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            _ANKI_PACK_CACHE = {e["hebrew"]: e for e in doc.get("entries", [])
+                                if e.get("hebrew")}
+        except (json.JSONDecodeError, OSError, AttributeError):
+            _ANKI_PACK_CACHE = {}
+        _ANKI_PACK_MTIME = mtime
+    return _ANKI_PACK_CACHE
+
+
+def _match_anki_image(word_clean: str) -> str:
+    """Find an Anki picture for a word: exact headword, else folded match."""
+    pack = _load_anki_pack()
+    if not pack:
+        return ""
+    key = unicodedata.normalize("NFC", word_clean)
+    if pack.get(key, {}).get("images"):
+        return pack[key]["images"][0]
+    folded = _anki_fold(word_clean)
+    for headword, entry in pack.items():
+        if entry.get("images") and _anki_fold(headword) == folded:
+            return entry["images"][0]
+    return ""
+
+
 @router.get("/api/v1/hebrew/audio/{word:path}")
 def get_hebrew_audio(word: str):
     word_clean = word.strip()
@@ -2553,12 +2688,21 @@ def get_hebrew_audio(word: str):
 def get_hebrew_image(word: str):
     """Get an image associated with a Hebrew word.
 
-    Prefers LOCAL images (downloaded by scripts/ingest_word_images.py and served
+    Tier 0 is Anki-imported deck pictures (data/audio/anki/pack.json);
+    then LOCAL images (downloaded by scripts/ingest_word_images.py and served
     from /images/words/), falling back to remote FreeBibleImages URLs.
     """
     word_clean = word.strip()
     if not word_clean:
         raise HTTPException(400, "Word required")
+    # Tier 0: Anki-imported deck picture (WHV pngs, personal-study only)
+    anki_image = _match_anki_image(word_clean)
+    if anki_image:
+        return {"ok": True, "data": {
+            "image_url": f"/api/v1/image/anki/{urllib.parse.quote(anki_image)}",
+            "source": "anki", "attribution": "WHV shared deck (personal study)",
+            "width": None, "height": None, "prompt": "",
+        }}
     conn = get_db()
     # Local images first: source != 'freebible' (ingested, self-hosted).
     row = conn.execute(
@@ -2867,6 +3011,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     prefs = read_hebrew_prefs(conn, user_id)
     new_cards_per_day, max_reviews_per_day = resolve_pacing(
         new_cards_per_day, max_reviews_per_day, prefs)
+    retention = prefs.get("desired_retention", DEFAULT_DESIRED_RETENTION)
     now = datetime.datetime.now()
     rows = conn.execute("""
         SELECT p.node_id, n.title, n.level, n.category, n.description,
@@ -2950,11 +3095,11 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         if a > 0 and c > 0:
             stability = max(1.0, a * m * 7.0)
             ret = fsrs_retrievability(stability, days)
-            due_now = ret < 0.9
+            due_now = ret < retention
         else:
             stability = 1.0
             ret = math.exp(-days / stability) if stability > 0 else 0
-            due_now = ret < 0.9
+            due_now = ret < retention
 
         if due_now:
             lr = speeds.get(r['node_id'], 1.0)
@@ -3048,6 +3193,17 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     # (confusable pairs kept ≥3 items apart) — pure, unit-tested helper.
     interleaved = _interleave_due_items(by_cat, confusable_pairs)
 
+    # Leech count: distinct due nodes at/over the lapse threshold (v1 = flag
+    # only, no auto-suspend; the Grammar Focus panel lists them).
+    try:
+        leech_due = len(conn.execute("""
+            SELECT node_id FROM hebrew_review_state
+            WHERE user_id=? AND due <= datetime('now','localtime')
+            GROUP BY node_id HAVING SUM(lapses) >= ?
+        """, (user_id, LEECH_LAPSE_THRESHOLD)).fetchall())
+    except Exception:
+        leech_due = 0
+
     conn.close()
 
     # Add confusability_warning to items that have confusable counterparts in the queue.
@@ -3123,9 +3279,324 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         "new_cards_per_day": new_cards_per_day,
         "new_cards_available_today": max(0, new_cards_per_day - new_cards_available) if include_new else 0,
         "max_reviews_per_day": max_reviews_per_day,
+        "desired_retention": retention,
         "reviews_capped": capped,
         "reviews_remaining": max(0, len(compressed) - len(capped_reviews)),
+        "leech_due": leech_due,
     }}
+
+
+FOCUS_CATEGORIES = ("grammar", "verb", "syntax")
+
+
+@router.get("/api/v1/hebrew/grammar-focus")
+def get_hebrew_grammar_focus(user_id: str = "default", limit: int = 8,
+                             session_token: str = "", authorization: str = Header("")):
+    """Weakest-first grammar study list (Phase 1 of grammar tracking).
+
+    Practiced grammar/verb/syntax nodes ordered weakest-first (lowest
+    mastery, most lapses), followed by prereq-gated frontier nodes in
+    curriculum order — same unlock rule as the review queue (all
+    prerequisites at mastery >= 0.8). No new scheduler: Study opens the
+    lesson, Drill reuses the verb-drill/grade FSRS path.
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"topics": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once()
+    topics, blocked_by = _grammar_focus_topics(conn, user_id, limit)
+    conn.close()
+    return {"ok": True, "data": {"topics": topics, "blocked_by": blocked_by}}
+
+
+def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
+    """Weakest-first grammar topics + unlock blockers (shared by the focus
+    endpoint and guided-lesson topic selection). Returns (topics, blocked_by).
+    Caller owns the connection."""
+    placeholders = ",".join("?" for _ in FOCUS_CATEGORIES)
+
+    practiced = conn.execute(f"""
+        SELECT p.node_id, n.title, n.level, n.category, n.description,
+               p.mastery, p.attempts, p.correct,
+               COALESCE(s.lapses, 0) AS lapses,
+               COALESCE(s.modes_done, 0) AS modes_done,
+               COALESCE(d.drills, 0) AS drill_count
+        FROM hebrew_progress p
+        JOIN hebrew_nodes n ON n.id=p.node_id
+        LEFT JOIN (
+            SELECT node_id, SUM(lapses) AS lapses,
+                   COUNT(DISTINCT card_mode) AS modes_done
+            FROM hebrew_review_state WHERE user_id=? GROUP BY node_id
+        ) s ON s.node_id=p.node_id
+        LEFT JOIN (
+            SELECT node_id, COUNT(*) AS drills FROM hebrew_practice_items
+            GROUP BY node_id
+        ) d ON d.node_id=p.node_id
+        WHERE p.user_id=? AND n.category IN ({placeholders}) AND p.attempts > 0
+    """, (user_id, user_id, *FOCUS_CATEGORIES)).fetchall()
+
+    import math
+    topics = []
+    for r in practiced:
+        m = r["mastery"] or 0.0
+        lapses = r["lapses"] or 0
+        weakness = round((1.0 - m) * (1.0 + math.log1p(lapses)), 3)
+        topics.append({
+            "node_id": r["node_id"], "title": r["title"], "level": r["level"],
+            "category": r["category"], "description": r["description"] or "",
+            "mastery": m, "attempts": r["attempts"], "lapses": lapses,
+            "modes_done": r["modes_done"], "drill_count": r["drill_count"],
+            "weakness": weakness, "is_new": False,
+            "is_leech": lapses >= LEECH_LAPSE_THRESHOLD,
+        })
+    topics.sort(key=lambda t: (-t["weakness"], t["level"]))
+
+    if len(topics) < limit:
+        frontier = conn.execute(f"""
+            SELECT n.id, n.title, n.level, n.category, n.description,
+                   COALESCE(d.drills, 0) AS drill_count
+            FROM hebrew_nodes n
+            LEFT JOIN (
+                SELECT node_id, COUNT(*) AS drills FROM hebrew_practice_items
+                GROUP BY node_id
+            ) d ON d.node_id=n.id
+            WHERE n.category IN ({placeholders})
+            AND NOT EXISTS (
+                SELECT 1 FROM hebrew_progress p
+                WHERE p.node_id=n.id AND p.user_id=?
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM hebrew_edges e
+                LEFT JOIN hebrew_progress p2 ON p2.node_id=e.source_id AND p2.user_id=?
+                WHERE e.target_id=n.id AND (p2.node_id IS NULL OR p2.mastery < 0.8)
+            )
+            ORDER BY n.level, n.id LIMIT ?
+        """, (*FOCUS_CATEGORIES, user_id, user_id, limit - len(topics))).fetchall()
+        for f in frontier:
+            topics.append({
+                "node_id": f["id"], "title": f["title"], "level": f["level"],
+                "category": f["category"], "description": f["description"] or "",
+                "mastery": 0.0, "attempts": 0, "lapses": 0,
+                "modes_done": 0, "drill_count": f["drill_count"],
+                "weakness": 1.0, "is_new": True, "is_leech": False,
+            })
+    blocked_by = []
+    if not topics:
+        # Nothing unlocked yet: show the nearest prerequisites so the learner
+        # knows what unlocks grammar (closest to 0.8 mastery first).
+        blocked_by = [{
+            "node_id": b["node_id"], "title": b["title"],
+            "category": b["category"], "mastery": b["mastery"] or 0.0,
+        } for b in conn.execute(f"""
+            SELECT DISTINCT e.source_id AS node_id, n.title, n.category,
+                   COALESCE(p.mastery, 0) AS mastery
+            FROM hebrew_edges e
+            JOIN hebrew_nodes g ON g.id = e.target_id AND g.category IN ({placeholders})
+            JOIN hebrew_nodes n ON n.id = e.source_id
+            LEFT JOIN hebrew_progress p ON p.node_id = e.source_id AND p.user_id = ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM hebrew_progress p2
+                WHERE p2.node_id = g.id AND p2.user_id = ?
+            )
+            AND (p.node_id IS NULL OR p.mastery < 0.8)
+            ORDER BY mastery DESC LIMIT 5
+        """, (*FOCUS_CATEGORIES, user_id, user_id)).fetchall()]
+    return topics[:limit], blocked_by
+
+
+@router.post("/api/v1/hebrew/guided-lesson")
+async def post_hebrew_guided_lesson(body: dict, authorization: str = Header("")):
+    """Generate a focused grammar lesson for the weakest unlocked topic.
+
+    Context comes from the learner's knowledge state (mastered words for
+    examples, confusion pairs for warnings, FSRS lapses for emphasis), not
+    from a script. Tries the LLM once; any failure falls back to assembled
+    curriculum content (lesson explanation + reference + practice items),
+    so the endpoint never 500s. Drills grade through POST /hebrew/progress.
+    """
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once()
+
+    node_id = (body.get("node_id") or "").strip()
+    if not node_id:
+        topics, blocked = _grammar_focus_topics(conn, user_id, 1)
+        if not topics:
+            conn.close()
+            return {"ok": True, "data": {"topic": None, "blocked_by": blocked}}
+        node_id = topics[0]["node_id"]
+    node = conn.execute(
+        "SELECT id, title, category, level, description FROM hebrew_nodes WHERE id=?",
+        (node_id,)).fetchone()
+    if not node:
+        conn.close()
+        raise HTTPException(400, "Unknown Hebrew node")
+    lesson = conn.execute(
+        "SELECT content_json FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
+    try:
+        content = json.loads(lesson["content_json"]) if lesson else {}
+    except (TypeError, json.JSONDecodeError):
+        content = {}
+
+    # Known words for grounding examples (mastered vocab, most-practiced first).
+    known = []
+    try:
+        for r in conn.execute("""
+            SELECT n.id, l.content_json FROM hebrew_progress p
+            JOIN hebrew_nodes n ON n.id=p.node_id
+            JOIN hebrew_lessons l ON l.node_id=n.id
+            WHERE p.user_id=? AND n.category='word' AND p.mastery >= 0.8
+            ORDER BY p.attempts DESC LIMIT 12
+        """, (user_id,)).fetchall():
+            try:
+                c = json.loads(r["content_json"] or "{}")
+            except (TypeError, json.JSONDecodeError):
+                continue
+            if c.get("hebrew") and c.get("gloss"):
+                known.append({"hebrew": c["hebrew"], "gloss": c["gloss"]})
+    except Exception:
+        pass
+
+    # Confusion counterparts as explicit warnings.
+    confused = []
+    try:
+        for r in conn.execute("""
+            SELECT n.id, n.title FROM hebrew_confusability c
+            JOIN hebrew_nodes n ON n.id = CASE WHEN c.node_a=? THEN c.node_b ELSE c.node_a END
+            WHERE c.node_a=? OR c.node_b=?
+        """, (node_id, node_id, node_id)).fetchall():
+            confused.append({"node_id": r["id"], "title": r["title"]})
+    except Exception:
+        pass
+
+    # One grammar-reference paragraph for grounding.
+    reference = ""
+    try:
+        words = [w for w in re.sub(r"[^A-Za-z ]", " ", node["title"]).split() if len(w) > 3][:4]
+        if words:
+            like = "%" + "%".join(words[:2]) + "%"
+            r = conn.execute(
+                "SELECT summary FROM grammar_reference WHERE summary LIKE ? LIMIT 1",
+                (like,)).fetchone()
+            reference = (r["summary"] or "")[:800] if r else ""
+    except Exception:
+        pass
+
+    topic = {"node_id": node["id"], "title": node["title"], "category": node["category"],
+             "level": node["level"], "description": node["description"] or ""}
+
+    # Curriculum fallback drills (answers stay server-side; grade via /progress).
+    fallback_drills = []
+    try:
+        for r in conn.execute("""
+            SELECT id, question_type, question_text, options_json
+            FROM hebrew_practice_items WHERE node_id=? ORDER BY id ASC LIMIT 5
+        """, (node_id,)).fetchall():
+            try:
+                options = json.loads(r["options_json"]) if r["options_json"] else []
+            except (TypeError, json.JSONDecodeError):
+                options = []
+            fallback_drills.append({
+                "id": r["id"], "node_id": node_id, "question_type": r["question_type"],
+                "question_text": r["question_text"], "options": options or [],
+            })
+    except Exception:
+        pass
+    conn.close()
+
+    explanation = (content.get("explanation") or "").strip() or topic["description"]
+    key_points = content.get("key_points") or []
+    worked = content.get("worked_examples") or []
+    examples = [{"hebrew": w.get("hebrew", ""), "gloss": w.get("gloss", ""),
+                 "note": w.get("answer", "")} for w in worked[:3]
+                if isinstance(w, dict)] or \
+               [{"hebrew": k["hebrew"], "gloss": k["gloss"], "note": "known word"} for k in known[:3]]
+
+    # One LLM attempt; anything wrong → curriculum fallback.
+    source = "curriculum"
+    llm_drills = []
+    try:
+        from web.lib.llm_provider import ProviderRouter
+        router = ProviderRouter()
+        prompt = (
+            f"Teach this Biblical Hebrew topic: {topic['title']} ({topic['category']}).\n"
+            f"Reference: {(reference or explanation)[:600]}\n"
+            f"Key points: {'; '.join(key_points[:4])}\n"
+            f"Learner already knows: {', '.join(k['hebrew'] + ' (' + k['gloss'] + ')' for k in known[:8]) or 'nothing yet'}.\n"
+            + (f"Warn: easily confused with {', '.join(c['title'] for c in confused[:2])}.\n" if confused else "")
+            + "Return ONLY JSON: {\"explanation\": str (<=120 words, use the known words), "
+              "\"key_points\": [str x3], "
+              "\"examples\": [{\"hebrew\": str, \"gloss\": str, \"note\": str} x3], "
+              "\"check\": [{\"question\": str, \"options\": [str x4], \"answer_index\": int, \"why\": str} x3]}."
+        )
+        resp = await router.complete({
+            "model": router.default_model, "temperature": 0.3, "max_tokens": 900,
+            "messages": [
+                {"role": "system", "content": "You are a Biblical Hebrew tutor. Return only valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+        })
+        text = (resp.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
+        text = re.sub(r"^```(?:json)?|```$", "", text.strip()).strip()
+        lesson_json = json.loads(text)
+        if (isinstance(lesson_json.get("explanation"), str)
+                and isinstance(lesson_json.get("check"), list) and lesson_json["check"]):
+            valid = True
+            for q in lesson_json["check"]:
+                opts = q.get("options") or []
+                ai = q.get("answer_index")
+                if not (isinstance(q.get("question"), str) and len(opts) == 4
+                        and isinstance(ai, int) and 0 <= ai < 4):
+                    valid = False
+                    break
+            if valid and isinstance(lesson_json.get("examples"), list):
+                explanation = lesson_json["explanation"][:1200]
+                key_points = [str(k)[:200] for k in lesson_json.get("key_points", [])[:3]]
+                examples = lesson_json["examples"][:3]
+                llm_drills = [{
+                    "id": None, "node_id": node_id, "question_type": "multiple_choice",
+                    "question_text": q["question"], "options": q["options"],
+                    "answer_index": q["answer_index"], "why": q.get("why", ""),
+                } for q in lesson_json["check"][:3]]
+                source = "llm"
+    except Exception:
+        pass
+
+    return {"ok": True, "data": {
+        "topic": topic, "source": source, "explanation": explanation,
+        "key_points": key_points[:4], "examples": examples[:3],
+        "drills": llm_drills or fallback_drills,
+        "knowledge_used": {"known_words": len(known), "confused_with": confused},
+    }}
+
+
+@router.post("/api/v1/hebrew/session-summary")
+def post_hebrew_session_summary(body: dict, authorization: str = Header("")):
+    """Persist an LLM-readable knowledge-state snapshot after a study session.
+
+    Rolls current mastery/due/weakness into tutor_memory
+    (key hebrew_knowledge_state) so guided lessons start with context.
+    Fire-and-forget from the client on review completion.
+    """
+    from web.lib.hebrew_session_summary import (
+        summarize_hebrew_session, write_session_summary)
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    try:
+        summary = summarize_hebrew_session(conn, user_id)
+        result = write_session_summary(conn, user_id, summary)
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"summary": summary, **result}}
 
 
 # ── Directed practice queues (P2-B modes) ─────────────────────────────
@@ -3490,7 +3961,8 @@ def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
     """Anki-style deck options: daily new-card and review caps."""
     user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
-        return {"ok": True, "data": {"new_cards_per_day": 10, "max_reviews_per_day": 100}}
+        return {"ok": True, "data": {"new_cards_per_day": 10, "max_reviews_per_day": 100,
+                                     "desired_retention": DEFAULT_DESIRED_RETENTION}}
     conn = sqlite3.connect(str(MEM_DB))
     prefs = read_hebrew_prefs(conn, user_id)
     conn.close()
@@ -3678,16 +4150,30 @@ def set_hebrew_prefs(body: dict, authorization: str = Header("")):
         raise HTTPException(404, "Hebrew DB not found")
     conn = sqlite3.connect(str(MEM_DB))
     ensure_hebrew_schema_once()
+    if "desired_retention" in (body or {}):
+        try:
+            retention = float(body["desired_retention"])
+        except (TypeError, ValueError):
+            conn.close()
+            raise HTTPException(400, "desired_retention must be a number 0.70-0.99")
+        if not 0.7 <= retention <= 0.99:
+            conn.close()
+            raise HTTPException(400, "desired_retention must be a number 0.70-0.99")
+    else:
+        # Absent = keep the stored value (old clients must not reset it).
+        retention = read_hebrew_prefs(conn, user_id)["desired_retention"]
     conn.execute("""
-        INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day)
-        VALUES (?, ?, ?)
+        INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day, desired_retention)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             new_cards_per_day=excluded.new_cards_per_day,
-            max_reviews_per_day=excluded.max_reviews_per_day
-    """, (user_id, new_cards, max_reviews))
+            max_reviews_per_day=excluded.max_reviews_per_day,
+            desired_retention=excluded.desired_retention
+    """, (user_id, new_cards, max_reviews, retention))
     conn.commit()
     conn.close()
-    return {"ok": True, "data": {"new_cards_per_day": new_cards, "max_reviews_per_day": max_reviews}}
+    return {"ok": True, "data": {"new_cards_per_day": new_cards, "max_reviews_per_day": max_reviews,
+                                 "desired_retention": round(retention, 2)}}
 
 
 def _query_verb_lessons(conn, category: str = ""):

@@ -26,7 +26,11 @@ RETRYABLE_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504, 529})
 DEFAULT_DEEPSEEK_BASE = "https://api.deepseek.com"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-flash"
 DEFAULT_OPENCODE_GO_BASE = "https://opencode.ai/zen/go/v1"
-DEFAULT_OPENCODE_GO_MODEL = "muse-spark-1.2-contributor"
+# Chat-completions-native default. Model families on the /responses or
+# /messages endpoints (muse-spark, grok, gpt-luna, minimax, qwen) need a
+# protocol translation the worker pool does not implement — the gateway
+# rejects them on /chat/completions ("Model does not support this protocol").
+DEFAULT_OPENCODE_GO_MODEL = "deepseek-v4-flash"
 WORKER_HEALTH_TIMEOUT = 2.0
 
 DEEPSEEK_PRICING = {
@@ -109,13 +113,16 @@ class ProviderRouter:
         return True, model
 
     def _provider_model(self, model: str) -> tuple[str, str]:
+        # Provider is chosen by explicit prefix only. Bare ids always mean
+        # direct DeepSeek: the Go default id can collide with a direct id
+        # (e.g. deepseek-v4-flash exists on both), and guessing wrong routes
+        # traffic to an unconfigured provider. Go callers use the
+        # "opencode-go/<id>" form (see default_model with CHAT_PROVIDER).
         model = (model or self.default_model).strip()
         if model.startswith("opencode-go/"):
             return "opencode-go", model.split("/", 1)[1]
         if model.startswith("deepseek/"):
             return "deepseek", model.split("/", 1)[1]
-        if model == self.opencode_go_model:
-            return "opencode-go", model
         return "deepseek", model
 
     def is_opencode_go_model(self, model: str | None) -> bool:
@@ -287,10 +294,14 @@ class ProviderRouter:
         )
 
     @staticmethod
-    def _headers(target: ProviderTarget) -> dict[str, str]:
+    def _headers(target: ProviderTarget, session_id: str = "") -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
         if target.api_key:
             headers["Authorization"] = f"Bearer {target.api_key}"
+        if target.uds and (session_id or "").strip():
+            # OpenCode Go requires a stable per-conversation session id for
+            # routing/prompt-caching (https://opencode.ai/docs/go/#where-can-i-use-it).
+            headers["x-opencode-session"] = session_id.strip()
         return headers
 
     @staticmethod
@@ -315,7 +326,7 @@ class ProviderRouter:
             }
         }
 
-    async def complete(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def complete(self, payload: dict[str, Any], session_id: str = "") -> dict[str, Any]:
         """Perform one non-streaming completion with safe retryable failover."""
         requested_model = str(payload.get("model") or self.default_model)
         valid, model = self.validate_model(requested_model)
@@ -326,6 +337,8 @@ class ProviderRouter:
             return {"error": {"code": 503, "message": f"Provider is not configured: {provider}"}}
 
         request_payload = dict(payload)
+        # Routing-only metadata (never sent upstream).
+        session_id = request_payload.pop("session_id", "") or session_id
         request_payload["model"] = upstream_model
         last_error: dict[str, Any] | None = None
         for target in await self._ordered_targets(provider, targets):
@@ -337,7 +350,7 @@ class ProviderRouter:
                         if not target.uds
                         else "/chat/completions"
                     ),
-                    headers=self._headers(target),
+                    headers=self._headers(target, session_id),
                     json=request_payload,
                 )
                 if resp.status_code in RETRYABLE_STATUS:
@@ -363,7 +376,7 @@ class ProviderRouter:
         return last_error or {"error": {"code": 503, "message": "No healthy provider account"}}
 
     @asynccontextmanager
-    async def stream(self, payload: dict[str, Any]) -> AsyncIterator[httpx.Response]:
+    async def stream(self, payload: dict[str, Any], session_id: str = "") -> AsyncIterator[httpx.Response]:
         """Open a stream, failing over only before any response bytes arrive."""
         requested_model = str(payload.get("model") or self.default_model)
         valid, model = self.validate_model(requested_model)
@@ -384,6 +397,8 @@ class ProviderRouter:
             return
 
         request_payload = dict(payload)
+        # Routing-only metadata (never sent upstream).
+        session_id = request_payload.pop("session_id", "") or session_id
         request_payload["model"] = upstream_model
         last_error = {"error": {"code": 503, "message": "No healthy provider account"}}
         for target in await self._ordered_targets(provider, targets):
@@ -395,7 +410,7 @@ class ProviderRouter:
                     if not target.uds
                     else "/chat/completions"
                 ),
-                headers=self._headers(target),
+                headers=self._headers(target, session_id),
                 json=request_payload,
             )
             try:

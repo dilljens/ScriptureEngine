@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { getChapter } from '../api'
+import { getChapter, searchVerses } from '../api'
 import { parseAndFuzzy, getChapters } from '../refParser'
 
 const TYPE_ICONS = {
@@ -45,6 +45,12 @@ const [previewCh, setPreviewCh] = useState(1)
 const [previewVerses, setPreviewVerses] = useState([])
 const [previewLoading, setPreviewLoading] = useState(false)
 const previewCache = useRef({})
+// Full-text search (FTS5) — the palette's "find" arm, so mobile (which has
+// no header SearchBar) gets full-text search too. Separate state because it
+// resolves async while the ref/command parser above stays synchronous.
+const [fts, setFts] = useState(null) // null | { query, results, loading }
+const ftsTimer = useRef(null)
+const ftsSeq = useRef(0)
 const inputRef = useRef(null)
 const resultsRef = useRef(null)
 
@@ -72,8 +78,30 @@ const loadPreview = useCallback(async (book, ch) => {
 }, [])
 
 useEffect(() => {
-  if (open) { setVal(''); setResults([]); setResultType('empty'); setSel(0); setShowChapters(false); setTimeout(() => inputRef.current?.focus(), 50) }
+  if (open) { setVal(''); setResults([]); setResultType('empty'); setSel(0); setShowChapters(false); setFts(null); setTimeout(() => inputRef.current?.focus(), 50) }
 }, [open])
+
+// Full-text search runner (seq-guarded: a slow response never overwrites a
+// newer query's results).
+const runFts = useCallback(async (q) => {
+  const seq = ++ftsSeq.current
+  setFts({ query: q, results: [], loading: true })
+  try {
+    const res = await searchVerses(q, { limit: 8 })
+    if (ftsSeq.current !== seq) return
+    setFts({ query: q, results: res?.data?.results || [], loading: false })
+  } catch {
+    if (ftsSeq.current !== seq) return
+    setFts({ query: q, results: [], loading: false })
+  }
+}, [])
+
+const scheduleFts = useCallback((q) => {
+  clearTimeout(ftsTimer.current)
+  ftsTimer.current = setTimeout(() => runFts(q), 350)
+}, [runFts])
+
+useEffect(() => () => clearTimeout(ftsTimer.current), [])
 
 const selResult = results[sel]?.type === 'navigate' ? results[sel] : null
 useEffect(() => {
@@ -110,6 +138,8 @@ const handleChange = (v) => {
   setVal(v)
   setSel(0)
   setShowChapters(false)
+  clearTimeout(ftsTimer.current)
+  setFts(null)
   if (!v.trim()) {
     setResults(getAllBooksResults())
     setResultType('list')
@@ -118,6 +148,14 @@ const handleChange = (v) => {
   const parsed = parseAndFuzzy(v, allBooks || [])
   setResultType(parsed.type)
   setResults(parsed.results || [])
+  // Full-text arm: when the query isn't a ref match or a /command, offer
+  // FTS alongside (debounced). Explicit /search always runs it.
+  const trimmed = v.trim()
+  const hasNav = (parsed.results || []).some(r => r.type === 'navigate')
+  const isCommand = trimmed.startsWith('/') && parsed.type !== 'search' && parsed.type !== 'error'
+  if ((!hasNav && !isCommand && trimmed.length >= 2) || (parsed.type === 'search' && parsed.query)) {
+    scheduleFts(parsed.type === 'search' && parsed.query ? parsed.query : trimmed)
+  }
 }
 
 const executeResult = (r) => {
@@ -130,8 +168,9 @@ const executeResult = (r) => {
       onChat(r.message || '')
       onClose(); break
     case 'search':
-      onCommand?.({ type: 'search', query: r.query })
-      onClose(); break
+      // Run full-text search inline instead of reopening the palette.
+      runFts(r.query || '')
+      break;
     case 'dark':
       onCommand?.({ type: 'dark' })
       onClose(); break
@@ -160,6 +199,16 @@ const executeCurrent = () => {
   const r = results[sel]
   if (r?.type === 'header') return
   if (r) executeResult(r)
+}
+
+// Open a full-text result in the current tab (verse highlight included).
+const executeFtsRow = (row) => {
+  const verseId = row.verse || row.verse_id
+  const parts = verseId?.split('.')
+  if (parts?.length >= 2) {
+    onNavigate(parts[0], parseInt(parts[1]) || 1, parts[2] ? [parseInt(parts[2])] : [])
+    onClose()
+  }
 }
 
 const toggleChapterPreview = () => {
@@ -349,6 +398,29 @@ return (
         {/* Error state */}
         {resultType === 'error' && results.length > 0 && (
           <div className="px-4 py-3 text-xs text-red-500">{results[0].label}</div>
+        )}
+
+        {/* Full-text results */}
+        {fts?.loading && (
+          <div className="px-4 py-3 text-xs text-neutral-400 text-center border-t border-neutral-100 dark:border-neutral-700">Searching text…</div>
+        )}
+        {fts && !fts.loading && fts.results.length > 0 && (
+          <>
+            <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 bg-neutral-50 dark:bg-neutral-800/50 border-t border-neutral-100 dark:border-neutral-700">
+              🔍 Full-text · {fts.query}
+            </div>
+            {fts.results.map((row, i) => {
+              const verseId = row.verse || row.verse_id
+              const text = row.text || row.text_english || ''
+              return (
+                <button key={verseId || i} onClick={() => executeFtsRow(row)}
+                  className="w-full text-left px-4 py-2 flex flex-col gap-0.5 cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
+                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 font-medium">{row.reference || verseId}</span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{text.slice(0, 200)}</span>
+                </button>
+              )
+            })}
+          </>
         )}
       </div>
 

@@ -1,59 +1,56 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './e2e',
-  timeout: 30000,
-  expect: { timeout: 15000 },
-  fullyParallel: false,
-  workers: 1,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['list'],
-  ],
-  use: {
-    baseURL: 'http://127.0.0.1:5176',
-    headless: true,
-    viewport: { width: 1280, height: 800 },
-    trace: 'retain-on-failure',
-  screenshot: 'only-on-failure',
-  // NOTE: `retries` is a top-level Playwright option (see above) — a copy
-  // previously lived here inside `use`, where it is silently ignored. The
-  // deploy gate runs this suite right after a frontend build while the API
-  // is still cold-loading its RAM cache; the top-level retry absorbs the
-  // resulting first-attempt UI timing flakes.
-},
-  projects: [
-    {
-      name: 'chromium',
-      use: { browserName: 'chromium', viewport: { width: 1280, height: 800 } },
-    },
-    {
-      name: 'mobile-chromium',
-      use: {
-        browserName: 'chromium',
-        viewport: { width: 375, height: 667 },
-        isMobile: true,
-        hasTouch: true,
-      },
-    },
-  ],
-  // Playwright manages the Vite dev server + Python API backend
-  webServer: [
-    {
-      command: 'python3 -m uvicorn web.server:app --port 5174 --host 127.0.0.1',
-      url: 'http://127.0.0.1:5174/api/v1/info',
-      reuseExistingServer: true,
-      timeout: 30000,
-      cwd: '/home/dillon/_code/ScriptureEngine',
-    },
-    {
-      command: 'npx vite --port 5176 --host 127.0.0.1',
-      url: 'http://127.0.0.1:5176',
-      reuseExistingServer: true,
-      timeout: 30000,
-      cwd: '/home/dillon/_code/ScriptureEngine/frontend',
-    },
-  ],
-})
+	testDir: "./e2e",
+	timeout: 30000,
+	expect: { timeout: 15000 },
+	fullyParallel: false,
+	workers: 1,
+	forbidOnly: !!process.env.CI,
+	retries: process.env.CI ? 1 : 0,
+	reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
+	use: {
+		baseURL: "http://127.0.0.1:5176",
+		headless: true,
+		viewport: { width: 1280, height: 800 },
+		trace: "retain-on-failure",
+		screenshot: "only-on-failure",
+		// NOTE: `retries` is a top-level Playwright option (see above) — a copy
+		// previously lived here inside `use`, where it is silently ignored. The
+		// deploy gate runs this suite right after a frontend build while the API
+		// is still cold-loading its RAM cache; the top-level retry absorbs the
+		// resulting first-attempt UI timing flakes.
+	},
+	projects: [
+		{
+			name: "chromium",
+			use: { browserName: "chromium", viewport: { width: 1280, height: 800 } },
+		},
+		{
+			name: "mobile-chromium",
+			use: {
+				browserName: "chromium",
+				viewport: { width: 375, height: 667 },
+				isMobile: true,
+				hasTouch: true,
+			},
+		},
+	],
+	// Playwright manages the Vite dev server + Python API backend
+	webServer: [
+		{
+			command: "python3 -m uvicorn web.server:app --port 5174 --host 127.0.0.1",
+			url: "http://127.0.0.1:5174/api/v1/info",
+			reuseExistingServer: true,
+			timeout: 30000,
+			cwd: "/home/dillon/_code/ScriptureEngine",
+		},
+		{
+			command: "npx vite --port 5176 --host 127.0.0.1",
+			url: "http://127.0.0.1:5176",
+			reuseExistingServer: true,
+			timeout: 30000,
+			cwd: "/home/dillon/_code/ScriptureEngine/frontend",
+		},
+	],
+});

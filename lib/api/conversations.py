@@ -9,7 +9,7 @@ import contextlib
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ─── Verse Reference Extraction ───
 
@@ -265,7 +265,7 @@ def validate_refs(conn, refs):
 # ─── Session CRUD ───
 
 def _now():
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def create_session(conn, title="", theme="", created_by="anonymous"):

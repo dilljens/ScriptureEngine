@@ -10,44 +10,75 @@ import RatingButtons from './RatingButtons'
  *   "hearing"  — Listen to audio, think of translation. Flip to see answer.
  *   "reverse"  — See English gloss, think of Hebrew word. Flip to see answer.
  *   "forward"  — See Hebrew word, think of English gloss. Flip to see answer.
+ *   "picture"  — See the WHV deck picture, think of the Hebrew word. Flip to
+ *     see answer. Only assigned when a Tier-0 picture exists (see modesForCard).
  *
  * On the back: answer + image + audio + transliteration + verse example.
  * Rating: Again(1) / Hard(2) / Good(3) / Easy(4) — FSRS-5 compatible.
  *
  * Props:
  *   cards: Array of { node_id, hebrew, gloss, transliteration, image_url, audio_url }
+ *     node_id may be '' for non-curriculum words — hebrew text is sent
+ *     instead and the backend resolves it (see hebrew-card-rules.md rule 7).
  *   onComplete: () => void  — Called after all cards rated
  *   title: String — Optional title for the session
  *   onBack: () => void — Go back to previous view
  */
-const CARD_MODES = ['hearing', 'reverse', 'forward']
+const CARD_MODES = ['hearing', 'reverse', 'forward', 'picture']
+
+/**
+ * Modes for one card: server due_modes win when present; otherwise all four
+ * directions — minus picture when no Tier-0 picture is cached for the word.
+ * Pure (vitest-covered); keeps imageless words from drawing blank fronts.
+ */
+export function modesForCard(card, hasPicture) {
+  if (card.modes && card.modes.length) return card.modes
+  return hasPicture ? CARD_MODES : CARD_MODES.filter(m => m !== 'picture')
+}
 
 export default function AnkiReview({ cards: initialCards, onComplete, title, onBack }) {
-  // Build shuffled cards with assigned modes. A card may carry `modes`
-  // (from review-queue due_modes) to review only the directions actually due;
-  // otherwise all three directions are practiced (Anki-style).
-  const [cards] = useState(() => {
-    const withModes = initialCards.flatMap(c =>
-      (c.modes && c.modes.length ? c.modes : CARD_MODES).map(mode => ({ ...c, mode, id: `${c.node_id}_${mode}` }))
-    )
-    // Fisher-Yates shuffle
-    for (let i = withModes.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [withModes[i], withModes[j]] = [withModes[j], withModes[i]]
-    }
-    return withModes
-  })
+  // Two-pass build: prefetch Tier-0 pictures first, then assign modes so the
+  // picture direction is only dealt to words that actually have a picture.
+  // (Server due_modes pass through untouched via modesForCard.)
+  const [cards, setCards] = useState(null)
+  const [imageCache, setImageCache] = useState({})
+  useEffect(() => {
+    let cancelled = false
+    const seen = new Set()
+    Promise.all(initialCards.filter(c => c.hebrew && !seen.has(c.hebrew) && seen.add(c.hebrew)).map(async (c) => {
+      try {
+        const r = await fetchJSON(`/hebrew/image/${encodeURIComponent(c.hebrew)}`)
+        if (r.ok && r.data?.image_url) return [c.hebrew, r.data]
+      } catch (_) {}
+      return [c.hebrew, null]
+    })).then(results => {
+      if (cancelled) return
+      const cache = {}
+      for (const [hebrew, data] of results) if (data) cache[hebrew] = data
+      setImageCache(cache)
+      const withModes = initialCards.flatMap(c =>
+        modesForCard(c, !!cache[c.hebrew]).map(mode => ({ ...c, mode, id: `${c.node_id || c.hebrew}_${mode}` }))
+      )
+      // Fisher-Yates shuffle
+      for (let i = withModes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [withModes[i], withModes[j]] = [withModes[j], withModes[i]]
+      }
+      setCards(withModes)
+    })
+    return () => { cancelled = true }
+  }, [initialCards])
 
   const [currentIdx, setCurrentIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [ratings, setRatings] = useState({})
-  const [imageCache, setImageCache] = useState({})
+  const [saveFailed, setSaveFailed] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
   const spaceRef = useRef(false)
 
-  const currentCard = cards[currentIdx]
-  const isComplete = currentIdx >= cards.length
-  const totalCards = cards.length
+  const currentCard = cards?.[currentIdx]
+  const isComplete = !!cards && currentIdx >= cards.length
+  const totalCards = cards?.length || 0
   // Anki-style interval preview, same shared scheduler as memorize.
   // Cleared on card change so a stale card's waits never flash.
   const [intervals, setIntervals] = useState(null)
@@ -60,9 +91,9 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       intervalsCard.current = key
       setIntervals(null)
     }
-    if (!nid || !flipped) return
+    if ((!nid && !currentCard?.hebrew) || !flipped) return
     const sessionToken = currentSessionToken()
-    const params = new URLSearchParams({ node_id: nid, card_mode: cmode })
+    const params = new URLSearchParams({ node_id: nid, card_mode: cmode, hebrew: currentCard?.hebrew || '', lemma: currentCard?.lemma || '' })
     fetch(`/api/v1/hebrew/fsrs/intervals?${params}`, {
       headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
     })
@@ -74,17 +105,8 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       .catch(() => { if (intervalsCard.current === key) setIntervals(null) })
   }, [currentCard?.node_id, currentCard?.mode, flipped, currentIdx])
 
-  // Pre-fetch images and audio for all cards
-  useEffect(() => {
-    initialCards.forEach(async (c) => {
-      if (c.hebrew && !imageCache[c.hebrew]) {
-        try {
-          const r = await fetchJSON(`/hebrew/image/${encodeURIComponent(c.hebrew)}`)
-          if (r.ok && r.data) setImageCache(prev => ({ ...prev, [c.hebrew]: r.data }))
-        } catch (_) {}
-      }
-    })
-  }, [initialCards])
+  // NOTE: image prefetch now happens in the two-pass build above (modes need
+  // to know which words have Tier-0 pictures before cards are dealt).
 
   // Auto-play audio for hearing mode when card is shown (pooled: cached URL + shared element).
   useEffect(() => {
@@ -115,6 +137,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         method: 'POST',
         body: JSON.stringify({
           node_id: currentCard.node_id, rating, user_id: 'default',
+          hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
           session_token: sessionToken, card_mode: currentCard.mode,
         }),
         headers: {
@@ -122,7 +145,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
         },
       })
-    } catch (_) {}
+    } catch (_) { setSaveFailed(n => n + 1) }
     // Advance
     setFlipped(false)
     setAudioUrl(null)
@@ -147,6 +170,17 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     return () => window.removeEventListener('keydown', handleKey)
   }, [flipped, handleFlip, handleRate, onBack])
 
+  // Loading state while the two-pass build prefetches pictures + deals modes
+  if (!cards) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-12 text-center">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+          Loading cards…
+        </p>
+      </div>
+    )
+  }
+
   // Completion screen
   if (isComplete) {
     const counts = { 1: 0, 2: 0, 3: 0, 4: 0 }
@@ -160,6 +194,11 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
           {totalCards} cards studied
         </p>
+        {saveFailed > 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-6">
+            ⚠️ {saveFailed} rating{saveFailed === 1 ? '' : 's'} couldn't be saved to the schedule — those cards will come up again.
+          </p>
+        )}
         <div className="flex justify-center gap-4 mb-8">
           {[1, 2, 3, 4].map(r => (
             <div key={r} className="text-center">
@@ -214,6 +253,25 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
             </div>
             {transliteration && (
               <div className="text-sm text-neutral-500 mt-2">{transliteration}</div>
+            )}
+          </div>
+        )
+      case 'picture':
+        return (
+          <div className="text-center">
+            <div className="text-lg text-neutral-400 mb-4">🖼️ Picture → Hebrew</div>
+            {img?.image_url ? (
+              <img
+                src={img.image_url}
+                alt="Think of the Hebrew word"
+                className="w-full h-48 object-cover rounded-lg"
+                loading="lazy"
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+            ) : (
+              <div className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+                Loading picture...
+              </div>
             )}
           </div>
         )

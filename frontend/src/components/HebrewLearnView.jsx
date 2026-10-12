@@ -5,12 +5,12 @@ import HebrewModePicker, { getGame, loadLearnMode, loadGameId } from './HebrewMo
 import GameReviewModal from './GameReviewModal'
 import { reportIdleAnswer } from './HebrewIdleBar'
 import { markSessionStart, startAutoFlush } from '../lib/analytics'
-import CardQueue from './CardQueue'
 import AnkiReview from './AnkiReview'
 import PassageReader from './PassageReader'
 import DailyVerse from './DailyVerse'
 import AudioReviewSession from './AudioReviewSession'
 import WordTilesView from './WordTilesView'
+import GuidedLessonView from './GuidedLessonView'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 import { grammarTrackBonus } from '../lib/idle-game'
 import { currentSessionToken, hebrewSessionUser } from '../api'
@@ -220,16 +220,17 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [quickScore, setQuickScore] = useState(0)
   const [toast, setToast] = useState(null) // {message, type}
   const [showDailyVerse, setShowDailyVerse] = useState(false)
-  const [showFreqVocab, setShowFreqVocab] = useState(false)
-  const [freqVocabCards, setFreqVocabCards] = useState([])
   const [showAudioReview, setShowAudioReview] = useState(false)
   const [audioWords, setAudioWords] = useState([])
   const [showWordTiles, setShowWordTiles] = useState(false)
   const [wordTilesInitial, setWordTilesInitial] = useState([])
   const [wordTilesKind, setWordTilesKind] = useState('words')
   const [showQuiz, setShowQuiz] = useState(false)
+  const [guidedNode, setGuidedNode] = useState(undefined)
+  const [showGrammarFocus, setShowGrammarFocus] = useState(false)
+  const [focusTopics, setFocusTopics] = useState([])
   // Anki-style daily pacing: deck options + live queue counts
-  const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
+  const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100, desired_retention: 0.9 })
   // Classic Study vs Games — persisted, defaults to classic so existing
   // learners see zero change until they opt into a game.
   const [learnMode, setLearnMode] = useState(loadLearnMode)
@@ -239,7 +240,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [reviewTarget, setReviewTarget] = useState(null)
   const [queueStats, setQueueStats] = useState(null)
   const [prefsEditing, setPrefsEditing] = useState(false)
-  const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100 })
+  const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100, desired_retention: 0.9 })
 
   // Resolve the session-bound user (falls back to 'default' for anonymous
   // learners, so a missing/expired token is never a hard failure). Curriculum,
@@ -317,6 +318,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           ...prefsDraft,
           new_cards_per_day: Math.max(0, parseInt(prefsDraft.new_cards_per_day) || 0),
           max_reviews_per_day: Math.max(0, parseInt(prefsDraft.max_reviews_per_day) || 0),
+          desired_retention: Math.min(0.99, Math.max(0.7, parseFloat(prefsDraft.desired_retention) || 0.9)),
           session_token: currentSessionToken(),
         }),
       })
@@ -356,6 +358,22 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     setQuickScore(0)
     setTimeLeft(300)
     setQuickMode(true)
+  }
+
+  // Frequency-vocab bands → 3-way AnkiReview (hebrew-card-rules.md).
+  // schedulable=1 keeps only words that resolve to a lesson node, so every
+  // rating persists into the FSRS schedule. Offset slices the filtered list.
+  const startVocabBand = async (top, cutoff, offset) => {
+    try {
+      const r = await fetch(`/api/v1/vocabulary?top=${top}&cutoff=${cutoff}&schedulable=1`)
+      const d = await r.json()
+      const words = (d.data?.words || []).filter(w => w.hebrew && w.gloss).slice(offset)
+      setHebrewReviewCards(words.map((w, i) => ({
+        id: `vocab-${offset}-${i}`, node_id: '', hebrew: w.hebrew, gloss: w.gloss,
+        transliteration: w.transliteration || '', lemma: w.lemma || '',
+      })))
+    } catch {}
+    setShowHebrewReview(true)
   }
 
   // Quick session timer
@@ -497,7 +515,17 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return (
       <AnkiReview
         cards={ankiCards}
-        onComplete={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
+        onComplete={() => {
+          setShowHebrewReview(false); setHebrewReviewCards([])
+          try {
+            const t = currentSessionToken()
+            fetch('/api/v1/hebrew/session-summary', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+              body: JSON.stringify({ user_id: 'default', session_token: t }),
+            }).catch(() => {})
+          } catch {}
+        }}
         onBack={() => { setShowHebrewReview(false); setHebrewReviewCards([]) }}
         title="Hebrew Review"
       />
@@ -554,6 +582,98 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     )
   }
 
+  // Guided lesson (weakest-topic, knowledge-grounded)
+  if (guidedNode !== undefined) {
+    return (
+      <GuidedLessonView
+        nodeId={guidedNode}
+        onBack={() => { setGuidedNode(undefined); setShowGrammarFocus(true) }}
+        onOpenLesson={(nid) => { setGuidedNode(undefined); setShowGrammarFocus(false); onOpenLesson?.(nid) }}
+      />
+    )
+  }
+
+  // Quiz mode
+  if (showGrammarFocus) {
+    const blocked = focusTopics.blocked_by || []
+    const topics = focusTopics.topics || focusTopics
+    const list = Array.isArray(topics) ? topics : []
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">🎯 Grammar Focus</h2>
+          <button onClick={() => setShowGrammarFocus(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+          Weakest grammar first — prerequisites already met. Study a topic, then drill it.
+        </p>
+        {list.length > 0 && (
+          <button onClick={() => setGuidedNode(list[0].node_id)}
+            className="mb-4 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium cursor-pointer transition-colors">
+            ✨ Start guided lesson — {list[0].title.length > 32 ? list[0].title.slice(0, 32) + '…' : list[0].title}
+          </button>
+        )}
+        {list.length === 0 && blocked.length > 0 && (
+          <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-3">
+            <div className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+              🔒 Grammar unlocks as you master the basics. Closest first:
+            </div>
+            {blocked.map(b => (
+              <div key={b.node_id} className="flex items-center gap-2 py-1">
+                <span className="text-sm text-neutral-700 dark:text-neutral-300 flex-1">
+                  {b.title} <span className="text-[11px] text-neutral-400">{Math.round((b.mastery || 0) * 100)}%</span>
+                </span>
+                <button onClick={() => { setShowGrammarFocus(false); onOpenLesson?.(b.node_id) }}
+                  className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium cursor-pointer transition-colors">
+                  Study →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="space-y-3">
+          {list.length === 0 && blocked.length === 0 && (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">No grammar topics found.</p>
+          )}
+          {list.map(t => (
+            <div key={t.node_id}
+              className="p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                  {t.category} · L{t.level}
+                </span>
+                {t.is_new
+                  ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">NEW</span>
+                  : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">{Math.round((t.mastery || 0) * 100)}%</span>}
+                {t.is_leech && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300" title="8+ lapses — Anki leech threshold. Consider a mnemonic or breaking this topic down.">🪲 leech</span>}
+                <span className="flex-1" />
+                <button onClick={() => setGuidedNode(t.node_id)}
+                  className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium cursor-pointer transition-colors">
+                  Guided →
+                </button>
+                <button onClick={() => { setShowGrammarFocus(false); onOpenLesson?.(t.node_id) }}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors">
+                  Study →
+                </button>
+              </div>
+              <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{t.title}</div>
+              <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full mt-2 overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full transition-all"
+                  style={{ width: `${Math.round((t.mastery || 0) * 100)}%` }} />
+              </div>
+              <div className="text-[11px] text-neutral-400 mt-1">
+                {t.attempts || 0} attempts · {t.lapses || 0} lapses · {t.drill_count || 0} drills available
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   // Quiz mode
   if (showQuiz) {
     return (
@@ -563,33 +683,6 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           onBack={() => { setShowQuiz(false); loadAll() }}
           onOpenLesson={(nid) => { setShowQuiz(false); onOpenLesson?.(nid) }}
         />
-      </div>
-    )
-  }
-
-  // Frequency vocab mode
-  if (showFreqVocab) {
-    if (freqVocabCards.length === 0) {
-      return (
-        <div className="max-w-lg mx-auto px-6 py-12 text-center">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Loading top vocabulary...</p>
-          <button onClick={() => setShowFreqVocab(false)}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-            ← Back to Curriculum
-          </button>
-        </div>
-      )
-    }
-    return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📊 Top 100 Vocabulary</h2>
-          <button onClick={() => setShowFreqVocab(false)}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
-            ← Back to Curriculum
-          </button>
-        </div>
-        <CardQueue cards={freqVocabCards} title="Frequency Vocab" emptyMessage="All done!" />
       </div>
     )
   }
@@ -780,7 +873,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
                       // parenthetical that contains Hebrew characters.
                       const parens = [...title.matchAll(/\(([^)]+)\)/g)].map(m => m[1])
                       const hebParen = parens.length ? [...parens].reverse().find(p => /[\u0590-\u05FF]/.test(p)) : ''
-                      hebrew = hebParen || (glyphMatch ? glyphMatch[1] : title)
+                      hebrew = hebParen || title
                       gloss = item.description || ''
                     }
                     return { id: `due-${i}`, type: 'vocab', modes: item.due_modes, data: {
@@ -814,10 +907,18 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         {/* Tools dropdown */}
         <DropdownMenu label="🔧 Tools" color="neutral">
           <DropdownItem onClick={() => setShowVerbDrill(true)} icon="ע" label="Verb Drills" desc="Conjugation practice" />
+          <DropdownItem onClick={() => startVocabBand(100, 10, 0)} icon="📊" label="Top Vocab" desc="Top 100 words · 3-way" />
+          <DropdownItem onClick={() => startVocabBand(300, 10, 100)} icon="📚" label="More Vocab" desc="Next ~200 words · 3-way" />
+          <DropdownItem onClick={() => startVocabBand(700, 5, 300)} icon="📖" label="Long Tail" desc="Remaining words · 3-way" />
           <DropdownItem onClick={async () => {
-            try { const r = await fetch('/api/v1/vocabulary?top=100&cutoff=10'); const d = await r.json(); setFreqVocabCards((d.data?.words || []).map((w,i) => ({ id: `vocab-${i}`, type: 'vocab', data: { word: w.hebrew, definition: w.gloss, transliteration: w.transliteration, lemma: w.root || '', language: 'hebrew' } }))) } catch {}
-            setShowFreqVocab(true)
-          }} icon="📊" label="Top Vocab" desc="100 most frequent words" />
+            try {
+              const uq = await sessionQuery()
+              const r = await fetch(`/api/v1/hebrew/grammar-focus?limit=8${uq}`, { headers: sessionHeaders() })
+              const d = await r.json()
+              setFocusTopics(d.ok ? (d.data || { topics: [] }) : { topics: [] })
+            } catch { setFocusTopics({ topics: [] }) }
+            setShowGrammarFocus(true)
+          }} icon="🎯" label="Grammar Focus" desc="Weakest grammar first" />
           <DropdownItem onClick={async () => {
             try { const r = await fetch('/api/v1/vocabulary?top=50&cutoff=10'); const d = await r.json(); setAudioWords((d.data?.words || []).filter(w => w.hebrew && w.gloss).map(w => ({ hebrew: w.hebrew, english: w.gloss, transliteration: w.transliteration }))) } catch {}
             setShowAudioReview(true)
@@ -841,15 +942,15 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       <div className="flex flex-wrap items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
           📊 {queueStats ? (
-            <>{queueStats.due_count} due · {queueStats.new_cards} new{queueStats.reviews_capped ? ` · capped (${queueStats.reviews_remaining} waiting)` : ''}</>
+            <>{queueStats.due_count} due · {queueStats.new_cards} new{queueStats.reviews_capped ? ` · capped (${queueStats.reviews_remaining} waiting)` : ''}{queueStats.leech_due > 0 ? ` · 🪲 ${queueStats.leech_due} leech${queueStats.leech_due === 1 ? '' : 'es'}` : ''}</>
           ) : 'Loading queue…'}
         </span>
         <span className="flex-1" />
         {!prefsEditing ? (
           <button onClick={() => { setPrefsDraft(prefs); setPrefsEditing(true) }}
             className="text-[10px] text-neutral-500 dark:text-neutral-400 hover:text-indigo-500 cursor-pointer"
-            title="Deck options: daily new cards and max reviews">
-            ⚙️ {prefs.new_cards_per_day} new · {prefs.max_reviews_per_day === 0 ? '∞' : prefs.max_reviews_per_day} rev/day
+            title="Deck options: daily new cards, max reviews, and desired retention">
+            ⚙️ {prefs.new_cards_per_day} new · {prefs.max_reviews_per_day === 0 ? '∞' : prefs.max_reviews_per_day} rev/day · {Math.round((prefs.desired_retention ?? 0.9) * 100)}% retention
           </button>
         ) : (
           <span className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400">
@@ -859,6 +960,9 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             <label>Max <input type="number" min="0" max="1000" value={prefsDraft.max_reviews_per_day}
               onChange={e => setPrefsDraft(d => ({ ...d, max_reviews_per_day: e.target.value }))}
               className="w-14 px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none" /> rev/day</label>
+            <label title="Desired retention (Anki deck option, 70–99%). Higher = shorter intervals, more reviews.">Ret <input type="number" min="70" max="99" step="1" value={Math.round((prefsDraft.desired_retention ?? 0.9) * 100)}
+              onChange={e => setPrefsDraft(d => ({ ...d, desired_retention: (parseInt(e.target.value) || 90) / 100 }))}
+              className="w-12 px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none" />%</label>
             <button onClick={savePrefs} className="px-2 py-0.5 rounded bg-indigo-600 text-white font-medium cursor-pointer">Save</button>
             <button onClick={() => setPrefsEditing(false)} className="hover:text-neutral-700 cursor-pointer">✕</button>
           </span>

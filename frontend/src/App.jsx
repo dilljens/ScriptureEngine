@@ -3,7 +3,7 @@ import { getInfo, getBooks, getChapter } from './api'
 import { TabProvider, useTabs } from './tabContext.jsx'
 import { SettingsProvider, useSettings, useHistory } from './settings.jsx'
 import { ProgressProvider, useProgress } from './progress.jsx'
-import { parseAndFuzzy, getChapters } from './refParser'
+import { getChapters } from './refParser'
 import { saveScrollPos, parseVerseAnchor } from './lib/scrollMemory'
 import CommandInput from './components/CommandInput'
 import AppOverlays from './components/AppOverlays'
@@ -55,6 +55,7 @@ function AppInner() {
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
     moveTab, openWikiTab, openKnowledgeTab, openHubNoteTab, openStudiesTab, openArticlesTab,
+    openHistoryTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
@@ -105,14 +106,8 @@ function AppInner() {
     setShowChat(true)
   }, [setSearchScopes])
 const [showAssessment, setShowAssessment] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const [showHebrewLearn, setShowHebrewLearn] = useState(false)
   const [passageStudyRef, setPassageStudyRef] = useState(null)
   const [readingLessonId, setReadingLessonId] = useState(null)  // set when passageStudyRef is opened from a reading lesson
-  const [hebrewLessonId, setHebrewLessonId] = useState(null)  // null = curriculum view, string = lesson view
-  const [showHebrewDiagnostic, setShowHebrewDiagnostic] = useState(false)
-  const [showHubNotes, setShowHubNotes] = useState(false)
-  const [hubNoteId, setHubNoteId] = useState(null)
   const [showTabs, setShowTabs] = useState(true)
   
   // Stable anonymous user_id — persists across sessions via localStorage
@@ -132,14 +127,6 @@ const [showAssessment, setShowAssessment] = useState(false)
   const [showCheatsheet, setShowCheatsheet] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [renamingWs, setRenamingWs] = useState(null); const [renameValue, setRenameValue] = useState('')
-
-  // Mobile nav search state
-  const [mobileNavVal, setMobileNavVal] = useState('')
-  const [mobileNavResults, setMobileNavResults] = useState([])
-  const [mobileNavSel, setMobileNavSel] = useState(0)
-  const [showMobileNav, setShowMobileNav] = useState(false)
-  const mobileNavRef = useRef(null)
-  const mobileNavDebounce = useRef(null)
 
   const [bookError, setBookError] = useState(null)
   useEffect(() => {
@@ -226,11 +213,10 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   const book = currentTab?.book || 'isa'; const chapter = currentTab?.chapter || 1; const viewRef = currentTab?.viewRef || null
   const tabLabel = currentTab?.label || ''
-  // Bottom-tab highlight must match the visible content: hebrew/learn/review
-  // are their own tabs (not Read), and the legacy Hebrew overlays render
-  // Hebrew content above whatever tab sits underneath.
-  const _tabForView = { chapter: 'read', book: 'read', work: 'read', library: 'read', chat: 'chat', hebrew: 'hebrew', learn: 'learn', memorize: 'memorize', tiles: 'tiles', wiki: 'wiki' }
-  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : (showHebrewDiagnostic || hebrewLessonId !== null || showHebrewLearn) ? 'hebrew' : (_tabForView[viewLevel] || 'read')
+  // Bottom-tab highlight follows the visible tab — no overlay paper-over needed
+  // anymore (Hebrew/history/paths are all real tabs now).
+  const _tabForView = { chapter: 'read', book: 'read', work: 'read', library: 'read', chat: 'chat', hebrew: 'hebrew', learn: 'learn', memorize: 'memorize', tiles: 'tiles', wiki: 'wiki', history: 'menu' }
+  const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : (_tabForView[viewLevel] || 'read')
   window.__bookData = bookData
 
   const nav = useMemo(() => {
@@ -548,7 +534,7 @@ const [showAssessment, setShowAssessment] = useState(false)
       }
       // / always opens command
       if (e.key === '/') { e.preventDefault(); setShowCommand(true); return }
-      if (e.key === 'Escape') { setShowChat(false); setShowHistory(false); setShowCommand(false); setShowSettings(false); setShowCheatsheet(false); setRenamingWs(null); return }
+      if (e.key === 'Escape') { setShowChat(false); setShowCommand(false); setShowSettings(false); setShowCheatsheet(false); setRenamingWs(null); return }
 
       // Arrow navigation — unified dispatcher so all tab types work, not just reading
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrevAtLevel(); }
@@ -628,7 +614,7 @@ const [showAssessment, setShowAssessment] = useState(false)
         if (cmd.toggle) toggleDispatch(cmd.toggle)
         break
       case 'history':
-        setShowHistory(true)
+        openHistoryTab()
         break
       case 'structure':
         setShowStructure(true)
@@ -650,7 +636,7 @@ const [showAssessment, setShowAssessment] = useState(false)
         updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
         break
     }
-  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id])
+  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id, openHistoryTab])
 
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
@@ -681,93 +667,6 @@ const [showAssessment, setShowAssessment] = useState(false)
     setChatInitialMsg(message || '')
     setShowChat(true)
     setShowCommand(false)
-  }, [])
-
-  // ── Mobile nav search handler ──
-  const executeMobileNav = useCallback((result) => {
-    if (!result) return
-    setShowMobileNav(false)
-    setMobileNavVal('')
-    // Per-item type is the contract (refParser sets it), but a book-bearing
-    // item without one is unambiguously a navigation target — never strand it.
-    const kind = result.type || (result.book ? 'navigate' : null)
-    if (kind === 'navigate' && result.book) {
-      if (result.newTab) handleCommandNav(result.book, result.chapter, true)
-      // handleChatNavigate applies verse highlights (scrolls to the verse);
-      // handleCommandNav drops them, so only use it for new-tab opens.
-      else handleChatNavigate(result.book, result.chapter, result.verses)
-    } else if (result.type === 'chat') {
-      handleCommandChat(result.message || '')
-    } else if (result.type === 'search' && result.query) {
-      // Open command palette with a /search prefix
-      setShowCommand(true)
-    } else if (result.type === 'command') {
-      handleSearchCommand(result)
-    } else if (result.type === 'history') {
-      setShowHistory(true)
-    } else if (result.type === 'structure') {
-      setShowStructure(true)
-    }
-  }, [handleCommandNav, handleChatNavigate, handleCommandChat, handleSearchCommand])
-
-  const handleMobileNavInput = useCallback((val) => {
-    setMobileNavVal(val)
-    setMobileNavSel(0)
-    if (!val.trim()) { setMobileNavResults([]); setShowMobileNav(false); return }
-    setShowMobileNav(true)
-
-    clearTimeout(mobileNavDebounce.current)
-    mobileNavDebounce.current = setTimeout(() => {
-      // Try fuzzy navigation parsing first
-      const parsed = parseAndFuzzy(val.trim(), allBooks || [])
-      if (parsed.type === 'navigate' && parsed.results?.length > 0) {
-        setMobileNavResults(parsed.results.map(r => ({
-          ...r,
-          icon: '📖',
-          label: r.label || `${r.book} ${r.chapter}`,
-        })))
-        return
-      }
-      // Try /commands
-      if (parsed.type === 'chat' || parsed.type === 'search' || parsed.type === 'command' ||
-          parsed.type === 'toggle' || parsed.type === 'history' || parsed.type === 'structure') {
-        setMobileNavResults(parsed.results || [parsed].map(r => ({
-          ...r, icon: r.icon || '⚡',
-          label: r.label || r.message || r.query || r.type,
-        })))
-        return
-      }
-      // Fallback: show full-text search option
-      setMobileNavResults([{
-        type: 'search', query: val.trim(), icon: '🔍',
-        label: `Search: "${val.trim()}"`,
-      }])
-    }, 200)
-  }, [allBooks])
-
-  // Submit-on-Go: the soft keyboard's Go button only submits inside a <form>;
-  // without one it just dismisses the keyboard and Enter never fires.
-  // Parse synchronously here so Go works even if the debounce hasn't run yet.
-  const submitMobileNav = useCallback(() => {
-    const current = mobileNavResults[mobileNavSel]
-    if (current) { executeMobileNav(current); return }
-    const val = mobileNavVal.trim()
-    if (!val) return
-    const parsed = parseAndFuzzy(val, allBooks || [])
-    const first = parsed.results?.[0]
-    if (first && parsed.type !== 'error') { executeMobileNav(first); return }
-    executeMobileNav({ type: 'search', query: val, icon: '🔍', label: `Search: "${val}"` })
-  }, [mobileNavResults, mobileNavSel, mobileNavVal, allBooks, executeMobileNav])
-
-  // Close mobile nav dropdown on click outside
-  useEffect(() => {
-    const handler = (e) => {
-      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target)) {
-        setShowMobileNav(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
   }, [])
 
   // ── Touch / pinch handlers for mobile zoom ──
@@ -892,29 +791,28 @@ const [showAssessment, setShowAssessment] = useState(false)
 
 
   const viewProps = {
-    bookData, bookError, chatInitialMsg, collection, hebrewLessonId,
-    hubNoteId, passageStudyRef, readingLessonId, poetryMode,
-    showHebrewDiagnostic, showHebrewLearn, showHistory, showHubNotes,
+    bookData, bookError, chatInitialMsg, collection,
+    passageStudyRef, readingLessonId, poetryMode,
     studyWeek, userId,
     setBookData, setBookError, setChatInitialMsg, setCollection,
-    setHebrewLessonId, setPassageStudyRef, setReadingLessonId, setShowChat,
-    setShowHebrewDiagnostic, setShowHebrewLearn, setShowHistory, setStudyWeek,
+    setPassageStudyRef, setReadingLessonId, setShowChat,
+    setStudyWeek,
     handleChatNavigate, handleChatOpenTab, handleOpenSplitPicker,
     navigateRef, studyFromCollection,
   }
 
   const overlaysProps = {
     chatInitialMsg, mobileActiveTab, showAssessment, showChat, showCheatsheet,
-    showCommand, showGlobalKeyboard, showHistory, showLayers, showMobileMenu,
+    showCommand, showGlobalKeyboard, showLayers, showMobileMenu,
     showSettings, showSplitPicker, showStructure, splitTarget, userId, userName, userAvatar,
     uiVisible,
     setChatInitialMsg, setShowAssessment, setShowChat, setShowCheatsheet,
-    setShowCommand, setShowGlobalKeyboard, setShowHistory, setShowLayers,
+    setShowCommand, setShowGlobalKeyboard, setShowLayers,
     setShowMobileMenu, setShowSettings, setShowSplitPicker, setShowStructure,
-    setSplitTarget, setShowHebrewDiagnostic, setUiVisible, setUserAvatar, setUserId, setUserName,
+    setSplitTarget, setUiVisible, setUserAvatar, setUserId, setUserName,
     allBooks, handleChatNavigate, handleChatOpenTab, handleCommandChat,
     handleCommandNav, handleConfirmSplit, handleSearchCommand, openLibraryView,
-    openTilesView, setCollection, setHebrewLessonId, setStudyWeek,
+    openTilesView, setCollection, setStudyWeek,
   }
 
   return (
@@ -999,7 +897,7 @@ const [showAssessment, setShowAssessment] = useState(false)
                   <div className="border-t border-neutral-200 dark:border-neutral-700 my-1" />
                   <p className="px-3 py-1 text-[9px] font-semibold uppercase tracking-wider text-neutral-400">Tools</p>
                   <button onClick={() => { setShowMainMenu(false); handleOpenChat() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">💬 Chat</button>
-                  <button onClick={() => { setShowMainMenu(false); setShowHistory(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🕐 History</button>
+                  <button onClick={() => { setShowMainMenu(false); openHistoryTab() }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🕐 History</button>
                   <button onClick={() => { setShowMainMenu(false); setShowStructure(true) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">⊞ Structure</button>
                   <button onClick={() => { setShowMainMenu(false); setShowLayers(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">🎨 Layers</button>
                   <button onClick={() => { setShowMainMenu(false); setShowGlobalKeyboard(p => !p) }} className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-2 cursor-pointer">א Keyboard</button>
@@ -1087,41 +985,12 @@ const [showAssessment, setShowAssessment] = useState(false)
             )}
           </h1>
         </div>
-        {/* Right side: compact nav search + Tiles */}
+        {/* Right side: palette shortcut + Tiles */}
         <div className="flex items-center gap-1 shrink-0">
-          <div ref={mobileNavRef} className="relative">
-            <form onSubmit={e => { e.preventDefault(); submitMobileNav() }}>
-            <input
-              type="search" inputMode="search" enterKeyHint="go"
-              value={mobileNavVal} onChange={e => handleMobileNavInput(e.target.value)}
-              onFocus={() => { if (mobileNavVal.trim()) setShowMobileNav(true) }}
-              onKeyDown={e => {
-                if (e.key === 'Escape') { setShowMobileNav(false); e.target.blur() }
-                if (e.key === 'ArrowDown') { e.preventDefault(); setMobileNavSel(i => Math.min(i + 1, mobileNavResults.length - 1)) }
-                if (e.key === 'ArrowUp') { e.preventDefault(); setMobileNavSel(i => Math.max(i - 1, 0)) }
-                if (e.key === 'Enter') { e.preventDefault(); submitMobileNav() }
-              }}
-              placeholder="🔍 Go to…"
-              className="w-24 text-base px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all" />
-            </form>
-            {showMobileNav && mobileNavResults.length > 0 && (
-              <div data-testid="mobile-nav-dropdown" className="absolute right-0 top-full mt-1 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-h-72 overflow-y-auto z-50 min-w-[220px]">
-                {mobileNavResults.map((r, i) => (
-                  <button key={i}
-                    onClick={() => { executeMobileNav(r); setShowMobileNav(false) }}
-                    onMouseEnter={() => setMobileNavSel(i)}
-                    className={`w-full text-left px-3 py-2 flex items-center gap-2 cursor-pointer transition-colors text-[11px] ${
-                      i === mobileNavSel ? 'bg-blue-100 dark:bg-blue-900/30' : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/50'
-                    }`}>
-                    <span className="shrink-0">{r.icon || (r.book ? '📖' : r.type === 'chat' ? '💬' : r.type === 'search' ? '🔍' : '⚡')}</span>
-                    <span className="truncate text-neutral-700 dark:text-neutral-300">{r.label}</span>
-                    {r.book && <span className="ml-auto text-[9px] text-neutral-400 shrink-0">↵ go</span>}
-                    {r.type === 'search' && <span className="ml-auto text-[9px] text-neutral-400 shrink-0">↵ search</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button onClick={() => setShowCommand(true)} title="Go to…"
+            className="text-sm px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer">
+            🔍 Go to…
+          </button>
           <button onClick={openTilesView}
             className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
             ▦

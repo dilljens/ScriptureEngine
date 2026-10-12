@@ -38,12 +38,27 @@ def test_resolve_pacing_pref_and_override():
 
 def test_hebrew_prefs_defaults_and_roundtrip(tmp_path):
     conn = sqlite3.connect(str(tmp_path / "prefs.db"))
-    assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 10, "max_reviews_per_day": 100}
+    assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 10, "max_reviews_per_day": 100,
+                                            "desired_retention": 0.9}
     conn.execute(
         "INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day)"
         " VALUES ('u1', 5, 50)")
-    assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 5, "max_reviews_per_day": 50}
+    assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 5, "max_reviews_per_day": 50,
+                                            "desired_retention": 0.9}
+    conn.execute("UPDATE hebrew_prefs SET desired_retention=0.85 WHERE user_id='u1'")
+    assert read_hebrew_prefs(conn, "u1")["desired_retention"] == 0.85
+    # Out-of-range stored values clamp to 0.70–0.99.
+    conn.execute("UPDATE hebrew_prefs SET desired_retention=0.2 WHERE user_id='u1'")
+    assert read_hebrew_prefs(conn, "u1")["desired_retention"] == 0.7
     conn.close()
+
+
+def test_retention_shortens_intervals_and_leech_threshold():
+    from lib.api.fsrs import next_interval
+    from web.routes.hebrew import LEECH_LAPSE_THRESHOLD
+    assert LEECH_LAPSE_THRESHOLD == 8  # Anki standard
+    assert next_interval(20.0, 0.8) > next_interval(20.0, 0.9) > next_interval(20.0, 0.95)
+    assert 7 < LEECH_LAPSE_THRESHOLD <= 8
 
 
 def test_review_state_migration_adds_card_mode(tmp_path):
@@ -126,7 +141,7 @@ def _make_apkg(path: Path):
 
 
 def test_anki_apkg_parse_and_mapping(tmp_path):
-    mod = _load_script("import_anki_audio")
+    mod = _load_script("import_apkg_pack")
     apkg = tmp_path / "heb.apkg"
     _make_apkg(apkg)
     parsed = mod.parse_apkg(apkg)
@@ -206,3 +221,23 @@ def test_tts_wordlist_helpers(tmp_path):
     ]), encoding="utf-8")
     items = list(mod._iter_wordlist(words_file))
     assert items == [("w1", "w1", "word", "בְּרֵאשִׁית")]
+
+
+def test_match_anki_image_exact_folded_and_miss(monkeypatch):
+    import web.routes.hebrew as H
+    pack = {"אֱלֹהִים": {"gloss": "God", "audio": [],
+                         "images": ["אֱלֹהִים__אֱלֹהִים.png"]}}
+    monkeypatch.setattr(H, "_load_anki_pack", lambda: pack)
+    assert H._match_anki_image("אֱלֹהִים") == "אֱלֹהִים__אֱלֹהִים.png"
+    # Folded: unpointed query still resolves to the pointed entry
+    assert H._match_anki_image("אלהים") == "אֱלֹהִים__אֱלֹהִים.png"
+    assert H._match_anki_image("zzz-not-a-word") == ""
+    monkeypatch.setattr(H, "_load_anki_pack", lambda: {})
+    assert H._match_anki_image("אֱלֹהִים") == ""
+
+
+def test_load_anki_pack_missing_file_is_empty(tmp_path, monkeypatch):
+    import web.routes.hebrew as H
+    monkeypatch.setattr(H, "BASE_DIR", tmp_path)
+    H._ANKI_PACK_CACHE.clear()
+    assert H._load_anki_pack() == {}

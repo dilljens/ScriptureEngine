@@ -4,7 +4,7 @@ A detector must be pre-registered (method + parameters declared in advance)
 before running against the data. Post-hoc discoveries get lower confidence.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def register_method(conn, method_name, parameters=None, null_control_plan="both"):
@@ -37,7 +37,7 @@ def register_method(conn, method_name, parameters=None, null_control_plan="both"
             "note": "Already registered",
         }
 
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     conn.execute("""
         INSERT INTO method_registrations (method_name, parameters_json, null_control_plan, preregistered, preregistered_date)

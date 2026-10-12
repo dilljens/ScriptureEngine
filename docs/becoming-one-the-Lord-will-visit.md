@@ -2,6 +2,12 @@
 
 *For personal study. Isaiah teaches how to become one the Lord will visit: wash, ascend, confess, hear, be carried, awake, and feast. Seeing Him is real and conditional on sanctification. Built from Isaiah 1-66 read through Nephi's keys (2 Nephi 11; 25:1-8), Christ's command (3 Nephi 23:1-3), and the D&C (84, 88:68, 93:1, 97, 113).*
 
+## Abstract
+
+**Thesis.** Isaiah 1-66 teaches a sequenced transformation — seven movements from washing at the gate to prayer that rends heaven — by which an unclean reader becomes one the Lord will visit. **Method.** The manual reads Isaiah canonically through Nephi's four keys (Christ, covenant Israel and Gentiles together, past type with latter-day antitype, likening invitation), checks pivotal terms against Hebrew roots, stages the ascent on the fifteen Songs of Ascents, and converts each movement into daily, weekly, and temple practice. **Finding.** The promise is real and conditional in every dispensation: forsake, come, call, obey, keep — and the sanctified, single mind sees Him unveiled.
+
+**Roadmap.** Section 1 states the promise and its conditions. Section 2 lays out the Hebrew terms the manual depends on. Sections 3-4 give the ruling image (clay prayer) and the seven transformations. Sections 5-8 convert doctrine into rhythm, restoration, prayer text, and a thirty-day path. Sections 9-11 are the scholarly appendix (Baker-Ricks, the fifteen days in full, temple fill). Section 12 states limits and answers objections; the conclusion gathers the whole.
+
 > "And now I write some of the words of Isaiah, that whoso of my people who shall see these words may lift up their hearts and rejoice for all men." — 2 Nephi 11:8
 > "Sanctify yourselves that your minds become single to God, and the days will come that you shall see him; for he will unveil his face unto you." — D&C 88:68
 > "Every soul who forsaketh his sins and cometh unto me, and calleth on my name, and obeyeth my voice, and keepeth my commandments, shall see my face, and know that I am." — D&C 93:1
@@ -19,15 +25,19 @@ Scripture does not treat seeing the Lord as metaphor only, nor as reserved for p
 
 Isaiah's whole book is how an unclean people becomes a holy people who can abide that weight of glory without being consumed by it. Hebrews 12:14: without holiness no man shall see the Lord. Psalm 24:3-4: clean hands, pure heart shall ascend.
 
-A visit does not always mean the same form: dream, voice, angel, veil thin in temple, Second Comforter, final coming. Isaiah covers all of them. Your work is the same: become visitable.
+A visit does not always mean the same form: dream, voice, angel, veil thin in temple, Second Comforter (Christ's personal manifestation to the sanctified), final coming. Isaiah covers all of them. Your work is the same: become visitable.
+
+Three witnesses stand over this manual, and each should be heard for what it distinctly claims. Nephi's closing invitation (2 Nephi 11:8) says Isaiah's words can lift any reader's heart to rejoicing — the text is for "all men," not specialists. The Doctrine and Covenants promise (D&C 88:68) names the mechanism — sanctify yourselves until minds are single — and the outcome — He will unveil His face. And the fivefold condition (D&C 93:1: forsake, come, call, obey, keep) makes the promise examinable: each verb is something the reader can check tonight. Together they mean the manual that follows is not inspiration about a vague hope but training for a stated promise with stated terms.
 
 ## 2. What Hebrew shows that English hides
 
 English hides what Hebrew shows: holiness is separateness for use, cleanness is fitness to enter, glory is weight to bear, presence is face to seek, and repentance is return home.
 
+Why this section comes before the transformations: every practice in Section 4 turns on a word — wash, clean, wait, contrite, call — whose English flattening would make the practice mechanical. The glosses below restore each word's force so that the doing carries its intended meaning. (Hebrew verbs come in stems — Qal basic action, Piel intensive, Hitpael reflexive, Niphal passive — named below so the grammar notes read plainly.) Read them as tools, not trivia; each returns in the transformation where it is used.
+
 ### Holiness is separateness for use, not just goodness
 Root q-d-sh (holy, set apart): qadosh (holy), qiddesh (Piel, to make holy), hitqaddesh (Hitpael, sanctify yourself; cf. Josh. 3:5), miqdash (sanctuary, temple).
-"Holy, holy, holy" (Isa. 6:3, qadosh, qadosh, qadosh) is Hebrew superlative: completely, utterly set apart. Threefold = Father, Son, Holy Ghost witness, heaven-earth-fullness.
+"Holy, holy, holy" (Isa. 6:3, qadosh, qadosh, qadosh) is Hebrew superlative: completely, utterly set apart. Threefold — proposed here homiletically as Father, Son, Holy Ghost witness, heaven-earth-fullness.
 To be sanctified is to be taken out of common use (Babylon) and set apart for God's use (Zion). Hence Isa. 52:11: depart, touch no unclean, be clean: separation precedes presence.
 
 Agency matters: Isa. 1:16 "rachatsu (Qal active, wash!) hizzakku (Hitpael, make-yourselves-clean)." The second verb is reflexive. You participate. God provides water and blood, but you step in. Same with Josh. 3:5 hitqaddeshu and D&C 88:68 "sanctify yourselves." Grace does not bypass agency.
@@ -60,14 +70,16 @@ Clay must be crushed, wetted, wedged before it can be shaped. Trembling is not f
 Isa. 58:9: "tiqra... ve'amar hineni": thou shalt call, and He shall say Here I am. Isa. 6:8: Isaiah says "hineni, shelacheni": Here am I, send me. God mirrors your consecration. You say Here I am to Him; He says Here I am to you. That is face-to-face language.
 
 ### Hebrew patterns are pedagogy
-- Parallelism: second line deepens first (Isa. 1:18: scarlet/crimson, snow/wool; double sin, double cleansing). Read both lines; the second tells you how to apply the first.
-- Chiasmus: center is turning point. Isa. 55:6-11 centers on forsake-return-pardon. Find the center; that is your action.
+- Parallelism: second line deepens first (Isa. 1:18: scarlet/crimson, snow/wool — synonymous parallelism, one stain doubly imaged, not double sin and double cleansing). Read both lines; the cleansing's thoroughness is the point.
+- Chiasmus: center is turning point. Isa. 55:6-11 centers (proposed) on forsake-return-pardon. Find the center; that is your action.
 - Rib (lawsuit): Isa. 1, 41-44. God sues to make you honest. Presence begins with truth in court.
 - Hoy (woe): six woes in Isa. 5 plus "woe is me" in 6:5. You join the guilty, then grace lifts you. Do not skip woe to get to comfort.
 - Repetition: "Comfort ye, comfort ye" (40:1), "Awake, awake" (51:9,17; 52:1). Doubled imperative = completed urgency. When Isaiah repeats, do it now and do it fully.
 - Name as doctrine: Shear-jashub (she'ar yashuv, remnant shall return, Isa. 7:3). Your children, covenants, even setbacks can embody return.
 
 ## 3. What "pray as clay" means (Isa. 64:8)
+
+The Hebrew section ended with words; this section gives the posture that holds them all. Before the seven transformations detail what to do, the clay prayer settles who you are while doing it: material in a Father's hands, not a contractor negotiating terms.
 
 > "But now, O Lord, thou art our father; we are the clay, and thou our potter; and we all are the work of thy hand." — Isa. 64:8
 
@@ -91,7 +103,9 @@ Enos prayed thus all day and night (Enos 1:4). The brother of Jared brought molt
 
 ## 4. The seven transformations: become visitable
 
-Seven transformations make a people visitable, from washing at the gate to prayer that rends heaven.
+Seven transformations make a people visitable, from washing at the gate to prayer that rends heaven. (The companion article counts six stages — conviction, washing, purging by fire, reverent hearing, covenant clothing, indwelling; the mapping is straightforward: purging by fire sits inside transformation 3, indwelling inside 7. Different partitionings of one road; nothing in either depends on the count.)
+
+Each transformation follows the same fourfold shape — Diagnose (the condition Isaiah names), Do (the action Isaiah commands), Promise (what the Lord pledges), Check (the question that examines tonight) — so that doctrine never remains abstract. Work them in order: each presumes the last, and the seventh (fasting, Sabbath, rending prayer) only holds if the first six have been honestly kept.
 
 ### 1. Reason and wash (Isa. 1)
 Diagnose: hands full of blood (1:15): harm, neglect, oppression while still offering. Vain oblations.
@@ -139,6 +153,8 @@ Check: Whose yoke will my next fast lift? When did I last beg for heavens to ren
 
 A morning, daily, Sabbath, temple, and monthly fast rhythm rehearses the ascent in the body, not only in study.
 
+This section exists because transformation 7 cannot be sustained by study alone. The seven movements above are dispositions; what follows is their schedule — the small, repeatable practices that keep washing, Egypt-checking, carrying, and fasting current rather than remembered. Adapt the times to your life; keep the elements.
+
 Morning (5-10 min): waken ear. One Isaiah verse aloud. Write one “word in season” for a weary one. Pray as clay: Father, shape me today to bear Thee.
 
 Daily: one wash (stop/do), one Egypt-check (did I ask His mouth first?), one carrying (give Him a burden).
@@ -151,6 +167,8 @@ Monthly fast: attach to someone's bondage. Loose, then call and listen for Here 
 
 ## 6. What disqualifies, and what restores
 
+This section answers the fear the rhythm section raises: what if I have already failed? Isaiah's answer is unsparing about the disqualifiers and unqualified about restoration — both truths held at once, since either alone distorts.
+
 Isa. 59:2: iniquities separate, hide face. Isa. 1:15: He will not hear with bloody hands. Heb. 12:14: no holiness, no seeing. D&C 76:116: no sanctification, cannot bear glory.
 
 Restoration is always open while He may be found (55:6): return, confess straying (53:6), touch altar (6:7), be washed (1:18), be carried (46:4), be revived (57:15). "Though thou wast angry, anger turned away" (12:1). Then trust, draw water with joy (12:2-3).
@@ -159,7 +177,7 @@ If you have fallen, do not hide face. Bring letter to house as Hezekiah (37:14),
 
 ## 7. A clay prayer to use
 
-Pray this plainly to practice clay posture, then obey one small shaping the same day.
+Section 3 explained the clay posture; here it becomes a text to pray aloud until its shape becomes your own. Pray this plainly to practice clay posture, then obey one small shaping the same day.
 
 Father, Thou art Potter, I am clay.
 I have been hard: [name it: hurried lips, hard eyes, clenched hands].
@@ -176,6 +194,8 @@ Then be still. Write. Obey.
 
 Thirty days through Isaiah rehearse washing, hearing, carrying, cleansing, and indwelling to the point of Here I am.
 
+Where Section 5 gave the daily rhythm and Section 7 the prayer text, this section gives the reading order: five weeks that walk the seven transformations in canonical sequence, ending in rending prayer and contrite dwelling. Memorize one verse per week; the memorized verse is the week's anchor when study time fails.
+
 Week 1: Wash/Ascend: Isa. 1, 2, 4, 6. Memorize 1:18; 6:8.
 Week 2: Voice: Isa. 29, 30, 33, 35. Memorize 30:15; 33:17.
 Week 3: Carried: Isa. 40, 43, 44, 48. Memorize 40:31; 46:4.
@@ -184,11 +204,13 @@ Capstone: Rend/Dwell: Isa. 58, 64, 65, 66. Memorize 58:9; 64:1; 66:2.
 
 Read with 2 Nephi 11, 25 and 3 Nephi 23 open. End each sitting: what impurity? what washing? what promise? what one likened action?
 
-Great is the Holy One of Israel in the midst of thee (Isa. 12:6). Become one He can be in the midst of: clean, contrite, trembling, awake, robed, and He will say Here I am.
+Great is the Holy One of Israel in the midst of thee (Isa. 12:6). Become one He can be in the midst of: clean, contrite, trembling, awake, robed — and the pattern of Isaiah 6:8 and 58:9 invites expecting His answering Here I am, in His form and timing.
 
 ## 9. Appendix: Baker-Ricks, the Psalms out of order, and the 15-step ascent
 
 This answers: is Morales the Psalms book? No. The Psalms-order book is Baker & Ricks, *Who Shall Ascend into the Hill of the Lord? The Psalms in Israel's Temple Worship in the OT and in the Book of Mormon* (2009; 2nd ed. 2011).
+
+Who they are and why they matter here: LeGrand Baker and Stephen Ricks argue that the Psalms were originally the script of First-Temple worship rather than a private hymnbook, and that the present Psalter order is a post-exilic rearrangement. For this manual their thesis supplies the staircase the fifteen Songs of Ascents climb — the reason fifteen psalms of going-up can organize fifteen days of practice. Use their reconstruction as a lens, not as dogma; the daily practices below stand on the canonical psalms and Isaiah anchors regardless.
 
 ### Their thesis in brief
 
@@ -203,6 +225,8 @@ This answers: is Morales the Psalms book? No. The Psalms-order book is Baker & R
 Use this as lens, not dogma: the authors call it opinion, not revelation about modern temples. But the pattern matches Isaiah and the Songs of Ascent strikingly.
 
 ### The 15 Songs of Ascent as your staircase (Ps 120-134)
+
+The table that follows is the manual's engine room: each psalm's stage in one line, paired with the Isaiah anchor that repeats the same movement for your transformation. Read row by row; the rightmost column tells you what to do with the left two.
 
 *Shir HaMa'alot*: Song of the Steps. Fifteen psalms for pilgrims going up (*alah*) to feasts. Tradition links them to 15 temple steps, 15 words of the priestly blessing (Num. 6:24-26), Hezekiah's 15 years. Journey: distress far off → Keeper → glad arrival → supplication → deliverance → stability → joy → house/family → endurance → depths → humility → ark rest → anointing → night blessing.
 
@@ -248,7 +272,7 @@ End with Ps 24 aloud at a temple gate, real or pictured: *Who shall ascend? ... 
 
 ## 10. Parallel deep dive: all 15 days with more Isaiah anchors
 
-Each of the fifteen ascent psalms pairs with an Isaiah anchor for daily practice. For each day: psalm stage, primary Isaiah anchor, more anchors that repeat the pattern, Hebrew note, practice, memorize verse.
+Section 9 gave the staircase in outline; this section walks every step. Each of the fifteen ascent psalms pairs with an Isaiah anchor for daily practice. For each day: psalm stage, primary Isaiah anchor, more anchors that repeat the pattern, Hebrew note, practice, memorize verse.
 
 ### Days 1-3: Leave Babylon glad
 
@@ -306,9 +330,11 @@ Synthesis 13-15: rest → oil → blessing. Desired, anointed, sent. Ascent ends
 
 Temple symbols in Isaiah train leaving Babylon, entering the feast, praying as Hezekiah prayed, and abiding presence through ordinances.
 
+This final appendix fills what the fifteen days open: for readers who want more Isaiah behind each day's psalm, the subsections below supply it — Babylon to leave (11A), gate and feast to enter (11B), Hezekiah's prayer as the worked example (11C), the three Book of Mormon readers as decoders (11D), and the restoration presence corpus as the doctrinal frame (11E).
+
 ### 11A. Go out from Babylon: become humble (Isa 47, 42, 14)
 
-False throne: "Come down, sit in dust... there is no throne" (Isa 47:1). "Thou sayest... I am, and none else" (47:8,10): stealing God's *ani hu* (43:10). Sorceries/enchantments cannot save (47:9,11). Forsake 3 spells by name: assurance-scrolling, security-hoarding, image-craft. "Go ye out... be ye clean that bear vessels" (D&C 133:5; 38:42; Alma 5:57).
+False throne: "Come down, sit in dust... there is no throne" (Isa 47:1). "Thou sayest... I am, and none else" (47:8,10): Babylon voicing God's own *ani hu* (43:10) — an intertextual echo, asserted here as a reading, not demonstrated authorial intent. Sorceries/enchantments cannot save (47:9,11). Forsake 3 spells by name: assurance-scrolling, security-hoarding, image-craft. "Go ye out... be ye clean that bear vessels" (D&C 133:5; 38:42; Alma 5:57).
 
 Servant gentleness: "A bruised reed shall he not break, smoking flax shall he not quench... covenant... light... open blind eyes... bring prisoners" (Isa 42:1-7). "I will bring blind by way they knew not... not forsake" (42:16). Rule: never finish whom Babylon wounded. Mend privately, fan flickering faith, lead kindly.
 
@@ -330,7 +356,7 @@ Memorize Isa 56:7; 25:8.
 
 Besieged/spread: "Hezekiah... rent clothes, sackcloth, went into house" (37:1). "Received letter... spread it before Lord... Thou art God alone... save us... that kingdoms may know" (37:14-20). Gate silence first: "Answer him not" (36:21). Take accuser-letter up, spread whole, end *Thou alone*. Write one-page Rabshakeh letter, spread physically, pray 37:16-20.
 
-Sick/weep: "Turned face toward wall, prayed... wept sore" (38:2-3). "Heard prayer, seen tears: add 15 years... deliver" (38:5-6). "Cast all sins behind back" (38:17). "Sing songs in house all days" (38:20). Wall = Holy Place, back to world. Tears libation. After spread, turn to wall 5 min, write added mercy, sing one hymn.
+Sick/weep: "Turned face toward wall, prayed... wept sore" (38:2-3). "Heard prayer, seen tears: add 15 years... deliver" (38:5-6). "Cast all sins behind back" (38:17). "Sing songs in house all days" (38:20). Wall as Holy Place with back to world is likening, not exegesis — a use-pattern proposed for prayer, not the text's claim about architecture. Tears libation. After spread, turn to wall 5 min, write added mercy, sing one hymn.
 
 Healed/guarded: "Shewed house of precious things... nothing not shewed" (39:2). "All... shall be carried to Babylon" (39:6). "Good... peace in my days" (39:8). Mercy unguarded becomes tour. No prayer before showing. On same paper add: Mercy added ___ / Guard I vow ___ (spread only before Lord, pray before showing).
 
@@ -359,3 +385,19 @@ Alma veil/rest (Alma 13:11-13; 5:14,19): sanctified Holy Ghost, garments white, 
 D&C house (84:19-24; 88:68; 93:1; 97:15-17; 38:42; 133:5-7; 101:43-62; 109; 20:31-34; 50:28-29): godliness manifest ordinances, no ordinances no see face, hardened could not endure (84). Sanctify single, eyes opened, veil rent (88:68). Forsake/come/call/obey/keep: see face (93:1). House presence glory, no unclean permitted, keep not moved (97). Go out Babylon not haste (38:42; 133). Set watchmen tower (101). Temple prayer power/endued (109). Justification/sanctification grace to saints (20). Purified abideth understandeth (50). Practice: single-eye check before prayer + house-clean one media/app.
 
 Ordinances gate (2 Ne 31:13-14,17; Mosiah 18:8-10; Moses 6:60-61; JST Gen 14): follow Son repent baptized Holy Ghost fire remission endure (31). Bear/mourn/comfort/stand witnesses covenant (18). Justified Spirit sanctified blood water blood Spirit born again (Moses 6). Melchizedek sought peace righteousness obtained heaven sought Enoch city (JST Gen 14). Practice: 3 names you bear weekly.
+
+## 12. Limits and objections
+
+Three limits bound this manual honestly. First, the Baker-Ricks reconstruction used in Sections 9-10 is a proposal, not settled fact; the fifteen-day practice stands on the canonical psalms and Isaiah anchors, and would survive even if their First-Temple drama thesis were abandoned. Second, the Hebrew glosses in Section 2 are illustrative, not determinative; where a reading is homiletical rather than firm etymology (notably *qavah* as braiding), the manual says so, and no practice rests on etymology alone. Third, the manual promises no form or timing of visitation: it trains visitability — the reader's fitness — while form, timing, and degree remain the Lord's prerogative (dream, voice, angel, temple veil thinned, Second Comforter, final coming).
+
+Two objections deserve answers. The first: does a conditional promise collapse grace into works? The manual's answer is Moroni's — denied of ungodliness only to be perfected and sanctified in Christ by grace (Moro. 10:32-33). Conditions describe the capacity grace creates: washing, carrying, and clothing are what grace does with a willing soul, not wages paid for a visit. The second: does prescribing a thirty-day path and daily rhythm turn sanctification into technique? The manual's answer is Isaiah's own — the clay does not schedule the Potter (Isa. 64:8). Rhythm and path are postures of availability, never levers of compulsion; the heavens rend at His word, not at the reader's completion certificate.
+
+## Conclusion
+
+Become clean, contrite, and gathered enough to remain. Wash and reason (Isa. 1), ascend to learn (Isa. 2-4), confess and be purged and go (Isa. 6), sanctify Him and learn His voice over Egypt (Isa. 7-10, 28-39), let yourself be carried (Isa. 40-48), awake and be clean and keep covenant (Isa. 49-57), fast to loose and pray to rend (Isa. 58-66) — and He who said "Here I am" to those who call answers in the same pattern still, in His form and timing. Great is the Holy One of Israel in the midst of thee (Isa. 12:6). Become one He can be in the midst of: clean, contrite, trembling, awake, robed.
+
+## Works argued with
+
+- Baker, LeGrand, and Stephen Ricks. *Who Shall Ascend into the Hill of the Lord?* 2009; 2nd ed. 2011. Psalms as First-Temple libretto; post-exilic rearrangement; Psalm 24 as gate liturgy; fifteen Songs of Ascents as pilgrimage order. Used as lens, not dogma (Sections 9-10).
+- Morales, L. Michael. *Who Shall Ascend the Mountain of the Lord?* 2015. Distinguished from Baker-Ricks: Leviticus theology, Psalm 24:3 as epigraph, no Psalter-arrangement claim.
+- Nephi's keys (2 Nephi 11; 25:1-8), Christ's command (3 Nephi 23:1-3), and latter-day house theology (D&C 84; 88:68; 93:1; 97; 113) as the manual's ruling authorities throughout.

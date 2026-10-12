@@ -110,11 +110,12 @@ def next_difficulty(difficulty, rating):
     return min(max(reverted, 1.0), 10.0)
 
 
-def schedule(stability, difficulty, rating, days_elapsed=None):
+def schedule(stability, difficulty, rating, days_elapsed=None, request_retention=0.9):
     """Full FSRS-6 step for EXISTING memory (new cards use the initials).
 
     days_elapsed: whole days since last review (None = assume at-design
     retention 0.9). Same-day re-reviews take the short-term branch.
+    request_retention: desired retention for the interval (Anki deck option).
     Returns (new_stability, new_difficulty, interval_days).
     """
     rating = max(1, min(4, int(rating)))
@@ -129,7 +130,7 @@ def schedule(stability, difficulty, rating, days_elapsed=None):
             new_s = stability_after_success(stability, difficulty, r, rating)
         new_d = next_difficulty(difficulty, rating)
     new_s = max(new_s, STABILITY_MIN)
-    return new_s, new_d, next_interval(new_s)
+    return new_s, new_d, next_interval(new_s, request_retention)
 
 
 def humanize_interval(days):

@@ -196,47 +196,30 @@ test.describe('Mobile — Learn view open-ended questions', () => {
   })
 })
 
-test.describe('Mobile — nav search bar', () => {
+test.describe('Mobile — go-to palette entry', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('/')
     await expect(mobileH1(page)).toBeVisible({ timeout: 15000 })
   })
 
-  test('nav search input is visible on mobile', async ({ page }) => {
-    const navSearch = page.locator('input[placeholder*="Go to"]')
-    await expect(navSearch).toBeVisible()
+  test('go-to button opens the command palette on mobile', async ({ page }) => {
+    await page.locator('button[title="Go to…"]').click()
+    await expect(page.getByPlaceholder(/isa 55:6/)).toBeVisible({ timeout: 5000 })
   })
 
-  test('nav search shows book results for "isa"', async ({ page }) => {
-    const navSearch = page.locator('input[placeholder*="Go to"]')
-    await navSearch.fill('isa')
-    // Scoped to the nav dropdown: unscoped button queries match the hidden
-    // desktop header first (same "Isaiah" breadcrumb text, display:none).
-    const result = page.getByTestId('mobile-nav-dropdown').locator('button').filter({ hasText: /Isaiah/i }).first()
-    await expect(result).toBeVisible({ timeout: 5000 })
-  })
-
-  test('nav search enter navigates to chapter', async ({ page }) => {
-    const navSearch = page.locator('input[placeholder*="Go to"]')
-    await navSearch.fill('isa 55')
-    // Wait for dropdown to appear (scoped: the "↵ go" hint lives in the row)
-    const dropdownResult = page.getByTestId('mobile-nav-dropdown').locator('button').filter({ hasText: /go/i }).first()
-    await expect(dropdownResult).toBeVisible({ timeout: 5000 })
-    await navSearch.press('Enter')
+  test('palette navigates to chapter', async ({ page }) => {
+    await page.locator('button[title="Go to…"]').click()
+    const input = page.getByPlaceholder(/isa 55:6/)
+    await input.fill('isa 55')
+    await input.press('Enter')
     // Should navigate to Isaiah 55
     await expect(mobileH1(page)).toContainText(/ch\. 55|Isaiah 55/, { timeout: 10000 })
   })
 
-  test('nav search arrow keys navigate dropdown', async ({ page }) => {
-    const navSearch = page.locator('input[placeholder*="Go to"]')
-    await navSearch.fill('isa')
-    await page.waitForTimeout(500)
-    // Press ArrowDown to select next item
-    await navSearch.press('ArrowDown')
-    // Press Enter — should navigate somewhere
-    await navSearch.press('Enter')
-    // Breadcrumb should change from default
-    await expect(mobileH1(page)).toBeVisible({ timeout: 5000 })
+  test('palette offers full-text results', async ({ page }) => {
+    await page.locator('button[title="Go to…"]').click()
+    await page.getByPlaceholder(/isa 55:6/).fill('atonement')
+    await expect(page.getByText('Full-text', { exact: false }).first()).toBeVisible({ timeout: 10000 })
   })
 })

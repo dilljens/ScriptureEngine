@@ -23,23 +23,23 @@ const AssessmentView = React.lazy(() => import('./AssessmentView'))
 export default function AppOverlays(props) {
   const {
     chatInitialMsg, mobileActiveTab, showAssessment, showChat, showCheatsheet,
-    showCommand, showGlobalKeyboard, showHistory, showLayers, showMobileMenu,
+    showCommand, showGlobalKeyboard, showLayers, showMobileMenu,
     showSettings, showSplitPicker, showStructure, splitTarget, userId, userName, userAvatar,
     uiVisible,
     setChatInitialMsg, setShowAssessment, setShowChat, setShowCheatsheet,
-    setShowCommand, setShowGlobalKeyboard, setShowHistory, setShowLayers,
+    setShowCommand, setShowGlobalKeyboard, setShowLayers,
     setShowMobileMenu, setShowSettings, setShowSplitPicker, setShowStructure,
     setSplitTarget, setUiVisible, setUserAvatar, setUserId, setUserName,
     allBooks, handleChatNavigate, handleChatOpenTab, handleCommandChat,
     handleCommandNav, handleConfirmSplit, handleSearchCommand, openLibraryView,
-    openTilesView, setCollection, setHebrewLessonId, setStudyWeek,
-    setShowHebrewDiagnostic,
+    openTilesView, setCollection, setStudyWeek,
   } = props
 
   const {
     currentTab, viewLevel, goToChapter, updateTab,
     currentWorkspace, selectTab, openChatTab, openHebrewTab, openLearnTab,
     openMemorizeTab, openWikiTab, openHubNoteTab, openStudiesTab, openArticlesTab,
+    openHistoryTab,
   } = useTabs()
   const {
     hotkeys, getHotkey, setHotkey, resetHotkeys, DEFAULT_HOTKEYS,

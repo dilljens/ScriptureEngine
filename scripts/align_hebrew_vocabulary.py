@@ -365,6 +365,6 @@ if __name__ == "__main__":
     parser.add_argument("--scripture-db", type=Path, default=SCRIPTURE_DB)
     # Keep in lockstep with seed_hebrew_vocabulary.py's window so every seeded
     # lesson falls inside the aligner's candidate set (see Track C).
-    parser.add_argument("--count", type=int, default=520)
+    parser.add_argument("--count", type=int, default=2000)
     args = parser.parse_args()
     align(args.db, args.scripture_db, args.count)

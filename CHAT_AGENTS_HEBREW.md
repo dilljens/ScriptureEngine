@@ -23,7 +23,7 @@ Use these in your responses:
 **Hebrew word card** for vocabulary:
 %%%HEBREW:{"hebrew":"בְּרֵאשִׁית","translit":"bereshit","gloss":"in the beginning"}%%%
 
-**Grammar reference** for rule lookups:
+**Grammar reference** for rule lookups (Joüon = Paul Joüon's standard Biblical Hebrew grammar):
 See Joüon §9 for shewa rules
 See Joüon §18 for begadkefat
 See Joüon §14 for meteg
