@@ -197,3 +197,91 @@ def test_non_stream_research_question_keeps_full_menu(client, monkeypatch):
     names = {t["function"]["name"] for t in calls[0]["tools"]}
     assert "scripture_research" in names
     assert "scripture_graph_path" in names
+
+
+def _two_identical_calls_response():
+    def tc(call_id):
+        return {
+            "id": call_id,
+            "type": "function",
+            "function": {"name": "scripture_search",
+                         "arguments": '{"query": "nephi go and do"}'},
+        }
+    return {
+        "choices": [{
+            "message": {"role": "assistant", "content": "",
+                        "tool_calls": [tc("call_1"), tc("call_2")]},
+            "finish_reason": "tool_calls",
+        }],
+    }
+
+
+def _stop_response(content="done"):
+    return {
+        "choices": [{"message": {"role": "assistant", "content": content},
+                     "finish_reason": "stop"}],
+    }
+
+
+def test_identical_calls_in_one_round_execute_once(client, monkeypatch):
+    """Two identical tool calls in one round hit the DB once."""
+    monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
+    executions = []
+
+    def fake_call_tool(name, conn, **kwargs):
+        executions.append((name, kwargs))
+        return {"ok": True, "results": [{"ref": "1ne.3.7"}]}
+
+    monkeypatch.setattr(chat_routes, "call_tool", fake_call_tool)
+    calls = []
+
+    async def fake_call(payload):
+        calls.append(payload)
+        if len(calls) == 1:
+            return _two_identical_calls_response()
+        return _stop_response("1 Nephi 3:7")
+
+    monkeypatch.setattr(chat_routes, "call_deepseek", fake_call)
+    resp = client.post(
+        "/api/v1/chat",
+        headers=_auth_headers(),
+        json={"messages": [{"role": "user", "content":
+                "where is the scripture where nephi says he will go and do"}]},
+    )
+    assert resp.status_code == 200
+    assert len(executions) == 1
+    # Both tool_call ids still get their (shared) result in context.
+    data = resp.json()["data"]
+    assert len(data["tool_results"]) == 2
+    assert (data["tool_results"][0]["result"]
+            == data["tool_results"][1]["result"])
+
+
+def test_lookup_budget_clamped_research_untouched(client, monkeypatch):
+    """Simple lookups are capped at the minimum thinking budget; deep
+    questions keep whatever budget the client sent."""
+    monkeypatch.setattr(chat_routes, "DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(chat_routes, "_check_rate_limit", lambda ip, limit=None: True)
+    calls = []
+
+    async def fake_call(payload):
+        calls.append(payload)
+        return _stop_response()
+
+    monkeypatch.setattr(chat_routes, "call_deepseek", fake_call)
+
+    client.post("/api/v1/chat", headers=_auth_headers(), json={
+        "messages": [{"role": "user", "content":
+                      "where is the scripture where nephi says he will go and do"}],
+        "max_tokens": 128000,
+    })
+    assert calls[0]["max_tokens"] == chat_routes.LOOKUP_MAX_TOKENS == 16_384
+
+    calls.clear()
+    client.post("/api/v1/chat", headers=_auth_headers(), json={
+        "messages": [{"role": "user", "content":
+                      "compare the creation accounts in genesis 1 and moses 2"}],
+        "max_tokens": 128000,
+    })
+    assert calls[0]["max_tokens"] == 128000

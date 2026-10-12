@@ -1,11 +1,13 @@
 """LLM Chat proxy with function calling."""
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
 import re
 import sys
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -1846,6 +1848,73 @@ LOOKUP_TOOLS = frozenset({
     "scripture_batch_lookup",
 })
 LOOKUP_MAX_ROUNDS = 2
+# Simple lookups share the server's minimum thinking budget instead of the
+# client's (often huge) max_tokens — the model paces its reasoning against
+# the budget, so a smaller cap means a faster, shorter answer. Truncation is
+# fail-safe: the finish_reason="length" guard retries with a bigger budget.
+LOOKUP_MAX_TOKENS = 16_384  # == MIN_THINKING_TOKENS (defined below); kept literal (this block runs first at import)
+
+
+class _RequestSeen:
+    """Per-request duplicate suppression for read-only tool calls.
+
+    Thread-safe claim/wait protocol: rounds execute concurrently via
+    asyncio.to_thread, so two identical calls in one round race. The first
+    claimant becomes the owner and executes; concurrent duplicates wait on
+    an event and share the owner's result — one execution per (tool, args,
+    user) per request. Errors are never stored (owner abandons the key, so
+    a waiter retries inline instead of replaying a failure), and waiters
+    fall back to inline execution rather than hanging on a dead owner.
+    Writes never reach here — staging tools execute on a separate path.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        # key -> ("ready", result) | ("pending", threading.Event)
+        self._results = {}
+
+    def claim(self, key):
+        """Try to become the executor for key.
+
+        Returns ("owner", event), ("hit", result), or ("wait", event)."""
+        with self._lock:
+            entry = self._results.get(key)
+            if entry is None:
+                event = threading.Event()
+                self._results[key] = ("pending", event)
+                return "owner", event
+            status, data = entry
+            if status == "ready":
+                return "hit", data
+            return "wait", data
+
+    def peek_ready(self, key):
+        with self._lock:
+            entry = self._results.get(key)
+            if entry is not None and entry[0] == "ready":
+                return entry[1]
+            return None
+
+    def publish(self, key, event, result):
+        """Owner finished: store the result and wake waiters (only if still ours)."""
+        with self._lock:
+            if self._results.get(key) == ("pending", event):
+                self._results[key] = ("ready", result)
+                event.set()
+
+    def abandon(self, key, event):
+        """Owner failed: release the key so a waiter retries inline; wake them."""
+        with self._lock:
+            if self._results.get(key) == ("pending", event):
+                del self._results[key]
+                event.set()
+
+
+def _seen_key(fn_name, fn_args) -> str:
+    raw = json.dumps(
+        [fn_name, fn_args], sort_keys=True, ensure_ascii=False, default=str
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def _is_simple_lookup(body, msgs) -> bool:
@@ -1858,6 +1927,18 @@ def _is_simple_lookup(body, msgs) -> bool:
         return _subagents.is_simple_lookup(msgs)
     except Exception:
         return False
+
+
+def _clamp_lookup_budget(body) -> None:
+    """Cap a simple lookup's token budget (works on ChatRequest or dict)."""
+    try:
+        if isinstance(body, dict):
+            if (body.get("max_tokens") or 0) > LOOKUP_MAX_TOKENS:
+                body["max_tokens"] = LOOKUP_MAX_TOKENS
+        elif (getattr(body, "max_tokens", 0) or 0) > LOOKUP_MAX_TOKENS:
+            body.max_tokens = LOOKUP_MAX_TOKENS
+    except Exception:
+        pass
 
 
 # Simple in-memory rate limiter (per IP, sliding 60s window). General chat and
@@ -2274,6 +2355,12 @@ async def llm_chat(body: ChatRequest, request: Request):
     # Build messages with system prompt (mode-specific) + Hebrew hydration
     msgs = _prepare_chat_messages(body)
 
+    # Fast-path detection runs before the payload snapshot: the lookup menu
+    # and the clamped budget must be in the very first provider call.
+    simple_lookup = _is_simple_lookup(body, msgs)
+    if simple_lookup:
+        _clamp_lookup_budget(body)
+
     # Prepare request payload (no explicit thinking flags — let DeepSeek use own defaults
     # like OpenCode does. No thinking/reasoning_effort forcing means the model naturally
     # balances its token budget between thinking and visible response.)
@@ -2283,7 +2370,6 @@ async def llm_chat(body: ChatRequest, request: Request):
         "max_tokens": body.max_tokens,
         "temperature": body.temperature,
     }
-    simple_lookup = _is_simple_lookup(body, msgs)
     if body.tools_enabled:
         # Filter out disabled tools + scope-gated tools the request didn't opt into.
         # Simple lookups get the lookup-only menu so the model cannot wander
@@ -2296,6 +2382,7 @@ async def llm_chat(body: ChatRequest, request: Request):
         )
         payload["tool_choice"] = "auto"
 
+    seen = _RequestSeen()
     tool_results = []
     max_tool_rounds = (
         LOOKUP_MAX_ROUNDS if simple_lookup
@@ -2388,6 +2475,7 @@ async def llm_chat(body: ChatRequest, request: Request):
                 body.scopes,
                 _chat_tool_user_id(body),
                 body.mode,
+                seen,
             )
 
         ro_results = []
@@ -2643,7 +2731,7 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False,
     return payload
 
 
-def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat"):
+def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat", seen=None):
     """Run one read-only chat tool in a worker thread (own DB connection).
 
     Executes off the event loop so concurrent tool calls in a round actually
@@ -2671,8 +2759,33 @@ def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat"):
     # LLM/client-supplied user_id, even when it is present in tool arguments.
     if _tool_accepts_user_id(fn_name):
         fn_args["user_id"] = user_id or "default"
+    owner_event = None
+    if seen is not None:
+        seen_key = _seen_key(fn_name, fn_args)
+        action, data = seen.claim(seen_key)
+        if action == "hit":
+            return data
+        if action == "owner":
+            owner_event = data
+        else:
+            # A concurrent duplicate is already executing: wait for its
+            # result (twice), then fall back to inline execution rather
+            # than hanging the request on a dead owner.
+            for _ in range(2):
+                data.wait(120.0)
+                ready = seen.peek_ready(seen_key)
+                if ready is not None:
+                    return ready
+                action, data = seen.claim(seen_key)
+                if action == "hit":
+                    return data
+                if action == "owner":
+                    owner_event = data
+                    break
     cached = tool_cache.get(fn_name, fn_args)
     if cached is not None:
+        if owner_event is not None:
+            seen.publish(seen_key, owner_event, cached)
         return cached
     try:
         conn = get_db()
@@ -2681,8 +2794,15 @@ def _run_tool_thread(fn_name, fn_args, scopes, user_id="", mode="chat"):
         finally:
             conn.close()
         tool_cache.set(fn_name, fn_args, result)
+        if owner_event is not None:
+            if isinstance(result, dict) and "error" not in result:
+                seen.publish(seen_key, owner_event, result)
+            else:
+                seen.abandon(seen_key, owner_event)
         return result
     except Exception as e:
+        if owner_event is not None:
+            seen.abandon(seen_key, owner_event)
         return {"error": str(e)}
 
 
@@ -3038,12 +3158,15 @@ async def _chat_pipeline(body, msgs):
     prepared message list (system prompt injected, budget applied).
     """
     tool_results = []
+    seen = _RequestSeen()
+    simple_lookup = _is_simple_lookup(body, msgs)
+    if simple_lookup:
+        _clamp_lookup_budget(body)
 
     # ── Subagent fan-out (planner → parallel workers → synthesizer) ──
     # For research-shaped questions, replace the sequential tool loop with one
     # planner call, ≤3 concurrent worker tool-loops, then the shared final
     # stream. Wall-clock ≈ 3 sequential LLM calls instead of up to 15.
-    simple_lookup = _is_simple_lookup(body, msgs)
     if (
         getattr(body, "subagents", True)
         and body.tools_enabled
@@ -3071,6 +3194,7 @@ async def _chat_pipeline(body, msgs):
                     body.scopes,
                     _chat_tool_user_id(body),
                     body.mode,
+                    seen,
                 )
 
             queue = asyncio.Queue()
@@ -3182,6 +3306,7 @@ async def _chat_pipeline(body, msgs):
                 body.scopes,
                 _chat_tool_user_id(body),
                 body.mode,
+                seen,
             )
 
         ro_results = (
