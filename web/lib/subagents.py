@@ -58,6 +58,34 @@ DEEP_PATTERN = re.compile(
 )
 
 
+# High-precision lookup phrasing: identify / locate / quote a verse. Kept
+# narrow on purpose — anything research-shaped must keep the full path.
+# should_plan's DEEP_PATTERN always wins over this (checked first).
+LOOKUP_PATTERN = re.compile(
+    r"where(?:'s| is)\s+(?:the\s+)?(?:verse|scripture|passage)\b"
+    r"|\bwhat verse\b|\bwhich (?:verse|scripture|passage)\b"
+    r"|\bfind me the (?:verse|passage|scripture)\b"
+    r"|\bwhat does\b.{0,80}\bsay\??\s*$",
+    re.IGNORECASE,
+)
+LOOKUP_OPENER = re.compile(
+    r"^(quote|cite|find|look up|show me|give me)\b", re.IGNORECASE
+)
+
+
+def is_simple_lookup(messages):
+    """True for locate/quote/identify questions that need one lookup, not
+    research. Deep questions, long messages, and multi-part questions never
+    qualify — when in doubt the full pipeline runs."""
+    text = _user_text(messages)
+    if not text or len(text) > 200 or text.count("?") > 1:
+        return False
+    if DEEP_PATTERN.search(text):
+        return False
+    stripped = text.strip()
+    return bool(LOOKUP_PATTERN.search(stripped) or LOOKUP_OPENER.match(stripped))
+
+
 def should_plan(messages):
     """Fan-out heuristic: only research-shaped questions trigger the planner.
     Simple lookups stay on the sequential loop (fewer LLM calls, lower cost)."""

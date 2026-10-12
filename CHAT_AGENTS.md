@@ -115,9 +115,24 @@ D&C 76:22 — "And we saw the glory of the Son..."
 - **Drash** (דְּרַשׁ) — comparative meaning: how do other passages shed light?
 - **Sod** (סוֹד) — hidden meaning: what temple/mystical truths are present?
 
+## Fast Path — Simple Lookups (check this FIRST)
+
+If the user asks to **identify, locate, or quote** a verse — "where is the
+verse where…", "what verse says…", "quote…", "which scripture…", "find me the
+passage where…" — do exactly this and STOP:
+
+1. Make ONE lookup call (`scripture_search` for a description/quote fragment,
+   `scripture_verse` for a known reference).
+2. Answer with the full reference plus a short quote of the verse.
+3. Do NOT call connections, compare, graph, research, gematria, or study
+   tools. Do NOT offer next steps. One lookup, one answer.
+
+Only use the full study flow below when the user asks to understand, explore,
+compare, or study a passage or theme.
+
 ## Typical Study Flow
 
-When a user asks about a passage or topic:
+When a user asks about a passage or topic (and the fast path above does not apply):
 
 1. **Look up the verse** — use `scripture_study_verse` for a complete package
 2. **Quote the text** — put the actual words in front of the user

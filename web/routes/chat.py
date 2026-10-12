@@ -1836,6 +1836,30 @@ def _origin_allowed(value: str) -> bool:
     return host.endswith(".scriptureengine.org") and parts.scheme in ("https", "http")
 
 
+# Simple-lookup fast path (see CHAT_AGENTS.md "Fast Path"): locate/quote/
+# identify questions get 2 tool rounds, no planner fan-out, and a lookup-only
+# tool menu. Hebrew Tutor is excluded — its tools are not in the lookup set.
+LOOKUP_TOOLS = frozenset({
+    "scripture_search",
+    "scripture_verse",
+    "scripture_verse_text",
+    "scripture_batch_lookup",
+})
+LOOKUP_MAX_ROUNDS = 2
+
+
+def _is_simple_lookup(body, msgs) -> bool:
+    """Server-side fast-path gate: narrow lookup phrasing in general chat."""
+    try:
+        if _effective_mode(getattr(body, "mode", "chat")) == "hebrew":
+            return False
+        if not getattr(body, "tools_enabled", True):
+            return False
+        return _subagents.is_simple_lookup(msgs)
+    except Exception:
+        return False
+
+
 # Simple in-memory rate limiter (per IP, sliding 60s window). General chat and
 # Hebrew Tutor carry separate budgets so one heavy mode cannot exhaust the
 # other's capacity (plan Track G3: per-feature budgets).
@@ -2259,16 +2283,23 @@ async def llm_chat(body: ChatRequest, request: Request):
         "max_tokens": body.max_tokens,
         "temperature": body.temperature,
     }
+    simple_lookup = _is_simple_lookup(body, msgs)
     if body.tools_enabled:
-        # Filter out disabled tools + scope-gated tools the request didn't opt into
+        # Filter out disabled tools + scope-gated tools the request didn't opt into.
+        # Simple lookups get the lookup-only menu so the model cannot wander
+        # into research tools for a locate/quote question.
+        defs = TOOL_DEFINITIONS
+        if simple_lookup:
+            defs = [t for t in defs if t["function"]["name"] in LOOKUP_TOOLS]
         payload["tools"] = _filter_tools(
-            TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode
+            defs, body.scopes, body.disabled_tools, body.mode
         )
         payload["tool_choice"] = "auto"
 
     tool_results = []
     max_tool_rounds = (
-        15  # prevent infinite loops; 10 was too low for multi-work searches
+        LOOKUP_MAX_ROUNDS if simple_lookup
+        else 15  # prevent infinite loops; 10 was too low for multi-work searches
     )
 
     data = await call_deepseek(payload)
@@ -2585,7 +2616,8 @@ async def call_deepseek(req_payload):
     return resp.json()
 
 
-def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> dict:
+def _build_payload(body: ChatRequest, messages: list, stream: bool = False,
+                   lookup_only: bool = False) -> dict:
     """Build the provider-neutral chat-completions payload."""
     payload = {
         "model": body.model,
@@ -2598,8 +2630,11 @@ def _build_payload(body: ChatRequest, messages: list, stream: bool = False) -> d
         "session_id": body.session_id or "",
     }
     if body.tools_enabled:
+        defs = TOOL_DEFINITIONS
+        if lookup_only:
+            defs = [t for t in defs if t["function"]["name"] in LOOKUP_TOOLS]
         payload["tools"] = _filter_tools(
-            TOOL_DEFINITIONS, body.scopes, body.disabled_tools, body.mode
+            defs, body.scopes, body.disabled_tools, body.mode
         )
         payload["tool_choice"] = "auto"
     if stream:
@@ -3008,9 +3043,11 @@ async def _chat_pipeline(body, msgs):
     # For research-shaped questions, replace the sequential tool loop with one
     # planner call, ≤3 concurrent worker tool-loops, then the shared final
     # stream. Wall-clock ≈ 3 sequential LLM calls instead of up to 15.
+    simple_lookup = _is_simple_lookup(body, msgs)
     if (
         getattr(body, "subagents", True)
         and body.tools_enabled
+        and not simple_lookup
         and _subagents.should_plan(msgs)
     ):
         tool_defs = _filter_tools(
@@ -3080,8 +3117,8 @@ async def _chat_pipeline(body, msgs):
                 return
 
     # ── Tool-calling rounds (non-streaming) ──
-    payload = _build_payload(body, msgs, stream=False)
-    max_tool_rounds = 15
+    payload = _build_payload(body, msgs, stream=False, lookup_only=simple_lookup)
+    max_tool_rounds = LOOKUP_MAX_ROUNDS if simple_lookup else 15
     rounds = 0
 
     while rounds < max_tool_rounds:
