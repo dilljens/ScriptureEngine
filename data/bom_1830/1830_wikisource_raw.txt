@@ -1,0 +1,2036 @@
+
+
+===== Book of Mormon (1830)/1 Nephi =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi
+ | previous    = [[Book of Mormon (1830)/Preface|Preface]]
+ | next        = [[Book of Mormon (1830)/2 Nephi|2 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="9" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 1|Chapter I]]|5}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 2|Chapter II]]|16}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 3|Chapter III]]|21}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 4|Chapter IV]]|35}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 5|Chapter V]]|38}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 6|Chapter VI]]|52}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/1 Nephi/Chapter 7|Chapter VII]]|56}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter I
+ | previous    = [[Book of Mormon (1830)/1 Nephi|1 Nephi]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 2|1 Nephi 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="9" to="20" fromsection="CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter II
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 1|1 Nephi 1]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 3|1 Nephi 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="20" to="25" fromsection="CHAPTER II" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter III
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 2|1 Nephi 2]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 4|1 Nephi 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="25" to="39" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter IV
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 3|1 Nephi 3]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 5|1 Nephi 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="39" to="42" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter V
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 4|1 Nephi 4]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 6|1 Nephi 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="42" to="56" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter VI
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 5|1 Nephi 5]]
+ | next        = [[Book of Mormon (1830)/1 Nephi/Chapter 7|1 Nephi 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="56" to="60" fromsection="CHAPTER VI" tosection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/1 Nephi/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = First Book of Nephi—Chapter VII
+ | previous    = [[Book of Mormon (1830)/1 Nephi/Chapter 6|1 Nephi 6]]
+ | next        = [[Book of Mormon (1830)/2 Nephi|2 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="60" to="63" fromsection="CHAPTER VII" tosection="CHAPTER VII" />
+
+
+===== Book of Mormon (1830)/2 Nephi =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi
+ | previous    = [[Book of Mormon (1830)/1 Nephi|1 Nephi]]
+ | next        = [[Book of Mormon (1830)/Jacob|Jacob]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="63" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 1|Chapter I]]|59}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 2|Chapter II]]|66}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 3|Chapter III]]|68}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 4|Chapter IV]]|71}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 5|Chapter V]]|74}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 6|Chapter VI]]|78}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 7|Chapter VII]]|83}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 8|Chapter VIII]]|86}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 9|Chapter IX]]|91}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 10|Chapter X]]|99}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 11|Chapter XI]]|102}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 12|Chapter XII]]|112}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 13|Chapter XIII]]|118}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 14|Chapter XIV]]|120}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/2 Nephi/Chapter 15|Chapter XV]]|121}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter I
+ | previous    = [[Book of Mormon (1830)/2 Nephi|2 Nephi]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 2|2 Nephi 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="63" to="70" fromsection="CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 10 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter X
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 9|2 Nephi 9]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 11|2 Nephi 11]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="103" to="106" fromsection="CHAPTER X" tosection="CHAPTER X" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 11 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter XI
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 10|2 Nephi 10]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 12|2 Nephi 12]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="106" to="116" fromsection="CHAPTER XI" tosection="CHAPTER XI" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 12 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter XII
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 11|2 Nephi 11]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 13|2 Nephi 13]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="116" to="122" fromsection="CHAPTER XII" tosection="CHAPTER XII" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 13 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter XIII
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 12|2 Nephi 12]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 14|2 Nephi 14]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="122" to="124" fromsection="CHAPTER XIII" tosection="CHAPTER XIII" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 14 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter XIV
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 13|2 Nephi 13]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 15|2 Nephi 15]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="124" to="125" fromsection="CHAPTER XIV" tosection="CHAPTER XIV" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 15 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter XV
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 14|2 Nephi 14]]
+ | next        = [[Book of Mormon (1830)/Jacob|Jacob]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="125" to="126" fromsection="CHAPTER XV" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter II
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 1|2 Nephi 1]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 3|2 Nephi 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="70" to="72" fromsection="CHAPTER II" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter III
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 2|2 Nephi 2]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 4|2 Nephi 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="72" to="75" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter IV
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 3|2 Nephi 3]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 5|2 Nephi 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="75" to="77" fromsection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter V
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 4|2 Nephi 4]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 6|2 Nephi 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="78" to="82" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter VI
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 5|2 Nephi 5]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 7|2 Nephi 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="82" to="87" fromsection="CHAPTER VI" tosection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter VII
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 6|2 Nephi 6]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 8|2 Nephi 8]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="87" to="89" fromsection="CHAPTER VII" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 8 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter VIII
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 7|2 Nephi 7]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 9|2 Nephi 9]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="90" to="95" tosection="CHAPTER VIII" />
+
+
+===== Book of Mormon (1830)/2 Nephi/Chapter 9 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Second Book of Nephi—Chapter IX
+ | previous    = [[Book of Mormon (1830)/2 Nephi/Chapter 8|2 Nephi 8]]
+ | next        = [[Book of Mormon (1830)/2 Nephi/Chapter 10|2 Nephi 10]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="95" to="103" fromsection="CHAPTER IX" tosection="CHAPTER IX" />
+
+
+===== Book of Mormon (1830)/3 Nephi =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = The Third Book of Nephi
+ | previous    = [[Book of Mormon (1830)/Helaman|Helaman]]
+ | next        = [[Book of Mormon (1830)/4 Nephi|4 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="456" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 1|Chapter I]]|452}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 2|Chapter II]]|457}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 3|Chapter III]]|465}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 4|Chapter IV]]|470}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 5|Chapter V]]|476}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 6|Chapter VI]]|483}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 7|Chapter VII]]|485}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 8|Chapter VIII]]|488}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 9|Chapter IX]]|493}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 10|Chapter X]]|501}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 11|Chapter XI]]|503}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 12|Chapter XII]]|506}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 13|Chapter XIII]]|509}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/3 Nephi/Chapter 14|Chapter XIV]]|513}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter I
+ | previous    = [[Book of Mormon (1830)/3 Nephi|3 Nephi]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 2|3 Nephi 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="456" to="460" fromsection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 10 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter X
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 9|3 Nephi 9]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 11|3 Nephi 11]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="505" to="507" tosection="CHAPTER X" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 11 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter XI
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 10|3 Nephi 10]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 12|3 Nephi 12]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="507" to="509" fromsection="CHAPTER XI" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 12 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter XII
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 11|3 Nephi 11]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 13|3 Nephi 13]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="510" to="512" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 13 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter XIII
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 12|3 Nephi 12]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 14|3 Nephi 14]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="513" to="517" tosection="CHAPTER XIII" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 14 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter XIV
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 13|3 Nephi 13]]
+ | next        = [[Book of Mormon (1830)/4 Nephi|4 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="517" to="518" fromsection="CHAPTER XIV" tosection="CHAPTER XIV" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter II
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 1|3 Nephi 1]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 3|3 Nephi 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="461" to="469" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter III
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 2|3 Nephi 2]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 4|3 Nephi 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="469" to="474" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter IV
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 3|3 Nephi 3]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 5|3 Nephi 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="474" to="480" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter V
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 4|3 Nephi 4]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 6|3 Nephi 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="480" to="487" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter VI
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 5|3 Nephi 5]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 7|3 Nephi 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="487" to="489" fromsection="CHAPTER VI" tosection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter VII
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 6|3 Nephi 6]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 8|3 Nephi 8]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="489" to="492" fromsection="CHAPTER VII" tosection="CHAPTER VII" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 8 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter VIII
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 7|3 Nephi 7]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 9|3 Nephi 9]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="492" to="497" fromsection="CHAPTER VIII" tosection="CHAPTER VIII" />
+
+
+===== Book of Mormon (1830)/3 Nephi/Chapter 9 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Third Book of Nephi—Chapter IX
+ | previous    = [[Book of Mormon (1830)/3 Nephi/Chapter 8|3 Nephi 8]]
+ | next        = [[Book of Mormon (1830)/3 Nephi/Chapter 10|3 Nephi 10]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="497" to="504" fromsection="CHAPTER IX" />
+
+
+===== Book of Mormon (1830)/4 Nephi =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Fourth Book of Nephi
+ | previous    = [[Book of Mormon (1830)/3 Nephi|3 Nephi]]
+ | next        = [[Book of Mormon (1830)/Mormon|Mormon]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="518" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/4 Nephi/Chapter 1|Chapter I]]|514}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/4 Nephi/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Fourth Book of Nephi—Chapter I
+ | previous    = [[Book of Mormon (1830)/4 Nephi|4 Nephi]]
+ | next        = [[Book of Mormon (1830)/Mormon|Mormon]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="518" to="522" fromsection="CHAPTER I" tosection="4 NEPHI CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Alma =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = The Book of Alma
+ | previous    = [[Book of Mormon (1830)/Mosiah|Mosiah]]
+ | next        = [[Book of Mormon (1830)/Helaman|Helaman]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="225" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 1|Chapter I]]|221}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 2|Chapter II]]|230}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 3|Chapter III]]|232}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 4|Chapter IV]]|238}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 5|Chapter V]]|239}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 6|Chapter VI]]|242}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 7|Chapter VII]]|245}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 8|Chapter VIII]]|248}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 9|Chapter IX]]|254}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 10|Chapter X]]|259}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 11|Chapter XI]]|266}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 12|Chapter XII]]|269}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 13|Chapter XIII]]|282}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 14|Chapter XIV]]|289}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 15|Chapter XV]]|299}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 16|Chapter XVI]]|304}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 17|Chapter XVII]]|323}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 18|Chapter XVIII]]|330}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 19|Chapter XIX]]|332}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 20|Chapter XX]]|340}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 21|Chapter XXI]]|348}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 22|Chapter XXII]]|362}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 23|Chapter XXIII]]|366}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 24|Chapter XXIV]]|370}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 25|Chapter XXV]]|377}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 26|Chapter XXVI]]|382}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 27|Chapter XXVII]]|393}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 28|Chapter XXVIII]]|398}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 29|Chapter XXIX]]|400}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Alma/Chapter 30|Chapter XXX]]|405}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Alma/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter I
+ | previous    = [[Book of Mormon (1830)/Alma|Alma]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 2|Alma 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="225" to="234" fromsection="CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 10 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter X
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 9|Alma 9]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 11|Alma 11]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="263" to="270" fromsection="CHAPTER X" tosection="CHAPTER X" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 11 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XI
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 10|Alma 10]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 12|Alma 12]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="270" to="272" fromsection="CHAPTER XI" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 12 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 11|Alma 11]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 13|Alma 13]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="273" to="286" tosection="CHAPTER XII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 13 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XIII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 12|Alma 12]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 14|Alma 14]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="286" to="293" fromsection="CHAPTER XIII" tosection="CHAPTER XIII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 14 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XIV
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 13|Alma 13]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 15|Alma 15]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="293" to="303" fromsection="CHAPTER XIV" tosection="CHAPTER XIV" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 15 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XV
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 14|Alma 14]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 16|Alma 16]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="303" to="308" fromsection="CHAPTER XV" tosection="CHAPTER XV" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 16 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XVI
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 15|Alma 15]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 17|Alma 17]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="308" to="327" fromsection="CHAPTER XVI" tosection="CHAPTER XVI" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 17 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XVII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 16|Alma 16]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 18|Alma 18]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="327" to="334" fromsection="CHAPTER XVII" tosection="CHAPTER XVII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 18 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XVIII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 17|Alma 17]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 19|Alma 19]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="334" to="336" fromsection="CHAPTER XVIII" tosection="CHAPTER XVIII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 19 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XIX
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 18|Alma 18]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 20|Alma 20]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="336" to="344" fromsection="CHAPTER XIX" tosection="CHAPTER XIX" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter II
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 1|Alma 1]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 3|Alma 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="234" to="236" fromsection="CHAPTER II" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 20 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XX
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 19|Alma 19]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 21|Alma 21]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="344" to="351" fromsection="CHAPTER XX" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 21 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXI
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 20|Alma 20]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 22|Alma 22]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="352" to="366" tosection="CHAPTER XXI" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 22 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 21|Alma 21]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 23|Alma 23]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="366" to="370" fromsection="CHAPTER XXII" tosection="CHAPTER XXII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 23 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXIII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 22|Alma 22]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 24|Alma 24]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="370" to="374" fromsection="CHAPTER XXIII" tosection="CHAPTER XXIII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 24 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXIV
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 23|Alma 23]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 25|Alma 25]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="374" to="381" fromsection="CHAPTER XXIV" tosection="CHAPTER XXIV" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 25 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXV
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 24|Alma 24]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 26|Alma 26]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="381" to="385" fromsection="CHAPTER XXV" tosection="CHAPTER XXV" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 26 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXVI
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 25|Alma 25]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 27|Alma 27]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="386" to="397" tosection="CHAPTER XXVI" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 27 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXVII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 26|Alma 26]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 28|Alma 28]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="397" to="402" fromsection="CHAPTER XXVII" tosection="CHAPTER XXVII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 28 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXVIII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 27|Alma 27]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 29|Alma 29]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="402" to="404" fromsection="CHAPTER XXVIII" tosection="CHAPTER XXVIII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 29 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXIX
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 28|Alma 28]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 30|Alma 30]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="404" to="409" fromsection="CHAPTER XXIX" tosection="CHAPTER XXIX" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter III
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 2|Alma 2]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 4|Alma 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="236" to="242" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 30 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter XXX
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 29|Alma 29]]
+ | next        = [[Book of Mormon (1830)/Helaman|Helaman]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="409" to="411" fromsection="CHAPTER XXX" tosection="CHAPTER XXX" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 3|Alma 3]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 5|Alma 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="242" to="243" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter V
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 4|Alma 4]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 6|Alma 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="243" to="246" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter VI
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 5|Alma 5]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 7|Alma 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="246" to="249" fromsection="CHAPTER VI" tosection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter VII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 6|Alma 6]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 8|Alma 8]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="249" to="252" fromsection="CHAPTER VII" tosection="CHAPTER VII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 8 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter VIII
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 7|Alma 7]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 9|Alma 9]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="252" to="258" fromsection="CHAPTER VIII" tosection="CHAPTER VIII" />
+
+
+===== Book of Mormon (1830)/Alma/Chapter 9 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Alma—Chapter IX
+ | previous    = [[Book of Mormon (1830)/Alma/Chapter 8|Alma 8]]
+ | next        = [[Book of Mormon (1830)/Alma/Chapter 10|Alma 10]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="258" to="263" fromsection="CHAPTER IX" tosection="CHAPTER IX" />
+
+
+===== Book of Mormon (1830)/Eight Witnesses =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Testimony of Eight Witnesses
+ | previous    = [[Book of Mormon (1830)/Three Witnesses|Three Witnesses]]
+ | next        = 
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="594" />
+
+
+===== Book of Mormon (1830)/Enos =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Enos
+ | previous    = [[Book of Mormon (1830)/Jacob|Jacob]]
+ | next        = [[Book of Mormon (1830)/Jarom|Jarom]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="147" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Enos/Chapter 1|Chapter I]]|143}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Enos/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Enos—Chapter I
+ | previous    = [[Book of Mormon (1830)/Enos|Enos]]
+ | next        = [[Book of Mormon (1830)/Jarom|Jarom]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="147" to="149" fromsection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Ether =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether
+ | previous    = [[Book of Mormon (1830)/Mormon|Mormon]]
+ | next        = [[Book of Mormon (1830)/Moroni|Moroni]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="542" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 1|Chapter I]]|538}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 2|Chapter II]]|547}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 3|Chapter III]]|548}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 4|Chapter IV]]|555}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 5|Chapter V]]|562}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Ether/Chapter 6|Chapter VI]]|566}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Ether/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter I
+ | previous    = [[Book of Mormon (1830)/Ether|Ether]]
+ | next        = [[Book of Mormon (1830)/Ether/Chapter 2|Ether 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="542" to="551" fromsection="CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Ether/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter II
+ | previous    = [[Book of Mormon (1830)/Ether/Chapter 1|Ether 1]]
+ | next        = [[Book of Mormon (1830)/Ether/Chapter 3|Ether 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="551" to="552" fromsection="CHAPTER II" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Ether/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter III
+ | previous    = [[Book of Mormon (1830)/Ether/Chapter 2|Ether 2]]
+ | next        = [[Book of Mormon (1830)/Ether/Chapter 4|Ether 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="552" to="559" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Ether/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Ether/Chapter 3|Ether 3]]
+ | next        = [[Book of Mormon (1830)/Ether/Chapter 5|Ether 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="559" to="566" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Ether/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter V
+ | previous    = [[Book of Mormon (1830)/Ether/Chapter 4|Ether 4]]
+ | next        = [[Book of Mormon (1830)/Ether/Chapter 6|Ether 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="566" to="570" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Ether/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Ether—Chapter VI
+ | previous    = [[Book of Mormon (1830)/Ether/Chapter 5|Ether 5]]
+ | next        = [[Book of Mormon (1830)/Moroni|Moroni]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="570" to="577" fromsection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/Helaman =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = The Book of Helaman
+ | previous    = [[Book of Mormon (1830)/Alma|Alma]]
+ | next        = [[Book of Mormon (1830)/3 Nephi|3 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="411" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Helaman/Chapter 1|Chapter I]]|407}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Helaman/Chapter 2|Chapter II]]|412}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Helaman/Chapter 3|Chapter III]]|426}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Helaman/Chapter 4|Chapter IV]]|436}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Helaman/Chapter 5|Chapter V]]|441}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Helaman/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Helaman—Chapter I
+ | previous    = [[Book of Mormon (1830)/Helaman|Helaman]]
+ | next        = [[Book of Mormon (1830)/Helaman/Chapter 2|Helaman 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="411" to="415" fromsection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Helaman/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Helaman—Chapter II
+ | previous    = [[Book of Mormon (1830)/Helaman/Chapter 1|Helaman 1]]
+ | next        = [[Book of Mormon (1830)/Helaman/Chapter 3|Helaman 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="416" to="430" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Helaman/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Helaman—Chapter III
+ | previous    = [[Book of Mormon (1830)/Helaman/Chapter 2|Helaman 2]]
+ | next        = [[Book of Mormon (1830)/Helaman/Chapter 4|Helaman 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="430" to="440" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Helaman/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Helaman—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Helaman/Chapter 3|Helaman 3]]
+ | next        = [[Book of Mormon (1830)/Helaman/Chapter 5|Helaman 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="440" to="445" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Helaman/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Helaman—Chapter V
+ | previous    = [[Book of Mormon (1830)/Helaman/Chapter 4|Helaman 4]]
+ | next        = [[Book of Mormon (1830)/3 Nephi|3 Nephi]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="445" to="455" fromsection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Jacob =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob
+ | previous    = [[Book of Mormon (1830)/2 Nephi|2 Nephi]]
+ | next        = [[Book of Mormon (1830)/Enos|Enos]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="127" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jacob/Chapter 1|Chapter I]]|123}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jacob/Chapter 2|Chapter II]]|124}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jacob/Chapter 3|Chapter III]]|129}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jacob/Chapter 4|Chapter IV]]|139}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jacob/Chapter 5|Chapter V]]|140}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Jacob/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob—Chapter I
+ | previous    = [[Book of Mormon (1830)/Jacob|Jacob]]
+ | next        = [[Book of Mormon (1830)/Jacob/Chapter 2|Jacob 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="127" to="128" fromsection="CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Jacob/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob—Chapter II
+ | previous    = [[Book of Mormon (1830)/Jacob/Chapter 1|Jacob 1]]
+ | next        = [[Book of Mormon (1830)/Jacob/Chapter 3|Jacob 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="128" to="133" fromsection="CHAPTER II" tosection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Jacob/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob—Chapter III
+ | previous    = [[Book of Mormon (1830)/Jacob/Chapter 2|Jacob 2]]
+ | next        = [[Book of Mormon (1830)/Jacob/Chapter 4|Jacob 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="133" to="143" fromsection="CHAPTER III" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Jacob/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Jacob/Chapter 3|Jacob 3]]
+ | next        = [[Book of Mormon (1830)/Jacob/Chapter 5|Jacob 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="143" to="144" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Jacob/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jacob—Chapter V
+ | previous    = [[Book of Mormon (1830)/Jacob/Chapter 4|Jacob 4]]
+ | next        = [[Book of Mormon (1830)/Enos|Enos]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="144" to="147" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Jarom =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jarom
+ | previous    = [[Book of Mormon (1830)/Enos|Enos]]
+ | next        = [[Book of Mormon (1830)/Omni|Omni]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="150" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Jarom/Chapter 1|Chapter I]]|146}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Jarom/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Jarom—Chapter I
+ | previous    = [[Book of Mormon (1830)/Jarom|Jarom]]
+ | next        = [[Book of Mormon (1830)/Omni|Omni]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="150" to="151" fromsection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Mormon =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mormon
+ | previous    = [[Book of Mormon (1830)/4 Nephi|4 Nephi]]
+ | next        = [[Book of Mormon (1830)/Ether|Ether]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="522" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mormon/Chapter 1|Chapter I]]|518}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mormon/Chapter 2|Chapter II]]|524}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mormon/Chapter 3|Chapter III]]|529}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mormon/Chapter 4|Chapter IV]]|531}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Mormon/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mormon—Chapter I
+ | previous    = [[Book of Mormon (1830)/Mormon|Mormon]]
+ | next        = [[Book of Mormon (1830)/Mormon/Chapter 2|Mormon 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="522" to="528" fromsection="MORMON CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Mormon/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mormon—Chapter II
+ | previous    = [[Book of Mormon (1830)/Mormon/Chapter 1|Mormon 1]]
+ | next        = [[Book of Mormon (1830)/Mormon/Chapter 3|Mormon 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="528" to="532" fromsection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Mormon/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mormon—Chapter III
+ | previous    = [[Book of Mormon (1830)/Mormon/Chapter 2|Mormon 2]]
+ | next        = [[Book of Mormon (1830)/Mormon/Chapter 4|Mormon 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="533" to="535" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Mormon/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mormon—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Mormon/Chapter 3|Mormon 3]]
+ | next        = [[Book of Mormon (1830)/Ether|Ether]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="535" to="542" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Moroni =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni
+ | previous    = [[Book of Mormon (1830)/Ether|Ether]]
+ | next        = [[Book of Mormon (1830)/Three Witnesses|Three Witnesses]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="578" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 1|Chapter I]]|574}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 2|Chapter II]]|574}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 3|Chapter III]]|575}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 4|Chapter IV]]|575}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 5|Chapter V]]|575}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 6|Chapter VI]]|576}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 7|Chapter VII]]|577}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 8|Chapter VIII]]|581}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 9|Chapter IX]]|583}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Moroni/Chapter 10|Chapter X]]|585}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter I
+ | previous    = [[Book of Mormon (1830)/Moroni|Moroni]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 2|Moroni 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="578" onlysection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 10 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter X
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 9|Moroni 9]]
+ | next        = [[Book of Mormon (1830)/Three Witnesses|Three Witnesses]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="589" to="592" fromsection="CHAPTER X" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter II
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 1|Moroni 1]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 3|Moroni 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="578" onlysection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter III
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 2|Moroni 2]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 4|Moroni 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="579" onlysection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 3|Moroni 3]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 5|Moroni 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="579" onlysection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter V
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 4|Moroni 4]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 6|Moroni 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="579" to="580" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter VI
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 5|Moroni 5]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 7|Moroni 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="580" onlysection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter VII
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 6|Moroni 6]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 8|Moroni 8]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="581" to="584" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 8 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter VIII
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 7|Moroni 7]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 9|Moroni 9]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="585" to="587" tosection="CHAPTER VIII" />
+
+
+===== Book of Mormon (1830)/Moroni/Chapter 9 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Moroni—Chapter IX
+ | previous    = [[Book of Mormon (1830)/Moroni/Chapter 8|Moroni 8]]
+ | next        = [[Book of Mormon (1830)/Moroni/Chapter 10|Moroni 10]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="587" to="589" fromsection="CHAPTER IX" tosection="CHAPTER IX" />
+
+
+===== Book of Mormon (1830)/Mosiah =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = The Book of Mosiah
+ | previous    = [[Book of Mormon (1830)/Words of Mormon|Words of Mormon]]
+ | next        = [[Book of Mormon (1830)/Alma|Alma]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="157" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 1|Chapter I]]|153}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 2|Chapter II]]|162}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 3|Chapter III]]|166}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 4|Chapter IV]]|167}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 5|Chapter V]]|168}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 6|Chapter VI]]|173}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 7|Chapter VII]]|177}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 8|Chapter VIII]]|184}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 9|Chapter IX]]|190}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 10|Chapter X]]|201}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 11|Chapter XI]]|202}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 12|Chapter XII]]|215}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Mosiah/Chapter 13|Chapter XIII]]|217}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter I
+ | previous    = [[Book of Mormon (1830)/Mosiah|Mosiah]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 2|Mosiah 2]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="157" to="166" fromsection="MOSIAH CHAPTER I" tosection="CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 10 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter X
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 9|Mosiah 9]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 11|Mosiah 11]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="205" to="206" fromsection="CHAPTER X" tosection="CHAPTER X" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 11 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter XI
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 10|Mosiah 10]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 12|Mosiah 12]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="206" to="219" fromsection="CHAPTER XI" tosection="CHAPTER XI" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 12 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter XII
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 11|Mosiah 11]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 13|Mosiah 13]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="219" to="220" fromsection="CHAPTER XII" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 13 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter XIII
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 12|Mosiah 12]]
+ | next        = [[Book of Mormon (1830)/Alma|Alma]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="221" to="225" tosection="CHAPTER XIII" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 2 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter II
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 1|Mosiah 1]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 3|Mosiah 3]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="166" to="169" fromsection="CHAPTER II" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 3 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter III
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 2|Mosiah 2]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 4|Mosiah 4]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="170" to="171" tosection="CHAPTER III" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 4 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter IV
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 3|Mosiah 3]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 5|Mosiah 5]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="171" to="172" fromsection="CHAPTER IV" tosection="CHAPTER IV" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 5 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter V
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 4|Mosiah 4]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 6|Mosiah 6]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="172" to="177" fromsection="CHAPTER V" tosection="CHAPTER V" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 6 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter VI
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 5|Mosiah 5]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 7|Mosiah 7]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="177" to="181" fromsection="CHAPTER VI" tosection="CHAPTER VI" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 7 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter VII
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 6|Mosiah 6]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 8|Mosiah 8]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="181" to="188" fromsection="CHAPTER VII" tosection="CHAPTER VII" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 8 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter VIII
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 7|Mosiah 7]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 9|Mosiah 9]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="188" to="193" fromsection="CHAPTER VIII" />
+
+
+===== Book of Mormon (1830)/Mosiah/Chapter 9 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Mosiah—Chapter IX
+ | previous    = [[Book of Mormon (1830)/Mosiah/Chapter 8|Mosiah 8]]
+ | next        = [[Book of Mormon (1830)/Mosiah/Chapter 10|Mosiah 10]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="194" to="205" tosection="CHAPTER IX" />
+
+
+===== Book of Mormon (1830)/Omni =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Omni
+ | previous    = [[Book of Mormon (1830)/Jarom|Jarom]]
+ | next        = [[Book of Mormon (1830)/Words of Mormon|Words of Mormon]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="152" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Omni/Chapter 1|Chapter I]]|148}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Omni/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Book of Omni—Chapter I
+ | previous    = [[Book of Mormon (1830)/Omni|Omni]]
+ | next        = [[Book of Mormon (1830)/Words of Mormon|Words of Mormon]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="152" to="155" fromsection="CHAPTER I" tosection="OMNI CHAPTER I" />
+
+
+===== Book of Mormon (1830)/Preface =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Preface
+ | previous    = [[Book of Mormon (1830)|Title Page]]
+ | next        = [[Book of Mormon (1830)/1 Nephi|1 Nephi]] 
+ | notes       = 
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="7" to="8"/>
+
+
+===== Book of Mormon (1830)/Three Witnesses =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Testimony of Three Witnesses
+ | previous    = [[Book of Mormon (1830)/Moroni|Moroni]]
+ | next        = [[Book of Mormon (1830)/Eight Witnesses|Eight Witnesses]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="593" />
+
+
+===== Book of Mormon (1830)/Words of Mormon =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Words of Mormon
+ | previous    = [[Book of Mormon (1830)/Omni|Omni]]
+ | next        = [[Book of Mormon (1830)/Mosiah|Mosiah]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" include="155" onlysection="TITLE" />
+
+{{AuxTOC|title=Chapters:|{{TOC begin}}
+{{TOC row 2dot-1|[[Book of Mormon (1830)/Words of Mormon/Chapter 1|Chapter I]]|151}}
+{{TOC end}}}}
+
+{{dhr}}
+
+
+===== Book of Mormon (1830)/Words of Mormon/Chapter 1 =====
+{{header
+ | title       = [[Book of Mormon (1830)|The Book of Mormon]]
+ | author      = Joseph Smith (1805-1844)
+ | section     = Words of Mormon—Chapter I
+ | previous    = [[Book of Mormon (1830)/Words of Mormon|Words of Mormon]]
+ | next        = [[Book of Mormon (1830)/Mosiah|Mosiah]]
+ | year        = 1830 
+ | notes       = <br>{{engine|The Book of Mormon|work=Book of Mormon (1830)}}
+}}
+
+<pages index="Book of Mormon (1830, bookofmormonacco1830smit).pdf" from="155" to="157" fromsection="WORDS OF MORMON CHAPTER I" tosection="WORDS OF MORMON CHAPTER I" />

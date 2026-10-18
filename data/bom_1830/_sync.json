@@ -1,0 +1,39 @@
+{
+  "source": "1830_wikisource_text.txt",
+  "sections": 132,
+  "books_mapped": 15,
+  "anchors": [
+    {
+      "verse": "1ne.11.18",
+      "score": 0.764,
+      "flag": "INSERTION_CANDIDATE",
+      "section": "Book of Mormon (1830)/1 Nephi/Chapter 3"
+    },
+    {
+      "verse": "1ne.11.21",
+      "score": 0.821,
+      "flag": "INSERTION_CANDIDATE",
+      "section": "Book of Mormon (1830)/1 Nephi/Chapter 3"
+    },
+    {
+      "verse": "1ne.11.32",
+      "score": 0.851,
+      "flag": "INSERTION_CANDIDATE",
+      "section": "Book of Mormon (1830)/1 Nephi/Chapter 3"
+    },
+    {
+      "verse": "1ne.13.40",
+      "score": 0.929,
+      "flag": "INSERTION_CANDIDATE",
+      "section": "Book of Mormon (1830)/1 Nephi/Chapter 3"
+    },
+    {
+      "verse": "1ne.11.27",
+      "score": 0.842,
+      "flag": "REWORDED",
+      "section": "Book of Mormon (1830)/1 Nephi/Chapter 3"
+    }
+  ],
+  "anchor_pass_rate": "5/5",
+  "synced": true
+}
