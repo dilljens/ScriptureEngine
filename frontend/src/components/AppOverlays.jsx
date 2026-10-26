@@ -215,7 +215,7 @@ export default function AppOverlays(props) {
             break
           }
           case 'chat': {
-            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null)
+            setShowMobileMenu(false)
             const chatTab = currentWorkspace?.tabs?.find(t => t.view === 'chat')
             if (chatTab) {
               selectTab(chatTab.id)
@@ -225,7 +225,7 @@ export default function AppOverlays(props) {
             break
           }
           case 'hebrew':
-            setShowMobileMenu(false); setShowHebrewDiagnostic(false); setHebrewLessonId(null)
+            setShowMobileMenu(false)
             // Re-tap while already viewing a Hebrew lesson pops back to the
             // dashboard (game mode persists via localStorage) — otherwise a
             // stale lesson viewRef strands the user away from their game.
@@ -236,10 +236,10 @@ export default function AppOverlays(props) {
             }
             break
           case 'learn':
-            setShowMobileMenu(false); setShowHebrewDiagnostic(false); openLearnTab()
+            setShowMobileMenu(false); openLearnTab()
             break
           case 'memorize':
-            setShowMobileMenu(false); setShowHebrewDiagnostic(false); openMemorizeTab()
+            setShowMobileMenu(false); openMemorizeTab()
             break
           case 'tiles':
             openTilesView(); setShowMobileMenu(false)
@@ -260,9 +260,9 @@ export default function AppOverlays(props) {
         onArticles={() => { setShowMobileMenu(false); openArticlesTab() }}
         onWiki={() => { setShowMobileMenu(false); openWikiTab() }}
         onLayers={() => { setShowMobileMenu(false); setShowLayers(true) }}
-        onHistory={() => { setShowMobileMenu(false); setShowHistory(true) }}
+        onHistory={() => { setShowMobileMenu(false); openHistoryTab() }}
         onStructure={() => { setShowMobileMenu(false); setShowStructure(true) }}
-        onPlacement={() => { setShowMobileMenu(false); setShowHebrewDiagnostic(true); setHebrewLessonId(null) }}
+        onPlacement={() => { setShowMobileMenu(false); openHebrewTab('diagnostic', 'Hebrew Diagnostic') }}
         onHubNotes={() => { setShowMobileMenu(false); openHubNoteTab() }}
         onStudies={() => { setShowMobileMenu(false); openStudiesTab() }}
         darkMode={darkMode}
