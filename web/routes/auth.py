@@ -23,6 +23,7 @@ import contextlib
 import hashlib
 import json
 import logging
+import re
 import secrets
 import time
 
@@ -96,13 +97,30 @@ def _resolve_user_from_token(session_token):
     return None
 
 
+_ANON_DEVICE_RE = re.compile(r"^anon_[A-Za-z0-9]{4,64}$")
+
+
+def is_anon_device_id(user_id: str) -> bool:
+    """True for frontend-generated per-device anonymous ids (``anon_<rand>``).
+
+    Signed-out clients send a stable random id (``anon_`` + base36 from
+    Math.random + timestamp, see App.jsx) so each device keeps its own
+    progress until it merges into an account. These carry no account data
+    and are unguessable (~50+ bits), so they are safe to honor without a
+    session token. Arbitrary caller-chosen ids stay 401 — a bearer/session
+    token remains the sole authority for account-scoped data.
+    """
+    return bool(user_id) and bool(_ANON_DEVICE_RE.match(user_id))
+
+
 def _resolve_request_user(
     user_id: str = "default", session_token: str = "", authorization: str = ""
 ) -> str:
     """Resolve a user id for an HTTP read/write without trusting a claim.
 
-    Anonymous requests may use only the shared ``default`` profile. A bearer or
-    explicit session token is the sole authority for account-scoped data.
+    Anonymous requests may use the shared ``default`` profile or a per-device
+    ``anon_`` id. A bearer or explicit session token is the sole authority
+    for account-scoped data.
     """
     if authorization:
         scheme, _, value = authorization.partition(" ")
@@ -114,9 +132,9 @@ def _resolve_request_user(
         if not resolved:
             raise HTTPException(401, "Invalid or expired session token")
         return resolved
-    if user_id not in ("", "default", "anonymous"):
+    if user_id not in ("", "default", "anonymous") and not is_anon_device_id(user_id):
         raise HTTPException(401, "session_token required for a user-scoped operation")
-    return "default"
+    return "default" if not is_anon_device_id(user_id) else user_id
 
 
 @router.post("/api/v1/auth/google")
@@ -603,7 +621,7 @@ def get_user_progress(
         user_id = _resolve_user_from_token(session_token)
         if not user_id:
             raise HTTPException(401, "Invalid or expired session token")
-    elif user_id not in ("default", "anonymous"):
+    elif user_id not in ("default", "anonymous") and not is_anon_device_id(user_id):
         raise HTTPException(401, "session_token required for user progress")
 
     import sqlite3 as _sql

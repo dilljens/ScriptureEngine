@@ -57,14 +57,15 @@ def _require_review_user(
             raise HTTPException(401, "Invalid authorization header")
         session_token = value.strip()
     if session_token:
-        from web.routes.auth import _resolve_user_from_token
+        from web.routes.auth import _resolve_user_from_token, is_anon_device_id
         resolved = _resolve_user_from_token(session_token)
         if not resolved:
             raise HTTPException(401, "Invalid or expired session token")
         return resolved
-    if user_id not in ("", "default", "anonymous"):
+    from web.routes.auth import is_anon_device_id as _is_anon
+    if user_id not in ("", "default", "anonymous") and not _is_anon(user_id):
         raise HTTPException(401, "session_token required for a user-scoped review")
-    return "default"
+    return user_id if _is_anon(user_id) else "default"
 
 
 def _ensure_memorize_schema(conn):

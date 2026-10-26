@@ -660,11 +660,14 @@ def _resolve_hebrew_user(user_id: str, session_token: str = "") -> str:
 
 
 def _require_hebrew_user(user_id: str = "default", session_token: str = "") -> str:
-    """Bind an HTTP operation to a session or the shared anonymous profile."""
+    """Bind an HTTP operation to a session, a per-device anon id, or the shared anonymous profile."""
     if session_token:
         return _resolve_hebrew_user(user_id, session_token)
     if user_id and user_id not in ("default", "anonymous"):
-        raise HTTPException(401, "session_token required for a user-scoped operation")
+        from web.routes.auth import is_anon_device_id as _is_anon
+        if not _is_anon(user_id):
+            raise HTTPException(401, "session_token required for a user-scoped operation")
+        return user_id
     return "default"
 
 
@@ -684,9 +687,10 @@ def _resolve_hebrew_read_user(
 ) -> str:
     """Resolve user-scoped GETs without accepting arbitrary victim ids.
 
-    Authenticated reads use the bearer/session token. Anonymous reads are
-    intentionally limited to the shared default profile; a custom user id must
-    prove ownership instead of arriving as an unauthenticated query parameter.
+    Authenticated reads use the bearer/session token. Anonymous reads may use
+    the shared default profile or a per-device ``anon_`` id; any other custom
+    user id must prove ownership instead of arriving as an unauthenticated
+    query parameter.
     """
     if authorization:
         scheme, _, value = authorization.partition(" ")

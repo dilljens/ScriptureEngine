@@ -2297,9 +2297,10 @@ def _bind_tool_user(tool_name: str, args: dict, request: Request, session_token:
         args["user_id"] = user_id
         return
     requested = args.get("user_id", "default")
-    if requested not in ("", "default", "anonymous"):
+    from web.routes.auth import is_anon_device_id as _is_anon
+    if requested not in ("", "default", "anonymous") and not _is_anon(requested):
         raise HTTPException(401, "session_token required for a user-scoped tool")
-    args["user_id"] = "default"
+    args["user_id"] = requested if _is_anon(requested) else "default"
 
 def _validate_tool_args(tool_name: str, schema: dict, args: dict):
     """422 (not 500) when required tool params are missing — the teaching-error

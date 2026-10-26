@@ -370,6 +370,43 @@ class TestHebrewRoutes:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+class TestAnonDeviceIds:
+    """Signed-out devices send stable ``anon_`` ids without a session token.
+
+    Regression: the Aug-25 auth hardening 401'd every signed-out user on
+    all user-scoped endpoints (mobile tabs dead except Read). Per-device
+    ``anon_`` ids are unguessable and carry no account data, so they are
+    honored; arbitrary caller-chosen ids must still 401.
+    """
+
+    def test_is_anon_device_id(self):
+        from web.routes.auth import is_anon_device_id
+        assert is_anon_device_id("anon_abc123xyz")
+        assert is_anon_device_id("anon_a1b2c3d4e5f6")
+        assert not is_anon_device_id("default")
+        assert not is_anon_device_id("anonymous")
+        assert not is_anon_device_id("")
+        assert not is_anon_device_id("test")
+        assert not is_anon_device_id("somebody_elses_id")
+        assert not is_anon_device_id("anon_")
+        assert not is_anon_device_id("anon_!!!")
+        assert not is_anon_device_id("xanon_abc123")
+
+    def test_anon_device_id_accepted_on_user_scoped_endpoints(self, client):
+        anon = "anon_e2e9f8a1b2c3"
+        for url in (
+            f"/api/v1/learn/modules?user_id={anon}",
+            f"/api/v1/memorize/review?limit=1&user_id={anon}",
+            f"/api/v1/hebrew/review-queue?limit=1&user_id={anon}",
+        ):
+            resp = client.get(url)
+            assert resp.status_code == 200, (url, resp.status_code, resp.text[:200])
+
+    def test_arbitrary_user_id_still_rejected(self, client):
+        assert client.get("/api/v1/learn/modules?user_id=somebody_elses_id").status_code == 401
+        assert client.get("/api/v1/memorize/review?limit=1&user_id=somebody_elses_id").status_code == 401
+
+
 class TestConversationRoutes:
     """Conversation/chat session management (ownership isolation only)."""
 
