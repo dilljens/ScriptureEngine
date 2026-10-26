@@ -397,7 +397,10 @@ CREATE TABLE IF NOT EXISTS assessment_items (
     discrimination REAL DEFAULT 1.0,
     guess_param REAL DEFAULT 0.15,
     slip_param REAL DEFAULT 0.10,
-    source_knowledge_item_id INTEGER
+    source_knowledge_item_id INTEGER,
+    tier TEXT DEFAULT 'text',
+    explanation TEXT DEFAULT '',
+    question_type_open INTEGER DEFAULT 0
 );
 
 -- Multi-version Bible text (alternative translations)
@@ -899,6 +902,19 @@ def _migrate(conn):
     pc_cols = {r[1] for r in conn.execute("PRAGMA table_info(passage_connections)").fetchall()}
     if "granularity" not in pc_cols:
         conn.execute("ALTER TABLE passage_connections ADD COLUMN granularity TEXT DEFAULT ''")
+
+    # Quiz/Learn question extras (added Jul-2026 question-quality pass).
+    # Deployed DBs built before that pass lack these columns, which 500s
+    # /api/v1/quiz and /api/v1/learn/modules (Oct-2026 prod incident).
+    try:
+        ai_cols = {r[1] for r in conn.execute("PRAGMA table_info(assessment_items)").fetchall()}
+    except Exception:
+        ai_cols = set()
+    if ai_cols:
+        if "explanation" not in ai_cols:
+            conn.execute("ALTER TABLE assessment_items ADD COLUMN explanation TEXT DEFAULT ''")
+        if "question_type_open" not in ai_cols:
+            conn.execute("ALTER TABLE assessment_items ADD COLUMN question_type_open INTEGER DEFAULT 0")
 
 
 def verse_id(book, chapter, verse):

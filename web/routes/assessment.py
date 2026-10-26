@@ -25,6 +25,24 @@ def get_db():
     return _get_db()
 
 
+def _ensure_assessment_columns(conn):
+    """Add Jul-2026 question columns to pre-existing ``assessment_items`` tables.
+
+    DBs built before that pass lack ``explanation`` / ``question_type_open``,
+    which 500s the quiz endpoints (Oct-2026 prod incident). Idempotent;
+    lock-safe (failure leaves behavior unchanged, not worse).
+    """
+    try:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(assessment_items)").fetchall()}
+        if cols:
+            if "explanation" not in cols:
+                conn.execute("ALTER TABLE assessment_items ADD COLUMN explanation TEXT DEFAULT ''")
+            if "question_type_open" not in cols:
+                conn.execute("ALTER TABLE assessment_items ADD COLUMN question_type_open INTEGER DEFAULT 0")
+    except Exception:
+        log.warning("assessment_items column ensure failed", exc_info=True)
+
+
 # ── New quiz endpoint: serves deep questions from assessment_items ──
 
 @router.get("/api/v1/quiz")
@@ -43,6 +61,7 @@ def get_quiz_questions(
     """
     user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_db()
+    _ensure_assessment_columns(conn)
     cursor = conn.cursor()
 
     where = []
@@ -289,6 +308,7 @@ def quiz_due_reviews(
     """Get assessment items due for review based on FSRS spacing."""
     user_id = _resolve_request_user(user_id, session_token, authorization)
     conn = get_db()
+    _ensure_assessment_columns(conn)
     cursor = conn.cursor()
 
     cursor.execute("""
