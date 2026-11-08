@@ -25,12 +25,5 @@
   <body class="bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased" style="touch-action: pan-y; -webkit-text-size-adjust: 100%;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
-      }
-    </script>
   </body>
 </html>

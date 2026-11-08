@@ -60,6 +60,30 @@ test.describe('Mobile navigation — bottom tab bar', () => {
     await expect(page.getByText('Structure')).toBeVisible()
   })
 
+  test('More drawer closes from backdrop and Escape', async ({ page }) => {
+    const drawer = page.getByRole('dialog', { name: 'More options' })
+    await page.getByRole('button', { name: 'More options' }).click()
+    await expect(drawer).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(drawer).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'More options' }).click()
+    await expect(drawer).toBeVisible()
+    await page.mouse.click(10, 100)
+    await expect(drawer).toHaveCount(0)
+  })
+
+  test('mobile reader header stays compact without horizontal overflow', async ({ page }) => {
+    await expect(mobileH1(page)).toContainText('Isaiah')
+    const metrics = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      search: document.querySelector('[aria-label="Search or go to a passage"]')?.getBoundingClientRect().width,
+    }))
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.width)
+    expect(metrics.search).toBeGreaterThanOrEqual(40)
+  })
+
   test('switching between tabs updates the visible view', async ({ page }) => {
     await expect(mobileH1(page)).toContainText('Isaiah', { timeout: 5000 })
     await page.getByText('Chat').click()

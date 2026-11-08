@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 
 /**
  * Mobile menu drawer — slide-out panel with overflow navigation.
@@ -14,15 +14,35 @@ export default function MobileMenuDrawer({
   onPlacement, onHubNotes, onStudies, onArticles,
   authUser, authAvatar, onSignIn, onSignOut,
 }) {
+  const touchStartY = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 sm:hidden" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30" />
-      <div className="absolute bottom-0 inset-x-0 bg-white dark:bg-neutral-900 rounded-t-2xl shadow-2xl p-4 max-h-[80vh] max-h-[80dvh] overflow-y-auto"
-        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        onClick={e => e.stopPropagation()}>
-        <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto mb-4" />
+      <div className="absolute inset-0 bg-black/30" aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="More options"
+        className="absolute bottom-0 inset-x-0 bg-white dark:bg-neutral-900 rounded-t-2xl shadow-2xl p-4 max-h-[80vh] max-h-[80dvh] overflow-y-auto overscroll-contain"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))', touchAction: 'pan-y' }}
+        onClick={e => e.stopPropagation()}
+        onTouchStart={e => { touchStartY.current = e.touches[0]?.clientY ?? null }}
+        onTouchEnd={e => {
+          const start = touchStartY.current
+          const end = e.changedTouches[0]?.clientY
+          touchStartY.current = null
+          if (start !== null && end !== undefined && end - start > 72) onClose?.()
+        }}>
+        <div className="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto mb-4" aria-hidden="true" />
 
         {/* Learning Row */}
         <p className="text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-2 px-1">Learning</p>

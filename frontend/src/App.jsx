@@ -109,6 +109,17 @@ const [showAssessment, setShowAssessment] = useState(false)
   const [passageStudyRef, setPassageStudyRef] = useState(null)
   const [readingLessonId, setReadingLessonId] = useState(null)  // set when passageStudyRef is opened from a reading lesson
   const [showTabs, setShowTabs] = useState(true)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    let hadController = Boolean(navigator.serviceWorker.controller)
+    const onControllerChange = () => {
+      if (hadController) setUpdateAvailable(true)
+      hadController = true
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+    return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+  }, [])
   
   // Stable anonymous user_id — persists across sessions via localStorage
   const [userId, setUserId] = useState(() => {
@@ -955,44 +966,31 @@ const [showAssessment, setShowAssessment] = useState(false)
             title="Next">
             <ChevronRight />
           </button>
-          {/* Tappable breadcrumb or tab label */}
-          <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-xs min-w-0">
-            {['chapter', 'book', 'work', 'library'].includes(viewLevel) ? (<>
-              {workTitle ? (
-                <button onClick={() => {
-                  if (viewLevel !== 'work') {
-                    const wId = nav?.flat[nav.idx]?.workId
-                    if (wId) goToWork(currentTab?.id, wId, workTitle)
-                  }
-                }} className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer">
-                  {workTitle}{' '}
-                </button>
-              ) : isLibraryView ? (
-                <span className="text-neutral-400 dark:text-neutral-500 font-normal mr-0.5">Library </span>
-              ) : null}
-              {isChapterView ? (
-                <button onClick={() => {
-                  if (viewLevel !== 'book') goToBook(currentTab?.id, book, bookTitle)
-                }} className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
-                  {bookTitle}
-                </button>
-              ) : (
-                <span>{bookTitle}</span>
-              )}
-              {isChapterView && <span className="font-normal text-neutral-500 dark:text-neutral-400"> / {isDc ? 'sec.' : 'ch.'} {chapter}</span>}
-            </>) : (
-              <span className="text-neutral-800 dark:text-neutral-200">{tabLabel}</span>
-            )}
+          {/* Compact location label: chapter title only, without the full work breadcrumb. */}
+          <h1 className="font-semibold text-neutral-900 dark:text-neutral-100 truncate px-1 select-none text-sm min-w-0">
+            {isChapterView ? (
+              <button
+                onClick={() => goToBook(currentTab?.id, book, bookTitle)}
+                className="truncate hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                aria-label={`Browse ${bookTitle}`}
+              >
+                {bookTitle} <span className="font-normal text-neutral-500 dark:text-neutral-400">{isDc ? '§' : '·'} {chapter}</span>
+              </button>
+            ) : <span>{tabLabel || (isLibraryView ? 'Library' : bookTitle)}</span>}
           </h1>
         </div>
-        {/* Right side: palette shortcut + Tiles */}
+        {/* Search and tab grid stay thumb-sized without competing with the title. */}
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setShowCommand(true)} title="Go to…"
-            className="text-sm px-1.5 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-pointer">
-            🔍 Go to…
+          <button
+            onClick={() => setShowCommand(true)}
+            aria-label="Search or go to a passage"
+            title="Search or go to a passage"
+            className="w-10 h-10 grid place-items-center rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 cursor-pointer"
+          >
+            🔍
           </button>
           <button onClick={openTilesView}
-            className="px-2 py-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-[10px] font-medium text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs">
+            className="w-10 h-10 grid place-items-center rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer shrink-0 text-base text-neutral-500 dark:text-neutral-400" title="Manage subjects and tabs" aria-label="Manage subjects and tabs">
             ▦
           </button>
         </div>
@@ -1062,6 +1060,18 @@ const [showAssessment, setShowAssessment] = useState(false)
         </main>
       </ErrorBoundary>
 
+      {updateAvailable && (
+        <div className="fixed z-[60] bottom-[calc(4.5rem+env(safe-area-inset-bottom))] sm:bottom-4 inset-x-3 sm:inset-x-auto sm:right-4 sm:w-auto flex items-center justify-between gap-4 rounded-xl bg-neutral-900 text-white shadow-xl px-4 py-3 text-sm" role="status" aria-live="polite">
+          <span>A new version is ready.</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="shrink-0 rounded-lg bg-blue-500 hover:bg-blue-600 px-3 py-1.5 font-medium cursor-pointer"
+          >
+            Refresh
+          </button>
+          <button onClick={() => setUpdateAvailable(false)} aria-label="Dismiss update notice" className="shrink-0 text-neutral-300 hover:text-white px-1 cursor-pointer">×</button>
+        </div>
+      )}
       <AppOverlays {...overlaysProps} />
 
     </div>
