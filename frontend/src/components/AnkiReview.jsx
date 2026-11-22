@@ -36,6 +36,19 @@ export function modesForCard(card, hasPicture) {
   return hasPicture ? CARD_MODES : CARD_MODES.filter(m => m !== 'picture')
 }
 
+/**
+ * Live re-deal position for a relearn card (intraday learn-ahead collapse).
+ * The card returns after a few others rather than after wall-clock minutes
+ * — the same collapse Anki's learn-ahead limit performs. Pure; capped by
+ * the caller (max 2 re-deals per card per session).
+ */
+export const RELEARN_REDEAL_GAP = 3
+export const MAX_REDEALS_PER_CARD = 2
+export function relearnInsertAt(pos, total) {
+  if (total <= 0) return 0
+  return Math.min(total, Math.max(0, pos) + 1 + RELEARN_REDEAL_GAP)
+}
+
 export default function AnkiReview({ cards: initialCards, onComplete, title, onBack }) {
   // Two-pass build: prefetch Tier-0 pictures first, then assign modes so the
   // picture direction is only dealt to words that actually have a picture.
@@ -76,6 +89,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const [audioUrl, setAudioUrl] = useState(null)
   const [lastRated, setLastRated] = useState(null)
   const [undoMsg, setUndoMsg] = useState('')
+  const redealsRef = useRef({})
   const spaceRef = useRef(false)
 
   const currentCard = cards?.[currentIdx]
@@ -147,10 +161,21 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
         },
       })
-      // L1 relearn: Again returns this session — say when, and that the
-      // card resurfaces through Review due (this fixed deck won't re-deal it).
+      // Intraday relearn: the card pops back up a few cards later
+      // (learn-ahead collapse), capped per card so a hard card can't loop.
       if (res.ok && res.data?.is_relearn) {
-        setUndoMsg(`Back in ~${res.data.relearn_in_min || 10} min — finish this set, then hit Review due to meet it again.`)
+        const mins = res.data.relearn_in_min || 10
+        const dealt = redealsRef.current[currentCard.id] || 0
+        if (dealt < MAX_REDEALS_PER_CARD) {
+          redealsRef.current[currentCard.id] = dealt + 1
+          setCards(prev => {
+            if (!prev) return prev
+            const pos = prev.findIndex(c => c.id === currentCard.id)
+            const at = relearnInsertAt(pos >= 0 ? pos : currentIdx, prev.length)
+            return [...prev.slice(0, at), { ...currentCard }, ...prev.slice(at)]
+          })
+        }
+        setUndoMsg(`Back in ~${mins} min — it'll resurface in a few cards.`)
       }
       setLastRated({
         node_id: currentCard.node_id, mode: currentCard.mode,

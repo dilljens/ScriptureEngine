@@ -848,7 +848,7 @@ def preview_intervals(
             difficulty = initial_difficulty(eff)
             days_elapsed = None
         speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
-        _, _, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
+        _, _, base_interval, _ = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
         interval = max(1, round(base_interval * learning_speed))
         out[str(rating)] = {
             "days": interval,
@@ -931,7 +931,7 @@ def submit_review(queue_id: int, body: dict, request: Request):
     # Fast learners get lower effective difficulty, slow learners higher
     speed_adjusted_diff = difficulty / max(learning_speed, 0.3)
 
-    new_s, new_d, base_interval = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
+    new_s, new_d, base_interval, _ = _fsrs_schedule(stability, speed_adjusted_diff, eff, days_elapsed)
 
     # Apply learning speed to interval
     interval = max(1, round(base_interval * learning_speed))

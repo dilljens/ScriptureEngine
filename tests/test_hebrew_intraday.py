@@ -31,11 +31,12 @@ def test_again_reschedules_intraday(hebdb):
     out = H.process_hebrew_review(node_id=node, rating=4, user_id="default",
                                   card_mode="forward")
     assert out["data"]["is_relearn"] is False
+    # Established-card lapse jumps to step 2 (+10m, Anki relearn default).
     out = H.process_hebrew_review(node_id=node, rating=1, user_id="default",
                                   card_mode="forward")
     d = out["data"]
     assert d["is_relearn"] is True
-    assert d["relearn_in_min"] == H.RELEARN_DELAY_MIN == 10
+    assert d["relearn_in_min"] == 10
     assert d["interval"] == 0
     assert d["lapses"] >= 1
     due = datetime.datetime.strptime(d["due"], "%Y-%m-%d %H:%M:%S")
@@ -43,11 +44,47 @@ def test_again_reschedules_intraday(hebdb):
     assert 8 <= delta_min <= 11, delta_min
 
 
+def test_two_step_machine(hebdb):
+    # New-card Again lands on step 1 (+1m); Good advances to step 2 (+10m);
+    # Good on step 2 graduates; Again anywhere in learning resets to step 1.
+    node = sqlite3.connect(str(hebdb)).execute(
+        "SELECT n.id FROM hebrew_nodes n WHERE NOT EXISTS (SELECT 1"
+        " FROM hebrew_review_state s WHERE s.node_id=n.id) LIMIT 1").fetchone()
+    assert node, "need a never-reviewed node"
+    nid = node[0]
+    d1 = H.process_hebrew_review(node_id=nid, rating=1, user_id="anon_step1",
+                                 card_mode="forward")["data"]
+    assert d1["is_relearn"] and d1["relearn_in_min"] == 1
+    step = sqlite3.connect(str(hebdb)).execute(
+        "SELECT learn_step FROM hebrew_review_state"
+        " WHERE user_id='anon_step1' AND node_id=? AND card_mode='forward'",
+        (nid,)).fetchone()[0]
+    assert step == 1
+    d2 = H.process_hebrew_review(node_id=nid, rating=3, user_id="anon_step1",
+                                 card_mode="forward")["data"]
+    assert d2["is_relearn"] and d2["relearn_in_min"] == 10
+    d3 = H.process_hebrew_review(node_id=nid, rating=1, user_id="anon_step1",
+                                 card_mode="forward")["data"]
+    assert d3["is_relearn"] and d3["relearn_in_min"] == 1
+    d4 = H.process_hebrew_review(node_id=nid, rating=3, user_id="anon_step1",
+                                 card_mode="forward")["data"]
+    assert d4["is_relearn"] and d4["relearn_in_min"] == 10
+    d5 = H.process_hebrew_review(node_id=nid, rating=3, user_id="anon_step1",
+                                 card_mode="forward")["data"]
+    assert d5["is_relearn"] is False and d5["interval"] >= 1
+
+
 def test_good_after_again_graduates_to_days(hebdb):
     node = sqlite3.connect(str(hebdb)).execute(
         "SELECT id FROM hebrew_nodes ORDER BY id LIMIT 1").fetchone()[0]
+    # Fresh-card Again -> step 1; Good advances to step 2 (still intraday).
     H.process_hebrew_review(node_id=node, rating=1, user_id="default",
                             card_mode="forward")
+    mid = H.process_hebrew_review(node_id=node, rating=3, user_id="default",
+                                  card_mode="forward")
+    assert mid["data"]["is_relearn"] is True
+    assert mid["data"]["relearn_in_min"] == 10
+    # Good on step 2 graduates to day-scale.
     out = H.process_hebrew_review(node_id=node, rating=3, user_id="default",
                                   card_mode="forward")
     assert out["data"]["is_relearn"] is False
@@ -82,8 +119,14 @@ def test_preview_again_shows_intraday_label(hebdb):
     out = H.hebrew_fsrs_intervals(node_id=node, card_mode="forward",
                                   user_id="default", authorization="")
     iv = out["data"]["intervals"]
-    assert iv["1"]["days"] == 0 and iv["1"]["label"] == "<10m"
+    # Fresh/learning cards return in 1m; established lapses in 10m.
+    assert iv["1"]["days"] == 0 and iv["1"]["label"] == "<1m"
     assert all(iv[r]["days"] >= 1 for r in ("2", "3", "4"))
+    H.process_hebrew_review(node_id=node, rating=4, user_id="default",
+                            card_mode="forward")
+    iv2 = H.hebrew_fsrs_intervals(node_id=node, card_mode="forward",
+                                  user_id="default", authorization="")["data"]["intervals"]
+    assert iv2["1"] == {"days": 0, "label": "<10m"}
 
 
 def test_undo_restores_pre_relearn_due(hebdb):

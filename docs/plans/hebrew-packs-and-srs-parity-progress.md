@@ -99,3 +99,27 @@
 - Hollow gating past L3: only 304 edges total; 551/622 L4–L7 nodes have NO incoming edge → instantly unlocked on day one. The 10/day new-card cap + backlog guardrail is the only flood control; mastery≥0.8 prerequisite rule is decorative for vocab. "Continue Learning" (level, mastery sort) guides order, but locks don't enforce it.
 - Recommendation (follow-up, not this pass): level-gate the frontier — unlock L(n+1) only when L(n) average mastery ≥ 0.5 (query-time rule, no migration) — or auto-derive frequency-tier vocab edges (top-100 → next-200). Logged for the intraday plan or a tuning pass.
 - Known content debts (unchanged): 17 silent words (no exact corpus form — deliberately unpointed, needs Renikud pass), lexicon gloss mismatches (e.g. אבדה/אב, pre-existing A2 note), maqqef reingest deferred (documented in overhaul progress).
+
+## 2026-11-22 — FSRS v7 update (supersedes B4)
+- Canonical core (`lib/api/fsrs.py`) ported FSRS-6 → FSRS-7 (34 weights,
+  dual slow/fast stability, weighted forgetting curve, Newton+bisection
+  intervals; no separate short-term branch — same-day flows through the
+  fast component). New: `initial_fast_stability` (0.8×S0, upstream ratio),
+  4-tuple `schedule()` (…, new_fast_stability), state-aware
+  `retrievability`/`next_interval`/`next_difficulty`.
+- Verified against the reference runtime: Rust harness on crates.io
+  `fsrs v7.0.0` dumped 122 vectors (new/review/recall/s90) — port matches
+  all 122, including the crate's own new-card doctest. Permanent pins in
+  `tests/test_fsrs_v7_reference.py` (8 tests); `test_fsrs_unified.py`
+  re-cut for v7 (identity + behaviors hold; v6 vectors retired).
+- Persistence: `stability_fast` column on `hebrew_review_state` (backfilled
+  0.8×slow, snapshotted in undo, threaded through review/preview/queue/
+  stats/feed/placement-seed). memorize.py reuses the core with the 0.8
+  default (no memorize-table migration — upstream's scalar convention).
+- Sim re-run @ v7: 10 new/day, 0.9 → 31.4 reviews/day, retention 0.863,
+  262 matured/60d; intraday adds 236 retries (+11% workload, retention
+  0.839 — consolidation, not efficiency gain).
+- Follow-ups logged, not taken: learn.py's private hand-rolled FSRS copy
+  (third scheduler — consolidate per ADR-0001 spirit); FSRS-7 ADR
+  auto-retention policy (needs dense per-card history — same blocker B4
+  always had); second optimizer pass if usage grows.

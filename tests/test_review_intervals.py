@@ -107,8 +107,8 @@ def test_hebrew_intervals_by_node_and_word(hebrewdb):
         hebrew="אב", user_id="default", authorization="")["data"]["intervals"]
     assert set(by_node) == {"1", "2", "3", "4"}
     assert by_node == by_word  # word resolution lands on the same schedule
-    # L1 intraday: Again is sub-day (relearn step), the rest are >= 1d.
-    assert by_node["1"] == {"days": 0, "label": "<10m"}
+    # Intraday: Again is sub-day (step 1 -> <1m, established lapse -> <10m).
+    assert by_node["1"]["days"] == 0 and by_node["1"]["label"] in ("<1m", "<10m")
     assert all(v["days"] >= 1 and v["label"] for k, v in by_node.items() if k != "1")
     days = [by_node[str(i)]["days"] for i in (1, 2, 3, 4)]
     assert days == sorted(days)

@@ -33,52 +33,57 @@ def test_hard_is_success_not_lapse():
     # Canonical FSRS: Again(1) fails; Hard(2) succeeds with a multiplier.
     # From a healthy state, Hard must GROW stability, Again must shrink it.
     s, d = 10.0, 5.0
-    s_hard, _, _ = fsrs.schedule(s, d, 2)
-    s_again, _, _ = fsrs.schedule(s, d, 1)
+    s_hard, _, _, _ = fsrs.schedule(s, d, 2, 5.0, 0.9, 8.0)
+    s_again, _, _, _ = fsrs.schedule(s, d, 1, 5.0, 0.9, 8.0)
     assert s_hard > s, "Hard(2) must grow stability (successful recall)"
     assert s_again < s, "Again(1) must shrink stability (lapse)"
     # Ordering across grades is monotonic for a fresh card.
-    ivs = [fsrs.schedule(s, d, r)[2] for r in (1, 2, 3, 4)]
+    ivs = [fsrs.schedule(s, d, r, 5.0, 0.9, 8.0)[2] for r in (1, 2, 3, 4)]
     assert ivs == sorted(ivs)
 
 
 def test_canonical_vectors_against_reference():
-    # Hardcoded from py-fsrs 6.x (Scheduler defaults): state S=5, D=4.5,
-    # reviewed 6 days later. Any drift from the reference fails here.
+    # Hardcoded from fsrs-rs v7.0.0 (differential harness over next_states
+    # with default params): state S=12, D=5, S_fast=9.6, reviewed 1 day
+    # later at retention 0.9. Any drift from the reference fails here.
     expected = {
-        1: (0.980488, 8.177416, 1),
-        2: (14.149185, 6.334072, 14),
-        3: (20.213145, 4.490728, 20),
-        4: (33.492698, 2.647385, 33),
+        1: (2.64757, 9.25775, 0.36821, 0.0145),
+        2: (15.86253, 6.97668, 84.59085, 14.5232),
+        3: (18.0371, 4.9523, 131.29887, 31.6486),
+        4: (18.0371, 2.92792, 141.87451, 55.8362),
     }
-    for grade, (ns, nd, iv) in expected.items():
-        got = fsrs.schedule(5.0, 4.5, grade, 6.0)
-        assert abs(got[0] - ns) < 1e-5, (grade, got)
-        assert abs(got[1] - nd) < 1e-5, (grade, got)
-        assert got[2] == iv, (grade, got)
+    for grade, (ns, nd, nsf, iv) in expected.items():
+        got = fsrs.schedule(12.0, 5.0, grade, 1.0, 0.9, 9.6)
+        assert abs(got[0] - ns) < 1e-3, (grade, got)
+        assert abs(got[1] - nd) < 1e-3, (grade, got)
+        assert abs(got[3] - nsf) < 1e-2, (grade, got)
+        assert abs(got[2] - iv) < 1e-2, (grade, got)
 
 
-def test_short_term_branch_vectors():
-    # Same-day re-review of existing memory (S=5): Again may drop,
-    # Hard/Good floor at no-change, Easy grows. Values from py-fsrs.
-    expected = {1: 1.596818, 2: 5.0, 3: 5.0, 4: 8.129610}
+def test_same_day_flows_through_fast_component():
+    # v7 has no separate short-term branch: delta_t=0 updates run the
+    # same next-state path (harness vectors for S=12/D=5/Sf=9.6 at t=0).
+    expected = {1: 2.56982, 2: 12.00103, 3: 12.00161, 4: 12.00161}
     for grade, ns in expected.items():
-        got = fsrs.schedule(5.0, 4.5, grade, 0.0)[0]
-        assert abs(got - ns) < 1e-5, (grade, got)
+        got = fsrs.schedule(12.0, 5.0, grade, 0.0, 0.9, 9.6)[0]
+        assert abs(got - ns) < 1e-3, (grade, got)
 
 
 def test_initial_difficulty_is_canonical():
-    # D0(G) = w4 − e^(w5·(G−1)) + 1, clamped — not flat 5.0.
-    assert fsrs.initial_difficulty(1) == 6.4133
-    assert abs(fsrs.initial_difficulty(2) - 5.1122) < 1e-3
-    assert abs(fsrs.initial_difficulty(3) - 2.1181) < 1e-3
+    # v7 D0(G) = w4 − e^(w5·(G−1)) + 1, clamped — not flat 5.0.
+    # (matches the upstream new-card doctest: hard 5.2613, good 3.5307.)
+    assert fsrs.initial_difficulty(1) == 6.1686
+    assert abs(fsrs.initial_difficulty(2) - 5.2613) < 1e-3
+    assert abs(fsrs.initial_difficulty(3) - 3.5305) < 1e-3
     assert fsrs.initial_difficulty(4) == 1.0
 
 
 def test_retrievability_defining_property():
-    # R(S) == 0.9 by construction, at any stability.
+    # v7: the interval finder inverts the curve, so R at the scheduled
+    # interval is the desired retention — at any stability.
     for s in (0.5, 2.0, 10.0, 100.0):
-        assert abs(fsrs.retrievability(s, s) - 0.9) < 1e-12, s
+        ivl = fsrs.next_interval(s, 0.9)
+        assert abs(fsrs.retrievability(s, ivl) - 0.9) < 1e-3, s
     assert fsrs.retrievability(0, 5) == 0.0
     assert fsrs.retrievability(10.0, 0) > 0.9
 

@@ -157,7 +157,11 @@ STEP-first, media-gitignored, optimizer-deferred).
       → not needed; both shipped (empty-history renders em-dash).
 - Depends on: nothing
 
-### Phase B4: Per-user FSRS optimization (deferred) `[ ]`
+### Phase B4: Per-user FSRS optimization (superseded by v7 port, 2026-11-22) `[x]`
+- Superseded: the FSRS-7 port ships upstream-calibrated defaults + the ADR
+  track is the future of per-user fitting (needs dense per-card history we
+  still don't retain). No custom optimizer built — correctly, per the
+  original fallback. See packs progress log.
 - 🏷 Priority: low
 - 🔁 Max turns: 15
 - [ ] Record per-review history needed for fitting (only if not already

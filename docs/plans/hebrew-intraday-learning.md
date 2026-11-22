@@ -67,7 +67,10 @@ rating buttons, FSRS-6 core, single-step undo, suspend. Missing: sub-day
   with intraday re-review; expected: retention lift at small workload cost.
   If the sim shows workload explosion, cap learn-ahead before shipping.
 
-## Track L: Intraday learning `[x]` (done 2026-11-22)
+## Track L: Intraday learning `[x]` (done 2026-11-22, extended same day)
+
+Extended 2026-11-22: two-step machine (`learn_step` column; the single
+10m step was the v1), `is_learning` also true for `learn_step > 0` cards.
 
 ### Phase L1: Scheduler + queue `[x]`
 

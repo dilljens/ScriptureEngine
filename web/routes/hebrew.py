@@ -21,6 +21,7 @@ from lib.api.fsrs import (
     FSRS_W,
     days_since,
     initial_difficulty as fsrs_initial_difficulty,
+    initial_fast_stability as fsrs_initial_fast_stability,
     initial_stability as fsrs_initial_stability,
     next_difficulty as fsrs_next_difficulty,
     next_interval as fsrs_next_interval,
@@ -78,6 +79,41 @@ DEFAULT_DESIRED_RETENTION = 0.9
 # serves cards due within the learn-ahead window flagged is_learning.
 RELEARN_DELAY_MIN = 10
 LEARN_AHEAD_MIN = 20
+# Two intraday steps (Anki learning steps 1m -> 10m): new-card Again lands
+# on step 1 (+1m); an established-card lapse jumps to step 2 (+10m, Anki's
+# relearn default); Good advances a step, Easy (or Good on step 2)
+# graduates to the normal schedule.
+LEARN_STEPS_MIN = (1, 10)
+
+
+def _new_card_schedule(rating: int, retention: float):
+    """Full v7 schedule for a card with no state (mirrors NextStates nth=0).
+
+    Returns (stability, difficulty, interval_days, fast_stability) with the
+    upstream init convention (fast = 0.8 * slow). Shared by preview, review
+    submit, and the lesson-loop feed so new cards schedule identically."""
+    new_s = fsrs_initial_stability(rating)
+    new_d = fsrs_initial_difficulty(rating)
+    new_sf = fsrs_initial_fast_stability(rating)
+    interval = fsrs_next_interval(new_s, retention, s_fast=new_sf, difficulty=new_d)
+    return new_s, new_d, interval, new_sf
+
+
+def _learn_step_after(current_step: int, rating: int, has_state: bool):
+    """Next intraday position + return delay.
+
+    Returns (next_learn_step, minutes_or_None). None minutes graduates to
+    the normal day-scale schedule. Shared by review submit and the Again
+    preview label so the button always shows what tapping it schedules.
+    """
+    if rating == 1:
+        if not has_state or current_step > 0:
+            return 1, LEARN_STEPS_MIN[0]
+        return 2, LEARN_STEPS_MIN[1]
+    if current_step == 1:
+        return 2, LEARN_STEPS_MIN[1]
+    return 0, None
+
 
 # ── Student-Topic Learning Speeds (Math Academy Ch. 29) ──
 # learning_speed = speedup_due_to_ability / slowdown_due_to_difficulty
@@ -430,6 +466,8 @@ def _ensure_hebrew_review_state(conn):
     # Per-card-direction scheduling (Anki parity): hearing / reverse / forward
     # reps of one node are independent FSRS rows. card_mode='' is the legacy
     # general row (lesson/quiz practice). Migrates old PK(user,node) tables.
+    # learn_step: intraday position (0 = scheduled normally, 1 = +1m,
+    # 2 = +10m). stability_fast: FSRS-7 fast stability (0.8 * slow backfill).
     cols = [r[1] for r in conn.execute("PRAGMA table_info(hebrew_review_state)").fetchall()]
     if not cols:
         conn.execute("""
@@ -444,10 +482,17 @@ def _ensure_hebrew_review_state(conn):
                 last_rating INTEGER,
                 reps INTEGER NOT NULL DEFAULT 0,
                 lapses INTEGER NOT NULL DEFAULT 0,
+                learn_step INTEGER NOT NULL DEFAULT 0,
+                stability_fast REAL,
                 PRIMARY KEY(user_id,node_id,card_mode)
             )
         """)
         return
+    if "learn_step" not in cols:
+        conn.execute("ALTER TABLE hebrew_review_state ADD COLUMN learn_step INTEGER NOT NULL DEFAULT 0")
+    if "stability_fast" not in cols:
+        conn.execute("ALTER TABLE hebrew_review_state ADD COLUMN stability_fast REAL")
+        conn.execute("UPDATE hebrew_review_state SET stability_fast = 0.8 * stability WHERE stability_fast IS NULL")
     if "card_mode" not in cols:
         conn.execute("""
             CREATE TABLE hebrew_review_state_new (
@@ -530,6 +575,8 @@ def _ensure_hebrew_undo_suspend(conn):
             prev_last_rating INTEGER,
             prev_reps INTEGER,
             prev_lapses INTEGER,
+            prev_learn_step INTEGER,
+            prev_stability_fast REAL,
             prev_mastery REAL,
             prev_attempts INTEGER,
             prev_correct INTEGER,
@@ -541,6 +588,11 @@ def _ensure_hebrew_undo_suspend(conn):
             PRIMARY KEY(user_id,node_id,card_mode)
         )
     """)
+    ucols = [r[1] for r in conn.execute("PRAGMA table_info(hebrew_review_undo)").fetchall()]
+    if "prev_learn_step" not in ucols:
+        conn.execute("ALTER TABLE hebrew_review_undo ADD COLUMN prev_learn_step INTEGER")
+    if "prev_stability_fast" not in ucols:
+        conn.execute("ALTER TABLE hebrew_review_undo ADD COLUMN prev_stability_fast REAL")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS hebrew_suspended (
             user_id TEXT NOT NULL,
@@ -553,6 +605,42 @@ def _ensure_hebrew_undo_suspend(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_suspended_user"
         " ON hebrew_suspended(user_id,node_id)")
+
+
+def _max_frontier_level(conn, user_id: str) -> int:
+    """Level-gate for the unpracticed frontier (content arrangement).
+
+    Level L+1 opens once the learner's practiced-average mastery on L
+    reaches 0.5 — the curriculum spine (letters → vowels → … → roots)
+    actually gates instead of merely suggesting. Never locks below the
+    deepest level the learner already touches (legacy progress is
+    grandfathered). L1 is always open. No migration: pure query-time rule.
+    """
+    try:
+        rows = conn.execute("""
+            SELECT n.level, AVG(p.mastery), COUNT(*)
+            FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id
+            WHERE p.user_id=? AND n.level IS NOT NULL
+            GROUP BY n.level
+        """, (user_id,)).fetchall()
+    except Exception:
+        return 7
+    avgs = {r[0]: (r[1] or 0.0, r[2]) for r in rows}
+    allowed = 1
+    for level in range(1, 7):
+        avg, count = avgs.get(level, (0.0, 0))
+        if count > 0 and avg >= 0.5:
+            allowed = level + 1
+        else:
+            break
+    try:
+        touched = conn.execute(
+            "SELECT MAX(n.level) FROM hebrew_progress p"
+            " JOIN hebrew_nodes n ON n.id=p.node_id WHERE p.user_id=?",
+            (user_id,)).fetchone()[0]
+    except Exception:
+        touched = None
+    return max(allowed, touched or 1)
 
 
 def _suspended_sets(conn, user_id: str):
@@ -672,8 +760,20 @@ def ensure_hebrew_schema_once(conn=None):
                 _SCHEMA_INDEXES,
             ).fetchall()
         }
+        # Index presence alone can't detect later column migrations (the
+        # learn_step/stability_fast trap: indexes complete, columns missing),
+        # so also check the evolving columns before short-circuiting.
         if len(have) == len(_SCHEMA_INDEXES):
-            return
+            try:
+                rcols = {r[1] for r in owned.execute(
+                    "PRAGMA table_info(hebrew_review_state)").fetchall()}
+                ucols = {r[1] for r in owned.execute(
+                    "PRAGMA table_info(hebrew_review_undo)").fetchall()}
+            except Exception:
+                rcols, ucols = set(), set()
+            if {"learn_step", "stability_fast"} <= rcols and \
+                    {"prev_learn_step", "prev_stability_fast"} <= ucols:
+                return
         _ensure_all_hebrew_tables(owned)
         _ensure_hot_indexes(owned)
         owned.commit()
@@ -803,7 +903,7 @@ def hebrew_fsrs_intervals(
     retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
 
     state = conn.execute("""
-        SELECT stability,difficulty,last_review FROM hebrew_review_state
+        SELECT stability,difficulty,last_review,learn_step,stability_fast FROM hebrew_review_state
         WHERE user_id=? AND node_id=? AND card_mode=?
     """, (user_id, node_id, card_mode)).fetchone()
     conn.close()
@@ -811,17 +911,18 @@ def hebrew_fsrs_intervals(
     out = {}
     for rating in (1, 2, 3, 4):
         if rating == 1:
-            # L1 relearn step: the Again button shows the intraday return,
-            # matching what process_hebrew_review will schedule.
-            out["1"] = {"days": 0, "label": f"<{RELEARN_DELAY_MIN}m"}
+            # Intraday step shared with review submit: new/learning cards
+            # return in 1m, established lapses in 10m.
+            _, mins = _learn_step_after(state[3] if state else 0, 1, state is not None)
+            out["1"] = {"days": 0, "label": f"<{mins}m"}
             continue
         if state:
             days_elapsed = days_since(state[2])
-            new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed,
-                                               retention)
+            sf = state[4] if len(state) > 4 and state[4] else None
+            new_s, _, interval, _ = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed,
+                                                  retention, sf)
         else:
-            new_s = fsrs_initial_stability(rating)
-            interval = fsrs_next_interval(new_s, retention)
+            new_s, _, interval, _ = _new_card_schedule(rating, retention)
         adjusted = max(1, round(interval * learning_speed))
         out[str(rating)] = {"days": adjusted, "label": fsrs_humanize_interval(adjusted)}
     return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "intervals": out}}
@@ -1001,7 +1102,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
                       "last_practiced": row[3], "source": row[4] if len(row) > 4 else "practice"}
                      if row else None)
     state = conn.execute("""
-        SELECT stability,difficulty,due,last_review,last_rating,reps,lapses
+        SELECT stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast
         FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?
     """, (user_id, node_id, card_mode)).fetchone()
     stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
@@ -1009,18 +1110,19 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
 
     if state:
         days_elapsed = days_since(state[3])
-        new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed,
-                                              retention)
+        s_fast = state[8] if len(state) > 8 and state[8] else None
+        new_s, new_d, interval, new_sf = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed,
+                                                       retention, s_fast)
     else:
-        new_s = fsrs_initial_stability(rating)
-        new_d = fsrs_initial_difficulty(rating)
-        interval = fsrs_next_interval(new_s, retention)
+        new_s, new_d, interval, new_sf = _new_card_schedule(rating, retention)
     reviewed_at = datetime.datetime.now()
-    if rating == 1:
-        # L1 relearn step: the card returns this session (Anki: 10m),
-        # with stability still updated through the FSRS failure path.
+    cur_step = state[7] if state else 0
+    next_step, relearn_min = _learn_step_after(cur_step, rating, state is not None)
+    if relearn_min is not None:
+        # Intraday learning step: the card returns this session (1m/10m),
+        # with stability still updated through the normal FSRS path.
         adjusted_interval = 0
-        due_at = reviewed_at + datetime.timedelta(minutes=RELEARN_DELAY_MIN)
+        due_at = reviewed_at + datetime.timedelta(minutes=relearn_min)
     else:
         adjusted_interval = max(1, round(interval * learning_speed))
         due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
@@ -1032,15 +1134,17 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         INSERT OR REPLACE INTO hebrew_review_undo
             (user_id,node_id,card_mode,prev_stability,prev_difficulty,prev_due,
              prev_last_review,prev_last_rating,prev_reps,prev_lapses,
+             prev_learn_step,prev_stability_fast,
              prev_mastery,prev_attempts,prev_correct,prev_last_practiced,prev_source,
              had_state,had_progress)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?)
     """, (
         user_id, node_id, card_mode,
         state[0] if state else None, state[1] if state else None,
         state[2] if state else None, state[3] if state else None,
         state[4] if state else None, state[5] if state else None,
-        state[6] if state else None,
+        state[6] if state else None, state[7] if state else None,
+        state[8] if state and len(state) > 8 else None,
         prev_progress["mastery"] if prev_progress else None,
         prev_progress["attempts"] if prev_progress else None,
         prev_progress["correct"] if prev_progress else None,
@@ -1057,16 +1161,18 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         (user_id, node_id, m, a, c, user_id, node_id))
     conn.execute("""
         INSERT INTO hebrew_review_state
-            (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
+            (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
             stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
             last_review=excluded.last_review,last_rating=excluded.last_rating,
-            reps=excluded.reps,lapses=excluded.lapses
+            reps=excluded.reps,lapses=excluded.lapses,
+            learn_step=excluded.learn_step,
+            stability_fast=excluded.stability_fast
     """, (
         user_id, node_id, card_mode, new_s, new_d,
         due_at.strftime("%Y-%m-%d %H:%M:%S"), reviewed_at.strftime("%Y-%m-%d %H:%M:%S"),
-        rating, reps, lapses,
+        rating, reps, lapses, next_step, new_sf,
     ))
 
     # Track failure pattern for targeted remediation
@@ -1153,7 +1259,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         "node_id": node_id, "card_mode": card_mode, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
         "due": due_at.strftime("%Y-%m-%d %H:%M:%S"), "scheduler": "adaptive-v1",
-        "is_relearn": rating == 1, "relearn_in_min": RELEARN_DELAY_MIN if rating == 1 else 0,
+        "is_relearn": relearn_min is not None, "relearn_in_min": relearn_min or 0,
         "retrievability": 1.0, "reps": reps, "lapses": lapses,
         "is_leech": lapses >= LEECH_LAPSE_THRESHOLD,
         "learning_speed": round(learning_speed, 3),
@@ -1702,21 +1808,22 @@ def _placement_apply_results(conn, user_id, results):
                 rating = 1
                 mastery = 0.2
             new_d = fsrs_next_difficulty(5.0, rating)
-            interval = fsrs_next_interval(new_s, retention)
-            due = datetime.datetime.now() + datetime.timedelta(days=max(1, interval))
+            interval = fsrs_next_interval(new_s, retention, s_fast=0.8 * new_s, difficulty=new_d)
+            due = datetime.datetime.now() + datetime.timedelta(days=max(1, round(interval)))
             ensure_hebrew_schema_once()
             conn.execute("""
                 INSERT INTO hebrew_review_state
-                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
                     stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
                     last_review=excluded.last_review,last_rating=excluded.last_rating,
-                    reps=excluded.reps,lapses=excluded.lapses
+                    reps=excluded.reps,lapses=excluded.lapses,
+                    stability_fast=excluded.stability_fast
             """, (user_id, node_id, "", round(new_s, 2), round(new_d, 2),
                   due.strftime("%Y-%m-%d %H:%M:%S"),
                   datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                  rating, 1, 0))
+                  rating, 1, 0, 0, round(0.8 * new_s, 2)))
             conn.execute("""
                 INSERT INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced,source)
                 VALUES (?,?,?,?,?,datetime('now'),'placement')
@@ -2229,31 +2336,31 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
         retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
         rating = 3 if correct else 1  # correct → Good, incorrect → Again
         state = conn.execute(
-            "SELECT stability,difficulty,reps,lapses FROM hebrew_review_state WHERE user_id=? AND node_id=?",
+            "SELECT stability,difficulty,reps,lapses,last_review,stability_fast FROM hebrew_review_state WHERE user_id=? AND node_id=?",
             (user_id, node_id)).fetchone()
         if state:
-            new_s, new_d, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating,
-                                                   None, retention)
+            s_fast = state[5] if len(state) > 5 and state[5] else None
+            new_s, new_d, interval, new_sf = fsrs_schedule(max(state[0], 0.25), state[1], rating,
+                                                           days_since(state[4]), retention, s_fast)
             reps = state[2] + 1
             lapses = state[3] + (1 if rating == 1 else 0)
         else:
-            new_s = fsrs_initial_stability(rating)
-            new_d = fsrs_next_difficulty(5.0, rating)
-            interval = fsrs_next_interval(new_s, retention)
+            new_s, new_d, interval, new_sf = _new_card_schedule(rating, retention)
             reps, lapses = 1, (1 if rating == 1 else 0)
         _reviewed = datetime.datetime.now()
-        _due = _reviewed + datetime.timedelta(days=max(1, interval))
+        _due = _reviewed + datetime.timedelta(days=max(1, round(interval)))
         conn.execute("""
             INSERT INTO hebrew_review_state
-                (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+                (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
                 stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
                 last_review=excluded.last_review,last_rating=excluded.last_rating,
-                reps=excluded.reps,lapses=excluded.lapses
+                reps=excluded.reps,lapses=excluded.lapses,
+                stability_fast=excluded.stability_fast
         """, (user_id, node_id, "", new_s, new_d,
               _due.strftime("%Y-%m-%d %H:%M:%S"), _reviewed.strftime("%Y-%m-%d %H:%M:%S"),
-              rating, reps, lapses))
+              rating, reps, lapses, 0, new_sf))
         conn.commit()
     except Exception:
         log.warning("silent_exception", exc_info=True)
@@ -3195,7 +3302,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     # Perf: not-yet-due modes filtered in SQL (idx_review_state_user_due);
     # the Python strptime check below stays as a safety net.
     state_rows = conn.execute(f"""
-        SELECT node_id, card_mode, stability, difficulty, due, last_review, last_rating
+        SELECT node_id, card_mode, stability, difficulty, due, last_review, last_rating, learn_step, stability_fast
         FROM hebrew_review_state WHERE user_id=? AND due <= datetime('now','localtime','+{LEARN_AHEAD_MIN} minutes')
     """, (user_id,)).fetchall()
     learn_ahead_cutoff = now + datetime.timedelta(minutes=LEARN_AHEAD_MIN)
@@ -3225,7 +3332,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                     due_time = now
                 if due_time > learn_ahead_cutoff:
                     continue
-                if due_time > now:
+                if due_time > now or (s["learn_step"] or 0) > 0:
                     is_learning = True
                 stab = max(0.25, s["stability"] or 0.25)
                 try:
@@ -3233,7 +3340,8 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                     days = (now - last_time).total_seconds() / 86400.0
                 except (ValueError, TypeError):
                     days = 0.0
-                ret = fsrs_retrievability(stab, days)
+                s_fast = s["stability_fast"] if "stability_fast" in s.keys() and s["stability_fast"] else None
+                ret = fsrs_retrievability(stab, days, s_fast, s["difficulty"] or 5.0)
                 if ret < worst_ret:
                     worst_ret, worst_stab, worst_due, worst_days = ret, stab, s["due"], days
                 due_modes.extend(list(CARD_MODES) if not s["card_mode"] else [s["card_mode"]])
@@ -3324,10 +3432,12 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
             """, (user_id,)).fetchone()[0]
             remaining = max(0, new_budget - introduced_today)
             if remaining > 0:
+                max_level = _max_frontier_level(conn, user_id)
                 frontier = conn.execute("""
                     SELECT n.id, n.title, n.level, n.category, n.description
                     FROM hebrew_nodes n
-                    WHERE NOT EXISTS (
+                    WHERE n.level <= ?
+                    AND NOT EXISTS (
                         SELECT 1 FROM hebrew_progress p WHERE p.node_id=n.id AND p.user_id=?
                     )
                     AND NOT EXISTS (
@@ -3340,7 +3450,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                         WHERE s.user_id=? AND s.node_id=n.id AND s.card_mode=''
                     )
                     ORDER BY n.level, n.id LIMIT ?
-                """, (user_id, user_id, user_id, remaining * 3)).fetchall()
+                """, (max_level, user_id, user_id, user_id, remaining * 3)).fetchall()
                 for f in frontier[:remaining]:
                     if f["id"] in suspended_nodes:
                         continue
@@ -3512,6 +3622,7 @@ def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
     endpoint and guided-lesson topic selection). Returns (topics, blocked_by).
     Caller owns the connection."""
     suspended_nodes, _ = _suspended_sets(conn, user_id)
+    max_level = _max_frontier_level(conn, user_id)
     placeholders = ",".join("?" for _ in FOCUS_CATEGORIES)
 
     practiced = conn.execute(f"""
@@ -3571,8 +3682,9 @@ def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
                 LEFT JOIN hebrew_progress p2 ON p2.node_id=e.source_id AND p2.user_id=?
                 WHERE e.target_id=n.id AND (p2.node_id IS NULL OR p2.mastery < 0.8)
             )
+            AND n.level <= ?
             ORDER BY n.level, n.id LIMIT ?
-        """, (*FOCUS_CATEGORIES, user_id, user_id, limit - len(topics))).fetchall()
+        """, (*FOCUS_CATEGORIES, user_id, user_id, max_level, limit - len(topics))).fetchall()
         for f in frontier:
             if f["id"] in suspended_nodes:
                 continue
@@ -4427,15 +4539,18 @@ def undo_hebrew_review(body: dict, authorization: str = Header("")):
         if u["had_state"]:
             conn.execute("""
                 INSERT INTO hebrew_review_state
-                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
                     stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
                     last_review=excluded.last_review,last_rating=excluded.last_rating,
-                    reps=excluded.reps,lapses=excluded.lapses
+                    reps=excluded.reps,lapses=excluded.lapses,
+                    learn_step=excluded.learn_step,stability_fast=excluded.stability_fast
             """, (user_id, node_id, card_mode, u["prev_stability"], u["prev_difficulty"],
                     u["prev_due"], u["prev_last_review"], u["prev_last_rating"],
-                    u["prev_reps"], u["prev_lapses"]))
+                    u["prev_reps"], u["prev_lapses"],
+                    u["prev_learn_step"] if "prev_learn_step" in u.keys() else 0,
+                    u["prev_stability_fast"] if "prev_stability_fast" in u.keys() else None))
         else:
             conn.execute(
                 "DELETE FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?",
@@ -5455,7 +5570,7 @@ def _attach_srs_status(conn, user_id: str, items: list, node_ids: list, now=None
         ).fetchall():
             mastery_by[nid] = mastery or 0.0
         for s in conn.execute(
-            f"SELECT node_id, stability, difficulty, due, last_review FROM hebrew_review_state WHERE user_id=? AND node_id IN ({placeholders})",
+            f"SELECT node_id, stability, difficulty, due, last_review, stability_fast FROM hebrew_review_state WHERE user_id=? AND node_id IN ({placeholders})",
             (user_id, *uniq),
         ).fetchall():
             states_by.setdefault(s["node_id"], []).append(s)
@@ -5483,7 +5598,8 @@ def _attach_srs_status(conn, user_id: str, items: list, node_ids: list, now=None
                         due_in_days = round((due_dt - now).total_seconds() / 86400.0, 1)
                         stab = max(0.25, s["stability"] or 0.25)
                         days = max(0.0, (now - last_dt).total_seconds() / 86400.0)
-                        ret = round(fsrs_retrievability(stab, days), 3)
+                        s_fast = s["stability_fast"] if "stability_fast" in s.keys() and s["stability_fast"] else None
+                        ret = round(fsrs_retrievability(stab, days, s_fast, s["difficulty"] or 5.0), 3)
                 interval_days = best
                 mastered = interval_days >= WORD_MATURE_INTERVAL_DAYS
         out.append({**w, "node_id": node_id, "mastery": mastery,

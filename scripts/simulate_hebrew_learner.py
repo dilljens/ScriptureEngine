@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from lib.api.fsrs import (
     initial_difficulty,
+    initial_fast_stability,
     initial_stability,
     next_interval,
     retrievability,
@@ -34,7 +35,7 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
     rng = random.Random(seed)
     # Latent difficulty per card: 0.7 (easy) .. 1.3 (hard) multiplier on decay.
     latent = {i: rng.uniform(0.7, 1.3) for i in range(cards)}
-    state = {}  # card -> (stability, difficulty, due_day, reps, lapses, last_day)
+    state = {}  # card -> (stability, difficulty, due_day, reps, lapses, last_day, s_fast)
     introduced = 0
     reviews_per_day, retention_per_day, backlog = [], [], []
     lapses_total = recalls_total = intraday_reviews = 0
@@ -44,7 +45,7 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
         for _ in range(new_per_day):
             if introduced >= cards:
                 break
-            state[introduced] = (None, None, day, 0, 0, day)
+            state[introduced] = (None, None, day, 0, 0, day, None)
             introduced += 1
         # Due queue (Anki-style: everything due today, no cap here — we
         # measure the natural workload so caps can be sized from data).
@@ -52,16 +53,18 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
         backlog.append(len(due))
         day_recalls = day_reviews = 0
         for c in due:
-            stab, diff, _, reps, lapses, last = state[c]
+            stab, diff, _, reps, lapses, last, sf = state[c]
             if stab is None:
                 rating = 3  # first sight: guided lesson, assume pass
                 new_s = initial_stability(rating)
                 new_d = initial_difficulty(rating)
-                ivl = next_interval(new_s, retention)
+                new_sf = initial_fast_stability(rating)
+                ivl = next_interval(new_s, retention, s_fast=new_sf, difficulty=new_d)
             else:
                 days_elapsed = max(1, day - last)
                 # True recall prob: retrievability warped by latent difficulty.
-                r = retrievability(max(stab, 0.25) / latent[c], days_elapsed)
+                r = retrievability(max(stab, 0.25) / latent[c], days_elapsed,
+                                   (sf or 0.8 * max(stab, 0.25)) / latent[c], diff)
                 recall = rng.random() < r
                 rating = 3 if recall else 1
                 day_reviews += 1
@@ -70,16 +73,17 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
                     recalls_total += 1
                 else:
                     lapses_total += 1
-                new_s, new_d, ivl = schedule(
-                    max(stab, 0.25), diff, rating, max(days_elapsed, 1), retention)
+                new_s, new_d, ivl, new_sf = schedule(
+                    max(stab, 0.25), diff, rating, max(days_elapsed, 1),
+                    retention, sf)
             extra_lapse = 0
             if intraday and stab is not None and rating == 1:
                 # L1 relearn: same-day retry after feedback (recall ~0.8).
                 retry_recall = rng.random() < 0.8
                 retry_rating = 3 if retry_recall else 1
-                new_s2, new_d2, ivl2 = schedule(
-                    new_s, new_d, retry_rating, 0, retention)
-                new_s, new_d, ivl = new_s2, new_d2, ivl2
+                new_s2, new_d2, ivl2, new_sf2 = schedule(
+                    new_s, new_d, retry_rating, 0, retention, new_sf)
+                new_s, new_d, ivl, new_sf = new_s2, new_d2, ivl2, new_sf2
                 reps += 1
                 intraday_reviews += 1
                 if retry_recall:
@@ -88,7 +92,7 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
                     lapses_total += 1
                     extra_lapse = 1
             state[c] = (new_s, new_d, day + max(1, round(ivl)), reps + 1,
-                        lapses + (1 if stab is not None and rating == 1 else 0) + extra_lapse, day)
+                        lapses + (1 if stab is not None and rating == 1 else 0) + extra_lapse, day, new_sf)
         reviews_per_day.append(day_reviews)
         retention_per_day.append(day_recalls / day_reviews if day_reviews else 1.0)
 

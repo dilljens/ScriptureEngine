@@ -108,7 +108,13 @@ def test_interval_caps_respected_in_review(client):
     assert hebrew_routes.LEARNING_SPEED_MIN <= r_hi["data"]["learning_speed"] <= hebrew_routes.LEARNING_SPEED_MAX
     assert hebrew_routes.LEARNING_SPEED_MIN <= r_lo["data"]["learning_speed"] <= hebrew_routes.LEARNING_SPEED_MAX
 
-    base = hebrew_routes.fsrs_next_interval(hebrew_routes.fsrs_initial_stability(3))
+    # v7: new-card intervals come from the full init state (S0, D0, 0.8*S0),
+    # mirroring _new_card_schedule — difficulty and fast stability matter.
+    _s0 = hebrew_routes.fsrs_initial_stability(3)
+    base = hebrew_routes.fsrs_next_interval(
+        _s0, 0.9,
+        s_fast=hebrew_routes.fsrs_initial_fast_stability(3),
+        difficulty=hebrew_routes.fsrs_initial_difficulty(3))
     floor_interval = max(1, round(base * hebrew_routes.LEARNING_SPEED_MIN))
     cap_interval = max(1, round(base * hebrew_routes.LEARNING_SPEED_MAX))
     assert floor_interval <= r_hi["data"]["interval"] <= cap_interval
