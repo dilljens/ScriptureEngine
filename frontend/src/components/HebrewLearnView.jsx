@@ -14,6 +14,7 @@ import GuidedLessonView from './GuidedLessonView'
 import { hebrewToCards, drillsToCards, interleaveCards } from '../lib/card-factory'
 import { grammarTrackBonus } from '../lib/idle-game'
 import { currentSessionToken, hebrewSessionUser } from '../api'
+import { retentionPct, forecastMax, heatmapMax, forecastTotal } from '../lib/hebrewStats'
 
 /* ── Dropdown components for compact action menus ── */
 
@@ -229,6 +230,8 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [guidedNode, setGuidedNode] = useState(undefined)
   const [showGrammarFocus, setShowGrammarFocus] = useState(false)
   const [focusTopics, setFocusTopics] = useState([])
+  const [showStats, setShowStats] = useState(false)
+  const [statsData, setStatsData] = useState(null)
   // Anki-style daily pacing: deck options + live queue counts
   const [prefs, setPrefs] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100, desired_retention: 0.9 })
   // Classic Study vs Games — persisted, defaults to classic so existing
@@ -674,6 +677,99 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     )
   }
 
+  // Stats panel (B3: retention + forecast + heatmap)
+  if (showStats) {
+    const ret = statsData?.retention || {}
+    const modes30 = ret.by_mode_30d || {}
+    const fsrs = ret.fsrs_lifetime_by_mode || {}
+    const forecast = statsData?.forecast || []
+    const heatmap = statsData?.heatmap || []
+    const fmax = forecastMax(forecast)
+    const hmax = heatmapMax(heatmap)
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">📈 Learning Stats</h2>
+          <button onClick={() => setShowStats(false)}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        </div>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+          True retention (last 30d, graded answers) + FSRS lifetime accuracy per direction + scheduled workload for the next 30 days.
+        </p>
+        {!statsData && (
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Couldn&rsquo;t load stats — try again.</p>
+        )}
+        {statsData && (
+          <>
+            <div className="grid md:grid-cols-2 gap-3 mb-4">
+              <div className="p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+                <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">Retention · last 30 days</div>
+                <div className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{retentionPct(ret.overall_30d?.rate)}</div>
+                <div className="text-[11px] text-neutral-400 mb-2">{ret.overall_30d?.correct ?? 0}/{ret.overall_30d?.attempts ?? 0} correct</div>
+                {Object.entries(modes30).map(([m, v]) => (
+                  <div key={m} className="flex items-center gap-2 text-xs py-0.5">
+                    <span className="w-20 text-neutral-500 dark:text-neutral-400">{m}</span>
+                    <div className="flex-1 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.round((v.rate ?? 0) * 100)}%` }} />
+                    </div>
+                    <span className="w-10 text-right font-mono text-neutral-600 dark:text-neutral-300">{retentionPct(v.rate)}</span>
+                  </div>
+                ))}
+                {Object.keys(modes30).length === 0 && (
+                  <p className="text-[11px] text-neutral-400">No graded answers yet — quizzes and lessons feed this.</p>
+                )}
+              </div>
+              <div className="p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+                <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">FSRS accuracy · lifetime by direction</div>
+                {Object.entries(fsrs).map(([m, v]) => (
+                  <div key={m} className="flex items-center gap-2 text-xs py-0.5">
+                    <span className="w-20 text-neutral-500 dark:text-neutral-400">{m}</span>
+                    <div className="flex-1 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.round((v.rate ?? 0) * 100)}%` }} />
+                    </div>
+                    <span className="w-10 text-right font-mono text-neutral-600 dark:text-neutral-300">{retentionPct(v.rate)}</span>
+                  </div>
+                ))}
+                {Object.keys(fsrs).length === 0 && (
+                  <p className="text-[11px] text-neutral-400">No reviews yet — rate some cards.</p>
+                )}
+                {statsData.suspended_count > 0 && (
+                  <p className="text-[11px] text-neutral-400 mt-2">🚫 {statsData.suspended_count} suspended (excluded from forecast)</p>
+                )}
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 mb-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">
+                Due forecast · next 30 days ({forecastTotal(forecast)} scheduled)
+              </div>
+              <div className="flex items-end gap-[2px] h-20 mt-2">
+                {forecast.map(f => (
+                  <div key={f.date} title={`${f.date}: ${f.due} due`} className="flex-1 rounded-t bg-indigo-400 dark:bg-indigo-600 min-h-[2px]"
+                    style={{ height: `${Math.max(2, Math.round((f.due / fmax) * 100))}%` }} />
+                ))}
+              </div>
+              <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
+                <span>today · {forecast[0]?.due ?? 0} due</span>
+                <span>+30d</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+              <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">Activity · last 30 days</div>
+              <div className="flex gap-[3px] flex-wrap">
+                {heatmap.map(h => (
+                  <div key={h.date} title={`${h.date}: ${h.reviews} reviews`}
+                    className={`w-4 h-4 rounded ${h.reviews === 0 ? 'bg-neutral-200 dark:bg-neutral-700' : h.reviews < hmax / 3 ? 'bg-green-200 dark:bg-green-900' : h.reviews < (2 * hmax) / 3 ? 'bg-green-400 dark:bg-green-700' : 'bg-green-600 dark:bg-green-500'}`} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   // Quiz mode
   if (showQuiz) {
     return (
@@ -935,6 +1031,15 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             setShowWordTiles(true)
           }} icon="🔠" label="Word Tiles" desc="50 words at once · Anki intervals" />
           <DropdownItem onClick={() => { setWordTilesKind('roots'); setShowWordTiles(true) }} icon="🌱" label="Root Tiles" desc="50 roots · 25 mastered words to enter" />
+          <DropdownItem onClick={async () => {
+            try {
+              const uq = await sessionQuery()
+              const r = await fetch(`/api/v1/hebrew/stats${uq}`, { headers: sessionHeaders() })
+              const d = await r.json()
+              setStatsData(d.ok ? d.data : null)
+            } catch { setStatsData(null) }
+            setShowStats(true)
+          }} icon="📈" label="Stats" desc="Retention · forecast · activity" />
         </DropdownMenu>
       </div>
 

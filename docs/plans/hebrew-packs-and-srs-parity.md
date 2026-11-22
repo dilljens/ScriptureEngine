@@ -115,28 +115,46 @@ STEP-first, media-gitignored, optimizer-deferred).
       reviews only) — document, don't block.
 - Depends on: nothing
 
-### Phase B2: Undo / suspend `[ ]`
+### Phase B2: Undo / suspend `[x]` (done 2026-11-22)
 - 🏷 Priority: medium
 - 🔁 Max turns: 10
-- [ ] Undo-last-review (single step, Ctrl+Z in review UI + endpoint restoring
+- [x] Undo-last-review (single step, Ctrl+Z in review UI + endpoint restoring
       prior `hebrew_review_state` row).
-- [ ] Manual suspend/unsuspend per card (excluded from queue, restorable).
+      → `POST /hebrew/fsrs/undo` restores prior review_state + progress rows
+      (snapshot in `hebrew_review_undo`, consumed on use); `AnkiReview.jsx`
+      ↩ Undo button + Ctrl/Cmd+Z, steps back to re-rate. XP/streak/FIRe + 
+      attempt events NOT rewound (audit trail kept) — documented in code.
+- [x] Manual suspend/unsuspend per card (excluded from queue, restorable).
+      → `POST /hebrew/suspend|unsuspend`, `GET /hebrew/suspended`;
+      `hebrew_suspended` (mode='' = whole node); queue/frontier/focus/leech
+      filter it; suspend buttons on card back; `suspended_count` in queue.
 - 📏 Scope: ~2 files, ~100-150 lines
 - ✅ Checkpoint: review → undo → state identical (pytest); suspend hides card
       from queue, unsuspend restores.
+      → `tests/test_hebrew_undo_suspend.py` 3 passed; 40 hebrew pytest green;
+      `vite build` ✓ 4s; vitest ankiReviewModes 3 passed.
 - ⚙ Fallback: undo without UI shortcut (button only) if keybinding conflicts.
+      → shipped both (button + Ctrl/Cmd+Z).
 - Depends on: nothing
 
-### Phase B3: Retention & forecast stats `[ ]`
+### Phase B3: Retention & forecast stats `[x]` (done 2026-11-22)
 - 🏷 Priority: medium
 - 🔁 Max turns: 10
-- [ ] Endpoint: true retention (last-30d by card mode), due forecast
+- [x] Endpoint: true retention (last-30d by card mode), due forecast
       (next 30d buckets), heatmap counts; panel in Tools menu.
-- [ ] Reuse `hebrew_review_state` + attempt events; no new tables.
+      → `GET /hebrew/stats`: 30d accuracy by attempt mode + FSRS lifetime
+      per card_mode, 31 forecast buckets from review_state due dates
+      (suspended excluded), 30d activity heatmap; Tools → 📈 Stats panel
+      with retention bars, forecast chart, heatmap; pure helpers in
+      `frontend/src/lib/hebrewStats.js`.
+- [x] Reuse `hebrew_review_state` + attempt events; no new tables.
 - 📏 Scope: ~2 files, ~120-180 lines
 - ✅ Checkpoint: numbers reconcile with queue counts (due today == forecast
       day-0); vitest for panel render.
+      → `tests/test_hebrew_stats.py` (day-0 == direct due count; suspend
+      drops forecast); `hebrewStats.test.js` 3 passed; `vite build` ✓.
 - ⚙ Fallback: forecast only (skip true-retention if event history is thin).
+      → not needed; both shipped (empty-history renders em-dash).
 - Depends on: nothing
 
 ### Phase B4: Per-user FSRS optimization (deferred) `[ ]`
@@ -166,29 +184,55 @@ STEP-first, media-gitignored, optimizer-deferred).
       direction if layout fights back.
 - Depends on: nothing
 
-### Phase C2: Sentence-context cards `[ ]`
+### Phase C2: Sentence-context cards `[x]` (done 2026-11-22)
 - 🏷 Priority: medium
 - 🔁 Max turns: 12
-- [ ] Context card: verse sentence with target word blanked/highlighted
+- [x] Context card: verse sentence with target word blanked/highlighted
       (verse corpus + TTS audio of the sentence); grades via existing
       cloze/progress path.
-- [ ] Seed contexts for top-300 words first (highest leverage), expand later.
+      → `scripts/seed_sentence_context.py`: exact aligned verse per vocab
+      node, target blanked (pointed-exact + stripped-token fallback),
+      skeleton answer; audio reuses read-along pipeline
+      (`/api/v1/audio/play/{verse}` in explanation) — no new TTS needed.
+      Added `cloze`+`typing` to `MC_ANSWERABLE_TYPES` so context cards
+      convert to 5-option MC in lesson quizzes (same-script distractors);
+      cumulative quiz already serves cloze as typed FREE_TEXT.
+- [x] Seed contexts for top-300 words first (highest leverage), expand later.
+      → 300/300 blanked, 300 inserted; upgrade-in-place replaced 183
+      same-answer generic cloze siblings (context strictly dominates).
 - 📏 Scope: ~2-3 files, ~150-220 lines
 - ✅ Checkpoint: context cards appear interleaved; ratings persist to FSRS
       schedule (same guarantee as rule 7 in `hebrew-card-rules.md`).
+      → `tests/test_hebrew_parse_context.py` (grade via progress +
+      FSRS '' row; lesson quiz serves context); `vite build` ✓.
 - ⚙ Fallback: context as read-only example under the headword card (no new
       card type) if seeding quality is poor.
+      → not needed; 100% blank rate on top-300.
 - Depends on: nothing (A2 enlarges the pool but isn't required)
 
-### Phase C3: Verb-parse renderer `[ ]`
+### Phase C3: Verb-parse renderer `[x]` (done 2026-11-22)
 - 🏷 Priority: low
 - 🔁 Max turns: 10
-- [ ] Parse card mode: surface form → stem/conjugation (+gloss for ≥10x
+- [x] Parse card mode: surface form → stem/conjugation (+gloss for ≥10x
       verbs); practice items seeded from verb lessons; grades via
       `/hebrew/progress`.
-- [ ] 10k-note Accordance-style list stays user-import (no license to bundle).
+      → `scripts/seed_verb_parse.py`: 41 parse items from verb-lesson
+      explanations (`3ms: יִכְתֹּב (he will write)` → "Qal imperfect 3ms";
+      binyan nodes → "Niphal" etc.; gloss always included — paradigm verb
+      כתב is ≥10x, consistent with spec). `_parse_matches` grader: every
+      token required (binyan + form + person; codes ≡ long forms,
+      perfect ≡ qatal, imperfect ≡ yiqtol). Lesson quizzes serve parse
+      (MC-converted + production-quota); cumulative quiz serves as typed.
+      Frontend: `parse` color + 20s timer in `HebrewQuiz` (FREE_TEXT
+      rendering is automatic via answer_mode).
+- [x] 10k-note Accordance-style list stays user-import (no license to bundle).
+      → untouched; no third-party content vendored.
 - 📏 Scope: ~2 files, ~100-150 lines
 - ✅ Checkpoint: parse cards grade server-side; lapses feed weakest-first
       focus like other modes.
+      → 13 parametrized `_parse_matches` cases + progress/FSRS/quiz
+      tests green; Anki upstream (`states/…`, answer-button times) used as
+      reference for the intraday follow-up, not copied (AGPL).
 - ⚙ Fallback: parse drills inside guided lessons only (no standalone queue).
+      → exceeded: standalone quiz items on verb nodes.
 - Depends on: nothing

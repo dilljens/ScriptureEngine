@@ -507,7 +507,69 @@ _SCHEMA_INDEXES = (
     "idx_review_state_user_due",
     "idx_review_state_user_node",
     "idx_lessons_node",
+    "idx_suspended_user",
 )
+
+
+def _ensure_hebrew_undo_suspend(conn):
+    """B2: single-step undo snapshot + manual suspend list."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_review_undo (
+            user_id TEXT NOT NULL,
+            node_id TEXT NOT NULL,
+            card_mode TEXT NOT NULL DEFAULT '',
+            prev_stability REAL,
+            prev_difficulty REAL,
+            prev_due TEXT,
+            prev_last_review TEXT,
+            prev_last_rating INTEGER,
+            prev_reps INTEGER,
+            prev_lapses INTEGER,
+            prev_mastery REAL,
+            prev_attempts INTEGER,
+            prev_correct INTEGER,
+            prev_last_practiced TEXT,
+            prev_source TEXT,
+            had_state INTEGER NOT NULL DEFAULT 0,
+            had_progress INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id,node_id,card_mode)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_suspended (
+            user_id TEXT NOT NULL,
+            node_id TEXT NOT NULL,
+            card_mode TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            PRIMARY KEY(user_id,node_id,card_mode)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_suspended_user"
+        " ON hebrew_suspended(user_id,node_id)")
+
+
+def _suspended_sets(conn, user_id: str):
+    """Return (suspended_nodes, suspended_modes) for queue filtering.
+
+    suspended_nodes: node_ids with card_mode='' (whole node hidden).
+    suspended_modes: set of (node_id, card_mode) for per-direction hides.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT node_id, card_mode FROM hebrew_suspended WHERE user_id=?",
+            (user_id,)).fetchall()
+    except Exception:
+        return set(), set()
+    nodes, modes = set(), set()
+    for r in rows:
+        nid, cm = r[0], (r[1] or "")
+        if not cm:
+            nodes.add(nid)
+        else:
+            modes.add((nid, cm))
+    return nodes, modes
 
 
 def _ensure_all_hebrew_tables(conn):
@@ -517,6 +579,7 @@ def _ensure_all_hebrew_tables(conn):
     _ensure_hebrew_prefs(conn)
     _ensure_attempt_events_schema(conn)
     _ensure_analytics_table(conn)
+    _ensure_hebrew_undo_suspend(conn)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS hebrew_gamification (
             user_id TEXT NOT NULL DEFAULT 'default',
@@ -597,9 +660,10 @@ def ensure_hebrew_schema_once(conn=None):
         return
     owned = sqlite3.connect(str(MEM_DB))
     try:
+        placeholders = ",".join("?" for _ in _SCHEMA_INDEXES)
         have = {
             r[0] for r in owned.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
+                f"SELECT name FROM sqlite_master WHERE type='index' AND name IN ({placeholders})",
                 _SCHEMA_INDEXES,
             ).fetchall()
         }
@@ -920,18 +984,21 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         conn.close()
         raise HTTPException(400, "Unknown Hebrew node")
     row = conn.execute(
-        "SELECT mastery, attempts, correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
+        "SELECT mastery, attempts, correct, last_practiced, source FROM hebrew_progress WHERE user_id=? AND node_id=?",
         (user_id, node_id)).fetchone()
     a, c, m = (row[1], row[2], row[0]) if row else (0, 0, 0.0)
+    prev_progress = ({"mastery": row[0], "attempts": row[1], "correct": row[2],
+                      "last_practiced": row[3], "source": row[4] if len(row) > 4 else "practice"}
+                     if row else None)
     state = conn.execute("""
-        SELECT stability,difficulty,last_review,reps,lapses
+        SELECT stability,difficulty,due,last_review,last_rating,reps,lapses
         FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?
     """, (user_id, node_id, card_mode)).fetchone()
     stability, difficulty = (state[0], state[1]) if state else (0.0, 5.0)
     retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
 
     if state:
-        days_elapsed = days_since(state[2])
+        days_elapsed = days_since(state[3])
         new_s, new_d, interval = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed,
                                               retention)
     else:
@@ -941,15 +1008,37 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
     adjusted_interval = max(1, round(interval * learning_speed))
     reviewed_at = datetime.datetime.now()
     due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
-    reps = (state[3] if state else 0) + 1
-    lapses = (state[4] if state else 0) + (1 if rating == 1 else 0)
+    reps = (state[5] if state else 0) + 1
+    lapses = (state[6] if state else 0) + (1 if rating == 1 else 0)
+
+    # B2: snapshot prior rows for single-step undo (consumed on undo).
+    conn.execute("""
+        INSERT OR REPLACE INTO hebrew_review_undo
+            (user_id,node_id,card_mode,prev_stability,prev_difficulty,prev_due,
+             prev_last_review,prev_last_rating,prev_reps,prev_lapses,
+             prev_mastery,prev_attempts,prev_correct,prev_last_practiced,prev_source,
+             had_state,had_progress)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?,?)
+    """, (
+        user_id, node_id, card_mode,
+        state[0] if state else None, state[1] if state else None,
+        state[2] if state else None, state[3] if state else None,
+        state[4] if state else None, state[5] if state else None,
+        state[6] if state else None,
+        prev_progress["mastery"] if prev_progress else None,
+        prev_progress["attempts"] if prev_progress else None,
+        prev_progress["correct"] if prev_progress else None,
+        prev_progress["last_practiced"] if prev_progress else None,
+        (prev_progress.get("source") or "practice") if prev_progress else None,
+        1 if state else 0, 1 if prev_progress else 0,
+    ))
 
     a += 1
     c += 1 if rating >= 2 else 0
     m = min(1.0, c / max(a, 1))
     conn.execute(
-        "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced) VALUES (?,?,?,?,?,datetime('now'))",
-        (user_id, node_id, m, a, c))
+        "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct,last_practiced,source) VALUES (?,?,?,?,?,datetime('now'),COALESCE((SELECT source FROM hebrew_progress WHERE user_id=? AND node_id=?), 'practice'))",
+        (user_id, node_id, m, a, c, user_id, node_id))
     conn.execute("""
         INSERT INTO hebrew_review_state
             (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
@@ -1331,7 +1420,56 @@ def _choice_index(value, options):
     return None
 
 
+# C3: verb-parse grading. Expected answers look like "Qal perfect 3ms",
+# "Niphal", or "Qal III-he". Every token must be named: binyan + form
+# (+ person). Codes and long forms both pass (3ms ≡ third masculine
+# singular; perfect ≡ qatal; imperfect ≡ yiqtol).
+_PARSE_FORM_ALIASES = {
+    "perfect": ("perfect", "qatal"),
+    "imperfect": ("imperfect", "yiqtol"),
+    "imperative": ("imperative", "command"),
+    "infinitive": ("infinitive",),
+    "participle": ("participle",),
+}
+_PARSE_NUM = {"1": ("1", "1st", "first"), "2": ("2", "2nd", "second"),
+               "3": ("3", "3rd", "third")}
+_PARSE_GEN = {"m": ("m", "masc", "masculine"), "f": ("f", "fem", "feminine"),
+               "c": ("c", "common")}
+_PARSE_NUM2 = {"s": ("s", "sg", "singular"), "p": ("p", "pl", "plural")}
+
+
+def _parse_person_matches(answer: str, code: str) -> bool:
+    code = code.lower()
+    if code in answer:
+        return True
+    m = re.fullmatch(r"([123])([mfc])([sp])", code)
+    if not m:
+        return False
+    n, g, s = m.groups()
+    return (any(w in answer for w in _PARSE_NUM[n])
+            and any(w in answer for w in _PARSE_GEN[g])
+            and any(w in answer for w in _PARSE_NUM2[s]))
+
+
+def _parse_matches(answer, expected) -> bool:
+    a = str(answer or "").lower()
+    if not a.strip():
+        return False
+    for tok in str(expected or "").lower().split():
+        if re.fullmatch(r"[123][mfc][sp]", tok):
+            if not _parse_person_matches(a, tok):
+                return False
+        elif tok in _PARSE_FORM_ALIASES:
+            if not any(alias in a for alias in _PARSE_FORM_ALIASES[tok]):
+                return False
+        elif tok not in a:
+            return False
+    return True
+
+
 def _hebrew_quiz_answer_matches(answer, expected, question_type, options=None, answer_mode=None):
+    if question_type == "parse":
+        return _parse_matches(answer, expected)
     options = options or []
     mode = answer_mode or (
         ANSWER_MODE_CHOICE_INDEX
@@ -1403,7 +1541,7 @@ def _placement_pick_question(conn, skill_idx, level):
     elif level <= 4:
         qtypes = "('multiple_choice','transliteration','cloze','recall')"
     else:
-        qtypes = "('multiple_choice','recall','typing','cloze','contrast')"
+        qtypes = "('multiple_choice','recall','typing','cloze','contrast','parse')"
     rows = conn.execute(f"""
         SELECT n.id as node_id, n.title, n.level, n.category, p.id as qid,
                p.question_type, p.question_text, p.options_json, p.correct_answer
@@ -2201,6 +2339,13 @@ def _practice_to_quiz_question(item, node):
 MC_ANSWERABLE_TYPES = frozenset({
     "multiple_choice", "letter_name", "letter_recognition", "classification",
     "transliteration", "recall", "contrast",
+    # C2/C3: cloze (incl. sentence-context), typing, and parse convert to
+    # 5-option MC in 'mc' lesson quizzes via the sibling distractor pool
+    # (same-script filter keeps Hebrew and Latin answers apart; verb-parse
+    # distractors are sibling nodes' parses — genuinely discriminating).
+    # Unconvertible items (<5 distinct distractors) are dropped, never
+    # shipped degenerate — the _to_mc_question None contract.
+    "cloze", "typing", "parse",
 })
 
 # Five options as the default (was four): one more distractor is a cheap
@@ -2373,7 +2518,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     # types first (exposure), then lowest accuracy from attempt history.
     order = {"multiple_choice": 0, "true_false": 0, "letter_recognition": 0, "classification": 0,
              "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
-             "letter_name": 2, "typing": 3}
+             "letter_name": 2, "parse": 2, "typing": 3}
     _weak = _type_weakness(conn, user_id, [node_id])
     _wkey = lambda q: -1.0 if (node_id, q["type"]) not in _weak else _weak[(node_id, q["type"])]
     questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), _wkey(q), q["difficulty"]))
@@ -2381,7 +2526,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     # Guarantee bidirectional production practice. A session that is all
     # multiple-choice trains option-elimination (recognition), not recall —
     # reserve at least a third of the slots for types the learner must produce.
-    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast"}
+    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast", "parse"}
     want = max(1, count // 3)
     own = [q for q in questions if not q.get("is_distractor")]
     distractors = [q for q in questions if q.get("is_distractor")]
@@ -3017,6 +3162,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         new_cards_per_day, max_reviews_per_day, prefs)
     retention = prefs.get("desired_retention", DEFAULT_DESIRED_RETENTION)
     now = datetime.datetime.now()
+    suspended_nodes, suspended_modes = _suspended_sets(conn, user_id)
     rows = conn.execute("""
         SELECT p.node_id, n.title, n.level, n.category, n.description,
                 p.mastery, p.attempts, p.correct, p.last_practiced,
@@ -3042,6 +3188,8 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         speeds = {}
     due = []
     for r in rows:
+        if r['node_id'] in suspended_nodes:
+            continue
         modes = by_node_modes.get(r['node_id'], [])
         if modes:
             # Scheduled rows: collect the modes actually due, most urgent first.
@@ -3064,6 +3212,9 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                 if ret < worst_ret:
                     worst_ret, worst_stab, worst_due, worst_days = ret, stab, s["due"], days
                 due_modes.extend(list(CARD_MODES) if not s["card_mode"] else [s["card_mode"]])
+            # B2: per-direction suspend hides only those modes.
+            nid = r['node_id']
+            due_modes = [mm for mm in due_modes if (nid, mm) not in suspended_modes]
             if not due_modes:
                 continue
             last_str = r['last_practiced']
@@ -3106,13 +3257,17 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
             due_now = ret < retention
 
         if due_now:
-            lr = speeds.get(r['node_id'], 1.0)
+            _nid = r['node_id']
+            _modes = [mm for mm in CARD_MODES if (_nid, mm) not in suspended_modes]
+            if not _modes:
+                continue
+            lr = speeds.get(_nid, 1.0)
             try:
                 language = json.loads(r['content_json'] or "{}").get("language", "hebrew")
             except (TypeError, json.JSONDecodeError):
                 language = "hebrew"
             due.append({
-                "node_id": r['node_id'], "title": r['title'], "level": r['level'],
+                "node_id": _nid, "title": r['title'], "level": r['level'],
                 "category": r['category'], "description": r['description'],
                 "language": language,
                 "mastery": m, "attempts": a, "correct": c,
@@ -3120,7 +3275,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                 "retrievability": round(ret, 3), "learning_speed": round(lr, 3),
                 "last_practiced": last_str, "due": None,
                 "scheduler": "legacy-estimate",
-                "due_modes": list(CARD_MODES),
+                "due_modes": _modes,
             })
 
     # ── New-card introduction (Anki-style daily cap + backlog guardrail) ──
@@ -3154,9 +3309,15 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                         LEFT JOIN hebrew_progress p2 ON p2.node_id=e.source_id AND p2.user_id=?
                         WHERE e.target_id=n.id AND (p2.node_id IS NULL OR p2.mastery < 0.8)
                     )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM hebrew_suspended s
+                        WHERE s.user_id=? AND s.node_id=n.id AND s.card_mode=''
+                    )
                     ORDER BY n.level, n.id LIMIT ?
-                """, (user_id, user_id, remaining * 3)).fetchall()
+                """, (user_id, user_id, user_id, remaining * 3)).fetchall()
                 for f in frontier[:remaining]:
+                    if f["id"] in suspended_nodes:
+                        continue
                     new_cards.append({
                         "node_id": f["id"], "title": f["title"], "level": f["level"],
                         "category": f["category"], "description": f["description"],
@@ -3199,12 +3360,14 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
 
     # Leech count: distinct due nodes at/over the lapse threshold (v1 = flag
     # only, no auto-suspend; the Grammar Focus panel lists them).
+    # B2: whole-node suspensions are excluded from the due count.
     try:
-        leech_due = len(conn.execute("""
+        leech_rows = conn.execute("""
             SELECT node_id FROM hebrew_review_state
             WHERE user_id=? AND due <= datetime('now','localtime')
             GROUP BY node_id HAVING SUM(lapses) >= ?
-        """, (user_id, LEECH_LAPSE_THRESHOLD)).fetchall())
+        """, (user_id, LEECH_LAPSE_THRESHOLD)).fetchall()
+        leech_due = sum(1 for r in leech_rows if r[0] not in suspended_nodes)
     except Exception:
         leech_due = 0
 
@@ -3287,6 +3450,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         "reviews_capped": capped,
         "reviews_remaining": max(0, len(compressed) - len(capped_reviews)),
         "leech_due": leech_due,
+        "suspended_count": len(suspended_nodes) + len(suspended_modes),
     }}
 
 
@@ -3319,6 +3483,7 @@ def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
     """Weakest-first grammar topics + unlock blockers (shared by the focus
     endpoint and guided-lesson topic selection). Returns (topics, blocked_by).
     Caller owns the connection."""
+    suspended_nodes, _ = _suspended_sets(conn, user_id)
     placeholders = ",".join("?" for _ in FOCUS_CATEGORIES)
 
     practiced = conn.execute(f"""
@@ -3355,6 +3520,8 @@ def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
             "weakness": weakness, "is_new": False,
             "is_leech": lapses >= LEECH_LAPSE_THRESHOLD,
         })
+    if suspended_nodes:
+        topics = [t for t in topics if t["node_id"] not in suspended_nodes]
     topics.sort(key=lambda t: (-t["weakness"], t["level"]))
 
     if len(topics) < limit:
@@ -3379,6 +3546,8 @@ def _grammar_focus_topics(conn, user_id: str, limit: int = 8):
             ORDER BY n.level, n.id LIMIT ?
         """, (*FOCUS_CATEGORIES, user_id, user_id, limit - len(topics))).fetchall()
         for f in frontier:
+            if f["id"] in suspended_nodes:
+                continue
             topics.append({
                 "node_id": f["id"], "title": f["title"], "level": f["level"],
                 "category": f["category"], "description": f["description"] or "",
@@ -4180,6 +4349,302 @@ def set_hebrew_prefs(body: dict, authorization: str = Header("")):
                                  "desired_retention": round(retention, 2)}}
 
 
+# ── B2: undo-last-review + suspend ─────────────────────────────────────────
+# Single-step undo restores the exact prior hebrew_review_state + hebrew_progress
+# rows for one (user, node, card_mode). Suspend hides a card (or whole node
+# when card_mode='') from the review queue, frontier, and focus lists.
+# XP/streak/badges/FIRe credit and append-only attempt events are NOT rewound
+# (they audit what happened); only the schedule + mastery counters restore.
+
+
+def _undo_row_to_response(u) -> dict:
+    return {
+        "node_id": u["node_id"], "card_mode": u["card_mode"],
+        "had_state": bool(u["had_state"]), "had_progress": bool(u["had_progress"]),
+    }
+
+
+@router.post("/api/v1/hebrew/fsrs/undo")
+def undo_hebrew_review(body: dict, authorization: str = Header("")):
+    """Restore the prior schedule+mastery snapshot for one card (single step)."""
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    node_id = (body.get("node_id", "") or "").strip()
+    card_mode = body.get("card_mode", "") or ""
+    hebrew = (body.get("hebrew", "") or "").strip()
+    lemma = str(body.get("lemma", "") or "").strip()
+    if card_mode not in ("", "hearing", "reverse", "forward", "picture", "visual_only", "drill"):
+        card_mode = ""
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    if not node_id and hebrew:
+        node_id = resolve_hebrew_node(conn, hebrew, lemma)
+    if not node_id:
+        conn.close()
+        raise HTTPException(400, "node_id (or resolvable hebrew) required")
+    u = conn.execute(
+        "SELECT * FROM hebrew_review_undo WHERE user_id=? AND node_id=? AND card_mode=?",
+        (user_id, node_id, card_mode)).fetchone()
+    if not u:
+        conn.close()
+        raise HTTPException(404, "nothing to undo for this card")
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        if u["had_state"]:
+            conn.execute("""
+                INSERT INTO hebrew_review_state
+                    (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
+                    stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
+                    last_review=excluded.last_review,last_rating=excluded.last_rating,
+                    reps=excluded.reps,lapses=excluded.lapses
+            """, (user_id, node_id, card_mode, u["prev_stability"], u["prev_difficulty"],
+                    u["prev_due"], u["prev_last_review"], u["prev_last_rating"],
+                    u["prev_reps"], u["prev_lapses"]))
+        else:
+            conn.execute(
+                "DELETE FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?",
+                (user_id, node_id, card_mode))
+        if u["had_progress"]:
+            conn.execute("""
+                INSERT INTO hebrew_progress
+                    (user_id,node_id,mastery,attempts,correct,last_practiced,source)
+                VALUES (?,?,?,?,?,?,?)
+                ON CONFLICT(user_id,node_id) DO UPDATE SET
+                    mastery=excluded.mastery,attempts=excluded.attempts,correct=excluded.correct,
+                    last_practiced=excluded.last_practiced,source=excluded.source
+            """, (user_id, node_id, u["prev_mastery"], u["prev_attempts"], u["prev_correct"],
+                    u["prev_last_practiced"], u["prev_source"] or "practice"))
+        else:
+            conn.execute(
+                "DELETE FROM hebrew_progress WHERE user_id=? AND node_id=?",
+                (user_id, node_id))
+        conn.execute(
+            "DELETE FROM hebrew_review_undo WHERE user_id=? AND node_id=? AND card_mode=?",
+            (user_id, node_id, card_mode))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+    state = conn.execute(
+        "SELECT stability,difficulty,due,last_review,last_rating,reps,lapses FROM hebrew_review_state WHERE user_id=? AND node_id=? AND card_mode=?",
+        (user_id, node_id, card_mode)).fetchone()
+    prog = conn.execute(
+        "SELECT mastery,attempts,correct FROM hebrew_progress WHERE user_id=? AND node_id=?",
+        (user_id, node_id)).fetchone()
+    conn.close()
+    return {"ok": True, "data": {
+        "node_id": node_id, "card_mode": card_mode,
+        "restored_new_card": state is None,
+        "stability": state[0] if state else None, "difficulty": state[1] if state else None,
+        "due": state[2] if state else None, "reps": state[5] if state else 0,
+        "lapses": state[6] if state else 0,
+        "mastery": prog[0] if prog else 0.0, "attempts": prog[1] if prog else 0,
+        "correct": prog[2] if prog else 0,
+    }}
+
+
+@router.post("/api/v1/hebrew/suspend")
+def suspend_hebrew_card(body: dict, authorization: str = Header("")):
+    """Hide one card direction — or the whole node when card_mode='' — from queues."""
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    node_id = (body.get("node_id", "") or "").strip()
+    card_mode = body.get("card_mode", "") or ""
+    hebrew = (body.get("hebrew", "") or "").strip()
+    lemma = str(body.get("lemma", "") or "").strip()
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    ensure_hebrew_schema_once(conn)
+    if not node_id and hebrew:
+        node_id = resolve_hebrew_node(conn, hebrew, lemma)
+    if not node_id:
+        conn.close()
+        raise HTTPException(400, "node_id (or resolvable hebrew) required")
+    if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+        conn.close()
+        raise HTTPException(400, "Unknown Hebrew node")
+    conn.execute(
+        "INSERT OR REPLACE INTO hebrew_suspended (user_id,node_id,card_mode) VALUES (?,?,?)",
+        (user_id, node_id, card_mode))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "suspended": True}}
+
+
+@router.post("/api/v1/hebrew/unsuspend")
+def unsuspend_hebrew_card(body: dict, authorization: str = Header("")):
+    """Restore a suspended card (or whole node) to queues."""
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    node_id = (body.get("node_id", "") or "").strip()
+    card_mode = body.get("card_mode", "") or ""
+    hebrew = (body.get("hebrew", "") or "").strip()
+    lemma = str(body.get("lemma", "") or "").strip()
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    ensure_hebrew_schema_once(conn)
+    if not node_id and hebrew:
+        node_id = resolve_hebrew_node(conn, hebrew, lemma)
+    if not node_id:
+        conn.close()
+        raise HTTPException(400, "node_id (or resolvable hebrew) required")
+    conn.execute(
+        "DELETE FROM hebrew_suspended WHERE user_id=? AND node_id=? AND card_mode=?",
+        (user_id, node_id, card_mode))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "suspended": False}}
+
+
+@router.get("/api/v1/hebrew/suspended")
+def list_hebrew_suspended(user_id: str = "default", session_token: str = "",
+                           authorization: str = Header("")):
+    """List suspended cards for the user."""
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"suspended": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    try:
+        rows = conn.execute(
+            "SELECT node_id, card_mode, created_at FROM hebrew_suspended WHERE user_id=? ORDER BY created_at DESC",
+            (user_id,)).fetchall()
+    except Exception:
+        rows = []
+    conn.close()
+    return {"ok": True, "data": {"suspended": [dict(r) for r in rows]}}
+
+
+@router.get("/api/v1/hebrew/stats")
+def get_hebrew_stats(user_id: str = "default", session_token: str = "",
+                       authorization: str = Header("")):
+    """B3: retention + due forecast + activity heatmap (Anki stats parity).
+
+    - retention: last-30d lesson/quiz accuracy by mode (attempt events) +
+      lifetime FSRS accuracy by card_mode (1 - lapses/reps).
+    - forecast: scheduled reviews due per day, today → +30d, from
+      hebrew_review_state due dates (suspended cards excluded). Day-0 is
+      the count of scheduled rows due now, so it reconciles with a direct
+      due-count query; the review queue's due_count may be larger because
+      it also serves legacy-estimate cards and new cards.
+    - heatmap: reviews per day for the last 30d (review_state last_review
+      dates + attempt-event dates).
+    No new tables: reuses hebrew_review_state + hebrew_attempt_events.
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"retention": {}, "forecast": [], "heatmap": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    suspended_nodes, suspended_modes = _suspended_sets(conn, user_id)
+    import datetime as _dt
+    today = _dt.date.today()
+
+    # Retention from graded lesson/quiz attempts (last 30d), by mode.
+    by_mode: dict = {}
+    overall_n = overall_c = 0
+    try:
+        for r in conn.execute("""
+            SELECT mode, COUNT(*) AS n, SUM(correct) AS c
+            FROM hebrew_attempt_events
+            WHERE user_id=? AND created_at >= datetime('now','-30 days')
+            GROUP BY mode
+        """, (user_id,)).fetchall():
+            n, c = r["n"] or 0, r["c"] or 0
+            by_mode[r["mode"] or "hebrew"] = {
+                "attempts": n, "correct": c,
+                "rate": round(c / n, 3) if n else None}
+            overall_n += n
+            overall_c += c
+    except Exception:
+        pass
+    # Lifetime FSRS accuracy per card direction (reps/lapses are cumulative).
+    fsrs_by_mode: dict = {}
+    try:
+        for r in conn.execute("""
+            SELECT card_mode, SUM(reps) AS reps, SUM(lapses) AS lapses
+            FROM hebrew_review_state WHERE user_id=? GROUP BY card_mode
+        """, (user_id,)).fetchall():
+            reps, lapses = r["reps"] or 0, r["lapses"] or 0
+            fsrs_by_mode[r["card_mode"] or "general"] = {
+                "reps": reps, "lapses": lapses,
+                "rate": round(1 - lapses / reps, 3) if reps else None}
+    except Exception:
+        pass
+
+    # Forecast buckets from scheduled due dates (suspended excluded).
+    buckets = [(today + _dt.timedelta(days=d)).isoformat() for d in range(31)]
+    forecast = {b: 0 for b in buckets}
+    try:
+        for r in conn.execute(
+            "SELECT node_id, card_mode, due FROM hebrew_review_state WHERE user_id=?",
+            (user_id,)).fetchall():
+            nid, cm, due = r[0], r[1] or "", r[2]
+            if nid in suspended_nodes or (nid, cm) in suspended_modes:
+                continue
+            try:
+                d = _dt.datetime.strptime(due, "%Y-%m-%d %H:%M:%S").date()
+            except (ValueError, TypeError):
+                d = today
+            key = d.isoformat() if d >= today else today.isoformat()
+            if key in forecast:
+                forecast[key] += 1
+    except Exception:
+        pass
+
+    # Heatmap: scheduled reviews + graded attempts per day, last 30d.
+    heat: dict = {}
+    for i in range(30):
+        heat[(today - _dt.timedelta(days=i)).isoformat()] = 0
+    try:
+        for r in conn.execute("""
+            SELECT substr(last_review,1,10) AS d, COUNT(*) AS n
+            FROM hebrew_review_state
+            WHERE user_id=? AND last_review >= datetime('now','-30 days')
+            GROUP BY d
+        """, (user_id,)).fetchall():
+            if r["d"] in heat:
+                heat[r["d"]] += r["n"]
+    except Exception:
+        pass
+    try:
+        for r in conn.execute("""
+            SELECT substr(created_at,1,10) AS d, COUNT(*) AS n
+            FROM hebrew_attempt_events
+            WHERE user_id=? AND created_at >= datetime('now','-30 days')
+            GROUP BY d
+        """, (user_id,)).fetchall():
+            if r["d"] in heat:
+                heat[r["d"]] += r["n"]
+    except Exception:
+        pass
+    conn.close()
+    return {"ok": True, "data": {
+        "retention": {
+            "by_mode_30d": by_mode,
+            "overall_30d": {"attempts": overall_n, "correct": overall_c,
+                              "rate": round(overall_c / overall_n, 3) if overall_n else None},
+            "fsrs_lifetime_by_mode": fsrs_by_mode,
+        },
+        "forecast": [{"date": b, "due": forecast[b]} for b in buckets],
+        "heatmap": [{"date": d, "reviews": heat[d]} for d in sorted(heat)],
+        "suspended_count": len(suspended_nodes) + len(suspended_modes),
+    }}
+
+
 def _query_verb_lessons(conn, category: str = ""):
     """Fetch verb lesson rows for a drill category."""
     verb_sql = "SELECT n.id, n.title, l.content_json FROM hebrew_nodes n " \
@@ -4418,7 +4883,7 @@ def get_hebrew_quiz(
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse')
         """, (nid,)).fetchall()
         items.sort(key=lambda it: (
             0 if (nid, it["question_type"]) not in weak
@@ -4471,7 +4936,7 @@ def get_hebrew_quiz(
 #   recall      = retrieve from cues (cloze, transliteration, discrimination)
 #   production  = generate from scratch (typing, sentence)
 KP_STAGE_RECOGNITION = {"multiple_choice", "true_false", "letter_recognition", "classification"}
-KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall"}
+KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall", "parse"}
 KP_STAGE_PRODUCTION = {"typing", "sentence"}
 KP_STAGE_ORDER = ["recognition", "recall", "production"]
 

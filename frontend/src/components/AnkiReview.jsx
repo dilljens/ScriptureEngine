@@ -74,6 +74,8 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const [ratings, setRatings] = useState({})
   const [saveFailed, setSaveFailed] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
+  const [lastRated, setLastRated] = useState(null)
+  const [undoMsg, setUndoMsg] = useState('')
   const spaceRef = useRef(false)
 
   const currentCard = cards?.[currentIdx]
@@ -145,6 +147,11 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
         },
       })
+      setLastRated({
+        node_id: currentCard.node_id, mode: currentCard.mode,
+        hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
+      })
+      setUndoMsg('')
     } catch (_) { setSaveFailed(n => n + 1) }
     // Advance
     setFlipped(false)
@@ -152,10 +159,73 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     setCurrentIdx(i => i + 1)
   }, [currentCard, flipped])
 
-  // Keyboard shortcuts
+  // B2: single-step undo — restores the prior schedule+mastery row, then
+  // steps back so the learner can re-rate the same card.
+  const handleUndo = useCallback(async () => {
+    if (!lastRated) return
+    try {
+      const sessionToken = currentSessionToken()
+      const r = await fetchJSON('/hebrew/fsrs/undo', {
+        method: 'POST',
+        body: JSON.stringify({
+          node_id: lastRated.node_id, card_mode: lastRated.mode,
+          hebrew: lastRated.hebrew || '', lemma: lastRated.lemma || '',
+          user_id: 'default', session_token: sessionToken,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+      })
+      if (!r.ok) throw new Error(r.error || 'undo failed')
+      // Drop the undone rating and step back to that card.
+      setRatings(prev => {
+        const next = { ...prev }
+        delete next[`${lastRated.node_id || lastRated.hebrew}_${lastRated.mode}`]
+        return next
+      })
+      setCurrentIdx(i => Math.max(0, i - 1))
+      setFlipped(false)
+      setLastRated(null)
+      setUndoMsg('Undone — card restored, rate it again.')
+    } catch (_) {
+      setUndoMsg('Undo failed — schedule kept the last rating.')
+    }
+  }, [lastRated])
+
+  // B2: suspend this direction (card stays out of queues until unsuspended).
+  const handleSuspend = useCallback(async (wholeNode = false) => {
+    if (!currentCard) return
+    try {
+      const sessionToken = currentSessionToken()
+      await fetchJSON('/hebrew/suspend', {
+        method: 'POST',
+        body: JSON.stringify({
+          node_id: currentCard.node_id, card_mode: wholeNode ? '' : currentCard.mode,
+          hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
+          user_id: 'default', session_token: sessionToken,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+      })
+      setLastRated(null)
+      setFlipped(false)
+      setAudioUrl(null)
+      setCurrentIdx(i => i + 1)
+    } catch (_) { setSaveFailed(n => n + 1) }
+  }, [currentCard])
+
+  // Keyboard shortcuts (Ctrl/Cmd+Z = undo last rating — button works too).
   useEffect(() => {
     function handleKey(e) {
       if (onBack && e.key === 'Escape') { onBack(); return }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        handleUndo()
+        return
+      }
       if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
         e.preventDefault()
         spaceRef.current = true
@@ -168,7 +238,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [flipped, handleFlip, handleRate, onBack])
+  }, [flipped, handleFlip, handleRate, handleUndo, onBack])
 
   // Loading state while the two-pass build prefetches pictures + deals modes
   if (!cards) {
@@ -318,6 +388,17 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
 
       {/* Rating buttons */}
       <RatingButtons intervals={intervals} onRate={(v) => handleRate(v)} variant="grid" showKeys />
+      {/* B2: suspend controls */}
+      <div className="flex items-center justify-center gap-3 pt-1">
+        <button onClick={() => handleSuspend(false)}
+          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
+          🚫 Suspend this direction
+        </button>
+        <button onClick={() => handleSuspend(true)}
+          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
+          suspend whole word
+        </button>
+      </div>
     </div>
   )
 
@@ -335,11 +416,21 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {title || 'Flashcard Review'}
           </h3>
+          {lastRated && (
+            <button onClick={handleUndo}
+              title="Undo last rating (Ctrl+Z)"
+              className="text-xs text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors px-2 py-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950">
+              ↩ Undo
+            </button>
+          )}
         </div>
         <span className="text-xs text-neutral-400 font-mono">
           {currentIdx + 1}/{totalCards}
         </span>
       </div>
+      {undoMsg && (
+        <p className="text-xs text-center mb-2 text-neutral-500 dark:text-neutral-400">{undoMsg}</p>
+      )}
 
       {/* Progress bar */}
       <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full mb-4 overflow-hidden">

@@ -78,3 +78,24 @@
   (ERR_PNPM_IGNORED_BUILDS blocks esbuild install check); direct
   `./node_modules/.bin/vite build` works. Unrelated to C1.
 - Next: B2 (undo/suspend), B3 (retention/forecast stats), C2/C3, or commit batch.
+
+## 2026-11-22 — B2 DONE (undo / suspend)
+- Backend (`web/routes/hebrew.py`): `hebrew_review_undo` snapshot table + `hebrew_suspended` table (mode='' = whole node), both in `_ensure_all_hebrew_tables` + `idx_suspended_user` added to `_SCHEMA_INDEXES` (fixes short-circuit ensure on existing DBs; also fixed hardcoded 4-placeholder IN). `process_hebrew_review` snapshots prior review_state + progress (incl. last_practiced/source; progress upsert now preserves source instead of wiping it) and fixes state tuple indices for the added due/last_rating cols.
+- Endpoints: `POST /hebrew/fsrs/undo` (single-step restore, consumed on use; 404 when nothing to undo), `POST /hebrew/suspend|unsuspend`, `GET /hebrew/suspended`. Queue filters whole-node + per-mode suspends (due, legacy-estimate, frontier SQL, grammar focus, leech_due); `suspended_count` in queue response.
+- Frontend (`AnkiReview.jsx`): ↩ Undo button + Ctrl/Cmd+Z (steps back to re-rate, drops undone rating), suspend-this-direction + suspend-whole-word on card back, undo status line.
+- Tests: `tests/test_hebrew_undo_suspend.py` (exact-state restore, new-card undo deletes rows, suspend hides/unsuspend restores incl. compressed groups) 3 passed; 40 hebrew pytest green; `vite build` ✓ 4s; ankiReviewModes vitest 3 passed.
+- Note: `test_memorize_preview.py::test_mastery_verse_ids_all_exist_in_library` fails on clean tree too (missing jsh.1.15-20) — pre-existing, unrelated.
+- Next: B3 (retention/forecast stats), C2 (sentence-context), C3 (verb-parse), or commit batch.
+
+## 2026-11-22 — B3 + C2 + C3 DONE (Track B/C complete except deferred B4)
+- B3 DONE: `GET /hebrew/stats` (30d retention by mode + FSRS lifetime per direction, 31-day forecast buckets ex-suspended, 30d heatmap; no new tables) + Tools → 📈 Stats panel (`hebrewStats.js` pure helpers). Checkpoint: forecast day-0 == direct due count (25==25 live). Tests: `test_hebrew_stats.py` 2 passed, `hebrewStats.test.js` 3 passed.
+- C2 DONE: `scripts/seed_sentence_context.py` → 300 top-300 vocab context cloze (100% blank rate, idempotent), audio via existing read-along `/api/v1/audio/play/{verse}`. Upgrade-in-place: 183 same-answer generic cloze siblings replaced (context dominates; lesson-quiz same-answer dedup would otherwise hide them forever; dup groups now 0). `cloze`+`typing` added to `MC_ANSWERABLE_TYPES` so context cards convert to 5-option MC in lesson quizzes; cumulative quiz serves cloze/parse as typed FREE_TEXT.
+- C3 DONE: `scripts/seed_verb_parse.py` → 41 parse items across 20/21 verb nodes (binyan_intro has no forms — correctly skipped). `_parse_matches` keyword grader (binyan+form+person; codes ≡ long forms; qatal/yiqtol aliases); `parse` in PRODUCTION_TYPES/order/KP recall/cumulative list; HebrewQuiz color+timer. Tests: `test_hebrew_parse_context.py` 16 passed (13 grader params + progress/FSRS/quiz).
+- Verification: 175 pytest green in scope (1 pre-existing unrelated fail: memorize_preview jsh.1.15-20, fails on clean tree), `vite build` ✓ 3.9s, 12 vitest green.
+- Remaining: B4 per-user FSRS optimization (explicitly deferred — needs dense per-card review history we don't retain yet). Anki upstream cloned to /tmp/anki-upstream (AGPL, reference only) for the intraday-learning follow-up spec.
+
+## 2026-11-22 — Content arrangement audit (curriculum spine review)
+- Spine order is sound: L1 consonants (28) → L2 vowels (20) → L3 grammar/syllables (12) → L4–L7 vocab/grammar/reading/verb/root (622). Every one of 703 nodes has practice items; type mix is healthy (recall 850, MC 824, cloze 762 post-C2, typing 620, parse 41, contrast 33, transliteration 29).
+- Hollow gating past L3: only 304 edges total; 551/622 L4–L7 nodes have NO incoming edge → instantly unlocked on day one. The 10/day new-card cap + backlog guardrail is the only flood control; mastery≥0.8 prerequisite rule is decorative for vocab. "Continue Learning" (level, mastery sort) guides order, but locks don't enforce it.
+- Recommendation (follow-up, not this pass): level-gate the frontier — unlock L(n+1) only when L(n) average mastery ≥ 0.5 (query-time rule, no migration) — or auto-derive frequency-tier vocab edges (top-100 → next-200). Logged for the intraday plan or a tuning pass.
+- Known content debts (unchanged): 17 silent words (no exact corpus form — deliberately unpointed, needs Renikud pass), lexicon gloss mismatches (e.g. אבדה/אב, pre-existing A2 note), maqqef reingest deferred (documented in overhaul progress).
