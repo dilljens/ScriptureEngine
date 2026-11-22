@@ -20,3 +20,11 @@ export function forecastTotal(forecast) {
   if (!forecast) return 0
   return forecast.reduce((s, f) => s + (f.due || 0), 0)
 }
+
+/** Intraday return label for the relearn step (Anki-style `<10m`). */
+export function relearnLabel(minutes) {
+  const m = Math.max(1, Math.round(minutes || 0))
+  if (m < 60) return `<${m}m`
+  const h = Math.floor(m / 60)
+  return `<${h}h`
+}

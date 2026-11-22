@@ -29,14 +29,15 @@ from lib.api.fsrs import (
 )
 
 
-def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7):
+def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7,
+           intraday=False):
     rng = random.Random(seed)
     # Latent difficulty per card: 0.7 (easy) .. 1.3 (hard) multiplier on decay.
     latent = {i: rng.uniform(0.7, 1.3) for i in range(cards)}
     state = {}  # card -> (stability, difficulty, due_day, reps, lapses, last_day)
     introduced = 0
     reviews_per_day, retention_per_day, backlog = [], [], []
-    lapses_total = recalls_total = 0
+    lapses_total = recalls_total = intraday_reviews = 0
 
     for day in range(days):
         # Introduce new cards.
@@ -71,15 +72,31 @@ def simulate(days=60, new_per_day=10, retention=0.9, cards=500, seed=7):
                     lapses_total += 1
                 new_s, new_d, ivl = schedule(
                     max(stab, 0.25), diff, rating, max(days_elapsed, 1), retention)
+            extra_lapse = 0
+            if intraday and stab is not None and rating == 1:
+                # L1 relearn: same-day retry after feedback (recall ~0.8).
+                retry_recall = rng.random() < 0.8
+                retry_rating = 3 if retry_recall else 1
+                new_s2, new_d2, ivl2 = schedule(
+                    new_s, new_d, retry_rating, 0, retention)
+                new_s, new_d, ivl = new_s2, new_d2, ivl2
+                reps += 1
+                intraday_reviews += 1
+                if retry_recall:
+                    recalls_total += 1
+                else:
+                    lapses_total += 1
+                    extra_lapse = 1
             state[c] = (new_s, new_d, day + max(1, round(ivl)), reps + 1,
-                        lapses + (1 if stab is not None and rating == 1 else 0), day)
+                        lapses + (1 if stab is not None and rating == 1 else 0) + extra_lapse, day)
         reviews_per_day.append(day_reviews)
         retention_per_day.append(day_recalls / day_reviews if day_reviews else 1.0)
 
     matured = sum(1 for s in state.values()
                   if s[0] is not None and s[0] >= 21.0)
     return {
-        "days": days, "introduced": introduced,
+        "days": days, "introduced": introduced, "intraday": intraday,
+        "intraday_reviews": intraday_reviews,
         "avg_reviews_day_last_2w": round(sum(reviews_per_day[-14:]) / 14, 1),
         "max_reviews_day": max(reviews_per_day),
         "retention_last_2w": round(sum(retention_per_day[-14:]) / 14, 3),
@@ -96,9 +113,13 @@ def main() -> int:
     ap.add_argument("--retention", type=float, default=0.9)
     ap.add_argument("--cards", type=int, default=500)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--intraday", action="store_true",
+                    help="L1 relearn: same-day retry of Again cards (recall ~0.8)")
     args = ap.parse_args()
-    r = simulate(args.days, args.new_per_day, args.retention, args.cards, args.seed)
-    print(f"days={r['days']} introduced={r['introduced']}")
+    r = simulate(args.days, args.new_per_day, args.retention, args.cards,
+                 args.seed, args.intraday)
+    print(f"days={r['days']} introduced={r['introduced']}"
+          + (f" intraday_retries={r['intraday_reviews']}" if args.intraday else ""))
     print(f"avg reviews/day (last 2w): {r['avg_reviews_day_last_2w']}")
     print(f"max reviews/day: {r['max_reviews_day']}")
     print(f"retention (last 2w): {r['retention_last_2w']}  overall: {r['overall_retention']}")

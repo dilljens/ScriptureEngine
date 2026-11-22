@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { retentionPct, forecastMax, heatmapMax, forecastTotal } from '../lib/hebrewStats'
+import { retentionPct, forecastMax, heatmapMax, forecastTotal, relearnLabel } from '../lib/hebrewStats'
 
 describe('hebrewStats helpers (B3 panel)', () => {
   it('formats retention rates, em-dash when unknown', () => {
@@ -19,5 +19,11 @@ describe('hebrewStats helpers (B3 panel)', () => {
   it('totals the forecast horizon', () => {
     expect(forecastTotal([{ due: 2 }, { due: 3 }])).toBe(5)
     expect(forecastTotal(null)).toBe(0)
+  })
+
+  it('formats intraday relearn labels Anki-style', () => {
+    expect(relearnLabel(10)).toBe('<10m')
+    expect(relearnLabel(1)).toBe('<1m')
+    expect(relearnLabel(90)).toBe('<1h')
   })
 })

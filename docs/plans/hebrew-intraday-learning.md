@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: active
 kind: plan
 area: hebrew-learning
 author: opencode
@@ -67,9 +67,9 @@ rating buttons, FSRS-6 core, single-step undo, suspend. Missing: sub-day
   with intraday re-review; expected: retention lift at small workload cost.
   If the sim shows workload explosion, cap learn-ahead before shipping.
 
-## Track L: Intraday learning `[ ]`
+## Track L: Intraday learning `[x]` (done 2026-11-22)
 
-### Phase L1: Scheduler + queue `[ ]`
+### Phase L1: Scheduler + queue `[x]`
 
 - `process_hebrew_review`: rating 1 → `due = now + 10min` (stability via
   normal short-term update, lapses +1). Ratings 2–4 untouched.
@@ -83,7 +83,7 @@ rating buttons, FSRS-6 core, single-step undo, suspend. Missing: sub-day
   due ≥ 1d; queue contains learn-ahead row with `is_learning: true`;
   stats day-0 == direct count under the same window.
 
-### Phase L2: Preview + UI `[ ]`
+### Phase L2: Preview + UI `[x]`
 
 - Intervals endpoint + `RatingButtons`: sub-day labels (`<10m`, `<1m`).
 - LearnView queue strip: red learning counter (`🔴 N learning` next to due/new).
@@ -93,7 +93,7 @@ rating buttons, FSRS-6 core, single-step undo, suspend. Missing: sub-day
 - ✅ Checkpoint: `vite build` + vitest for the time-format helper; manual:
   Again a card → red counter increments → card resurfaces.
 
-### Phase L3: Sim + verify `[ ]`
+### Phase L3: Sim + verify `[x]`
 
 - Extend `scripts/simulate_hebrew_learner.py` with `--intraday` (Again cards
   re-reviewed same simulated day at recall = R(post-lapse stability)).

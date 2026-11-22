@@ -135,7 +135,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     try {
       await hebrewSessionUser()
       const sessionToken = currentSessionToken()
-      await fetchJSON('/hebrew/fsrs/review', {
+      const res = await fetchJSON('/hebrew/fsrs/review', {
         method: 'POST',
         body: JSON.stringify({
           node_id: currentCard.node_id, rating, user_id: 'default',
@@ -147,11 +147,16 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
         },
       })
+      // L1 relearn: Again returns this session — say when, and that the
+      // card resurfaces through Review due (this fixed deck won't re-deal it).
+      if (res.ok && res.data?.is_relearn) {
+        setUndoMsg(`Back in ~${res.data.relearn_in_min || 10} min — finish this set, then hit Review due to meet it again.`)
+      }
       setLastRated({
         node_id: currentCard.node_id, mode: currentCard.mode,
         hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
       })
-      setUndoMsg('')
+      if (!(res.ok && res.data?.is_relearn)) setUndoMsg('')
     } catch (_) { setSaveFailed(n => n + 1) }
     // Advance
     setFlipped(false)

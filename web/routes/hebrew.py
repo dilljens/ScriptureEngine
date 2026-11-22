@@ -73,6 +73,11 @@ WORD_MATURE_INTERVAL_DAYS = 21
 LEECH_LAPSE_THRESHOLD = 8
 # Default desired retention (Anki 23.10+ default 0.90).
 DEFAULT_DESIRED_RETENTION = 0.9
+# L1 intraday learning (Anki parity: 10m relearn step, 20m learn-ahead).
+# Again reschedules inside the same session instead of tomorrow; the queue
+# serves cards due within the learn-ahead window flagged is_learning.
+RELEARN_DELAY_MIN = 10
+LEARN_AHEAD_MIN = 20
 
 # ── Student-Topic Learning Speeds (Math Academy Ch. 29) ──
 # learning_speed = speedup_due_to_ability / slowdown_due_to_difficulty
@@ -805,6 +810,11 @@ def hebrew_fsrs_intervals(
 
     out = {}
     for rating in (1, 2, 3, 4):
+        if rating == 1:
+            # L1 relearn step: the Again button shows the intraday return,
+            # matching what process_hebrew_review will schedule.
+            out["1"] = {"days": 0, "label": f"<{RELEARN_DELAY_MIN}m"}
+            continue
         if state:
             days_elapsed = days_since(state[2])
             new_s, _, interval = fsrs_schedule(max(state[0], 0.25), state[1], rating, days_elapsed,
@@ -1005,9 +1015,15 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         new_s = fsrs_initial_stability(rating)
         new_d = fsrs_initial_difficulty(rating)
         interval = fsrs_next_interval(new_s, retention)
-    adjusted_interval = max(1, round(interval * learning_speed))
     reviewed_at = datetime.datetime.now()
-    due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
+    if rating == 1:
+        # L1 relearn step: the card returns this session (Anki: 10m),
+        # with stability still updated through the FSRS failure path.
+        adjusted_interval = 0
+        due_at = reviewed_at + datetime.timedelta(minutes=RELEARN_DELAY_MIN)
+    else:
+        adjusted_interval = max(1, round(interval * learning_speed))
+        due_at = reviewed_at + datetime.timedelta(days=adjusted_interval)
     reps = (state[5] if state else 0) + 1
     lapses = (state[6] if state else 0) + (1 if rating == 1 else 0)
 
@@ -1137,6 +1153,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         "node_id": node_id, "card_mode": card_mode, "stability": round(new_s, 2), "difficulty": round(new_d, 2),
         "interval": adjusted_interval, "mastery": round(m, 3), "attempts": a, "correct": c,
         "due": due_at.strftime("%Y-%m-%d %H:%M:%S"), "scheduler": "adaptive-v1",
+        "is_relearn": rating == 1, "relearn_in_min": RELEARN_DELAY_MIN if rating == 1 else 0,
         "retrievability": 1.0, "reps": reps, "lapses": lapses,
         "is_leech": lapses >= LEECH_LAPSE_THRESHOLD,
         "learning_speed": round(learning_speed, 3),
@@ -3173,12 +3190,15 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     """, (user_id,)).fetchall()
     # Per-direction FSRS rows: a node is due in the modes whose row is due.
     # Legacy '' rows (pre-direction) count as due in every direction once.
+    # L1 learn-ahead: rows due within the next LEARN_AHEAD_MIN minutes ride
+    # along (flagged is_learning) so Again cards resurface this session.
     # Perf: not-yet-due modes filtered in SQL (idx_review_state_user_due);
     # the Python strptime check below stays as a safety net.
-    state_rows = conn.execute("""
-        SELECT node_id, card_mode, stability, difficulty, due, last_review
-        FROM hebrew_review_state WHERE user_id=? AND due <= datetime('now','localtime')
+    state_rows = conn.execute(f"""
+        SELECT node_id, card_mode, stability, difficulty, due, last_review, last_rating
+        FROM hebrew_review_state WHERE user_id=? AND due <= datetime('now','localtime','+{LEARN_AHEAD_MIN} minutes')
     """, (user_id,)).fetchall()
+    learn_ahead_cutoff = now + datetime.timedelta(minutes=LEARN_AHEAD_MIN)
     by_node_modes = {}
     for s in state_rows:
         by_node_modes.setdefault(s["node_id"], []).append(s)
@@ -3193,15 +3213,20 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         modes = by_node_modes.get(r['node_id'], [])
         if modes:
             # Scheduled rows: collect the modes actually due, most urgent first.
+            # L1: future-due rows inside the learn-ahead window join too,
+            # flagged learning so the UI can show the red counter.
             due_modes = []
             worst_ret, worst_stab, worst_due, worst_days = 1.0, None, None, 0.0
+            is_learning = False
             for s in modes:
                 try:
-                    due_now = datetime.datetime.strptime(s["due"], "%Y-%m-%d %H:%M:%S") <= now
+                    due_time = datetime.datetime.strptime(s["due"], "%Y-%m-%d %H:%M:%S")
                 except (ValueError, TypeError):
-                    due_now = True
-                if not due_now:
+                    due_time = now
+                if due_time > learn_ahead_cutoff:
                     continue
+                if due_time > now:
+                    is_learning = True
                 stab = max(0.25, s["stability"] or 0.25)
                 try:
                     last_time = datetime.datetime.strptime(s["last_review"], "%Y-%m-%d %H:%M:%S")
@@ -3233,6 +3258,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                 "last_practiced": last_str, "due": worst_due,
                 "scheduler": "adaptive-v1",
                 "due_modes": sorted(set(due_modes)),
+                "is_learning": is_learning,
             })
             continue
         last_str = r['last_practiced']
@@ -3361,10 +3387,11 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     # Leech count: distinct due nodes at/over the lapse threshold (v1 = flag
     # only, no auto-suspend; the Grammar Focus panel lists them).
     # B2: whole-node suspensions are excluded from the due count.
+    # L1: same learn-ahead window as the queue so the counts reconcile.
     try:
-        leech_rows = conn.execute("""
+        leech_rows = conn.execute(f"""
             SELECT node_id FROM hebrew_review_state
-            WHERE user_id=? AND due <= datetime('now','localtime')
+            WHERE user_id=? AND due <= datetime('now','localtime','+{LEARN_AHEAD_MIN} minutes')
             GROUP BY node_id HAVING SUM(lapses) >= ?
         """, (user_id, LEECH_LAPSE_THRESHOLD)).fetchall()
         leech_due = sum(1 for r in leech_rows if r[0] not in suspended_nodes)
@@ -3451,6 +3478,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         "reviews_remaining": max(0, len(compressed) - len(capped_reviews)),
         "leech_due": leech_due,
         "suspended_count": len(suspended_nodes) + len(suspended_modes),
+        "learning_count": sum(1 for d in due if d.get("is_learning") and d["node_id"] not in suspended_nodes),
     }}
 
 
@@ -3781,7 +3809,9 @@ CLOZE_BLANK = "______"
 
 
 def _due_mode_rows(conn, user_id: str, modes: tuple, limit: int):
-    """Due hebrew_review_state rows restricted to the given card modes."""
+    """Due hebrew_review_state rows restricted to the given card modes.
+    L1: same learn-ahead window as the main queue so relearn cards
+    resurface in directed modes this session."""
     placeholders = ",".join("?" for _ in modes)
     return conn.execute(f"""
         SELECT s.node_id, s.card_mode, s.stability, s.difficulty, s.due,
@@ -3789,7 +3819,7 @@ def _due_mode_rows(conn, user_id: str, modes: tuple, limit: int):
         FROM hebrew_review_state s
         JOIN hebrew_nodes n ON n.id=s.node_id
         WHERE s.user_id=? AND s.card_mode IN ({placeholders})
-          AND s.due <= datetime('now','localtime')
+          AND s.due <= datetime('now','localtime','+{LEARN_AHEAD_MIN} minutes')
         ORDER BY s.due ASC LIMIT ?
     """, (user_id, *modes, limit)).fetchall()
 
@@ -4536,8 +4566,9 @@ def get_hebrew_stats(user_id: str = "default", session_token: str = "",
       lifetime FSRS accuracy by card_mode (1 - lapses/reps).
     - forecast: scheduled reviews due per day, today → +30d, from
       hebrew_review_state due dates (suspended cards excluded). Day-0 is
-      the count of scheduled rows due now, so it reconciles with a direct
-      due-count query; the review queue's due_count may be larger because
+      the count of scheduled rows due now or within the learn-ahead
+      window (L1), so it reconciles with a direct due-count query under
+      the same window; the review queue's due_count may be larger because
       it also serves legacy-estimate cards and new cards.
     - heatmap: reviews per day for the last 30d (review_state last_review
       dates + attempt-event dates).
