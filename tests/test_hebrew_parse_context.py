@@ -103,3 +103,30 @@ def test_lesson_quiz_serves_parse_and_context(hebdb):
     assert out2["ok"] is True
     assert any("Complete the verse" in q["question"]
                for q in out2["data"]["questions"])
+
+
+def test_production_items_grade_and_render_typed(hebdb):
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT / "scripts"))
+    from generate_sentence_cloze import normalize_final, strip_niqqud
+    conn = sqlite3.connect(str(hebdb))
+    conn.row_factory = sqlite3.Row
+    for cat, like in (("verb", "Write the Qal%"), ("root", "%share one root%"),
+                      ("phrase", "Say%in Hebrew.")):
+        row = conn.execute(
+            "SELECT node_id, id, question_type, question_text, options_json,"
+            " correct_answer, difficulty FROM hebrew_practice_items"
+            " WHERE question_type='typing' AND question_text LIKE ? LIMIT 1",
+            (like,)).fetchone()
+        assert row, f"no production typing item for {cat}"
+        node = conn.execute("SELECT id, title, category FROM hebrew_nodes WHERE id=?",
+                            (row["node_id"],)).fetchone()
+        q = H._practice_to_quiz_question(row, node)
+        assert q["answer_mode"] == H.ANSWER_MODE_FREE_TEXT, cat
+        skeleton = normalize_final(strip_niqqud(row["correct_answer"]))
+        out = H.update_hebrew_progress(
+            {"user_id": "anon_prod1", "node_id": row["node_id"],
+             "question_id": row["id"], "answer": skeleton},
+            authorization="")
+        assert out["ok"] is True and out["data"]["correct"], cat
+    conn.close()

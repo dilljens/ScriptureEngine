@@ -561,6 +561,54 @@ _SCHEMA_INDEXES = (
 )
 
 
+def _ensure_review_history(conn):
+    """Append-only per-review log (the fitting/ADR substrate).
+
+    Every real FSRS rating appends one row with the full before/after
+    state: card sequences of (rating, delta_t) are exactly what an FSRS
+    optimizer/ADR policy trains on. Lesson/quiz answers already land in
+    hebrew_attempt_events; placement seeds are deliberately EXCLUDED
+    (synthetic stability, not a recall — would poison fitting). Undo
+    deletes the matching row (the rating un-happened, mirroring the
+    state restore)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS hebrew_review_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            node_id TEXT NOT NULL,
+            card_mode TEXT NOT NULL DEFAULT '',
+            reviewed_at TEXT NOT NULL DEFAULT (datetime('now')),
+            rating INTEGER NOT NULL,
+            delta_t REAL,
+            s_before REAL, s_after REAL,
+            sf_before REAL, sf_after REAL,
+            d_before REAL, d_after REAL,
+            retrievability REAL,
+            interval_days REAL,
+            due TEXT,
+            desired_retention REAL
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_review_history_user_node"
+        " ON hebrew_review_history(user_id, node_id, card_mode, id)")
+
+
+def _record_review_history(conn, user_id, node_id, card_mode, rating,
+                           delta_t, s_b, s_a, sf_b, sf_a, d_b, d_a,
+                           r, ivl, due, retention):
+    """Append one immutable review event. Caller owns the transaction."""
+    _ensure_review_history(conn)
+    conn.execute("""
+        INSERT INTO hebrew_review_history
+            (user_id, node_id, card_mode, rating, delta_t,
+             s_before, s_after, sf_before, sf_after, d_before, d_after,
+             retrievability, interval_days, due, desired_retention)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (user_id, node_id, card_mode or "", rating, delta_t,
+            s_b, s_a, sf_b, sf_a, d_b, d_a, r, ivl, due, retention))
+
+
 def _ensure_hebrew_undo_suspend(conn):
     """B2: single-step undo snapshot + manual suspend list."""
     conn.execute("""
@@ -673,6 +721,7 @@ def _ensure_all_hebrew_tables(conn):
     _ensure_attempt_events_schema(conn)
     _ensure_analytics_table(conn)
     _ensure_hebrew_undo_suspend(conn)
+    _ensure_review_history(conn)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS hebrew_gamification (
             user_id TEXT NOT NULL DEFAULT 'default',
@@ -773,7 +822,14 @@ def ensure_hebrew_schema_once(conn=None):
                 rcols, ucols = set(), set()
             if {"learn_step", "stability_fast"} <= rcols and \
                     {"prev_learn_step", "prev_stability_fast"} <= ucols:
-                return
+                try:
+                    has_hist = owned.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table'"
+                        " AND name='hebrew_review_history'").fetchone()
+                except Exception:
+                    has_hist = None
+                if has_hist:
+                    return
         _ensure_all_hebrew_tables(owned)
         _ensure_hot_indexes(owned)
         owned.commit()
@@ -1114,6 +1170,7 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         new_s, new_d, interval, new_sf = fsrs_schedule(max(stability, 0.25), difficulty, rating, days_elapsed,
                                                        retention, s_fast)
     else:
+        days_elapsed = None
         new_s, new_d, interval, new_sf = _new_card_schedule(rating, retention)
     reviewed_at = datetime.datetime.now()
     cur_step = state[7] if state else 0
@@ -1174,6 +1231,20 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
         due_at.strftime("%Y-%m-%d %H:%M:%S"), reviewed_at.strftime("%Y-%m-%d %H:%M:%S"),
         rating, reps, lapses, next_step, new_sf,
     ))
+
+    # Fitting substrate: one immutable row per real rating (undo deletes it;
+    # placement seeds never reach here).
+    _r = (fsrs_retrievability(max(stability, 0.25), days_elapsed or 0.0,
+                              state[8] if state and len(state) > 8 else None,
+                              difficulty)
+          if state and days_elapsed is not None else None)
+    _record_review_history(conn, user_id, node_id, card_mode, rating,
+                           days_elapsed,
+                           state[0] if state else None, new_s,
+                           state[8] if state and len(state) > 8 else None, new_sf,
+                           state[1] if state else None, new_d,
+                           _r, float(adjusted_interval) if adjusted_interval else 0.0,
+                           due_at.strftime("%Y-%m-%d %H:%M:%S"), retention)
 
     # Track failure pattern for targeted remediation
     failure_pattern = None
@@ -2361,6 +2432,19 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
         """, (user_id, node_id, "", new_s, new_d,
               _due.strftime("%Y-%m-%d %H:%M:%S"), _reviewed.strftime("%Y-%m-%d %H:%M:%S"),
               rating, reps, lapses, 0, new_sf))
+        # Same fitting substrate as direct reviews (lesson answers are real
+        # recalls; placement seeds stay excluded).
+        _dt = days_since(state[4]) if state else None
+        _r = (fsrs_retrievability(max(state[0], 0.25), _dt or 0.0,
+                                  state[5] if state and len(state) > 5 else None,
+                                  state[1])
+              if state and _dt is not None else None)
+        _record_review_history(conn, user_id, node_id, "", rating, _dt,
+                               state[0] if state else None, new_s,
+                               state[5] if state and len(state) > 5 else None, new_sf,
+                               state[1] if state else None, new_d,
+                               _r, float(max(1, round(interval))),
+                               _due.strftime("%Y-%m-%d %H:%M:%S"), retention)
         conn.commit()
     except Exception:
         log.warning("silent_exception", exc_info=True)
@@ -4572,6 +4656,15 @@ def undo_hebrew_review(body: dict, authorization: str = Header("")):
         conn.execute(
             "DELETE FROM hebrew_review_undo WHERE user_id=? AND node_id=? AND card_mode=?",
             (user_id, node_id, card_mode))
+        # The rating un-happened: drop its history row so a future optimizer
+        # sees exactly the sequence the scheduler state reflects (Anki parity:
+        # undone reviews leave no revlog).
+        conn.execute("""
+            DELETE FROM hebrew_review_history WHERE id = (
+                SELECT id FROM hebrew_review_history
+                WHERE user_id=? AND node_id=? AND card_mode=?
+                ORDER BY id DESC LIMIT 1)
+        """, (user_id, node_id, card_mode))
         conn.commit()
     except Exception:
         conn.rollback()
@@ -4650,6 +4743,38 @@ def unsuspend_hebrew_card(body: dict, authorization: str = Header("")):
     conn.commit()
     conn.close()
     return {"ok": True, "data": {"node_id": node_id, "card_mode": card_mode, "suspended": False}}
+
+
+@router.get("/api/v1/hebrew/history")
+def get_hebrew_history(user_id: str = "default", node_id: str = "",
+                       card_mode: str = "", limit: int = 100,
+                       session_token: str = "", authorization: str = Header("")):
+    """Inspect the append-only per-review log (fitting/ADR substrate).
+
+    Newest first; optionally filtered to one card. Powers future optimizer
+    runs and debugging of the schedule — not used by the learner UI."""
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"history": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    try:
+        q = ("SELECT * FROM hebrew_review_history WHERE user_id=?"
+             + (" AND node_id=?" if node_id else "")
+             + (" AND card_mode=?" if card_mode else "")
+             + " ORDER BY id DESC LIMIT ?")
+        args: list = [user_id]
+        if node_id:
+            args.append(node_id)
+        if card_mode:
+            args.append(card_mode)
+        args.append(max(1, min(limit, 1000)))
+        rows = conn.execute(q, args).fetchall()
+    except Exception:
+        rows = []
+    conn.close()
+    return {"ok": True, "data": {"history": [dict(r) for r in rows]}}
 
 
 @router.get("/api/v1/hebrew/suspended")
@@ -5029,7 +5154,7 @@ def get_hebrew_quiz(
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing')
         """, (nid,)).fetchall()
         items.sort(key=lambda it: (
             0 if (nid, it["question_type"]) not in weak

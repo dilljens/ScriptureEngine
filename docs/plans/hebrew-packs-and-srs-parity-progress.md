@@ -123,3 +123,17 @@
   (third scheduler — consolidate per ADR-0001 spirit); FSRS-7 ADR
   auto-retention policy (needs dense per-card history — same blocker B4
   always had); second optimizer pass if usage grows.
+
+## 2026-11-22 — Production coverage (Track C depth, beyond plan)
+- `scripts/seed_production.py` → 55 production cards: 41 verb-form writing
+  ("Write the Qal imperfect 3fs ('she will write')" → תִּכְתֹּב), 17 root
+  extraction (derived forms → root, from lesson `derived_words`), 8 phrase
+  production (title surface — gloss). All `typing` (typed FREE_TEXT,
+  Hebrew keyboard), niqqud-insensitive grading verified exact + skeleton.
+- `typing` added to the cumulative quiz item list (was MC/recall-only in
+  practice: lesson mc-quizzes convert typing→MC, cumulative never served
+  it — production is now genuinely typed, not just convertible).
+- Coverage map + room design recorded in `docs/plans/hebrew-active-recall.md`
+  (status: proposed): R1 done here; R2 grammar-application, R3 dictation,
+  R4 comprehension + one-room composer, R5 mix enforcement. Speaking stays
+  opted out.
