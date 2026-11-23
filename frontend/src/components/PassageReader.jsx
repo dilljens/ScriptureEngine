@@ -26,6 +26,7 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
   const [audioData, setAudioData] = useState({})
   const audioRef = useRef(null)
   const [playingVerse, setPlayingVerse] = useState(null)
+  const [coverage, setCoverage] = useState(null)  // server known-word %
 
   // Fetch audio data for all verses in passage
   useEffect(() => {
@@ -107,6 +108,21 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [passageInfo])
+
+  // Server known-word coverage (LingQ-style readability dial, FSRS-backed).
+  useEffect(() => {
+    const { book, chapter } = passageInfo
+    if (!book || !chapter) return
+    const token = currentSessionToken()
+    const owner = token ? userId : 'default'
+    setCoverage(null)
+    fetch(`/api/v1/hebrew/coverage?book=${encodeURIComponent(book)}&chapter=${chapter}&user_id=${encodeURIComponent(owner)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.json())
+      .then(d => { if (d.ok) setCoverage(d.data) })
+      .catch(() => {})
+  }, [passageInfo.book, passageInfo.chapter, userId])
 
   // Load known words from user's learning progress
   useEffect(() => {
@@ -282,6 +298,14 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
             {passageInfo.startVerse}{passageInfo.endVerse ? `-${passageInfo.endVerse}` : ''}
           </h2>
           <p className="text-xs text-neutral-500">{tokens.length} words · {verses.length} verses</p>
+          {coverage && (
+            <p className="text-xs mt-1" title={`${coverage.tokens_known}/${coverage.tokens_total} tokens known · ${coverage.types_known}/${coverage.types_total} word forms · tap highlighted words to mine them`}>
+              <span className={`font-semibold ${coverage.coverage >= 0.95 ? 'text-green-600 dark:text-green-400' : coverage.coverage >= 0.8 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                📖 {Math.round(coverage.coverage * 100)}% known
+              </span>
+              <span className="text-neutral-400"> · {coverage.unknown?.length ? `${coverage.unknown.length}+ forms to mine — tap a word` : 'nothing left to mine here'}</span>
+            </p>
+          )}
         </div>
         <button onClick={generatePractice}
           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors">

@@ -130,3 +130,35 @@ def test_production_items_grade_and_render_typed(hebdb):
             authorization="")
         assert out["ok"] is True and out["data"]["correct"], cat
     conn.close()
+
+
+def test_grammar_apply_items_grade_and_serve(hebdb):
+    import sys as _sys2
+    _sys2.path.insert(0, str(ROOT / "scripts"))
+    from generate_sentence_cloze import normalize_final, strip_niqqud
+    conn = sqlite3.connect(str(hebdb))
+    conn.row_factory = sqlite3.Row
+    # Type A: inflect (typing).
+    row = conn.execute(
+        "SELECT node_id, id, question_type, question_text, options_json,"
+        " correct_answer, difficulty FROM hebrew_practice_items"
+        " WHERE question_text LIKE 'Apply this lesson to%' LIMIT 1").fetchone()
+    assert row, "no apply/inflect items seeded"
+    skel = normalize_final(strip_niqqud(row["correct_answer"]))
+    out = H.update_hebrew_progress(
+        {"user_id": "anon_apply1", "node_id": row["node_id"],
+         "question_id": row["id"], "answer": skel},
+        authorization="")
+    assert out["ok"] is True and out["data"]["correct"], row["node_id"]
+    # Type B: breakdown (parse) — gloss required, Hebrew required.
+    brow = conn.execute(
+        "SELECT node_id, id, correct_answer FROM hebrew_practice_items"
+        " WHERE question_type='parse' AND question_text LIKE 'Break %' LIMIT 1").fetchone()
+    assert brow, "no breakdown items seeded"
+    assert H._parse_matches(brow["correct_answer"], brow["correct_answer"])
+    conn.close()
+    # Served in the node's lesson quiz.
+    out2 = H.get_hebrew_lesson_quiz(row["node_id"], count=10, user_id="default")
+    assert out2["ok"] is True
+    assert any("Apply this lesson" in q["question"]
+               for q in out2["data"]["questions"])

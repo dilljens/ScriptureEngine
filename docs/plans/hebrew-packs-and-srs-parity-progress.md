@@ -137,3 +137,13 @@
   (status: proposed): R1 done here; R2 grammar-application, R3 dictation,
   R4 comprehension + one-room composer, R5 mix enforcement. Speaking stays
   opted out.
+
+## 2026-11-22 — R2 grammar-application cards (Track C depth)
+- `scripts/seed_grammar_apply.py` → 16 cards, attested-only: 7 inflect
+  (typing; "Example: BASE → FORM (gloss)" lines + STEM+affix compositions,
+  sound-description/junk filtered, batch-deduped) + 8 breakdown (parse;
+  "Parse X" worked examples on morphological nodes only — sentence-level
+  restatements excluded, final full-form step never a part). Keyword grader
+  requires both Hebrew parts AND gloss (half-answers fail verified).
+- Tests: grade-via-progress (skeleton), parse discrimination, lesson-quiz
+  serving — in `test_hebrew_parse_context.py` (18 passed).

@@ -93,3 +93,13 @@ tab; the twelve doors shrink to "practice one thing" shortcuts.
   facts (sentence sources stay verse-corpus + lesson content). No bundled
   third-party media. Grammar-application seeding must parse lesson
   explanations, not invent paradigms — same discipline as the parse seeder.
+
+## Update 2026-11-22 — R2 DONE, M1 DONE
+- R2 done as designed above (16 cards). One deviation: breakdown restricted
+  to morphological nodes (sentence-level "parses" restate, don't test).
+- M1 (master plan) done: `GET /hebrew/coverage?book=&chapter=` — chapter
+  tokens resolved through exact→folded→affix→lemma layers, mastery ≥ 0.8 =
+  known; Gen 1 @ 48.4% for the live user with mineable unknowns. Reader
+  header shows the 📖 dial (green ≥95 / amber ≥80 / red below) with a
+  tap-to-mine hint; WordPopup's Add-to-Learning was already wired.
+  `tests/test_hebrew_coverage.py` 3 passed.

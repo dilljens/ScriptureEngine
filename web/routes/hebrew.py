@@ -4777,6 +4777,92 @@ def get_hebrew_history(user_id: str = "default", node_id: str = "",
     return {"ok": True, "data": {"history": [dict(r) for r in rows]}}
 
 
+@router.get("/api/v1/hebrew/coverage")
+def get_hebrew_coverage(book: str = "", chapter: int = 0,
+                        user_id: str = "default", session_token: str = "",
+                        authorization: str = Header("")):
+    """Known-word coverage for a chapter (LingQ-style readability dial).
+
+    Tokenizes the chapter's pointed OSHB text, resolves each token through
+    the same layers as audio review (exact → folded → affix-strip →
+    lemma), and reports the share of running tokens whose node is mastered
+    (mastery >= 0.8, the unlock threshold). Unknown types come back most-
+    frequent first with resolvable node_ids, so the reader can mine them
+    one tap at a time through the existing add-word endpoint.
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    book = (book or "").strip().lower()
+    if not book or not chapter:
+        raise HTTPException(400, "book and chapter required (e.g. book=gen&chapter=1)")
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    try:
+        scrip = get_db()
+    except Exception:
+        conn.close()
+        raise HTTPException(503, "Scripture corpus unavailable")
+    try:
+        rows = scrip.execute(
+            "SELECT text_hebrew FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
+            (book, int(chapter))).fetchall()
+    except Exception:
+        rows = []
+    try:
+        scrip.close()
+    except Exception:
+        pass
+    if not rows:
+        conn.close()
+        raise HTTPException(404, f"No verses for {book}.{chapter}")
+    # Tokenize like the cloze seeder (drop / morpheme separators in-word).
+    counts: dict = {}
+    first_seen: dict = {}
+    for (heb,) in rows:
+        for chunk in (heb or "").split():
+            tok = chunk.replace("/", "").strip()
+            if not tok:
+                continue
+            folded = _anki_fold(tok)
+            if not folded:
+                continue
+            counts[folded] = counts.get(folded, 0) + 1
+            first_seen.setdefault(folded, tok)
+    resolved: dict = {}
+    for folded in counts:
+        nid = resolve_hebrew_node(conn, first_seen[folded])
+        resolved[folded] = nid or ""
+    mastery_by: dict = {}
+    nids = sorted({n for n in resolved.values() if n})
+    if nids:
+        placeholders = ",".join("?" for _ in nids)
+        for nid, m in conn.execute(
+            f"SELECT node_id, mastery FROM hebrew_progress WHERE user_id=? AND node_id IN ({placeholders})",
+            (user_id, *nids)).fetchall():
+            mastery_by[nid] = m or 0.0
+    conn.close()
+    total = sum(counts.values())
+    known = 0
+    unknown: list = []
+    for folded, n in sorted(counts.items(), key=lambda kv: -kv[1]):
+        nid = resolved.get(folded, "")
+        if nid and mastery_by.get(nid, 0.0) >= 0.8:
+            known += n
+        else:
+            unknown.append({"surface": first_seen[folded], "folded": folded,
+                            "count": n, "node_id": nid or None})
+    return {"ok": True, "data": {
+        "book": book, "chapter": int(chapter),
+        "tokens_total": total, "tokens_known": known,
+        "coverage": round(known / total, 3) if total else 0.0,
+        "types_total": len(counts),
+        "types_known": len(counts) - len(unknown),
+        "unknown": unknown[:25],
+    }}
+
+
 @router.get("/api/v1/hebrew/suspended")
 def list_hebrew_suspended(user_id: str = "default", session_token: str = "",
                            authorization: str = Header("")):
