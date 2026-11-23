@@ -38,12 +38,15 @@ collapse the doors into one room.
 - [ ] R1 (DONE 2026-11-22): production seeders for verbs/roots/phrases +
       `typing` served typed in the cumulative quiz. 55 cards, all grading
       through existing paths.
-- [ ] R2: grammar-application production (rule → inflected form in a
-      sentence blank), seeded from affix/construct/agreement lessons.
-- [ ] R3: listening dictation (audio slice → type what you hear), word
-      level first (alignments exist), verse level next.
-- [ ] R4: reading comprehension (verse-claim true/false) + the one-room
-      session composer with an authentic verse block.
+- [x] R2: grammar-application production (DONE 2026-11-22: 16 attested
+      cards — inflect via Example: BASE → FORM lines, breakdown via
+      morphological Parse worked examples; junk/ambiguous lines filtered).
+- [x] R3: listening dictation, word level (DONE 2026-11-22: 517 cards,
+      dictation/next, quiz audio player; verse level waits for word
+      retention ≥ 80%).
+- [x] R4: reading comprehension + one-room composer (DONE 2026-11-22:
+      492 verse-presence T/F; daily-session endpoint + HebrewRoom view.
+      Meaning-judgment claims deferred — need hand review).
 - [ ] R5: per-session production-ratio enforcement (≥40% production, the
       review doc's gap #1) + analytics on the ratio.
 

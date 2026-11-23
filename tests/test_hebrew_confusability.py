@@ -217,3 +217,29 @@ def test_review_queue_pair_confusability_warning(client, _seed_due_pool):
                  if isinstance(it, dict) and it.get("node_id") == "shin"), None)
     if shin:
         assert shin.get("confusability_warning") == ["sin"]
+
+
+def test_interleave_protects_pair_at_drain():
+    # Regression: greedy round-robin stranded shin/sin at the drain with <3
+    # buffers left (starter words shifted new-card inflow). Most-constrained
+    # first must force-emit while buffers exist and ban the mate 3 picks.
+    from web.routes.hebrew import _interleave_due_items
+    pairs = {("shin", "sin"), ("sin", "shin")}
+    by_cat = {
+        "consonant": [
+            _due_item("shin", "consonant", 1, 0.1),
+            _due_item("sin", "consonant", 1, 0.2),
+            _due_item("bet", "consonant", 1, 0.9),
+        ],
+        "word": [
+            _due_item("w1", "word", 4, 0.9),
+            _due_item("w2", "word", 4, 0.9),
+            _due_item("w3", "word", 4, 0.9),
+            _due_item("w4", "word", 4, 0.9),
+            _due_item("w5", "word", 4, 0.9),
+        ],
+    }
+    out = _interleave_due_items(by_cat, pairs)
+    ids = [it["node_id"] for it in out]
+    assert set(ids) == {"shin", "sin", "bet", "w1", "w2", "w3", "w4", "w5"}
+    assert abs(ids.index("shin") - ids.index("sin")) >= 4

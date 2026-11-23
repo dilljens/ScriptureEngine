@@ -165,3 +165,60 @@
   or set-goal link); goal selector in deck options, saved via set_prefs.
 - Tests: endpoint no-leak + grade + audio-carry (parse_context file),
   profile shape + goal roundtrip/reject (stats file). 521 pytest green.
+
+## 2026-11-22 — Student-eye review fixes + R4a comprehension + Room composer
+- Student walkthrough verdict: lesson quizzes served 2 recognition taps for
+  5-question lessons (same-answer dedup kept easiest-per-answer, deleting all
+  production); first word was את (untranslatable particle); reader "known"
+  disagreed with SRS mastery (two known-systems).
+- Fixes: dedup is now per (answer, recognition-vs-production) with DAY
+  ROTATION among same-answer production items (stable within day, varied
+  across days); 18-word concrete starter set (Genesis-core, all with
+  items+audio) leads the L4 frontier; coverage endpoint returns
+  known_folded and PassageReader colors from FSRS mastery first (local
+  marks fallback) — one "known" everywhere.
+- R4a DONE: `scripts/seed_comprehension.py` → 492 verse-presence T/F
+  ("The word X ('gloss') appears in gen.1.1", foil verified absent;
+  ambiguous gloss-frame fixed to presence-frame). true_false kept binary
+  in mc transform (never padded to 5); cumulative serves as 2-option
+  choice. Full meaning-judgment stays deferred (needs hand review).
+- R4b composer DONE: `GET /hebrew/daily-session` (due interleaved + new
+  to cap + verse block = most-represented due verse with text + audio)
+  and `HebrewRoom.jsx` (verse block + due review + new words through the
+  existing GameReviewModal; Room entry first in Practice dropdown).
+- Tests: rotation stability, starter-first frontier, known_folded merge
+  path, comprehension grade both ways + 2-option serving, composer shape
+  (textless block omitted, not shipped empty). 517+ pytest green.
+
+## 2026-11-22 — Student-eye audit fixes + R4 (comprehension + composer + Room)
+- Audit as a student found: (1) lesson quizzes served 2 recognition taps
+  for 5-question lessons — same-answer dedup kept easiest-per-answer,
+  deleting all production; (2) first vocab word was את (untranslatable
+  particle); (3) reader "known" (learn-modules/localStorage) disagreed
+  with SRS mastery. All fixed, all with regression tests.
+- Fix 1: quiz dedup is now per (answer, recognition-vs-production) with
+  DAY ROTATION among same-answer production items (stable within day,
+  varied across days; lesson quizzes serve MC + rotating production).
+- Fix 2: 18-word concrete starter set (Genesis-core nouns + 2 verbs +
+  adjectives, all with items + audio) leads the L4 frontier; level gate
+  and prereqs unchanged. Fresh users meet אלהים, not את.
+- Fix 3: coverage endpoint returns known_folded; PassageReader colors
+  from FSRS mastery first, local marks as fallback — one "known".
+- Hardening found en route: starter reorder shifted new-card inflow and
+  exposed that "strict" non-interference was best-effort at drain.
+  Interleaver is now most-constrained-first (force-emit stranded pairs
+  while buffers exist) + 3-pick mate bans, deterministic tie-breaks
+  (hash-seed nondeterminism fixed — verified across PYTHONHASHSEEDs).
+  Pure regression test for the drain shape added.
+- R4a DONE: `scripts/seed_comprehension.py` → 492 verse-presence T/F
+  ("The word X ('gloss') appears in gen.N." — foil verified absent from
+  folded verse tokens; prompt reframed from ambiguous gloss wording).
+  true_false kept binary in mc transform, served in cumulative; meaning
+  judgments deferred (need hand review).
+- R4b DONE: `GET /hebrew/daily-session` (due interleaved + new to cap +
+  verse block = most-represented due verse with text + audio; textless
+  verse block omitted, not shipped) + `HebrewRoom.jsx` (verse block with
+  player, due review + new words through GameReviewModal; Room entry
+  first in Practice dropdown).
+- Verification: 526 pytest green, 10 vitest, vite build clean (only
+  excluded failure is the pre-existing unrelated memorize_preview gap).

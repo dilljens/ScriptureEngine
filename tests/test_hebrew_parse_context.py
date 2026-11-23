@@ -207,3 +207,66 @@ def test_lesson_quiz_dictation_carries_audio(hebdb):
             break
     assert found, "dictation items must ship an audio player"
     assert all(q["audio_url"].startswith("/api/v1/audio/word/") for q in found)
+
+
+def test_lesson_quiz_serves_production_not_just_recognition(hebdb):
+    # Student-eye regression: the same-answer dedup used to keep only the
+    # easiest item per answer, deleting every production card from lesson
+    # quizzes. Now one recognition + one rotating production item survive.
+    out = H.get_hebrew_lesson_quiz("vocab_את_0", count=10, user_id="default")
+    assert out["ok"] is True
+    types = {q["type"] for q in out["data"]["questions"]}
+    assert "multiple_choice" in types
+    assert types & {"typing", "recall", "cloze", "dictation", "parse"}, types
+    # Rotation is stable within the day.
+    out2 = H.get_hebrew_lesson_quiz("vocab_את_0", count=10, user_id="default")
+    assert [q["type"] for q in out["data"]["questions"]] == \
+           [q["type"] for q in out2["data"]["questions"]]
+
+
+def test_starter_words_lead_the_frontier(hebdb):
+    conn = sqlite3.connect(str(hebdb))
+    try:
+        for (nid, _lv) in conn.execute("SELECT id, level FROM hebrew_nodes WHERE level<=3"):
+            conn.execute(
+                "INSERT OR REPLACE INTO hebrew_progress (user_id,node_id,mastery,attempts,correct)"
+                " VALUES (?,?,0.9,10,9)", ("anon_startert", nid))
+        conn.commit()
+        assert H._max_frontier_level(conn, "anon_startert") == 4
+    finally:
+        conn.close()
+    q = H.get_hebrew_review_queue(user_id="anon_startert", authorization="",
+                                  limit=40, new_cards_per_day=6)
+    assert q["ok"] is True
+    ids = []
+    for r in q["data"]["reviews"]:
+        if r.get("type") == "compressed":
+            ids += [i["node_id"] for i in r.get("items", [])]
+        elif r.get("is_new") or r.get("scheduler") == "new":
+            ids.append(r["node_id"])
+    assert ids, "expected frontier new cards"
+    assert ids[0] in set(H.STARTER_NODE_IDS), ids[:4]
+
+
+def test_comprehension_items_grade_and_serve(hebdb):
+    rows = sqlite3.connect(str(hebdb)).execute(
+        "SELECT node_id, id, correct_answer, question_text FROM hebrew_practice_items"
+        " WHERE question_type='true_false' LIMIT 2").fetchall()
+    assert len(rows) == 2, "comprehension T/F items seeded"
+    for node_id, qid, truth, prompt in rows:
+        assert "appears in" in prompt
+        out = H.update_hebrew_progress(
+            {"user_id": "anon_comp1", "node_id": node_id,
+             "question_id": qid, "answer": "True" if truth == "True" else "False"},
+            authorization="")
+        assert out["ok"] is True and out["data"]["correct"], prompt[:60]
+        # Wrong verdict fails.
+        out2 = H.update_hebrew_progress(
+            {"user_id": "anon_comp2", "node_id": node_id,
+             "question_id": qid, "answer": "False" if truth == "True" else "True"},
+            authorization="")
+        assert out2["ok"] is True and not out2["data"]["correct"]
+    # Served with exactly 2 options (never padded to 5).
+    out3 = H.get_hebrew_lesson_quiz(rows[0][0], count=10, user_id="default")
+    tfs = [q for q in out3["data"]["questions"] if q["type"] == "true_false"]
+    assert tfs and all(len(q["options"]) == 2 for q in tfs)

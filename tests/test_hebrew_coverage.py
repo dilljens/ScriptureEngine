@@ -52,3 +52,15 @@ def test_coverage_missing_chapter_404s(hebdb):
         H.get_hebrew_coverage(book="gen", chapter=999, user_id="default",
                               session_token="", authorization="")
     assert "404" in str(exc.value.status_code)
+
+
+def test_daily_session_composes_reviews_and_verse(hebdb):
+    out = H.get_hebrew_daily_session(user_id="default", limit=20, session_token="",
+                                     authorization="")
+    assert out["ok"] is True
+    d = out["data"]
+    assert isinstance(d["reviews"], list) and d["due_count"] >= 0
+    vb = d.get("verse_block")
+    if vb is not None:
+        assert vb.get("verse_ref") and vb.get("text_hebrew")
+        assert vb.get("audio_url", "").startswith("/api/v1/audio/play/")

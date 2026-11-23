@@ -667,6 +667,25 @@ def _ensure_hebrew_undo_suspend(conn):
         " ON hebrew_suspended(user_id,node_id)")
 
 
+# First-words (student-eye fix): frequency order puts את — an untranslatable
+# grammatical particle — first. Beginners need concrete, imageable words
+# (Nation: meaning before function). These Genesis-core nouns + key verbs
+# all carry items + audio; the frontier serves them before frequency order.
+STARTER_NODE_IDS = (
+    "vocab_אלהי_11", "vocab_אור_400", "vocab_השמי_118", "vocab_הארץ_23",
+    "vocab_יום_34", "vocab_מים_90", "vocab_אדם_86", "vocab_איש_14",
+    "vocab_אשה_67", "vocab_עץ_143", "vocab_לחם_126", "vocab_ביתך_18",
+    "vocab_מלך_22", "vocab_טוב_106", "vocab_גדול_88", "vocab_שמעת_27",
+    "vocab_ויאמ_9", "vocab_דבר_26",
+)
+
+
+def _starter_order_sql() -> str:
+    cases = " ".join(f"WHEN '{nid}' THEN {i}"
+                       for i, nid in enumerate(STARTER_NODE_IDS))
+    return f"CASE n.id {cases} ELSE 999 END"
+
+
 def _max_frontier_level(conn, user_id: str) -> int:
     """Level-gate for the unpracticed frontier (content arrangement).
 
@@ -2694,18 +2713,36 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         FROM hebrew_practice_items
         WHERE node_id=?
     """, (node_id,)).fetchall()
-    # One question per answer: a node must never quiz the same answer twice
-    # (letter nodes historically seeded 4+ same-answer variants). Keep the
-    # easiest item per answer so H→EN + EN→HE pairs survive.
-    seen_answers = set()
+    # One question per (answer, retrieval mode): a node must never quiz the
+    # same answer twice IN THE SAME WAY (letter nodes historically seeded
+    # 4+ same-answer variants). But a typed 'את', a heard 'את', and a
+    # multiple-choice 'את' test different traces (generation vs recognition)
+    # — deduping across modes silently deleted every production card from
+    # every lesson quiz, leaving lessons recognition-only by construction.
+    # Recognition keeps the easiest per answer (H→EN + EN→HE pairs survive).
+    # Production ROTATES per day (stable within the day, different retrieval
+    # cues across days — spaced variety without same-answer bloat in one
+    # session).
+    import hashlib as _hl
+    _day = datetime.datetime.now().date().isoformat()
+    seen_recognize = set()
+    prod_buckets: dict = {}
     for item in sorted(items, key=lambda r: r["difficulty"] or 0.5):
         ca = (item["correct_answer"] or "").strip()
-        if ca and ca in seen_answers:
+        if (item["question_type"] or "") in PRODUCTION_QUESTION_TYPES:
+            prod_buckets.setdefault(ca or f"#{item['id']}", []).append(item)
+            continue
+        if ca and ca in seen_recognize:
             continue
         if ca:
-            seen_answers.add(ca)
+            seen_recognize.add(ca)
         q = _practice_to_quiz_question(item, node)
         q["_correct"] = item["correct_answer"]
+        questions.append(q)
+    for ca, bucket in prod_buckets.items():
+        pick = bucket[int(_hl.sha256(f"{_day}:{node_id}:{ca}".encode()).hexdigest(), 16) % len(bucket)]
+        q = _practice_to_quiz_question(pick, node)
+        q["_correct"] = pick["correct_answer"]
         questions.append(q)
 
     # Confusable distractors: pull 1 item from each node confused with this one,
@@ -2780,6 +2817,11 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
             if q.get("is_distractor"):
                 # confusable items already carry options; pad them too
                 converted = _to_mc_question(conn, q, node)
+            elif q["type"] == "true_false":
+                # Judgment stays binary: padding True/False to 5 options
+                # would make a nonsense question. Already carries exactly
+                # ["True", "False"] with CHOICE_INDEX grading.
+                converted = q
             elif q["type"] in MC_ANSWERABLE_TYPES:
                 converted = _to_mc_question(conn, q, node)
             else:
@@ -3308,60 +3350,130 @@ def _interleave_due_items(by_cat, confusable_pairs):
     # for confusable pairs.
     recent_nodes = []  # last 3 node_ids added
 
+    # Most-constrained-first + protected gap. Greedy round-robin alone can
+    # strand a confusable pair at the drain with <3 buffers left (any
+    # ordering then violates the gap). So: mate map + bans. When a
+    # both-untaken pair exists and <=3 non-pending buffers remain, force-emit
+    # its most urgent member now (while buffers still exist); every emitted
+    # member bans its untaken mates for the next 3 picks. When no valid
+    # ordering exists (pool too small), the fallbacks still emit everything
+    # — best effort, documented.
+    mates: dict = {}
+    for _a, _b in confusable_pairs:
+        mates.setdefault(_a, set()).add(_b)
+    node_item = {}
+    for _c_items in by_cat.values():
+        for _it in _c_items:
+            node_item.setdefault(_it['node_id'], _it)
+    untaken = set(node_item)
+    ban_until: dict = {}
+
+    def _untaken_mates(nid):
+        return {m for m in mates.get(nid, ()) if m in untaken and m != nid}
+
+    def _interferes(nid):
+        return bool(recent_nodes) and any(
+            (nid, recent_nid) in confusable_pairs
+            for recent_nid in recent_nodes[-3:]
+        )
+
+    def _banned(nid):
+        return ban_until.get(nid, -1) > len(interleaved)
+
     for _ in range(total):
         chosen_cat = None
+        item = None
 
-        # Try categories in round-robin order, skipping last_cat and categories
-        # whose remaining items are all confusable with recent nodes.
-        for c in cat_cycle:
-            if remaining.get(c, 0) == 0:
-                continue
-            if c == last_cat:
-                continue
-            candidate = first_untaken(c)
-            if candidate:
-                # Skip this category if its next item would cause interference.
-                if recent_nodes and any(
-                    (candidate['node_id'], recent_nid) in confusable_pairs
-                    for recent_nid in recent_nodes[-3:]
-                ):
+        # Force-emit: a stranded pair (both untaken, buffers almost gone).
+        pending = [n for n in untaken if _untaken_mates(n)]
+        buffers = len(untaken) - len(pending)
+        if pending and buffers <= 3:
+            # Deterministic tie-break (node_id): set iteration order varies
+            # per process (hash randomization) and must never decide order.
+            pending.sort(key=lambda n: (node_item[n]['retrievability'], n))
+            for cand in pending:
+                if _banned(cand):
                     continue
-            chosen_cat = c
-            break
+                for c in cat_priority:
+                    if remaining.get(c, 0) > 0 and any(
+                        it['node_id'] == cand and it['node_id'] not in taken
+                        for it in cat_sorted[c]
+                    ):
+                        chosen_cat, item = c, node_item[cand]
+                        break
+                if item is not None:
+                    break
 
-        if not chosen_cat:
-            # Fallback: pick from any remaining category regardless.
+        if item is None:
+            # Try categories in round-robin order, skipping last_cat,
+            # banned heads, and categories whose next item would interfere.
+            for c in cat_cycle:
+                if remaining.get(c, 0) == 0:
+                    continue
+                if c == last_cat:
+                    continue
+                candidate = first_untaken(c)
+                if candidate is None or _banned(candidate['node_id']):
+                    # Banned or empty head: look past it within the category.
+                    candidate = next(
+                        (it for it in cat_sorted[c]
+                         if it['node_id'] not in taken and not _banned(it['node_id'])),
+                        None)
+                    if candidate is None:
+                        continue
+                if _interferes(candidate['node_id']):
+                    continue
+                chosen_cat, item = c, candidate
+                break
+
+        if item is None:
+            # Fallback 1: any remaining category, bans honored, no interference.
+            for c in cat_cycle:
+                if remaining.get(c, 0) == 0:
+                    continue
+                candidate = next(
+                    (it for it in cat_sorted[c]
+                     if it['node_id'] not in taken and not _banned(it['node_id'])
+                     and not _interferes(it['node_id'])),
+                    None)
+                if candidate is not None:
+                    chosen_cat, item = c, candidate
+                    break
+
+        if item is None:
+            # Fallback 2: emit everything left regardless (pool too small
+            # for the gap — best effort, documented).
             for c in cat_cycle:
                 if remaining.get(c, 0) > 0:
                     chosen_cat = c
                     break
 
-        if not chosen_cat:
+        if chosen_cat is None:
             break
 
         # Pick the most urgent item from this category.
-        item = first_untaken(chosen_cat)
+        if item is None:
+            item = first_untaken(chosen_cat)
 
-        if not item:
+        if item is None:
             remaining[chosen_cat] = 0
             continue
 
         # If this item would be confusable with the recent window, try a
-        # non-confusable alternative from the same category.
-        if recent_nodes and any(
-            (item['node_id'], recent_nid) in confusable_pairs
-            for recent_nid in recent_nodes[-3:]
-        ):
+        # non-confusable, unbanned alternative from the same category.
+        if _interferes(item['node_id']):
             for alternative in cat_sorted[chosen_cat]:
-                if alternative['node_id'] not in taken and alternative['node_id'] != item['node_id'] and not any(
-                    (alternative['node_id'], recent_nid) in confusable_pairs
-                    for recent_nid in recent_nodes[-3:]
-                ):
+                if alternative['node_id'] not in taken and alternative['node_id'] != item['node_id'] \
+                        and not _banned(alternative['node_id']) and not _interferes(alternative['node_id']):
                     item = alternative
                     break
 
+        pos = len(interleaved)
+        for _mate in _untaken_mates(item['node_id']):
+            ban_until[_mate] = pos + 4
         interleaved.append(item)
         taken.add(item['node_id'])
+        untaken.discard(item['node_id'])
         remaining[chosen_cat] -= 1
         last_cat = chosen_cat
         recent_nodes.append(item['node_id'])
@@ -3553,7 +3665,7 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
                         SELECT 1 FROM hebrew_suspended s
                         WHERE s.user_id=? AND s.node_id=n.id AND s.card_mode=''
                     )
-                    ORDER BY n.level, n.id LIMIT ?
+                    ORDER BY """ + _starter_order_sql() + """, n.level, n.id LIMIT ?
                 """, (max_level, user_id, user_id, user_id, remaining * 3)).fetchall()
                 for f in frontier[:remaining]:
                     if f["id"] in suspended_nodes:
@@ -4224,6 +4336,78 @@ def get_visual_next(user_id: str = "default", limit: int = 10,
     finally:
         conn.close()
     return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
+
+
+@router.get("/api/v1/hebrew/daily-session")
+def get_hebrew_daily_session(user_id: str = "default", limit: int = 20,
+                             session_token: str = "", authorization: str = Header("")):
+    """One study session, composed (R4b: the Room's backend).
+
+    Due reviews interleaved across all modes (the existing queue, with its
+    learn-ahead, suspend, and level-gate filters) + new cards to the daily
+    cap + one authentic verse block: the verse most represented among the
+    due items, with text and read-along audio. The client renders the verse
+    block, runs due + new practice through existing quiz surfaces, and
+    closes with the session summary — one room instead of twelve doors.
+    Mix enforcement (R5) lands here once measured.
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    q = get_hebrew_review_queue(user_id=user_id, limit=max(1, min(limit, 50)),
+                                session_token=session_token,
+                                authorization=authorization if isinstance(authorization, str) else "")
+    data = q.get("data", {}) if isinstance(q, dict) else {}
+    node_ids: list = []
+    for r in data.get("reviews", []):
+        if r.get("type") == "compressed":
+            node_ids += [i.get("node_id") for i in (r.get("items") or []) if i.get("node_id")]
+        elif r.get("node_id"):
+            node_ids.append(r["node_id"])
+    verse_block = None
+    if node_ids and MEM_DB.exists():
+        conn = sqlite3.connect(str(MEM_DB))
+        conn.row_factory = sqlite3.Row
+        try:
+            from collections import Counter
+            counts: Counter = Counter()
+            titles: dict = {}
+            for (nid, cj) in conn.execute(
+                    f"SELECT node_id, content_json FROM hebrew_lessons WHERE node_id IN "
+                    f"({','.join('?' for _ in set(node_ids))})",
+                    tuple(set(node_ids))).fetchall():
+                try:
+                    v = (json.loads(cj or "{}")).get("verse_example")
+                except (TypeError, json.JSONDecodeError):
+                    v = None
+                if v:
+                    counts[v] += 1
+                    titles.setdefault(v, []).append(nid)
+            if counts:
+                ref, _ = counts.most_common(1)[0]
+                try:
+                    scrip = get_db()
+                    book, ch, vn = ref.split(".")
+                    row = scrip.execute(
+                        "SELECT text_hebrew, text_english FROM verses"
+                        " WHERE book_id=? AND chapter=? AND verse=?",
+                        (book, int(ch), int(vn))).fetchone()
+                    scrip.close()
+                    if row and (row[0] or "").strip():
+                        verse_block = {"verse_ref": ref, "node_ids": titles[ref][:8],
+                                       "text_hebrew": row[0], "text_english": row[1],
+                                       "audio_url": f"/api/v1/audio/play/{ref}"}
+                except Exception:
+                    pass
+        finally:
+            conn.close()
+    new_cards = [r for r in data.get("reviews", [])
+                 if r.get("scheduler") == "new" or r.get("is_new")]
+    return {"ok": True, "data": {
+        "reviews": data.get("reviews", []),
+        "due_count": data.get("due_count", 0),
+        "new_cards_available": data.get("new_cards", 0),
+        "verse_block": verse_block,
+        "desired_retention": data.get("desired_retention"),
+    }}
 
 
 @router.get("/api/v1/hebrew/dictation/next")
@@ -4940,6 +5124,9 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
         else:
             unknown.append({"surface": first_seen[folded], "folded": folded,
                             "count": n, "node_id": nid or None})
+    known_folded = sorted(f for f, n in counts.items()
+                          if (resolved.get(f, "") and
+                              mastery_by.get(resolved[f], 0.0) >= 0.8))
     return {"ok": True, "data": {
         "book": book, "chapter": int(chapter),
         "tokens_total": total, "tokens_known": known,
@@ -4947,6 +5134,9 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
         "types_total": len(counts),
         "types_known": len(counts) - len(unknown),
         "unknown": unknown[:25],
+        # Full known-type list so readers can color tokens from the same
+        # mastery state the scheduler uses (one "known", not two).
+        "known_folded": known_folded,
     }}
 
 
@@ -5406,7 +5596,7 @@ def get_hebrew_quiz(
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing','dictation')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing','dictation','true_false')
         """, (nid,)).fetchall()
         items.sort(key=lambda it: (
             0 if (nid, it["question_type"]) not in weak

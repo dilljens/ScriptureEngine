@@ -20,7 +20,14 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [knownWords, setKnownWords] = useState(new Set())
+  const [serverKnown, setServerKnown] = useState(new Set())
   const [selectedWord, setSelectedWord] = useState(null)
+
+  // Same fold as the server (_anki_fold): strip niqqud/cantillation, fold finals.
+  const foldHebrew = (s) => (s || '')
+    .replace(/[\u0591-\u05C7]/g, '')
+    .replace(/ך/g, 'כ').replace(/ם/g, 'מ').replace(/ן/g, 'נ')
+    .replace(/ף/g, 'פ').replace(/ץ/g, 'צ')
   const [showCards, setShowCards] = useState(false)
   const [practiceCards, setPracticeCards] = useState([])
   const [audioData, setAudioData] = useState({})
@@ -120,7 +127,12 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(r => r.json())
-      .then(d => { if (d.ok) setCoverage(d.data) })
+      .then(d => {
+        if (d.ok) {
+          setCoverage(d.data)
+          if (Array.isArray(d.data.known_folded)) setServerKnown(new Set(d.data.known_folded))
+        }
+      })
       .catch(() => {})
   }, [passageInfo.book, passageInfo.chapter, userId])
 
@@ -146,7 +158,8 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
       .catch(() => {})
   }, [userId])
 
-  // Tokenize Hebrew text into word tokens
+  // Tokenize Hebrew text into word tokens. Known = server FSRS mastery
+  // first (one "known" everywhere), local marks as fallback.
   const tokens = useMemo(() => {
     if (!verses.length) return []
     const result = []
@@ -160,12 +173,12 @@ export default function PassageReader({ passageId, userId = 'default', onNavigat
           word: w,
           cleaned,
           verse_id: v.id,
-          known: knownWords.has(w) || knownWords.has(cleaned),
+          known: serverKnown.has(foldHebrew(cleaned)) || knownWords.has(w) || knownWords.has(cleaned),
         })
       }
     }
     return result
-  }, [verses, knownWords])
+  }, [verses, knownWords, serverKnown])
 
   // Look up a word's definition + morphology (POS, prefixes) from its verse
   const lookupWord = async (word, verseId) => {

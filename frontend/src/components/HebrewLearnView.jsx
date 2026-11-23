@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, memo } from 'react'
 import HebrewVerbDrill from './HebrewVerbDrill'
 import HebrewQuiz from './HebrewQuiz'
+import HebrewRoom from './HebrewRoom'
 import HebrewModePicker, { getGame, loadLearnMode, loadGameId } from './HebrewModePicker'
 import GameReviewModal from './GameReviewModal'
 import { reportIdleAnswer } from './HebrewIdleBar'
@@ -227,6 +228,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [wordTilesInitial, setWordTilesInitial] = useState([])
   const [wordTilesKind, setWordTilesKind] = useState('words')
   const [showQuiz, setShowQuiz] = useState(false)
+  const [showRoom, setShowRoom] = useState(false)
   const [guidedNode, setGuidedNode] = useState(undefined)
   const [showGrammarFocus, setShowGrammarFocus] = useState(false)
   const [focusTopics, setFocusTopics] = useState([])
@@ -783,6 +785,18 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     )
   }
 
+  // Room mode (R4b: one composed session)
+  if (showRoom) {
+    return (
+      <div className="max-w-4xl mx-auto px-2 py-4">
+        <HebrewRoom
+          onBack={() => { setShowRoom(false); loadAll() }}
+          onOpenLesson={onOpenLesson}
+        />
+      </div>
+    )
+  }
+
   // Quiz mode
   if (showQuiz) {
     return (
@@ -954,6 +968,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         {/* Practice dropdown */}
         <DropdownMenu label="⏱ Practice" color="amber">
           <DropdownItem onClick={startQuickSession} icon="⏱" label="5-min Quick" desc="Timed review session" />
+          <DropdownItem onClick={() => setShowRoom(true)} icon="🏠" label="Room" desc="Today's session: verse + due + new" />
           <DropdownItem onClick={() => setShowQuiz(true)} icon="📝" label="Quiz" desc="Test your knowledge" />
           <DropdownItem onClick={async () => {
             // Prefer the persisted scheduler's due items; fall back to unlocked nodes.
