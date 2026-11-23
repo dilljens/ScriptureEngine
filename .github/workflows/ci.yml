@@ -93,3 +93,46 @@ jobs:
         run: |
           python3 -c "import sys; sys.path.insert(0,'.'); sys.path.insert(0,'web'); from server import app; print('API imports OK')"
         working-directory: .
+
+  e2e:
+    # Browser tests (Playwright) — the same gate scripts/deploy.sh runs, but
+    # runnable here where browsers install cleanly (the sandbox/dev shells
+    # where `deploy.sh` runs often can't launch them: `spawn /bin/sh ENOENT`).
+    # Runs against fixture DBs, never the 1.4GB corpus (see webServer in
+    # frontend/playwright.config.ts + SCRIPTURE_DB_PATH support in lib/db.py).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SCRIPTURE_DB_PATH: data/test/test.db
+      MEMORIZE_DB_PATH: data/memorize.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: web/requirements.txt
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: pip install -r web/requirements.txt biblical-transliteration
+        working-directory: .
+      - name: Create fixture databases
+        run: |
+          python3 scripts/create_test_db.py
+          ls -la data/test/test.db data/memorize.db
+      - name: Playwright e2e (deploy-gate spec set)
+        working-directory: frontend
+        run: npx playwright test --project=chromium app.spec.ts navigation.spec.ts chat.spec.ts chat-streaming.spec.ts wiki.spec.ts --workers=1 --retries=2 --timeout=60000
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/

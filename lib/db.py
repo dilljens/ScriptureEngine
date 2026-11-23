@@ -3,11 +3,16 @@ Scripture Knowledge Engine — Database schema and operations.
 """
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
-# Default database path
-DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "processed" / "scripture.db"
+# Default database path. CI/e2e point this at the fixture DB via
+# SCRIPTURE_DB_PATH (same convention as web/routes/hebrew.py).
+DEFAULT_DB_PATH = Path(
+    os.environ.get("SCRIPTURE_DB_PATH", "")
+    or (Path(__file__).parent.parent / "data" / "processed" / "scripture.db")
+)
 
 
 def get_db(db_path=None):

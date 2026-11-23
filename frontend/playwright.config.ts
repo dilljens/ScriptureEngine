@@ -41,16 +41,16 @@ export default defineConfig({
 		{
 			command: "python3 -m uvicorn web.server:app --port 5174 --host 127.0.0.1",
 			url: "http://127.0.0.1:5174/api/v1/info",
-			reuseExistingServer: true,
-			timeout: 30000,
-			cwd: "/home/dillon/_code/ScriptureEngine",
+			reuseExistingServer: !process.env.CI,
+			timeout: 120000,
+			cwd: "..",
 		},
 		{
 			command: "npx vite --port 5176 --host 127.0.0.1",
 			url: "http://127.0.0.1:5176",
-			reuseExistingServer: true,
-			timeout: 30000,
-			cwd: "/home/dillon/_code/ScriptureEngine/frontend",
+			reuseExistingServer: !process.env.CI,
+			timeout: 120000,
+			cwd: ".",
 		},
 	],
 });
