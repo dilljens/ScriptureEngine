@@ -243,7 +243,8 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   const [reviewTarget, setReviewTarget] = useState(null)
   const [queueStats, setQueueStats] = useState(null)
   const [prefsEditing, setPrefsEditing] = useState(false)
-  const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100, desired_retention: 0.9 })
+  const [prefsDraft, setPrefsDraft] = useState({ new_cards_per_day: 10, max_reviews_per_day: 100, desired_retention: 0.9, goal: '' })
+  const [profile, setProfile] = useState(null)
 
   // Resolve the session-bound user (falls back to 'default' for anonymous
   // learners, so a missing/expired token is never a hard failure). Curriculum,
@@ -297,6 +298,17 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
     return stop
   }, [])
 
+  // Learner profile (P1): per-skill mass, production ratio, goal.
+  const loadProfile = useCallback(async () => {
+    try {
+      const uq = await sessionQuery()
+      const r = await fetch(`/api/v1/hebrew/profile${uq}`, { headers: sessionHeaders() })
+      const d = await r.json()
+      if (d.ok) setProfile(d.data)
+    } catch {}
+  }, [])
+  useEffect(() => { loadProfile() }, [loadProfile])
+
   // Daily pacing refresh (prefs + queue counts). Mount is covered by the
   // bootstrap in loadAll; this stays for post-save refreshes.
   const loadPacing = useCallback(async () => {
@@ -309,8 +321,9 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       ])
       if (p.ok) { setPrefs(p.data); setPrefsDraft(p.data) }
       if (q.ok) setQueueStats(q.data)
+      loadProfile()
     } catch {}
-  }, [])
+  }, [loadProfile])
 
   const savePrefs = async () => {
     try {
@@ -1068,11 +1081,54 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             <label title="Desired retention (Anki deck option, 70–99%). Higher = shorter intervals, more reviews.">Ret <input type="number" min="70" max="99" step="1" value={Math.round((prefsDraft.desired_retention ?? 0.9) * 100)}
               onChange={e => setPrefsDraft(d => ({ ...d, desired_retention: (parseInt(e.target.value) || 90) / 100 }))}
               className="w-12 px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none" />%</label>
+            <label title="Your goal — shapes what the Room serves first.">Goal <select value={prefsDraft.goal || ''}
+              onChange={e => setPrefsDraft(d => ({ ...d, goal: e.target.value }))}
+              className="px-1 py-0.5 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none">
+              <option value="">—</option>
+              <option value="read">📖 Read</option>
+              <option value="vocab">📚 Vocab</option>
+              <option value="parse">ע Parse</option>
+              <option value="fluency">⚡ Fluency</option>
+            </select></label>
             <button onClick={savePrefs} className="px-2 py-0.5 rounded bg-indigo-600 text-white font-medium cursor-pointer">Save</button>
             <button onClick={() => setPrefsEditing(false)} className="hover:text-neutral-700 cursor-pointer">✕</button>
           </span>
         )}
       </div>
+
+      {/* Learner profile (P1): one glance at the whole learner */}
+      {profile && profile.skills?.length > 0 && (
+        <div className="px-4 py-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">👤 Your Hebrew</span>
+            <span className="text-[10px] text-neutral-400">L{profile.frontier_level} frontier</span>
+            {profile.production_ratio_30d?.rate != null && (
+              <span className="text-[10px] text-neutral-400" title="Share of graded answers that were production (typed/named), last 30 days. Target ≥40%.">
+                · ⚙️ {Math.round(profile.production_ratio_30d.rate * 100)}% production
+              </span>
+            )}
+            <span className="flex-1" />
+            {profile.goal ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                🎯 {{ read: 'Read the Bible', vocab: 'Master vocab', parse: 'Parse fluently', fluency: 'Build fluency' }[profile.goal] || profile.goal}
+              </span>
+            ) : (
+              <button onClick={() => setPrefsEditing(true)} className="text-[10px] text-indigo-500 hover:underline cursor-pointer">set a goal →</button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
+            {profile.skills.slice(0, 6).map(s => (
+              <div key={s.category} className="flex items-center gap-2 text-[11px]" title={`${s.practiced} practiced · ${s.mastered} mastered · ${s.due} due`}>
+                <span className="w-16 truncate text-neutral-500 dark:text-neutral-400 capitalize">{s.category}</span>
+                <div className="flex-1 h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.round((s.avg_mastery || 0) * 100)}%` }} />
+                </div>
+                <span className="w-8 text-right font-mono text-neutral-500 dark:text-neutral-400">{Math.round((s.avg_mastery || 0) * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Badges row */}
       {gam.badge_catalog && gam.badge_catalog.filter(b => b.earned).length > 0 && (

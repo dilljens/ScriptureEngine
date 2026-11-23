@@ -162,3 +162,48 @@ def test_grammar_apply_items_grade_and_serve(hebdb):
     assert out2["ok"] is True
     assert any("Apply this lesson" in q["question"]
                for q in out2["data"]["questions"])
+
+
+def test_dictation_endpoint_no_answer_leak(hebdb):
+    out = H.get_dictation_next(user_id="default", limit=5, session_token="",
+                               authorization="")
+    assert out["ok"] is True and out["data"]["count"] > 0
+    for c in out["data"]["cards"]:
+        assert c["audio_url"].startswith("/api/v1/audio/word/")
+        assert "correct_answer" not in c and "answer" not in c
+        assert c["question_id"]
+
+
+def test_dictation_grades_through_progress(hebdb):
+    row = sqlite3.connect(str(hebdb)).execute(
+        "SELECT node_id, id, correct_answer FROM hebrew_practice_items"
+        " WHERE question_type='dictation' LIMIT 1").fetchone()
+    assert row, "no dictation items seeded"
+    out = H.update_hebrew_progress(
+        {"user_id": "anon_dic1", "node_id": row[0],
+         "question_id": row[1], "answer": row[2]},
+        authorization="")
+    assert out["ok"] is True and out["data"]["correct"]
+    s = sqlite3.connect(str(hebdb)).execute(
+        "SELECT reps FROM hebrew_review_state"
+        " WHERE user_id='anon_dic1' AND node_id=? AND card_mode=''",
+        (row[0],)).fetchone()
+    assert s and s[0] >= 1
+
+
+def test_lesson_quiz_dictation_carries_audio(hebdb):
+    # Same-answer dedup keeps one retrieval route per node per session, so
+    # sweep a batch: dictation must surface with its audio player somewhere.
+    nodes = sqlite3.connect(str(hebdb)).execute(
+        "SELECT DISTINCT node_id FROM hebrew_practice_items"
+        " WHERE question_type='dictation' LIMIT 30").fetchall()
+    assert nodes
+    found = []
+    for (nid,) in nodes:
+        out = H.get_hebrew_lesson_quiz(nid, count=10, user_id="default")
+        assert out["ok"] is True
+        found += [q for q in out["data"]["questions"] if q.get("audio_url")]
+        if found:
+            break
+    assert found, "dictation items must ship an audio player"
+    assert all(q["audio_url"].startswith("/api/v1/audio/word/") for q in found)

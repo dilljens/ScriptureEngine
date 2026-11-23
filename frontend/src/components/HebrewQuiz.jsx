@@ -469,6 +469,15 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
           {current.type.replace(/_/g, ' ')}
         </span>
 
+        {/* Dictation audio (R3) — the prompt is sound, not text */}
+        {current.audio_url && !showResult && (
+          <div className="mt-3 mb-1">
+            <audio key={current.question_id || idx} controls autoPlay
+              src={current.audio_url} className="w-full h-9"
+              onError={(e) => { e.target.style.display = 'none' }} />
+          </div>
+        )}
+
         {/* Question text */}
         <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed">{current.question}</p>
 

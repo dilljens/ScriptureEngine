@@ -94,7 +94,7 @@ tab; the twelve doors shrink to "practice one thing" shortcuts.
   third-party media. Grammar-application seeding must parse lesson
   explanations, not invent paradigms — same discipline as the parse seeder.
 
-## Update 2026-11-22 — R2 DONE, M1 DONE
+## Update 2026-11-22 — R2/R3/P1 DONE, M1 DONE
 - R2 done as designed above (16 cards). One deviation: breakdown restricted
   to morphological nodes (sentence-level "parses" restate, don't test).
 - M1 (master plan) done: `GET /hebrew/coverage?book=&chapter=` — chapter

@@ -522,6 +522,15 @@ def _ensure_hebrew_review_state(conn):
 CARD_MODES = ("hearing", "reverse", "forward", "visual_only")
 
 
+GOAL_CHOICES = ("read", "vocab", "parse", "fluency")
+
+# Question types that count as production (generate, don't recognize) for
+# the per-session and 30d production ratios (review doc gap #1: >=40%).
+PRODUCTION_QUESTION_TYPES = frozenset({
+    "typing", "parse", "cloze", "dictation", "recall", "transliteration",
+})
+
+
 def _ensure_hebrew_prefs(conn):
     """Anki-style deck options per user: daily new-card and review caps."""
     conn.execute("""
@@ -529,11 +538,14 @@ def _ensure_hebrew_prefs(conn):
             user_id TEXT PRIMARY KEY,
             new_cards_per_day INTEGER NOT NULL DEFAULT 10,
             max_reviews_per_day INTEGER NOT NULL DEFAULT 100,
-            desired_retention REAL NOT NULL DEFAULT 0.9
+            desired_retention REAL NOT NULL DEFAULT 0.9,
+            goal TEXT NOT NULL DEFAULT ''
         )
     """)
     with contextlib.suppress(Exception):
         conn.execute("ALTER TABLE hebrew_prefs ADD COLUMN desired_retention REAL NOT NULL DEFAULT 0.9")
+    with contextlib.suppress(Exception):
+        conn.execute("ALTER TABLE hebrew_prefs ADD COLUMN goal TEXT NOT NULL DEFAULT ''")
 
 
 def _ensure_hebrew_progress_source(conn):
@@ -840,7 +852,7 @@ def ensure_hebrew_schema_once(conn=None):
 def read_hebrew_prefs(conn, user_id: str) -> dict:
     ensure_hebrew_schema_once(conn)
     row = conn.execute(
-        "SELECT new_cards_per_day, max_reviews_per_day, desired_retention"
+        "SELECT new_cards_per_day, max_reviews_per_day, desired_retention, goal"
         " FROM hebrew_prefs WHERE user_id=?",
         (user_id,)).fetchone()
     if row:
@@ -849,10 +861,11 @@ def read_hebrew_prefs(conn, user_id: str) -> dict:
         except (TypeError, ValueError):
             retention = DEFAULT_DESIRED_RETENTION
         retention = min(0.99, max(0.7, retention or DEFAULT_DESIRED_RETENTION))
+        goal = row[3] if len(row) > 3 and row[3] in GOAL_CHOICES else ""
         return {"new_cards_per_day": max(0, row[0]), "max_reviews_per_day": max(0, row[1]),
-                "desired_retention": round(retention, 2)}
+                "desired_retention": round(retention, 2), "goal": goal}
     return {"new_cards_per_day": 10, "max_reviews_per_day": 100,
-            "desired_retention": DEFAULT_DESIRED_RETENTION}
+            "desired_retention": DEFAULT_DESIRED_RETENTION, "goal": ""}
 
 
 def resolve_pacing(new_param: int = -1, max_param: int = -1, prefs: dict = None) -> tuple:
@@ -2528,7 +2541,7 @@ def _practice_to_quiz_question(item, node):
         opts = _public_options(json.loads(item["options_json"]) if item["options_json"] else [])
     except (TypeError, json.JSONDecodeError):
         opts = []
-    return {
+    q = {
         "node_id": node["id"],
         "question_id": item["id"],
         "type": item["question_type"],
@@ -2541,19 +2554,26 @@ def _practice_to_quiz_question(item, node):
         "difficulty": item["difficulty"] or 0.5,
         "node_title": node["title"],
     }
+    if item["question_type"] == "dictation":
+        # Node-id URL: the surface never leaks in the URL; the quiz UI
+        # renders a player from this (R3). Seeder guarantees the wav.
+        q["audio_url"] = f"/api/v1/audio/word/{node['id']}"
+    return q
 
 
 # Answer types that make sense as multiple choice (recognition/identification).
 MC_ANSWERABLE_TYPES = frozenset({
     "multiple_choice", "letter_name", "letter_recognition", "classification",
     "transliteration", "recall", "contrast",
-    # C2/C3: cloze (incl. sentence-context), typing, and parse convert to
-    # 5-option MC in 'mc' lesson quizzes via the sibling distractor pool
-    # (same-script filter keeps Hebrew and Latin answers apart; verb-parse
-    # distractors are sibling nodes' parses — genuinely discriminating).
+    # C2/C3/R2/R3: cloze (incl. sentence-context), typing, parse, and
+    # dictation convert to 5-option MC in 'mc' lesson quizzes via the
+    # sibling distractor pool (same-script filter keeps Hebrew and Latin
+    # answers apart; verb-parse distractors are sibling nodes' parses —
+    # genuinely discriminating). Dictation keeps its audio_url through the
+    # conversion, so mc mode is hear-and-pick (easier rung, same item).
     # Unconvertible items (<5 distinct distractors) are dropped, never
     # shipped degenerate — the _to_mc_question None contract.
-    "cloze", "typing", "parse",
+    "cloze", "typing", "parse", "dictation",
 })
 
 # Five options as the default (was four): one more distractor is a cheap
@@ -2726,7 +2746,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     # types first (exposure), then lowest accuracy from attempt history.
     order = {"multiple_choice": 0, "true_false": 0, "letter_recognition": 0, "classification": 0,
              "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
-             "letter_name": 2, "parse": 2, "typing": 3}
+             "letter_name": 2, "parse": 2, "dictation": 2, "typing": 3}
     _weak = _type_weakness(conn, user_id, [node_id])
     _wkey = lambda q: -1.0 if (node_id, q["type"]) not in _weak else _weak[(node_id, q["type"])]
     questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), _wkey(q), q["difficulty"]))
@@ -2734,7 +2754,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     # Guarantee bidirectional production practice. A session that is all
     # multiple-choice trains option-elimination (recognition), not recall —
     # reserve at least a third of the slots for types the learner must produce.
-    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast", "parse"}
+    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast", "parse", "dictation"}
     want = max(1, count // 3)
     own = [q for q in questions if not q.get("is_distractor")]
     distractors = [q for q in questions if q.get("is_distractor")]
@@ -4021,11 +4041,12 @@ def _due_mode_rows(conn, user_id: str, modes: tuple, limit: int):
 
 
 def _new_practice_nodes(conn, user_id: str, limit: int, exclude=(),
-                        cloze_only: bool = False):
+                        cloze_only: bool = False, qtype: str = ""):
     """Least-practiced nodes as fresh cards (a new mode has no rows yet)."""
+    want = qtype or ("cloze" if cloze_only else "")
     cloze_filter = ("AND EXISTS (SELECT 1 FROM hebrew_practice_items p"
-                    " WHERE p.node_id=n.id AND p.question_type='cloze')"
-                    if cloze_only else "")
+                    f" WHERE p.node_id=n.id AND p.question_type='{want}')"
+                    if want else "")
     rows = conn.execute(f"""
         SELECT n.id, n.title, n.level, n.category,
                COALESCE(p.attempts, 0) as attempts
@@ -4205,6 +4226,65 @@ def get_visual_next(user_id: str = "default", limit: int = 10,
     return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
 
 
+@router.get("/api/v1/hebrew/dictation/next")
+def get_dictation_next(user_id: str = "default", limit: int = 10,
+                       session_token: str = "", authorization: str = Header("")):
+    """Word-level dictation queue: hear the word, type the form (R3).
+
+    The prompt carries NO text answer — only an audio_url (node-id based,
+    so the surface never leaks in the URL) plus question_id. Rate via
+    POST /api/v1/hebrew/progress {node_id, question_id, answer}, which
+    grades the skeleton server-side and writes the '' FSRS row, so
+    dictation due-ness keys off '' rows like cloze. Verse-level dictation
+    (gloss-cued target in verse audio) waits for word-level retention.
+    """
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        ensure_hebrew_schema_once()
+        due_nodes = [r["node_id"] for r in _due_mode_rows(
+            conn, user_id, ("",), max(1, min(limit, 50)) * 2)]
+        if not due_nodes:
+            due_nodes = [r["id"] for r in _new_practice_nodes(
+                conn, user_id, max(1, min(limit, 50)), qtype="dictation")]
+        cards = []
+        seen_nodes = set()
+        for node_id in due_nodes:
+            item = conn.execute("""
+                SELECT id FROM hebrew_practice_items
+                WHERE node_id=? AND question_type='dictation' ORDER BY id LIMIT 1
+            """, (node_id,)).fetchone()
+            if not item:
+                continue
+            seen_nodes.add(node_id)
+            cards.append({
+                "node_id": node_id, "question_id": item["id"],
+                "audio_url": f"/api/v1/audio/word/{node_id}",
+                "is_new": False,
+            })
+            if len(cards) >= max(1, min(limit, 50)):
+                break
+        if len(cards) < max(1, min(limit, 50)):
+            for n in _new_practice_nodes(conn, user_id,
+                                         max(1, min(limit, 50)) - len(cards),
+                                         exclude=seen_nodes, qtype="dictation"):
+                item = conn.execute("""
+                    SELECT id FROM hebrew_practice_items
+                    WHERE node_id=? AND question_type='dictation' ORDER BY id LIMIT 1
+                """, (n["id"],)).fetchone()
+                if not item:
+                    continue
+                cards.append({
+                    "node_id": n["id"], "question_id": item["id"],
+                    "audio_url": f"/api/v1/audio/word/{n['id']}",
+                    "is_new": True,
+                })
+    finally:
+        conn.close()
+    return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
+
+
 # ── Tutor memory surfaces (P2-A) ─────────────────────────────────────
 # Thin routes over lib/api/tutor_memory.py: durable learner state with
 # staged writes + conflict resolution, session summaries, transcripts,
@@ -4361,7 +4441,7 @@ def get_hebrew_prefs(user_id: str = "default", session_token: str = "",
     user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
     if not MEM_DB.exists():
         return {"ok": True, "data": {"new_cards_per_day": 10, "max_reviews_per_day": 100,
-                                     "desired_retention": DEFAULT_DESIRED_RETENTION}}
+                                     "desired_retention": DEFAULT_DESIRED_RETENTION, "goal": ""}}
     conn = sqlite3.connect(str(MEM_DB))
     prefs = read_hebrew_prefs(conn, user_id)
     conn.close()
@@ -4561,18 +4641,25 @@ def set_hebrew_prefs(body: dict, authorization: str = Header("")):
     else:
         # Absent = keep the stored value (old clients must not reset it).
         retention = read_hebrew_prefs(conn, user_id)["desired_retention"]
+    goal = (body or {}).get("goal", None)
+    if goal is None:
+        goal = read_hebrew_prefs(conn, user_id).get("goal", "")
+    elif goal not in ("", *GOAL_CHOICES):
+        conn.close()
+        raise HTTPException(400, f"goal must be one of {', '.join(GOAL_CHOICES)} or empty")
     conn.execute("""
-        INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day, desired_retention)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day, desired_retention, goal)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             new_cards_per_day=excluded.new_cards_per_day,
             max_reviews_per_day=excluded.max_reviews_per_day,
-            desired_retention=excluded.desired_retention
-    """, (user_id, new_cards, max_reviews, retention))
+            desired_retention=excluded.desired_retention,
+            goal=excluded.goal
+    """, (user_id, new_cards, max_reviews, retention, goal))
     conn.commit()
     conn.close()
     return {"ok": True, "data": {"new_cards_per_day": new_cards, "max_reviews_per_day": max_reviews,
-                                 "desired_retention": round(retention, 2)}}
+                                 "desired_retention": round(retention, 2), "goal": goal}}
 
 
 # ── B2: undo-last-review + suspend ─────────────────────────────────────────
@@ -4860,6 +4947,85 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
         "types_total": len(counts),
         "types_known": len(counts) - len(unknown),
         "unknown": unknown[:25],
+    }}
+
+
+@router.get("/api/v1/hebrew/profile")
+def get_hebrew_profile(user_id: str = "default", session_token: str = "",
+                        authorization: str = Header("")):
+    """The learner, at a glance (P1 of the language-system plan).
+
+    Per-skill practiced/mastered mass, frontier level, 30d production
+    ratio + retention, pacing prefs + goal. Computed from existing tables;
+    nothing new is stored except the goal (in hebrew_prefs). Frontends
+    render this instead of re-deriving it per surface.
+    """
+    user_id = _resolve_hebrew_read_user(user_id, session_token, authorization)
+    if not MEM_DB.exists():
+        return {"ok": True, "data": {"skills": []}}
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    prefs = read_hebrew_prefs(conn, user_id)
+    skills = []
+    try:
+        for r in conn.execute("""
+            SELECT n.category AS category, COUNT(*) AS practiced,
+                   ROUND(AVG(p.mastery), 3) AS avg_mastery,
+                   SUM(CASE WHEN p.mastery >= 0.8 THEN 1 ELSE 0 END) AS mastered
+            FROM hebrew_progress p JOIN hebrew_nodes n ON n.id=p.node_id
+            WHERE p.user_id=? GROUP BY n.category ORDER BY practiced DESC
+        """, (user_id,)).fetchall():
+            skills.append({"category": r["category"], "practiced": r["practiced"],
+                           "avg_mastery": r["avg_mastery"] or 0.0,
+                           "mastered": r["mastered"] or 0})
+    except Exception:
+        pass
+    try:
+        due_by_cat = {r[0]: r[1] for r in conn.execute("""
+            SELECT n.category, COUNT(DISTINCT s.node_id)
+            FROM hebrew_review_state s JOIN hebrew_nodes n ON n.id=s.node_id
+            WHERE s.user_id=? AND s.due <= datetime('now','localtime')
+            GROUP BY n.category""", (user_id,)).fetchall()}
+    except Exception:
+        due_by_cat = {}
+    for sk in skills:
+        sk["due"] = due_by_cat.get(sk["category"], 0)
+    prod = {"production": 0, "total": 0, "rate": None}
+    ret = {"attempts": 0, "correct": 0, "rate": None}
+    try:
+        for _mode, qtype, n, c in conn.execute("""
+            SELECT e.mode, pi.question_type, COUNT(*), SUM(e.correct)
+            FROM hebrew_attempt_events e
+            LEFT JOIN hebrew_practice_items pi ON pi.id=e.question_id
+            WHERE e.user_id=? AND e.created_at >= datetime('now','-30 days')
+            GROUP BY e.mode, pi.question_type""", (user_id,)).fetchall():
+            ret["attempts"] += n or 0
+            ret["correct"] += c or 0
+            prod["total"] += n or 0
+            if (qtype or "") in PRODUCTION_QUESTION_TYPES:
+                prod["production"] += n or 0
+        if ret["attempts"]:
+            ret["rate"] = round(ret["correct"] / ret["attempts"], 3)
+        if prod["total"]:
+            prod["rate"] = round(prod["production"] / prod["total"], 3)
+    except Exception:
+        pass
+    try:
+        frontier_level = _max_frontier_level(conn, user_id)
+    except Exception:
+        frontier_level = 1
+    conn.close()
+    return {"ok": True, "data": {
+        "skills": skills,
+        "frontier_level": frontier_level,
+        "production_ratio_30d": prod,
+        "retention_30d": ret,
+        "pacing": {"new_cards_per_day": prefs["new_cards_per_day"],
+                     "max_reviews_per_day": prefs["max_reviews_per_day"],
+                     "desired_retention": prefs["desired_retention"]},
+        "goal": prefs.get("goal", ""),
+        "goal_choices": list(GOAL_CHOICES),
     }}
 
 
@@ -5240,7 +5406,7 @@ def get_hebrew_quiz(
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing','dictation')
         """, (nid,)).fetchall()
         items.sort(key=lambda it: (
             0 if (nid, it["question_type"]) not in weak
@@ -5293,7 +5459,7 @@ def get_hebrew_quiz(
 #   recall      = retrieve from cues (cloze, transliteration, discrimination)
 #   production  = generate from scratch (typing, sentence)
 KP_STAGE_RECOGNITION = {"multiple_choice", "true_false", "letter_recognition", "classification"}
-KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall", "parse"}
+KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall", "parse", "dictation"}
 KP_STAGE_PRODUCTION = {"typing", "sentence"}
 KP_STAGE_ORDER = ["recognition", "recall", "production"]
 

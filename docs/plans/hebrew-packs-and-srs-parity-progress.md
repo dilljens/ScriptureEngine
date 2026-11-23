@@ -147,3 +147,21 @@
   requires both Hebrew parts AND gloss (half-answers fail verified).
 - Tests: grade-via-progress (skeleton), parse discrimination, lesson-quiz
   serving — in `test_hebrew_parse_context.py` (18 passed).
+
+## 2026-11-22 — R3 dictation (word level) + P1 learner profile
+- R3 word level DONE: `scripts/seed_dictation.py` → 517 cards (every vocab
+  node has a node-id wav; prompt carries no text, audio_url is node-id
+  based so the surface never leaks). `GET /hebrew/dictation/next`
+  (due '' rows + new fallback, no answer in payload — graded via
+  progress). Quiz integration: `audio_url` on dictation questions +
+  audio player in HebrewQuiz; cumulative IN-list, PRODUCTION_TYPES,
+  order, KP_RECALL updated; mc-lesson converts to hear-and-pick (audio
+  kept). Verse-level (gloss-cued target in verse audio) waits for
+  word-level retention ≥ 80%.
+- P1 DONE: `GET /hebrew/profile` — per-skill practiced/mastered/due,
+  frontier level, 30d production ratio + retention, pacing, goal
+  (`hebrew_prefs.goal`, validated choices read/vocab/parse/fluency).
+  "Your Hebrew" panel in LearnView (skill bars, production %, goal pill
+  or set-goal link); goal selector in deck options, saved via set_prefs.
+- Tests: endpoint no-leak + grade + audio-carry (parse_context file),
+  profile shape + goal roundtrip/reject (stats file). 521 pytest green.

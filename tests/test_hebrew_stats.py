@@ -63,3 +63,25 @@ def test_stats_excludes_suspended_from_forecast(hebdb):
     assert d["forecast"][0]["due"] == direct
     H.unsuspend_hebrew_card({"user_id": "default", "node_id": nid, "card_mode": ""},
                             authorization="")
+
+
+def test_profile_shape_and_goal_roundtrip(hebdb):
+    out = H.get_hebrew_profile(user_id="default", session_token="", authorization="")
+    assert out["ok"] is True
+    d = out["data"]
+    assert d["frontier_level"] >= 1
+    assert isinstance(d["skills"], list) and d["skills"]
+    assert set(d["pacing"]) == {"new_cards_per_day", "max_reviews_per_day", "desired_retention"}
+    assert d["goal_choices"] == ["read", "vocab", "parse", "fluency"]
+    sk = d["skills"][0]
+    assert {"category", "practiced", "avg_mastery", "mastered", "due"} <= set(sk)
+    # Goal round-trips through prefs; junk is rejected.
+    r = H.set_hebrew_prefs({"user_id": "default", "goal": "read",
+                            "new_cards_per_day": 10, "max_reviews_per_day": 100},
+                           authorization="")
+    assert r["ok"] and r["data"]["goal"] == "read"
+    d2 = H.get_hebrew_profile(user_id="default", session_token="", authorization="")["data"]
+    assert d2["goal"] == "read"
+    import fastapi
+    with pytest.raises(fastapi.HTTPException):
+        H.set_hebrew_prefs({"user_id": "default", "goal": "bogus"}, authorization="")
