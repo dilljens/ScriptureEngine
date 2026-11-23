@@ -2759,6 +2759,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
         SELECT id, question_type, question_text, options_json, correct_answer, difficulty
         FROM hebrew_practice_items
         WHERE node_id=?
+        ORDER BY id
     """, (node_id,)).fetchall()
     # One question per (answer, retrieval mode): a node must never quiz the
     # same answer twice IN THE SAME WAY (letter nodes historically seeded
@@ -2774,7 +2775,7 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     _day = datetime.datetime.now().date().isoformat()
     seen_recognize = set()
     prod_buckets: dict = {}
-    for item in sorted(items, key=lambda r: r["difficulty"] or 0.5):
+    for item in sorted(items, key=lambda r: (r["difficulty"] or 0.5, r["id"])):
         ca = (item["correct_answer"] or "").strip()
         if (item["question_type"] or "") in PRODUCTION_QUESTION_TYPES:
             prod_buckets.setdefault(ca or f"#{item['id']}", []).append(item)
@@ -2877,6 +2878,20 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
             if converted is not None:
                 mc.append(converted)
         selected = mc[:count]
+    # Structural guarantee: a lesson quiz never goes out recognition-only
+    # when production items exist (the student-eye regression). Conversion
+    # can drop a pick (too few same-script distractors); fall back to one
+    # production item as typed free-text rather than shipping zero production.
+    if selected and not any(q.get("type") in PRODUCTION_TYPES for q in selected):
+        for q in questions:
+            if q.get("type") in PRODUCTION_TYPES and q.get("question_id") not in \
+                    {x.get("question_id") for x in selected}:
+                fq = dict(q)
+                fq.pop("_correct", None)
+                fq["options"] = []
+                fq["answer_mode"] = ANSWER_MODE_FREE_TEXT
+                selected = (selected + [fq])[:count + 1]
+                break
     # Never leak the internal answer key to the client.
     for q in selected:
         q.pop("_correct", None)
