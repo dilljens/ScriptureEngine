@@ -41,8 +41,25 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
     )
   }
 
+  if (!session) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Couldn't compose today's session — check your connection and try again.</p>
+        {onBack && (
+          <button onClick={onBack}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer">
+            ← Back to Curriculum
+          </button>
+        )}
+      </div>
+    )
+  }
+
   const vb = session?.verse_block
-  const newOnes = (session?.reviews || []).filter(r => r.is_new || r.scheduler === 'new')
+  // New cards may sit inside compressed groups — flatten before picking.
+  const flatReviews = (session?.reviews || []).flatMap(r =>
+    r.type === 'compressed' && Array.isArray(r.items) ? r.items : [r])
+  const newOnes = flatReviews.filter(r => r.is_new || r.scheduler === 'new')
   const firstNew = newOnes.find(r => r.node_id)?.node_id
     || (session?.verse_block?.node_ids || [])[0]
 
@@ -100,6 +117,7 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
           title={reviewTarget === 'due' ? 'Due review (interleaved)' : 'New words'}
           onClose={() => setReviewTarget(null)}
           onFinished={() => { setReviewTarget(null); load() }}
+          onOpenLesson={(nid) => { setReviewTarget(null); onOpenLesson?.(nid) }}
         />
       )}
     </div>

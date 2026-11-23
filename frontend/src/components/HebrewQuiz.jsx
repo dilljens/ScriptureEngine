@@ -22,6 +22,7 @@ const TYPE_COLORS = {
   typing: 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20',
   contrast: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20',
   parse: 'border-lime-200 dark:border-lime-800 bg-lime-50 dark:bg-lime-900/20',
+  dictation: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20',
 }
 
 const CATEGORY_BADGES = {
@@ -34,7 +35,7 @@ const CATEGORY_BADGES = {
 function getTimeLimit(q) {
   if (!q) return 15
   const wordCount = (q.question || '').split(/\s+/).filter(Boolean).length
-  let base = { multiple_choice: 8, true_false: 6, transliteration: 15, cloze: 20, parse: 20 }[q.type] || 12
+  let base = { multiple_choice: 8, true_false: 6, transliteration: 15, cloze: 20, parse: 20, dictation: 20 }[q.type] || 12
   const wordBonus = Math.max(0, Math.floor((wordCount - 10) / 5)) * 2
   return Math.round(base + wordBonus)
 }
@@ -593,7 +594,9 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       {/* Hebrew keyboard */}
       {showKeyboard && currentIsTextInput && (
         <div className="mt-4">
-          <HebrewKeyboard onCharClick={(c) => setAnswer((answers[idx] || '') + c)} />
+          <HebrewKeyboard onCharClick={(c) => setAnswer((answers[idx] || '') + c)}
+            onBackspace={() => setAnswer((answers[idx] || '').slice(0, -1))}
+            onClear={() => setAnswer('')} value={answers[idx] || ''} />
           <button onClick={() => setShowKeyboard(false)}
             className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
             Hide keyboard

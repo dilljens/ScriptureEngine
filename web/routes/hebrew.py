@@ -2049,14 +2049,20 @@ def answer_adaptive_diagnostic(body: dict, authorization: str = Header("")):
     level_range = (PLACEMENT_SKILLS[skill_idx][2], PLACEMENT_SKILLS[skill_idx][3])
 
     item = conn.execute("""
-        SELECT p.correct_answer, n.category FROM hebrew_practice_items p
+        SELECT p.correct_answer, p.explanation, p.question_type, n.category FROM hebrew_practice_items p
         JOIN hebrew_nodes n ON n.id=p.node_id
         WHERE p.id=? AND p.node_id=?
     """, (qid, node_id)).fetchone()
     if not item:
         conn.rollback(); conn.close()
         raise HTTPException(400, "Question does not match its issued skill")
-    correct = _diagnostic_answer_matches(answer, item["correct_answer"])
+    # Parse items name a binyan/form/person — grade keywords, not keystrokes
+    # (same matcher as lesson quizzes; strict Hebrew matching would flunk
+    # correct parses on case/spacing).
+    if (item["question_type"] or "") == "parse":
+        correct = _parse_matches(answer, item["correct_answer"])
+    else:
+        correct = _diagnostic_answer_matches(answer, item["correct_answer"])
 
     skill_state = state[skill_name]
     skill_state["log"].append({"node_id": node_id, "correct": correct,
@@ -2087,6 +2093,8 @@ def answer_adaptive_diagnostic(body: dict, authorization: str = Header("")):
         conn.commit(); conn.close()
         return {"ok": True, "data": {
             "correct": correct,
+            "correct_answer": item["correct_answer"],
+            "explanation": item["explanation"],
             "question": _placement_public_question(q, question_nonce),
             "skill": PLACEMENT_SKILLS[skill_idx][0],
             "skill_index": skill_idx,

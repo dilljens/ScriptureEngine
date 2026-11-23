@@ -80,7 +80,7 @@ export default function WordPopup({ data, onClose, readAlongData }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 dark:bg-black/40">
-      <div ref={popupRef}
+      <div ref={popupRef} role="dialog" aria-modal="true" aria-label={`Hebrew word: ${data.word}`}
         className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 max-w-sm w-full overflow-hidden animate-in fade-in zoom-in duration-150"
         dir="rtl"
       >

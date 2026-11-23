@@ -883,6 +883,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
               : nextLesson?.title}
             onClose={() => setReviewTarget(null)}
             onFinished={() => { loadAll(); loadPacing() }}
+            onOpenLesson={(nid) => { setReviewTarget(null); onOpenLesson?.(nid) }}
           />
         )}
       </div>
@@ -940,7 +941,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       )}
 
       {/* Stats + quick action dropdowns */}
-      <div className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
+      <div className="flex flex-wrap items-center gap-2 mb-6 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <div className="flex-1 min-w-0">
           <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
             <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${(mastered / Math.max(total, 1)) * 100}%` }} />

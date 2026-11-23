@@ -10,7 +10,10 @@ import { currentSessionToken, hebrewSessionUser } from '../api'
  * question's difficulty. Tests-out skills you already know and seeds the
  * spaced-repetition state so known words aren't reviewed heavily.
  */
-const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name'])
+// Choice types render option buttons; everything else (incl. parse and
+// dictation production) falls back to a text field so no served question
+// is ever unanswerable — an empty option list used to soft-lock the test.
+const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name', 'parse', 'dictation', 'contrast'])
 
 export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
   const [sessionId, setSessionId] = useState(null)
@@ -85,10 +88,14 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
       .then(d => {
         if (!d.ok) { setError(d.detail || 'Failed to submit'); return }
         const data = d.data
-        setSubmitted(data.last_correct !== undefined ? { correct: data.last_correct } : null)
+        setSubmitted(data.last_correct !== undefined
+          ? { correct: data.last_correct, correctAnswer: data.correct_answer, explanation: data.explanation }
+          : null)
         answersLog.current.push({ skill, correct: data.last_correct })
 
-        // Short reveal of correctness before the next question
+        // Short reveal of correctness before the next question (longer on
+        // a miss so the correction can actually be read).
+        const dwell = data.last_correct === false ? 2600 : 900
         setTimeout(() => {
           setAnswer('')
           setSubmitted(null)
@@ -101,7 +108,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
             setTotalSkills(data.total_skills)
             setQuestion(data.question)
           }
-        }, 900)
+        }, dwell)
       })
       .catch(() => setError('Failed to submit'))
   }
@@ -114,7 +121,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
     return () => window.removeEventListener('keydown', handleKey)
   })
 
-  const isTextInput = question && TEXT_INPUT_TYPES.has(question.type)
+  const isTextInput = question && (TEXT_INPUT_TYPES.has(question.type) || !(question.options || []).length)
 
   if (loading) return (
     <div className="max-w-2xl mx-auto px-6 py-8 animate-pulse space-y-4">
@@ -233,7 +240,9 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
 
           {showKeyboard && isTextInput && (
             <div className="mt-4">
-              <HebrewKeyboard onCharClick={(c) => setAnswer(a => a + c)} />
+              <HebrewKeyboard onCharClick={(c) => setAnswer(a => a + c)}
+                onBackspace={() => setAnswer(a => a.slice(0, -1))}
+                onClear={() => setAnswer('')} value={answer} />
               <button onClick={() => setShowKeyboard(false)}
                 className="mt-2 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
                 Hide keyboard
@@ -256,6 +265,12 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
               </span>
             )}
           </div>
+          {submitted && submitted.correct === false && submitted.correctAnswer && (
+            <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-neutral-600 dark:text-neutral-300">
+              Correct answer: <span className="font-semibold text-green-700 dark:text-green-400">{submitted.correctAnswer}</span>
+              {submitted.explanation && <div className="mt-1 text-neutral-500 dark:text-neutral-400">{submitted.explanation}</div>}
+            </div>
+          )}
         </div>
       )}
     </div>

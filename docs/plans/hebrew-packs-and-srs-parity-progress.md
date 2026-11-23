@@ -249,3 +249,25 @@
   verse-presence.
 - Verification: 528 pytest green, 10 vitest, vite build clean (only
   excluded failure is the pre-existing unrelated memorize_preview gap).
+
+## 2026-11-22 — UI review pass (as a student, end to end)
+- Walked the whole learner path: diagnostic → lessons → quizzes → review
+  → reader → stats → Room. Design verdict: the learning loop is sound;
+  found 1 soft-lock, 2 dead-ends-by-omission, and a tray of papercuts.
+- P0 fixed: adaptive diagnostic served parse/contrast items with no way to
+  answer (no options + not text-input) — now falls back to text input, and
+  parse grades by keywords server-side (was strict-match-or-nothing).
+- P1 fixed: suspend had no undo/unsuspend path (cards vanished with no way
+  back) — one-tap Undo suspend toast; hearing cards had no replay (autoplay
+  once, then silence) — replay buttons front + back.
+- P2 fixed: diagnostic showed ✓/✗ with no correction (the review doc's #1
+  fix, missing here) — correct answer + explanation on misses, longer dwell
+  on wrong (backend now returns correct_answer); GameReviewModal got
+  Escape-to-close, disclosed mode-reset behavior, working Study links;
+  HebrewRoom got an error state and flattened new-card picking.
+- Polish: dictation color + 20s timer, HebrewKeyboard backspace wired in
+  quiz + diagnostic, guided-lesson example audio buttons (pronunciation in
+  context, silent when no audio), action-row wraps on small phones,
+  WordPopup dialog semantics.
+- Verification: 531 pytest (incl. new placement-answerability contract +
+  adaptive parse-grading tests), 522 vitest, vite build clean.

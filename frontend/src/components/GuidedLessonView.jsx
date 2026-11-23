@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { currentSessionToken } from '../api'
 import { submitHebrewProgressDetailed } from './HebrewQuiz'
+import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
 
 /**
  * GuidedLessonView — weakest-topic lesson grounded in the learner's knowledge
@@ -13,6 +14,7 @@ export default function GuidedLessonView({ nodeId, onBack, onOpenLesson }) {
   const [error, setError] = useState('')
   const [picked, setPicked] = useState({})
   const [results, setResults] = useState({})
+  const [exampleAudio, setExampleAudio] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -39,6 +41,22 @@ export default function GuidedLessonView({ nodeId, onBack, onOpenLesson }) {
     load()
     return () => { cancelled = true }
   }, [nodeId])
+
+  // Hear-it buttons on examples (pronunciation in context). Only words
+  // with resolvable audio get a button — the rest render silently.
+  useEffect(() => {
+    let cancelled = false
+    const hebs = [...new Set((lesson?.examples || []).map(e => e.hebrew).filter(Boolean))]
+    if (!hebs.length) return
+    Promise.all(hebs.map(async (h) => [h, await fetchAudioUrl(h).catch(() => null)]))
+      .then(pairs => {
+        if (cancelled) return
+        const urls = {}
+        for (const [h, url] of pairs) if (url) urls[h] = url
+        setExampleAudio(urls)
+      })
+    return () => { cancelled = true }
+  }, [lesson])
 
   const answerDrill = async (idx, drill, optIdx) => {
     if (results[idx] !== undefined) return
@@ -110,6 +128,13 @@ export default function GuidedLessonView({ nodeId, onBack, onOpenLesson }) {
           {lesson.examples.map((e, i) => (
             <div key={i} className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700">
               <span className="font-serif text-lg" dir="rtl" lang="he">{e.hebrew}</span>
+              {exampleAudio[e.hebrew] && (
+                <button onClick={() => playUrl(exampleAudio[e.hebrew])}
+                  className="ml-2 text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer"
+                  title="Hear it pronounced" aria-label={`Hear ${e.hebrew}`}>
+                  🔊
+                </button>
+              )}
               <span className="text-sm text-neutral-500 ml-2">— {e.gloss}</span>
               {e.note && <div className="text-xs text-neutral-400 mt-1">{e.note}</div>}
             </div>

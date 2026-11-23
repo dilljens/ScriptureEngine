@@ -89,6 +89,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const [audioUrl, setAudioUrl] = useState(null)
   const [lastRated, setLastRated] = useState(null)
   const [undoMsg, setUndoMsg] = useState('')
+  const [suspendedUndo, setSuspendedUndo] = useState(null)
   const redealsRef = useRef({})
   const spaceRef = useRef(false)
 
@@ -138,9 +139,43 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     }
   }, [currentCard?.id, flipped])
 
+  const replayAudio = useCallback(() => {
+    if (!currentCard?.hebrew) return
+    fetchAudioUrl(currentCard.hebrew).then(url => {
+      if (!url) return
+      setAudioUrl(url)
+      playUrl(url)
+    })
+  }, [currentCard?.hebrew])
+
   const handleFlip = useCallback(() => {
     if (!flipped) setFlipped(true)
   }, [flipped])
+
+  // B2 suspend undo — suspension hides the card with no other way back
+  // from this screen, so offer one tap to restore it.
+  const handleUnsuspend = useCallback(async () => {
+    if (!suspendedUndo) return
+    try {
+      const sessionToken = currentSessionToken()
+      await fetchJSON('/hebrew/unsuspend', {
+        method: 'POST',
+        body: JSON.stringify({
+          node_id: suspendedUndo.node_id, card_mode: suspendedUndo.mode,
+          hebrew: suspendedUndo.hebrew || '', lemma: suspendedUndo.lemma || '',
+          user_id: 'default', session_token: sessionToken,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+      })
+      setUndoMsg('Suspended card restored to your queue.')
+    } catch {
+      setUndoMsg('Could not unsuspend — it stays hidden for now.')
+    }
+    setSuspendedUndo(null)
+  }, [suspendedUndo])
 
   const handleRate = useCallback(async (rating) => {
     if (!currentCard || !flipped) return
@@ -241,6 +276,11 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         },
       })
       setLastRated(null)
+      setSuspendedUndo({
+        node_id: currentCard.node_id, mode: wholeNode ? '' : currentCard.mode,
+        hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
+      })
+      setUndoMsg(wholeNode ? 'Suspended whole word — it will no longer appear.' : 'Suspended this direction — it will no longer appear.')
       setFlipped(false)
       setAudioUrl(null)
       setCurrentIdx(i => i + 1)
@@ -329,9 +369,10 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         return (
           <div className="text-center">
             <div className="text-lg text-neutral-400 mb-4">🔊 Listen & Translate</div>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
-              Audio playing...
-            </div>
+            <button onClick={(e) => { e.stopPropagation(); replayAudio() }}
+              className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
+              ▶ {audioUrl ? 'Replay' : 'Loading… tap to play'}
+            </button>
           </div>
         )
       case 'reverse':
@@ -416,6 +457,16 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         </div>
       )}
 
+      {/* Audio replay on the back (hear the answer, link sound to meaning) */}
+      {audioUrl && (
+        <div className="text-center">
+          <button onClick={(e) => { e.stopPropagation(); playUrl(audioUrl) }}
+            className="text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer">
+            🔊 Replay audio
+          </button>
+        </div>
+      )}
+
       {/* Rating buttons */}
       <RatingButtons intervals={intervals} onRate={(v) => handleRate(v)} variant="grid" showKeys />
       {/* B2: suspend controls */}
@@ -458,8 +509,15 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
           {currentIdx + 1}/{totalCards}
         </span>
       </div>
-      {undoMsg && (
-        <p className="text-xs text-center mb-2 text-neutral-500 dark:text-neutral-400">{undoMsg}</p>
+      {(undoMsg || suspendedUndo) && (
+        <p className="text-xs text-center mb-2 text-neutral-500 dark:text-neutral-400">{undoMsg}
+          {suspendedUndo && (
+            <button onClick={handleUnsuspend}
+              className="ml-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 underline cursor-pointer">
+              ↩ Undo suspend
+            </button>
+          )}
+        </p>
       )}
 
       {/* Progress bar */}

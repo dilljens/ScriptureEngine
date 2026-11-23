@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import HebrewQuiz from './HebrewQuiz'
 
 /**
@@ -14,9 +14,19 @@ import HebrewQuiz from './HebrewQuiz'
  *
  * nodeId: when set, runs that lesson's quiz (guaranteed questions). When null,
  * runs the cumulative interleaved review (spaced-repetition due items).
+ *
+ * Notes: Escape closes. Switching modes remounts the quiz (fresh local set;
+ * submitted answers already persist server-side), which the tooltip discloses.
+ * "Study" links forward the lesson id instead of swallowing it.
  */
-export default function GameReviewModal({ nodeId = null, title, onClose, onFinished }) {
+export default function GameReviewModal({ nodeId = null, title, onClose, onFinished, onOpenLesson }) {
   const [mode, setMode] = useState('mc')
+
+  useEffect(() => {
+    function handleKey(e) { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   return (
     <div
@@ -40,8 +50,10 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
             </div>
           </div>
 
-          {/* Difficulty mode: multiple choice is the easier path */}
-          <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shrink-0" role="group" aria-label="Answer mode">
+          {/* Difficulty mode: multiple choice is the easier path. Switching
+              restarts the local set (server-side grades persist). */}
+          <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden shrink-0" role="group" aria-label="Answer mode"
+            title="Switching restarts this set — already-answered items stay graded">
             <button onClick={() => setMode('mc')}
               className={`min-h-[40px] px-3 text-[11px] font-medium cursor-pointer ${mode === 'mc' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'}`}>
               Easy · Choices
@@ -68,10 +80,9 @@ export default function GameReviewModal({ nodeId = null, title, onClose, onFinis
           nodeId={nodeId || undefined}
           onBack={onClose}
           onComplete={() => { onFinished?.(); onClose() }}
-          onOpenLesson={() => { onFinished?.(); onClose() }}
+          onOpenLesson={(nid) => { onFinished?.(); onClose(); onOpenLesson?.(nid) }}
         />
       </div>
     </div>
   )
 }
-
