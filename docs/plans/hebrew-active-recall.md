@@ -47,9 +47,13 @@ collapse the doors into one room.
 - [x] R4: reading comprehension + one-room composer (DONE 2026-11-22:
       492 verse-presence T/F; daily-session endpoint + HebrewRoom view.
       Meaning-judgment claims deferred — need hand review).
-- [x] R5: per-session production-ratio enforcement (DONE 2026-11-22:
-  lesson quota → 40% ceil, cumulative production-first floor, auditable
-  `mix` on both responses; profile 30d ratio measures it).
+- [x] R5: per-session production-ratio enforcement (DONE 2026-11-22,
+  hardened post-deploy: lesson quota → 40% ceil, cumulative
+  production-first floor, auditable `mix` on both responses; profile 30d
+  ratio measures it. Semantics, verified live: never zero production when
+  any production item exists (structural fallback, incl. deterministic
+  selection); 40% where the pool allows (single-answer nodes cap out lower
+  by construction — rotation covers the other traces across days).
 
 ## Method notes (why these, not alternatives)
 
