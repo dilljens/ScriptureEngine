@@ -1143,6 +1143,18 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
               </div>
             ))}
           </div>
+          {Array.isArray(profile.milestones) && profile.milestones.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {profile.milestones.map(m => (
+                <span key={m.id} title={`${m.desc} — ${m.count}/${m.total}`}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border cursor-default ${m.done
+                    ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+                    : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400'}`}>
+                  {m.done ? '✓ ' : ''}{m.title} {m.done ? '' : `${m.count}/${m.total}`}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

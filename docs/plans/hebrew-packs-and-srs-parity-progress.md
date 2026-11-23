@@ -285,3 +285,15 @@
   value shifted every column. Deliberately unchanged: 4am rollover
   (calendar day is fine), 10/100 caps (sim-verified workload).
 - Verification: new undo-aware counts test; 532 pytest, 522 vitest, build.
+
+## 2026-11-22 — M2 learner milestones (master plan) + coverage refactor
+- 8 corpus-grounded milestones computed in the profile endpoint
+  (`_learner_milestones`, pure predicates, no new tables): first-steps,
+  alphabet (all L1), words-100, roots-10, genesis-1 (95% known-word
+  coverage), parse-10, dictation-10 (graded production reps), week-warrior
+  (7 distinct review days). Rendered as ✓/count chips in the Your Hebrew
+  panel with full descriptions on hover.
+- Refactor: coverage computation extracted to `_chapter_coverage`
+  (endpoint behavior identical, verified by existing tests) for reuse.
+- Verification: milestone shape + first-steps/week flip test; 533 pytest,
+  522 vitest, vite build clean.

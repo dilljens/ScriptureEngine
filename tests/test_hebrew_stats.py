@@ -124,3 +124,30 @@ def test_today_counts_review_vs_new_and_undo(hebdb):
     q3 = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
     assert q3["data"]["reviews_done_today"] == 0, q3["data"]
     assert q3["data"]["new_introduced_today"] == 1, q3["data"]
+
+
+def test_profile_milestones_shape_and_first_steps(hebdb):
+    d0 = H.get_hebrew_profile(user_id="anon_ms10", session_token="",
+                              authorization="")["data"]
+    ids = {m["id"] for m in d0["milestones"]}
+    assert {"first-steps", "alphabet", "words-100", "roots-10",
+            "genesis-1", "parse-10", "dictation-10",
+            "week-warrior"} <= ids, ids
+    fs = next(m for m in d0["milestones"] if m["id"] == "first-steps")
+    assert fs["done"] is False
+    for m in d0["milestones"]:
+        assert set(m) == {"id", "title", "desc", "done", "progress",
+                          "count", "total"}
+        assert 0.0 <= m["progress"] <= 1.0
+    # One review flips first-steps and starts the week counter.
+    node = sqlite3.connect(str(hebdb)).execute(
+        "SELECT n.id FROM hebrew_nodes n WHERE NOT EXISTS (SELECT 1 FROM hebrew_review_state"
+        " WHERE user_id='anon_ms10' AND node_id=n.id) LIMIT 1").fetchone()[0]
+    H.process_hebrew_review(node_id=node, rating=3, user_id="anon_ms10",
+                            card_mode="forward")
+    d1 = H.get_hebrew_profile(user_id="anon_ms10", session_token="",
+                              authorization="")["data"]
+    fs1 = next(m for m in d1["milestones"] if m["id"] == "first-steps")
+    assert fs1["done"] is True
+    ww = next(m for m in d1["milestones"] if m["id"] == "week-warrior")
+    assert ww["count"] == 1 and ww["done"] is False

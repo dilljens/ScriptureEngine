@@ -117,7 +117,7 @@ One learner, one bank, one scheduler, five loops:
 | R4b | Room composer + view (reuses all renderers) | R2–R4a | M |
 | P1 | `learner_state` (computed, displayed) | analytics (done) | S |
 | M1 | Tap-to-mine wiring + known-% dial | reader, endpoint (done) | S–M |
-| M2 | Milestones (predicates + UI) | P1 | S |
+| M2 | Milestones (8 predicates, profile + panel) — DONE 2026-11-22 | P1 | S |
 | T1 | Tutor conversation mode + logged correction | tutor memory (done) | M |
 | G1 | Greek spine (letters → reading) on same rails | LXX pipeline | L |
 | F1 | Fluency timing (read-along wpm, dictation curves) | R3, R4b | S |

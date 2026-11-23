@@ -5132,6 +5132,21 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
     except Exception:
         conn.close()
         raise HTTPException(503, "Scripture corpus unavailable")
+    data = _chapter_coverage(conn, scrip, user_id, book, int(chapter))
+    conn.close()
+    if data is None:
+        raise HTTPException(404, f"No verses for {book}.{chapter}")
+    return {"ok": True, "data": {
+        "book": book, "chapter": int(chapter),
+        **data,
+    }}
+
+
+def _chapter_coverage(conn, scrip, user_id: str, book: str, chapter: int):
+    """Known-word coverage for one chapter (shared by the dial + milestones).
+
+    Returns None when the chapter has no verses. Caller owns both
+    connections (scripture conn is closed here after reading)."""
     try:
         rows = scrip.execute(
             "SELECT text_hebrew FROM verses WHERE book_id=? AND chapter=? ORDER BY verse",
@@ -5143,8 +5158,7 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
     except Exception:
         pass
     if not rows:
-        conn.close()
-        raise HTTPException(404, f"No verses for {book}.{chapter}")
+        return None
     # Tokenize like the cloze seeder (drop / morpheme separators in-word).
     counts: dict = {}
     first_seen: dict = {}
@@ -5170,7 +5184,6 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
             f"SELECT node_id, mastery FROM hebrew_progress WHERE user_id=? AND node_id IN ({placeholders})",
             (user_id, *nids)).fetchall():
             mastery_by[nid] = m or 0.0
-    conn.close()
     total = sum(counts.values())
     known = 0
     unknown: list = []
@@ -5181,11 +5194,10 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
         else:
             unknown.append({"surface": first_seen[folded], "folded": folded,
                             "count": n, "node_id": nid or None})
-    known_folded = sorted(f for f, n in counts.items()
+    known_folded = sorted(f for f in counts
                           if (resolved.get(f, "") and
                               mastery_by.get(resolved[f], 0.0) >= 0.8))
-    return {"ok": True, "data": {
-        "book": book, "chapter": int(chapter),
+    return {
         "tokens_total": total, "tokens_known": known,
         "coverage": round(known / total, 3) if total else 0.0,
         "types_total": len(counts),
@@ -5194,7 +5206,7 @@ def get_hebrew_coverage(book: str = "", chapter: int = 0,
         # Full known-type list so readers can color tokens from the same
         # mastery state the scheduler uses (one "known", not two).
         "known_folded": known_folded,
-    }}
+    }
 
 
 @router.get("/api/v1/hebrew/profile")
@@ -5262,6 +5274,7 @@ def get_hebrew_profile(user_id: str = "default", session_token: str = "",
         frontier_level = _max_frontier_level(conn, user_id)
     except Exception:
         frontier_level = 1
+    milestones = _learner_milestones(conn, user_id)
     conn.close()
     return {"ok": True, "data": {
         "skills": skills,
@@ -5273,7 +5286,97 @@ def get_hebrew_profile(user_id: str = "default", session_token: str = "",
                      "desired_retention": prefs["desired_retention"]},
         "goal": prefs.get("goal", ""),
         "goal_choices": list(GOAL_CHOICES),
+        "milestones": milestones,
     }}
+
+
+def _learner_milestones(conn, user_id: str) -> list:
+    """Curriculum-grounded achievements (M2 of the language-system plan).
+
+    Pure predicates over stored tables — no new state. Each milestone is
+    {id, title, desc, done, progress (0..1), count, total}."""
+    out = []
+
+    def mastered_where(where: str, args=(), total_nodes_sql=None, total_args=()):
+        try:
+            m = conn.execute(
+                "SELECT COUNT(*) FROM hebrew_progress p JOIN hebrew_nodes n"
+                f" ON n.id=p.node_id WHERE p.user_id=? AND p.mastery >= 0.8 AND {where}",
+                (user_id, *args)).fetchone()[0]
+            t = conn.execute(total_nodes_sql, total_args).fetchone()[0] if total_nodes_sql else 0
+        except Exception:
+            return 0, 0
+        return m or 0, t or 0
+
+    try:
+        practiced = conn.execute(
+            "SELECT COUNT(*) FROM hebrew_progress WHERE user_id=? AND attempts > 0",
+            (user_id,)).fetchone()[0] or 0
+    except Exception:
+        practiced = 0
+    out.append({"id": "first-steps", "title": "First steps",
+                "desc": "Complete your first review.",
+                "done": practiced > 0, "progress": 1.0 if practiced else 0.0,
+                "count": min(practiced, 1), "total": 1})
+    m, t = mastered_where("n.level = 1", (),
+                           "SELECT COUNT(*) FROM hebrew_nodes WHERE level = 1", ())
+    out.append({"id": "alphabet", "title": "Alphabet conquered",
+                "desc": "Master every Level 1 letter.",
+                "done": t > 0 and m >= t, "progress": round(m / t, 3) if t else 0.0,
+                "count": m, "total": t})
+    m, _ = mastered_where("n.category = 'word'", ())
+    out.append({"id": "words-100", "title": "100 words strong",
+                "desc": "Master 100 vocabulary words.",
+                "done": m >= 100, "progress": round(min(m, 100) / 100, 3),
+                "count": m, "total": 100})
+    m, _ = mastered_where("n.category = 'root'", ())
+    out.append({"id": "roots-10", "title": "Root collector",
+                "desc": "Master 10 word roots — each unlocks a word family.",
+                "done": m >= 10, "progress": round(min(m, 10) / 10, 3),
+                "count": m, "total": 10})
+    # Genesis 1 readability (LingQ 98% line): computed, corpus-grounded.
+    try:
+        scrip = get_db()
+        cov = _chapter_coverage(conn, scrip, user_id, "gen", 1)
+        cov = (cov or {}).get("coverage", 0.0) or 0.0
+    except Exception:
+        cov = 0.0
+    out.append({"id": "genesis-1", "title": "Read Genesis 1",
+                "desc": "Know 95% of Genesis 1 running words.",
+                "done": cov >= 0.95, "progress": round(min(cov, 0.95) / 0.95, 3),
+                "count": round(cov * 100, 1), "total": 95})
+    # Graded production reps (parse / dictate), all-time.
+    try:
+        rows = conn.execute("""
+            SELECT pi.question_type, COUNT(*) FROM hebrew_attempt_events e
+            JOIN hebrew_practice_items pi ON pi.id = e.question_id
+            WHERE e.user_id=? AND e.correct=1 AND pi.question_type IN ('parse','dictation')
+            GROUP BY pi.question_type""", (user_id,)).fetchall()
+        prod_counts = {r[0]: r[1] for r in rows}
+    except Exception:
+        prod_counts = {}
+    for mid, title, desc in (("parse-10", "Working grammarian",
+                              "Parse 10 verb forms correctly."),
+                             ("dictation-10", "Sharp ears",
+                              "Spell 10 words correctly by ear.")):
+        qtype = mid.split("-")[0]
+        n = prod_counts.get(qtype, 0)
+        out.append({"id": mid, "title": title, "desc": desc,
+                    "done": n >= 10, "progress": round(min(n, 10) / 10, 3),
+                    "count": n, "total": 10})
+    # Distinct study days (append-only review log).
+    try:
+        days = conn.execute(
+            "SELECT COUNT(DISTINCT substr(reviewed_at, 1, 10))"
+            " FROM hebrew_review_history WHERE user_id=?",
+            (user_id,)).fetchone()[0] or 0
+    except Exception:
+        days = 0
+    out.append({"id": "week-warrior", "title": "Seven-day streak",
+                "desc": "Review on 7 different days.",
+                "done": days >= 7, "progress": round(min(days, 7) / 7, 3),
+                "count": days, "total": 7})
+    return out
 
 
 @router.get("/api/v1/hebrew/suspended")
