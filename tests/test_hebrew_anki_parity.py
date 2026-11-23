@@ -39,12 +39,16 @@ def test_resolve_pacing_pref_and_override():
 def test_hebrew_prefs_defaults_and_roundtrip(tmp_path):
     conn = sqlite3.connect(str(tmp_path / "prefs.db"))
     assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 10, "max_reviews_per_day": 100,
-                                            "desired_retention": 0.9}
+                                            "desired_retention": 0.9, "goal": ""}
     conn.execute(
         "INSERT INTO hebrew_prefs (user_id, new_cards_per_day, max_reviews_per_day)"
         " VALUES ('u1', 5, 50)")
     assert read_hebrew_prefs(conn, "u1") == {"new_cards_per_day": 5, "max_reviews_per_day": 50,
-                                            "desired_retention": 0.9}
+                                            "desired_retention": 0.9, "goal": ""}
+    conn.execute("UPDATE hebrew_prefs SET goal='read' WHERE user_id='u1'")
+    assert read_hebrew_prefs(conn, "u1")["goal"] == "read"
+    conn.execute("UPDATE hebrew_prefs SET goal='bogus' WHERE user_id='u1'")
+    assert read_hebrew_prefs(conn, "u1")["goal"] == ""
     conn.execute("UPDATE hebrew_prefs SET desired_retention=0.85 WHERE user_id='u1'")
     assert read_hebrew_prefs(conn, "u1")["desired_retention"] == 0.85
     # Out-of-range stored values clamp to 0.70–0.99.
