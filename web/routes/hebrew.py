@@ -608,16 +608,22 @@ def _ensure_review_history(conn):
 
 def _record_review_history(conn, user_id, node_id, card_mode, rating,
                            delta_t, s_b, s_a, sf_b, sf_a, d_b, d_a,
-                           r, ivl, due, retention):
-    """Append one immutable review event. Caller owns the transaction."""
+                           r, ivl, due, retention, reviewed_at: str = ""):
+    """Append one immutable review event. Caller owns the transaction.
+
+    reviewed_at is passed explicitly (the review's own timestamp) — never
+    the SQLite UTC default, which can disagree with the app clock by hours
+    and break every same-day comparison."""
     _ensure_review_history(conn)
+    if not reviewed_at:
+        reviewed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.execute("""
         INSERT INTO hebrew_review_history
-            (user_id, node_id, card_mode, rating, delta_t,
+            (user_id, node_id, card_mode, reviewed_at, rating, delta_t,
              s_before, s_after, sf_before, sf_after, d_before, d_after,
              retrievability, interval_days, due, desired_retention)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (user_id, node_id, card_mode or "", rating, delta_t,
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (user_id, node_id, card_mode or "", reviewed_at, rating, delta_t,
             s_b, s_a, sf_b, sf_a, d_b, d_a, r, ivl, due, retention))
 
 
@@ -720,6 +726,37 @@ def _max_frontier_level(conn, user_id: str) -> int:
     except Exception:
         touched = None
     return max(allowed, touched or 1)
+
+
+def _today_counts(conn, user_id: str, today: str = "") -> dict:
+    """Cards finished today: reviewed (had prior state) vs introduced (new).
+
+    Distinct (node, mode) pairs from the append-only review history —
+    Anki's per-card studied counts. Undo deletes the row, so these are net.
+    Missing table (pre-migration DBs) yields zeros, never an error.
+    Day boundary uses the app clock (Python), matching the writer — never
+    SQLite localtime, whose TZ can disagree with the app server's clock."""
+    import datetime as _dt
+    today = today or _dt.date.today().isoformat()
+    try:
+        rows = conn.execute("""
+            SELECT node_id, card_mode, s_before FROM hebrew_review_history
+            WHERE user_id=? AND substr(reviewed_at, 1, 10) = ?
+            ORDER BY id
+        """, (user_id, today)).fetchall()
+    except Exception:
+        return {"reviews_done_today": 0, "new_introduced_today": 0}
+    # Distinct cards; a card counts once even if re-rated (Again → Good).
+    # First row of the day decides: no prior state = introduced today
+    # (Anki counts new-answered against the new budget the same way).
+    cards: dict = {}
+    for nid, _cm, s_before in rows:
+        if nid not in cards:
+            cards[nid] = s_before is not None
+    reviewed_cards = sum(1 for had in cards.values() if had)
+    new_cards = sum(1 for had in cards.values() if not had)
+    return {"reviews_done_today": reviewed_cards,
+            "new_introduced_today": new_cards}
 
 
 def _suspended_sets(conn, user_id: str):
@@ -1276,7 +1313,8 @@ def process_hebrew_review(node_id: str, rating: int = 3, user_id: str = "default
                            state[8] if state and len(state) > 8 else None, new_sf,
                            state[1] if state else None, new_d,
                            _r, float(adjusted_interval) if adjusted_interval else 0.0,
-                           due_at.strftime("%Y-%m-%d %H:%M:%S"), retention)
+                           due_at.strftime("%Y-%m-%d %H:%M:%S"), retention,
+                           reviewed_at.strftime("%Y-%m-%d %H:%M:%S"))
 
     # Track failure pattern for targeted remediation
     failure_pattern = None
@@ -2484,7 +2522,8 @@ def update_hebrew_progress(body: dict, authorization: str = Header("")):
                                state[5] if state and len(state) > 5 else None, new_sf,
                                state[1] if state else None, new_d,
                                _r, float(max(1, round(interval))),
-                               _due.strftime("%Y-%m-%d %H:%M:%S"), retention)
+                               _due.strftime("%Y-%m-%d %H:%M:%S"), retention,
+                               _reviewed.strftime("%Y-%m-%d %H:%M:%S"))
         conn.commit()
     except Exception:
         log.warning("silent_exception", exc_info=True)
@@ -3736,6 +3775,8 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
     except Exception:
         leech_due = 0
 
+    # Computed before conn.close() below (closed connections can't query).
+    today_counts = _today_counts(conn, user_id)
     conn.close()
 
     # Add confusability_warning to items that have confusable counterparts in the queue.
@@ -3817,6 +3858,10 @@ def get_hebrew_review_queue(user_id: str = "default", limit: int = 10,
         "leech_due": leech_due,
         "suspended_count": len(suspended_nodes) + len(suspended_modes),
         "learning_count": sum(1 for d in due if d.get("is_learning") and d["node_id"] not in suspended_nodes),
+        # Today's finished work (Anki's studied-counts): distinct cards
+        # reviewed vs introduced, from the append-only history. Undo deletes
+        # the row, so these are net counts — the session's real progress.
+        **today_counts,
     }}
 
 

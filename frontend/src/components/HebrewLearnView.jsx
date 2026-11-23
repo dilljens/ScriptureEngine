@@ -1076,7 +1076,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       <div className="flex flex-wrap items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
           📊 {queueStats ? (
-            <>{queueStats.due_count} due · {queueStats.new_cards} new{queueStats.learning_count > 0 ? ` · 🔴 ${queueStats.learning_count} learning` : ''}{queueStats.reviews_capped ? ` · capped (${queueStats.reviews_remaining} waiting)` : ''}{queueStats.leech_due > 0 ? ` · 🪲 ${queueStats.leech_due} leech${queueStats.leech_due === 1 ? '' : 'es'}` : ''}</>
+            <>{queueStats.due_count} due · {queueStats.new_cards} new · ✅ {queueStats.reviews_done_today ?? 0} done{queueStats.learning_count > 0 ? ` · 🔴 ${queueStats.learning_count} learning` : ''}{queueStats.reviews_capped ? ` · capped (${queueStats.reviews_remaining} waiting)` : ''}{queueStats.leech_due > 0 ? ` · 🪲 ${queueStats.leech_due} leech${queueStats.leech_due === 1 ? '' : 'es'}` : ''}</>
           ) : 'Loading queue…'}
         </span>
         <span className="flex-1" />

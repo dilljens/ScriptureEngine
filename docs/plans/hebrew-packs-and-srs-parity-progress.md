@@ -271,3 +271,17 @@
   WordPopup dialog semantics.
 - Verification: 531 pytest (incl. new placement-answerability contract +
   adaptive parse-grading tests), 522 vitest, vite build clean.
+
+## 2026-11-22 — Goal-relative pacing strip (Anki daily-goals parity)
+- Queue now reports `reviews_done_today` + `new_introduced_today` (distinct
+  cards from the append-only history; first row of the day decides
+  introduced-vs-reviewed, matching Anki's new-budget accounting; undo
+  deletes rows so counts are net). Strip reads
+  "N due · M new · ✅ K done · 🔴 learning" — progress, not just backlog.
+- Fixed en route: (1) history INSERT omitted reviewed_at so SQLite filled
+  a UTC default while the app runs local — now passed explicitly from the
+  review's own timestamp; (2) counts computed after conn.close() (always
+  zero) — moved before close; (3) a test INSERT missing the card_mode
+  value shifted every column. Deliberately unchanged: 4am rollover
+  (calendar day is fine), 10/100 caps (sim-verified workload).
+- Verification: new undo-aware counts test; 532 pytest, 522 vitest, build.

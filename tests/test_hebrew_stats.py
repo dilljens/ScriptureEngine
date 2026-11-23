@@ -85,3 +85,42 @@ def test_profile_shape_and_goal_roundtrip(hebdb):
     import fastapi
     with pytest.raises(fastapi.HTTPException):
         H.set_hebrew_prefs({"user_id": "default", "goal": "bogus"}, authorization="")
+
+
+def test_today_counts_review_vs_new_and_undo(hebdb):
+    node = sqlite3.connect(str(hebdb)).execute(
+        "SELECT n.id FROM hebrew_nodes n WHERE NOT EXISTS (SELECT 1 FROM hebrew_review_state"
+        " WHERE user_id='default' AND node_id=n.id) LIMIT 1").fetchone()[0]
+    # Fresh card rated twice (Again then Good): introduced today, not a review.
+    H.process_hebrew_review(node_id=node, rating=1, user_id="default",
+                            card_mode="forward")
+    H.process_hebrew_review(node_id=node, rating=3, user_id="default",
+                            card_mode="forward")
+    q = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
+    assert q["data"]["new_introduced_today"] == 1, q["data"]
+    assert q["data"]["reviews_done_today"] == 0, q["data"]
+    # An older card (progress from yesterday) counts as reviewed.
+    old = sqlite3.connect(str(hebdb)).execute(
+        "SELECT id FROM hebrew_nodes ORDER BY id LIMIT 1 OFFSET 5").fetchone()[0]
+    conn = sqlite3.connect(str(hebdb))
+    conn.execute(
+        "INSERT OR REPLACE INTO hebrew_progress (user_id, node_id, mastery, attempts, correct, last_practiced)"
+        " VALUES ('default', ?, 0.5, 3, 2, date('now','-1 day'))", (old,))
+    conn.execute(
+        "INSERT OR REPLACE INTO hebrew_review_state"
+        " (user_id, node_id, card_mode, stability, difficulty, due, last_review, reps, lapses)"
+        " VALUES ('default', ?, 'forward', 2.0, 5.0, date('now','-1 day'), date('now','-1 day'), 3, 0)",
+        (old,))
+    conn.commit()
+    conn.close()
+    H.process_hebrew_review(node_id=old, rating=3, user_id="default",
+                            card_mode="forward")
+    q2 = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
+    assert q2["data"]["reviews_done_today"] == 1, q2["data"]
+    assert q2["data"]["new_introduced_today"] == 1, q2["data"]
+    # Undo the last rating: the count drops back (net counts).
+    H.undo_hebrew_review({"user_id": "default", "node_id": old,
+                          "card_mode": "forward"}, authorization="")
+    q3 = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
+    assert q3["data"]["reviews_done_today"] == 0, q3["data"]
+    assert q3["data"]["new_introduced_today"] == 1, q3["data"]
