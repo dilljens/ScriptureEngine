@@ -251,8 +251,8 @@ def test_starter_words_lead_the_frontier(hebdb):
 def test_comprehension_items_grade_and_serve(hebdb):
     rows = sqlite3.connect(str(hebdb)).execute(
         "SELECT node_id, id, correct_answer, question_text FROM hebrew_practice_items"
-        " WHERE question_type='true_false' LIMIT 2").fetchall()
-    assert len(rows) == 2, "comprehension T/F items seeded"
+        " WHERE question_type='true_false' AND question_text LIKE '%appears in%' LIMIT 2").fetchall()
+    assert len(rows) == 2, "auto-generated verse-presence T/F items seeded"
     for node_id, qid, truth, prompt in rows:
         assert "appears in" in prompt
         out = H.update_hebrew_progress(
@@ -270,3 +270,33 @@ def test_comprehension_items_grade_and_serve(hebdb):
     out3 = H.get_hebrew_lesson_quiz(rows[0][0], count=10, user_id="default")
     tfs = [q for q in out3["data"]["questions"] if q["type"] == "true_false"]
     assert tfs and all(len(q["options"]) == 2 for q in tfs)
+
+
+def test_production_floor_lesson_and_cumulative(hebdb):
+    out = H.get_hebrew_lesson_quiz("qal_perfect", count=8, user_id="default")
+    assert out["ok"] is True
+    mix = out["data"]["mix"]
+    assert mix["total"] > 0 and mix["rate"] >= 0.4, mix
+    out2 = H.get_hebrew_quiz(count=8, user_id="default", session_token="",
+                             authorization="", mode="recent")
+    assert out2["ok"] is True
+    mix2 = out2["data"].get("mix", {})
+    assert mix2.get("total", 0) > 0 and mix2.get("production", 0) >= 1, mix2
+
+
+def test_meaning_claims_grade_and_serve(hebdb):
+    rows = sqlite3.connect(str(hebdb)).execute(
+        "SELECT id, correct_answer FROM hebrew_practice_items"
+        " WHERE node_id='read_gen1' AND explanation LIKE '[hand-verified]%'").fetchall()
+    assert len(rows) == 10, "hand-verified Genesis 1 meaning set"
+    qid, truth = rows[0]
+    out = H.update_hebrew_progress(
+        {"user_id": "anon_mean1", "node_id": "read_gen1",
+         "question_id": qid, "answer": truth},
+        authorization="")
+    assert out["ok"] is True and out["data"]["correct"]
+    out2 = H.update_hebrew_progress(
+        {"user_id": "anon_mean2", "node_id": "read_gen1",
+         "question_id": qid, "answer": "False" if truth == "True" else "True"},
+        authorization="")
+    assert out2["ok"] is True and not out2["data"]["correct"]

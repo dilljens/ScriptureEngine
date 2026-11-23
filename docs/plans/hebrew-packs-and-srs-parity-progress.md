@@ -222,3 +222,30 @@
   first in Practice dropdown).
 - Verification: 526 pytest green, 10 vitest, vite build clean (only
   excluded failure is the pre-existing unrelated memorize_preview gap).
+
+## 2026-11-22 — Content sufficiency pass + R5 mix enforcement
+- Audit: 20 thin nodes (0-2 items). Verdict: 9 topical reading nodes +
+  binyan/weqatal/furtive/root-extract are concept lessons (1-3 checks is
+  correct density, left alone). Real gaps: 7 prefix lessons (2 items each)
+  and read_zec8 (2 items, seeder skipped it on a book-id bug: description
+  said zec.8, corpus uses zech — fixed, plus repaired 2 stale answers it
+  left behind: verse-count 0→23, ref zec.8.1→zech.8.1).
+- `scripts/seed_prefix_apply.py` → 14 corpus-attested inflection cards
+  (בכל/ביום/בארץ/ביד/לכל/המלך/הארץ/מכל/מארץ/מבית/ככל/כיום/כדבר/לאמר).
+  Guards that survived reviewer eyeball of every item: Tanakh-only books
+  (DSS layer excluded — caught מימ), lexicon-headword exclusion
+  (lexicalized forms aren't compositional), skeleton dedup across
+  cantillation variants, pointed answers with free-text grading.
+  Deliberate exclusions: vav (conversive), shin (relative), miqtal-trap
+  denylist (מזבח — own lexeme, caught by hand, documented in seeder).
+- R5 DONE: lesson quota 1/3 → 40% (ceil); cumulative gets a production-first
+  40% floor pass (category-alternating) before the rest interleaves; both
+  quiz responses carry auditable `mix` (production/total/rate); composer
+  inherits it through GameReviewModal. Verified: qal_perfect 62%,
+  cumulative 38% (pool-limited best effort).
+- Meaning comprehension v1: 10 hand-verified Genesis 1 claims on read_gen1
+  ([hand-verified] marker, both directions grade correctly). Beyond-Gen-1
+  meaning judgments still need hand review — the auto path stays at
+  verse-presence.
+- Verification: 528 pytest green, 10 vitest, vite build clean (only
+  excluded failure is the pre-existing unrelated memorize_preview gap).

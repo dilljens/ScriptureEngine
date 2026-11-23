@@ -2790,9 +2790,10 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
 
     # Guarantee bidirectional production practice. A session that is all
     # multiple-choice trains option-elimination (recognition), not recall —
-    # reserve at least a third of the slots for types the learner must produce.
-    PRODUCTION_TYPES = {"typing", "recall", "cloze", "contrast", "parse", "dictation"}
-    want = max(1, count // 3)
+    # reserve at least 40% of the slots for types the learner must produce
+    # (R5: the review doc's gap #1, enforced not hoped-for).
+    PRODUCTION_TYPES = set(PRODUCTION_QUESTION_TYPES) | {"contrast"}
+    want = max(1, math.ceil(count * 0.4))
     own = [q for q in questions if not q.get("is_distractor")]
     distractors = [q for q in questions if q.get("is_distractor")]
     if sum(1 for q in own[:count] if q["type"] in PRODUCTION_TYPES) < want:
@@ -2835,12 +2836,15 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
 
     conn.close()
 
+    _prod_n = sum(1 for q in selected if q["type"] in PRODUCTION_TYPES)
     return {"ok": True, "data": {
         "questions": selected,
         "node_id": node_id,
         "node_title": node["title"],
         "category": node["category"],
         "total": len(questions),
+        "mix": {"production": _prod_n, "total": len(selected),
+                 "rate": round(_prod_n / len(selected), 2) if selected else 0.0},
     }}
 
 
@@ -5619,12 +5623,31 @@ def get_hebrew_quiz(
                 "difficulty": item['difficulty'],
             })
 
-    # Interleave: no two consecutive same-category
+    # Interleave: no two consecutive same-category. R5 production floor:
+    # fill 40% of slots from production types FIRST (category-alternating),
+    # then the rest — the mix is enforced, not left to the shuffle.
     random.shuffle(all_questions)  # initial shuffle for randomness
     interleaved = []
     last_cat = None
+    prod_pool = [q for q in all_questions
+                 if q['type'] in PRODUCTION_QUESTION_TYPES]
+    rec_pool = [q for q in all_questions
+                if q['type'] not in PRODUCTION_QUESTION_TYPES]
+    want_prod = max(1, math.ceil(count * 0.4)) if all_questions else 0
+    remaining = list(prod_pool)
+    for _ in range(min(want_prod, len(remaining))):
+        best_idx = -1
+        for i, q in enumerate(remaining):
+            if q['category'] != last_cat:
+                best_idx = i
+                break
+        if best_idx < 0:
+            best_idx = 0
+        chosen = remaining.pop(best_idx)
+        interleaved.append(chosen)
+        last_cat = chosen['category']
     # Sort by difficulty first, then ensure no consecutive same cat
-    remaining = list(all_questions)
+    remaining = [q for q in rec_pool] + remaining
 
     while remaining and len(interleaved) < count:
         best_idx = -1
@@ -5640,7 +5663,11 @@ def get_hebrew_quiz(
         last_cat = chosen['category']
 
     conn.close()
-    return {"ok": True, "data": {"questions": interleaved[:count], "total_available": len(all_questions)}}
+    _sel = interleaved[:count]
+    _prod_n = sum(1 for q in _sel if q["type"] in PRODUCTION_QUESTION_TYPES)
+    return {"ok": True, "data": {"questions": _sel, "total_available": len(all_questions),
+                                     "mix": {"production": _prod_n, "total": len(_sel),
+                                              "rate": round(_prod_n / len(_sel), 2) if _sel else 0.0}}}
 
 
 # ── Micro-scaffolding: KP stage map (Phase 4) ──
