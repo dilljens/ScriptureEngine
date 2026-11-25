@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import GameReviewModal from './GameReviewModal'
+import TutorTurn from './TutorTurn'
 import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /**
@@ -15,6 +16,7 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviewTarget, setReviewTarget] = useState(null)
+  const [showTutor, setShowTutor] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -96,6 +98,10 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
 
       {/* Session actions */}
       <div className="grid gap-2 mb-3">
+        <button onClick={() => setShowTutor(true)}
+          className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors text-left">
+          💬 Talk it through — tutor asks, you produce, it corrects
+        </button>
         <button onClick={() => setReviewTarget('due')}
           className="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors text-left">
           🔁 Review due ({session?.due_count ?? 0}) — interleaved, all modes
@@ -110,6 +116,13 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
       <p className="text-[11px] text-neutral-400 text-center">
         Again returns in minutes, not tomorrow. Suspend anything annoying — it stays out.
       </p>
+
+      {showTutor && (
+        <TutorTurn
+          onClose={() => { setShowTutor(false); load() }}
+          onOpenLesson={(nid) => { setShowTutor(false); onOpenLesson?.(nid) }}
+        />
+      )}
 
       {reviewTarget && (
         <GameReviewModal

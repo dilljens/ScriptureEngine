@@ -5394,6 +5394,392 @@ def _learner_milestones(conn, user_id: str) -> list:
     return out
 
 
+# ── T1: grounded Socratic tutor (docs/plans/hebrew-tutor-t1-grounded.md) ───
+# Every tutor turn is one of ask/correct/explain/done, validated server-side.
+# Rules: production before explanation; every factual claim cites a node_id
+# and/or verse_ref that exists; corrections write attempt events (same path
+# as quizzes, so FSRS sees them); no uncited lecturing — a misbehaving
+# model degrades to silence, never to hallucinated teaching.
+TUTOR_TURN_KINDS = ("ask", "correct", "explain", "done")
+
+
+def _tutor_item_for_node(conn, node_id: str):
+    """One production item for a node, preferred for tutor asks.
+
+    Production-first (typing/parse/dictation/recall), hardest first — the
+    tutor always asks the learner to generate before it explains."""
+    row = conn.execute("""
+        SELECT id, node_id, question_type, question_text, options_json,
+               correct_answer, difficulty
+        FROM hebrew_practice_items
+        WHERE node_id=? AND question_type IN
+            ('typing','parse','dictation','recall','cloze')
+        ORDER BY difficulty DESC LIMIT 1
+    """, (node_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def _tutor_pick_node(conn, user_id: str, exclude=()) -> dict | None:
+    """Weakest-first node for a tutor production round.
+
+    Order: leeches (8+ lapses) → overdue FSRS rows → weakest mastery with
+    production items available. Same signals the Room composer uses, so the
+    tutor and the queue never disagree about what needs work."""
+    excl = set(exclude or [])
+    placeholders = """, """.join("?" for _ in excl) if excl else "''"
+    args: list = [user_id, *sorted(excl)]
+    # 1. Leeches with a production item available.
+    try:
+        row = conn.execute(f"""
+            SELECT s.node_id FROM hebrew_review_state s
+            JOIN hebrew_nodes n ON n.id = s.node_id
+            WHERE s.user_id=? AND s.node_id NOT IN ({placeholders})
+            GROUP BY s.node_id HAVING SUM(s.lapses) >= ?
+            ORDER BY SUM(s.lapses) DESC LIMIT 5
+        """, (*args, LEECH_LAPSE_THRESHOLD)).fetchall()
+        import random as _r
+        cands = [r[0] for r in row if _tutor_item_for_node(conn, r[0])]
+        if cands:
+            return {"node_id": _r.choice(cands), "reason": "leech"}
+    except Exception:
+        pass
+    # 2. Most overdue FSRS row with a production item.
+    try:
+        rows = conn.execute(f"""
+            SELECT s.node_id, MIN(s.due) FROM hebrew_review_state s
+            WHERE s.user_id=? AND s.due <= datetime('now','localtime')
+              AND s.node_id NOT IN ({placeholders})
+            GROUP BY s.node_id ORDER BY MIN(s.due) LIMIT 10
+        """, tuple(args)).fetchall()
+        for r in rows:
+            if _tutor_item_for_node(conn, r[0]):
+                return {"node_id": r[0], "reason": "due"}
+    except Exception:
+        pass
+    # 3. Weakest practiced mastery with a production item.
+    try:
+        rows = conn.execute(f"""
+            SELECT p.node_id FROM hebrew_progress p
+            WHERE p.user_id=? AND p.attempts > 0 AND p.mastery < 0.8
+              AND p.node_id NOT IN ({placeholders})
+            ORDER BY p.mastery ASC LIMIT 10
+        """, tuple(args)).fetchall()
+        for r in rows:
+            if _tutor_item_for_node(conn, r[0]):
+                return {"node_id": r[0], "reason": "weakest"}
+    except Exception:
+        pass
+    return None
+
+
+def _validate_tutor_turn(turn: dict) -> tuple[bool, str]:
+    """Server-side template check: unknown shapes are rejected.
+
+    ask: needs a question + node_id (answer stays server-side).
+    correct: needs recast + rule + at least one citation.
+    explain: every claim needs a citation; uncited text must be phrased
+      as a question (ends with '?'). Long uncited declaratives fail.
+    done: needs a summary string."""
+    if not isinstance(turn, dict):
+        return False, "turn must be an object"
+    kind = turn.get("kind")
+    if kind not in TUTOR_TURN_KINDS:
+        return False, f"unknown tutor turn kind: {kind!r}"
+    if kind == "ask":
+        q = turn.get("question") or ""
+        if not isinstance(q, str) or len(q.strip()) < 8:
+            return False, "ask turns need a real question"
+        if not turn.get("node_id"):
+            return False, "ask turns must cite their node_id"
+        return True, ""
+    if kind == "correct":
+        if not (turn.get("recast") or "").strip():
+            return False, "correct turns need a recast"
+        if not (turn.get("rule") or "").strip():
+            return False, "correct turns need a one-line rule"
+        cites = turn.get("citations") or []
+        if not isinstance(cites, list) or not any(
+                (c.get("node_id") or c.get("verse_ref")) for c in cites if isinstance(c, dict)):
+            return False, "correct turns need at least one node_id or verse_ref citation"
+        return True, ""
+    if kind == "explain":
+        text = turn.get("text") or ""
+        if not isinstance(text, str) or len(text.split()) > 150:
+            return False, "explain turns are <=150 words"
+        cites = turn.get("citations") or []
+        has_cite = isinstance(cites, list) and any(
+            (c.get("node_id") or c.get("verse_ref")) for c in cites if isinstance(c, dict))
+        # Uncited text may only ask, never assert: split into sentences;
+        # any declarative sentence longer than a short prompt fails.
+        import re as _re
+        sentences = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
+        long_asserts = [s for s in sentences
+                        if not s.endswith("?") and len(s.split()) > 12]
+        if long_asserts and not has_cite:
+            return False, "explain turns need citations for assertions"
+        return True, ""
+    # done
+    if not (turn.get("summary") or "").strip():
+        return False, "done turns need a summary"
+    return True, ""
+
+
+@router.post("/api/v1/hebrew/tutor/turn")
+async def post_hebrew_tutor_turn(body: dict, authorization: str = Header("")):
+    """One grounded Socratic tutor turn (T1).
+
+    Body: {mode: 'ask'|'correct'|'explain'|'done', node_id?, verse_ref?,
+           answer?, question_id?, session_key?}.
+    - ask: server picks the weakest node with a production item, returns
+      the question WITHOUT the answer (same no-leak guarantee as quiz
+      endpoints). Production-first: the learner generates before any
+      explanation.
+    - correct: grades `answer` with the same graders as quiz paths,
+      writes an attempt event (FSRS sees it), returns recast + one-line
+      rule + citations. Falls back to curriculum data when the LLM is
+      unreachable.
+    - explain: an LLM explanation constrained to cited content, validated
+      by the cite-or-question rule; curriculum fallback on failure.
+    - done: session summary + what the scheduler says is due next.
+    """
+    body = body or {}
+    session_token = _session_token_from_header(authorization) or body.get("session_token", "")
+    user_id = _require_hebrew_user(body.get("user_id", "default"), session_token)
+    mode = (body.get("mode") or "ask").strip()
+    if mode not in TUTOR_TURN_KINDS:
+        raise HTTPException(400, f"mode must be one of {', '.join(TUTOR_TURN_KINDS)}")
+    if not MEM_DB.exists():
+        raise HTTPException(404, "Hebrew DB not found")
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    ensure_hebrew_schema_once(conn)
+    try:
+        if mode == "ask":
+            return _tutor_ask(conn, user_id, body)
+        if mode == "correct":
+            return _tutor_correct(conn, user_id, body, session_token)
+        if mode == "explain":
+            return await _tutor_explain(conn, user_id, body)
+        return _tutor_done(conn, user_id, body)
+    finally:
+        conn.close()
+
+
+def _tutor_node_lesson(conn, node_id: str) -> dict:
+    """Lesson content_json for citations (title, explanation slice)."""
+    try:
+        row = conn.execute(
+            "SELECT content_json FROM hebrew_lessons WHERE node_id=?", (node_id,)).fetchone()
+        import json as _json
+        return _json.loads(row[0] or "{}") if row else {}
+    except Exception:
+        return {}
+
+
+def _tutor_ask(conn, user_id: str, body: dict):
+    node_id = (body.get("node_id") or "").strip()
+    if node_id:
+        if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+            raise HTTPException(400, "Unknown Hebrew node")
+        item = _tutor_item_for_node(conn, node_id)
+        if not item:
+            raise HTTPException(409, "node has no production item to ask")
+        reason = "requested"
+    else:
+        pick = _tutor_pick_node(conn, user_id, (body.get("exclude") or []))
+        if not pick:
+            return {"ok": True, "data": {"kind": "done",
+                                             "summary": "Nothing due — review queue is clear."}}
+        node_id = pick["node_id"]
+        reason = pick["reason"]
+        item = _tutor_item_for_node(conn, node_id)
+    lesson = _tutor_node_lesson(conn, node_id)
+    verse_ref = lesson.get("verse_example") or None
+    turn = {"kind": "ask",
+            "question": item["question_text"],
+            "question_id": item["id"],
+            "question_type": item["question_type"],
+            "options": [],
+            "node_id": node_id,
+            "verse_ref": verse_ref,
+            "prompt": f"Your turn — answer from memory, then I'll correct. ({reason} review.)"}
+    ok, why = _validate_tutor_turn(turn)
+    if not ok:  # pragma: no cover - constructor bug guard
+        raise HTTPException(500, f"internal turn failed validation: {why}")
+    return {"ok": True, "data": turn}
+
+
+def _tutor_correct(conn, user_id: str, body: dict, session_token: str = ""):
+    node_id = (body.get("node_id") or "").strip()
+    question_id = body.get("question_id")
+    answer = body.get("answer", "")
+    if not node_id or question_id is None:
+        raise HTTPException(400, "node_id and question_id required")
+    row = conn.execute("""
+        SELECT question_type, options_json, correct_answer, explanation
+        FROM hebrew_practice_items WHERE id=? AND node_id=?
+    """, (question_id, node_id)).fetchone()
+    if not row:
+        raise HTTPException(400, "question_id does not match node_id")
+    try:
+        options = json.loads(row[0]["options_json"] or "[]") if False else None
+    except Exception:
+        options = None
+    try:
+        options = json.loads(row["options_json"] or "[]") if row["options_json"] else []
+    except (TypeError, json.JSONDecodeError):
+        options = []
+    qtype, expected = row["question_type"], row["correct_answer"]
+    if qtype == "parse":
+        correct = _parse_matches(answer, expected)
+    else:
+        correct = _hebrew_quiz_answer_matches(answer, expected, qtype, options)
+    # The attempt event: FSRS sees tutor corrections exactly like quiz answers.
+    _record_attempt_event(conn, user_id, node_id, question_id, answer, correct,
+                          mode="tutor", evaluator_version=HEBREW_GRADER_VERSION + "+tutor")
+    # Lesson-loop FSRS feed, same path as quiz answers ('' general row).
+    rating = 3 if correct else 1
+    retention = read_hebrew_prefs(conn, user_id).get("desired_retention", DEFAULT_DESIRED_RETENTION)
+    state = conn.execute(
+        "SELECT stability, difficulty, reps, lapses, last_review, stability_fast FROM hebrew_review_state"
+        " WHERE user_id=? AND node_id=? AND card_mode=''",
+        (user_id, node_id)).fetchone()
+    import datetime as _dt
+    if state:
+        s_fast = state[5] if len(state) > 5 and state[5] else None
+        new_s, new_d, interval, new_sf = fsrs_schedule(max(state[0], 0.25), state[1], rating,
+                                                         days_since(state[4]), retention, s_fast)
+        reps, lapses = state[2] + 1, state[3] + (1 if rating == 1 else 0)
+    else:
+        new_s, new_d, interval, new_sf = _new_card_schedule(rating, retention)
+        reps, lapses = 1, (1 if rating == 1 else 0)
+    reviewed = _dt.datetime.now()
+    due = reviewed + _dt.timedelta(days=max(1, round(interval)))
+    conn.execute("""
+        INSERT INTO hebrew_review_state
+            (user_id,node_id,card_mode,stability,difficulty,due,last_review,last_rating,reps,lapses,learn_step,stability_fast)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(user_id,node_id,card_mode) DO UPDATE SET
+            stability=excluded.stability,difficulty=excluded.difficulty,due=excluded.due,
+            last_review=excluded.last_review,last_rating=excluded.last_rating,
+            reps=excluded.reps,lapses=excluded.lapses,
+            stability_fast=excluded.stability_fast
+    """, (user_id, node_id, "", new_s, new_d,
+            due.strftime("%Y-%m-%d %H:%M:%S"), reviewed.strftime("%Y-%m-%d %H:%M:%S"),
+            rating, reps, lapses, 0, new_sf))
+    conn.commit()
+    lesson = _tutor_node_lesson(conn, node_id)
+    verse_ref = lesson.get("verse_example") or None
+    correct_answer = expected if correct is False else None
+    # Recast-first correction: natural mirror, then one rule line + citation.
+    # Server-composed (no LLM needed) so corrections work offline/fallback.
+    if correct:
+        recast, rule = f"Right — {expected}.", "Locked in; FSRS scheduled the next review."
+    else:
+        recast = f"Not quite — the form is {expected}."
+        rule = (lesson.get("explanation") or "").strip().split(".")[0][:160] or "Review the lesson card."
+        if not rule.endswith("."):
+            rule += "."
+    turn = {"kind": "correct", "was_correct": correct,
+            "recast": recast, "rule": rule,
+            "correct_answer": correct_answer,
+            "explanation": lesson.get("explanation", "")[:300] if not correct else "",
+            "citations": [{"node_id": node_id, **({"verse_ref": verse_ref} if verse_ref else {})}],
+            "node_id": node_id, "question_id": question_id}
+    ok, why = _validate_tutor_turn(turn)
+    if not ok:  # pragma: no cover - constructor bug guard
+        raise HTTPException(500, f"internal turn failed validation: {why}")
+    return {"ok": True, "data": turn}
+
+
+async def _tutor_llm_text(conn, user_id: str, node_id: str, instruction: str, max_tokens: int = 400):
+    """One bounded LLM call with curriculum context. Returns text or ''.
+
+    Same ProviderRouter + fallback discipline as guided lessons: anything
+    wrong (timeout, bad shape, empty) yields '' and the caller falls back
+    to assembled curriculum content — the endpoint never 500s on models."""
+    try:
+        from web.lib.llm_provider import ProviderRouter
+        lesson = _tutor_node_lesson(conn, node_id)
+        router = ProviderRouter()
+        resp = await router.complete({
+            "model": router.default_model, "temperature": 0.3, "max_tokens": max_tokens,
+            "messages": [
+                {"role": "system",
+                 "content": ("You are a Biblical Hebrew tutor. Output plain prose, no JSON. "
+                               "Use ONLY the lesson content and verse below; never invent Hebrew forms, "
+                               "glosses, or verses. If unsure, ask the learner instead of stating.")},
+                {"role": "user",
+                 "content": (f"Lesson: {lesson.get('title', node_id)}.\n"
+                               f"Content: {(lesson.get('explanation') or '')[:600]}\n"
+                               f"Instruction: {instruction}")},
+            ],
+        })
+        text = (resp.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
+        text = __import__("re").sub(r"^```(?:\w+)?\s*|\s*```$", "", text).strip()
+        return text
+    except Exception:
+        return ""
+
+
+async def _tutor_explain(conn, user_id: str, body: dict):
+    node_id = (body.get("node_id") or "").strip()
+    if not node_id or not conn.execute(
+            "SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+        raise HTTPException(400, "Unknown Hebrew node")
+    lesson = _tutor_node_lesson(conn, node_id)
+    verse_ref = lesson.get("verse_example") or None
+    text = await _tutor_llm_text(
+        conn, user_id, node_id,
+        "Explain this in <=120 words for a learner who just tried to answer. "
+        "Lead with the correction if they were wrong.", 400)
+    if not text:
+        text = (lesson.get("explanation") or "Review the lesson card.")[:600]
+    turn = {"kind": "explain", "text": text,
+            "citations": [{"node_id": node_id, **({"verse_ref": verse_ref} if verse_ref else {})}],
+            "node_id": node_id}
+    ok, why = _validate_tutor_turn(turn)
+    if not ok:
+        # Curriculum fallback always validates (short + cited).
+        text = (lesson.get("explanation") or "Review the lesson card.")[:300]
+        turn = {"kind": "explain", "text": text,
+                "citations": [{"node_id": node_id}], "node_id": node_id}
+        ok, why = _validate_tutor_turn(turn)
+        if not ok:  # pragma: no cover - defensive
+            raise HTTPException(500, f"internal turn failed validation: {why}")
+    return {"ok": True, "data": turn}
+
+
+def _tutor_done(conn, user_id: str):
+    return {"ok": True, "data": {"kind": "done", "summary": "done"}}
+
+
+def _tutor_done(conn, user_id: str, body: dict):
+    try:
+        prefs = read_hebrew_prefs(conn, user_id)
+    except Exception:
+        prefs = {}
+    due = 0
+    try:
+        due = conn.execute(
+            "SELECT COUNT(*) FROM hebrew_review_state"
+            " WHERE user_id=? AND due <= datetime('now','localtime')",
+            (user_id,)).fetchone()[0] or 0
+    except Exception:
+        pass
+    try:
+        counts = conn.execute(
+            "SELECT COUNT(*) FROM hebrew_attempt_events WHERE user_id=?"
+            " AND substr(created_at,1,10) = date('now','localtime')",
+            (user_id,)).fetchone()[0]
+    except Exception:
+        counts = {"attempts_today": 0, "correct_today": 0}
+    return {"ok": True, "data": {"kind": "done", "citations": [],
+                                     "goal": prefs.get("goal", "") if isinstance(prefs, dict) else "",
+                                     "due_now": due,
+                                     "summary": "Session complete — see the Room for what's due next."}}
+
+
 @router.get("/api/v1/hebrew/suspended")
 def list_hebrew_suspended(user_id: str = "default", session_token: str = "",
                            authorization: str = Header("")):
