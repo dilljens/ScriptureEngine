@@ -31,11 +31,12 @@ def test_stats_shape_and_forecast_reconciles(hebdb):
     assert len(d["forecast"]) == 31
     assert len(d["heatmap"]) == 30
     assert set(d["retention"]) == {"by_mode_30d", "overall_30d", "fsrs_lifetime_by_mode"}
-    # Day-0 reconciles with a direct due-count query (same filter).
+    # Forecast day-0 = every row scheduled any time today (past dues +
+    # intraday relearn/learning steps), NOT just due-as-of-now.
     conn = sqlite3.connect(str(hebdb))
     direct = conn.execute(
         "SELECT COUNT(*) FROM hebrew_review_state"
-        " WHERE user_id='default' AND due <= datetime('now','localtime')").fetchone()[0]
+        " WHERE user_id='default' AND date(due) <= date('now','localtime')").fetchone()[0]
     conn.close()
     assert d["forecast"][0]["due"] == direct
 
@@ -54,10 +55,10 @@ def test_stats_excludes_suspended_from_forecast(hebdb):
     assert d["suspended_count"] >= 1
     conn = sqlite3.connect(str(hebdb))
     direct = conn.execute(
-        """SELECT COUNT(*) FROM hebrew_review_state s
-           WHERE s.user_id='default' AND s.due <= datetime('now','localtime')
-           AND NOT EXISTS (SELECT 1 FROM hebrew_suspended x
-             WHERE x.user_id='default' AND x.node_id=s.node_id AND x.card_mode IN ('', s.card_mode))"""
+        "SELECT COUNT(*) FROM hebrew_review_state s "
+        "WHERE s.user_id='default' AND date(s.due) <= date('now','localtime') "
+        "AND NOT EXISTS (SELECT 1 FROM hebrew_suspended x "
+        "WHERE x.user_id='default' AND x.node_id=s.node_id AND x.card_mode IN ('', s.card_mode))"
     ).fetchone()[0]
     conn.close()
     assert d["forecast"][0]["due"] == direct
@@ -87,7 +88,15 @@ def test_profile_shape_and_goal_roundtrip(hebdb):
         H.set_hebrew_prefs({"user_id": "default", "goal": "bogus"}, authorization="")
 
 
+def _today_counts(hebdb, user="default"):
+    q = H.get_hebrew_review_queue(user_id=user, authorization="", limit=1)
+    return q["data"]["new_introduced_today"], q["data"]["reviews_done_today"]
+
+
 def test_today_counts_review_vs_new_and_undo(hebdb):
+    # Delta-based: the fixture DB is a live copy and may already hold
+    # today's history rows, so assert CHANGES, not absolutes.
+    base_new, base_done = _today_counts(hebdb)
     node = sqlite3.connect(str(hebdb)).execute(
         "SELECT n.id FROM hebrew_nodes n WHERE NOT EXISTS (SELECT 1 FROM hebrew_review_state"
         " WHERE user_id='default' AND node_id=n.id) LIMIT 1").fetchone()[0]
@@ -97,8 +106,8 @@ def test_today_counts_review_vs_new_and_undo(hebdb):
     H.process_hebrew_review(node_id=node, rating=3, user_id="default",
                             card_mode="forward")
     q = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
-    assert q["data"]["new_introduced_today"] == 1, q["data"]
-    assert q["data"]["reviews_done_today"] == 0, q["data"]
+    assert q["data"]["new_introduced_today"] == base_new + 1, q["data"]
+    assert q["data"]["reviews_done_today"] == base_done, q["data"]
     # An older card (progress from yesterday) counts as reviewed.
     old = sqlite3.connect(str(hebdb)).execute(
         "SELECT id FROM hebrew_nodes ORDER BY id LIMIT 1 OFFSET 5").fetchone()[0]
@@ -116,14 +125,14 @@ def test_today_counts_review_vs_new_and_undo(hebdb):
     H.process_hebrew_review(node_id=old, rating=3, user_id="default",
                             card_mode="forward")
     q2 = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
-    assert q2["data"]["reviews_done_today"] == 1, q2["data"]
-    assert q2["data"]["new_introduced_today"] == 1, q2["data"]
+    assert q2["data"]["reviews_done_today"] == base_done + 1, q2["data"]
+    assert q2["data"]["new_introduced_today"] == base_new + 1, q2["data"]
     # Undo the last rating: the count drops back (net counts).
     H.undo_hebrew_review({"user_id": "default", "node_id": old,
                           "card_mode": "forward"}, authorization="")
     q3 = H.get_hebrew_review_queue(user_id="default", authorization="", limit=50)
-    assert q3["data"]["reviews_done_today"] == 0, q3["data"]
-    assert q3["data"]["new_introduced_today"] == 1, q3["data"]
+    assert q3["data"]["reviews_done_today"] == base_done, q3["data"]
+    assert q3["data"]["new_introduced_today"] == base_new + 1, q3["data"]
 
 
 def test_profile_milestones_shape_and_first_steps(hebdb):
