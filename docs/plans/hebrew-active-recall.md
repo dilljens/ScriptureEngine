@@ -44,6 +44,11 @@ collapse the doors into one room.
 - [x] R3: listening dictation, word level (DONE 2026-11-22: 517 cards,
       dictation/next, quiz audio player; verse level waits for word
       retention ≥ 80%).
+- [x] R3-verse: verse-level dictation (DONE 2026-11-25: 38 Genesis-1 cards
+  with real verse audio — gate was redesigned as serving policy, not a
+  seeding blocker; `GET /hebrew/verse-dictation/next` with unlock=1
+  opt-in + retention readout; Room "Verse dictation" entry + dedicated
+  player view; quiz path auto-routes via existing audio_url plumbing).
 - [x] R4: reading comprehension + one-room composer (DONE 2026-11-22:
       492 verse-presence T/F; daily-session endpoint + HebrewRoom view.
       Meaning-judgment claims deferred — need hand review).
