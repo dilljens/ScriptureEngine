@@ -55,7 +55,7 @@ function AppInner() {
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
     moveTab, openWikiTab, openKnowledgeTab, openHubNoteTab, openStudiesTab, openArticlesTab,
-    openHistoryTab,
+    openHistoryTab, openHebrewTab, openLearnTab, openMemorizeTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
@@ -646,8 +646,21 @@ const [showAssessment, setShowAssessment] = useState(false)
         setStudyWeek(null); setCollection(null)
         updateTab(currentTab?.id, { view: 'library', viewRef: null, label: 'Library' })
         break
+      case 'hebrew':
+        // P2: desktop had no entry point to Hebrew at all — the bottom nav
+        // is mobile-only. /hebrew opens the curriculum, /hebrew diagnostic
+        // jumps straight to placement.
+        if ((cmd.lesson || '').toLowerCase() === 'diagnostic') openHebrewTab('diagnostic', 'Hebrew Diagnostic')
+        else openHebrewTab()
+        break
+      case 'learn':
+        openLearnTab()
+        break
+      case 'memorize':
+        openMemorizeTab()
+        break
     }
-  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id, openHistoryTab])
+  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id, openHistoryTab, openHebrewTab, openLearnTab, openMemorizeTab])
 
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })

@@ -192,6 +192,15 @@ const executeResult = (r) => {
     case 'library':
       onCommand?.({ type: 'library' })
       onClose(); break
+    case 'hebrew':
+      onCommand?.({ type: 'hebrew', lesson: r.lesson })
+      onClose(); break
+    case 'learn':
+      onCommand?.({ type: 'learn' })
+      onClose(); break
+    case 'memorize':
+      onCommand?.({ type: 'memorize' })
+      onClose(); break
   }
 }
 

@@ -880,6 +880,19 @@ def build_practice_items(nid, title, category, glyph="", desc=""):
         })
 
     elif category == "verb":
+        # binyan_intro is an overview lesson, not a stem: the generic
+        # template would interpolate its title into nonsense
+        # ("function of the Introduction to Binyanim binyan?").
+        if nid == "binyan_intro":
+            items.append({
+                "question_type": "multiple_choice",
+                "question_text": "How many verb patterns (binyanim) does Biblical Hebrew use?",
+                "options": json.dumps(["Seven", "Three", "Ten", "One per root"]),
+                "correct_answer": "Seven",
+                "difficulty": 0.4,
+                "explanation": "Hebrew verbs use seven binyanim (Qal, Niphal, Piel, Pual, Hiphil, Hophal, Hithpael)."
+            })
+            return items
         prototypes = [
             "Basic stem", "Often middle/passive", "Often factitive or intensive",
             "Often passive of Piel", "Often causative", "Often passive of Hiphil",
@@ -961,6 +974,15 @@ def seed_content(db_path="data/memorize.db"):
             "SELECT 1 FROM hebrew_practice_items WHERE node_id=? LIMIT 1",
             (nid,),
         ).fetchone():
+            # Remove superseded template questions (e.g. lesson titles
+            # interpolated as grammatical entities) so re-seeds converge
+            # instead of accumulating stale rows beside the fixed ones.
+            cur.execute(
+                "DELETE FROM hebrew_practice_items WHERE node_id=? "
+                "AND (question_text LIKE '%Introduction to Binyanim binyan%' "
+                "OR question_text LIKE '%function of the Introduction%')",
+                (nid,),
+            )
             items = build_practice_items(nid, clean_title, category, glyph, desc)
             for item in items:
                 opts = item.get("options_json", item.get("options", "[]"))

@@ -242,6 +242,9 @@ export function parseAndFuzzy(input, allBooks) {
     { cmd: 'conference', icon: '🎤', label: 'General Conference', desc: 'Browse General Conference talks', type: 'collection', target: 'conference' },
     { cmd: 'collections', icon: '🗂️', label: 'Study collections', desc: 'Browse Come Follow Me + Conference collections', type: 'collection', target: 'cfm-browse' },
     { cmd: 'library', icon: '🗂️', label: 'Library', desc: 'Go to the library', type: 'library' },
+    { cmd: 'hebrew', icon: 'א', label: 'Hebrew', desc: 'Open Biblical Hebrew curriculum', type: 'hebrew' },
+    { cmd: 'learn', icon: '📚', label: 'Learn', desc: 'Open Learn flashcards', type: 'learn' },
+    { cmd: 'memorize', icon: '🧠', label: 'Memorize', desc: 'Open Memorize queue', type: 'memorize' },
     { cmd: 'help', icon: '❓', label: 'Help', desc: 'Show this help', type: 'help' },
   ]
 
@@ -304,6 +307,14 @@ export function parseAndFuzzy(input, allBooks) {
         return { type: 'collection', results: [{ type: 'collection', target: 'cfm-browse', icon: '🗂️', label: '🗂️ Study collections — browse all', explanation: 'Come Follow Me + General Conference' }] }
       case 'library':
         return { type: 'library', results: [{ type: 'library', icon: '🗂️', label: '🗂️ Go to the library', explanation: 'All works + study collections' }] }
+      case 'hebrew':
+        if (args.toLowerCase() === 'diagnostic' || args.toLowerCase() === 'placement')
+          return { type: 'hebrew', lesson: 'diagnostic', results: [{ type: 'hebrew', lesson: 'diagnostic', icon: 'א', label: 'א Hebrew placement test', explanation: 'Find your level, skip what you know' }] }
+        return { type: 'hebrew', results: [{ type: 'hebrew', icon: 'א', label: 'א Open Biblical Hebrew', explanation: 'Curriculum, reviews, Room, stats' }] }
+      case 'learn':
+        return { type: 'learn', results: [{ type: 'learn', icon: '📚', label: '📚 Open Learn', explanation: 'Flashcard decks' }] }
+      case 'memorize':
+        return { type: 'memorize', results: [{ type: 'memorize', icon: '🧠', label: '🧠 Open Memorize', explanation: 'Verse memory queue' }] }
       case 'help':
       case '?':
         return {

@@ -148,3 +148,36 @@ def test_repair_quarantines_and_removes_unsafe_records(tmp_path):
     assert "verse_example" not in lesson
     assert conn.execute("SELECT COUNT(*) FROM hebrew_practice_items").fetchone()[0] == 0
     conn.close()
+
+
+def test_validator_rejects_lesson_title_interpolation(tmp_path):
+    """Regression: template seeders once interpolated lesson titles as
+    grammatical entities ('function of the Introduction to Binyanim
+    binyan?'). The validator must catch that class."""
+    import json
+    import sqlite3
+    db = tmp_path / "hebrew.db"
+    conn = sqlite3.connect(db)
+    conn.executescript("""
+        CREATE TABLE hebrew_nodes (id TEXT PRIMARY KEY);
+        CREATE TABLE hebrew_lessons (node_id TEXT PRIMARY KEY, content_json TEXT NOT NULL);
+        CREATE TABLE hebrew_practice_items (
+            id INTEGER PRIMARY KEY, node_id TEXT, question_type TEXT,
+            question_text TEXT, options_json TEXT, correct_answer TEXT, explanation TEXT DEFAULT ''
+        );
+        INSERT INTO hebrew_nodes VALUES ('binyan_intro');
+    """)
+    conn.execute(
+        "INSERT INTO hebrew_lessons VALUES (?, ?)",
+        ("binyan_intro", json.dumps({"explanation": "ok"})),
+    )
+    conn.execute(
+        "INSERT INTO hebrew_practice_items VALUES "
+        "(1,'binyan_intro','multiple_choice','What is the function of the Introduction to Binyanim binyan?',"
+        "'[\"Simple active\",\"Simple passive\"]','Simple active',NULL);",
+    )
+    conn.commit()
+    conn.close()
+    from scripts.validate_hebrew_learning_content import validate
+    errors = validate(db)
+    assert any("lesson title interpolated" in e for e in errors), errors

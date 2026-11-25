@@ -206,6 +206,31 @@ describe('parseAndFuzzy', () => {
     expect(r.type).toBe('error')
   })
 
+  it('routes /hebrew to the Hebrew tab', () => {
+    const r = parseAndFuzzy('/hebrew', mockBooks)
+    expect(r.type).toBe('hebrew')
+    expect(r.results[0].type).toBe('hebrew')
+  })
+
+  it('routes /hebrew diagnostic to placement', () => {
+    for (const q of ['/hebrew diagnostic', '/hebrew placement']) {
+      const r = parseAndFuzzy(q, mockBooks)
+      expect(r.type).toBe('hebrew')
+      expect(r.lesson).toBe('diagnostic')
+    }
+  })
+
+  it('routes /learn and /memorize', () => {
+    expect(parseAndFuzzy('/learn', mockBooks).type).toBe('learn')
+    expect(parseAndFuzzy('/memorize', mockBooks).type).toBe('memorize')
+  })
+
+  it('suggests the Hebrew command for /he partial input', () => {
+    const r = parseAndFuzzy('/he', mockBooks)
+    expect(r.type).toBe('autocomplete')
+    expect(r.results.some(x => x.cmd === 'hebrew')).toBe(true)
+  })
+
   it('returns empty for empty input', () => {
     const r = parseAndFuzzy('', mockBooks)
     expect(r.type).toBe('empty')

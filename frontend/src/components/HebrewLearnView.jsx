@@ -21,6 +21,7 @@ import { retentionPct, forecastMax, heatmapMax, forecastTotal } from '../lib/heb
 
 function DropdownMenu({ label, color, children }) {
   const [open, setOpen] = useState(false)
+  const [alignLeft, setAlignLeft] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
@@ -30,6 +31,16 @@ function DropdownMenu({ label, color, children }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  // P0: menus opened right-aligned under left-edge buttons (e.g. Tools on
+  // 390px) rendered off-viewport. Align toward the viewport instead.
+  const toggle = () => {
+    if (!open && ref.current) {
+      const r = ref.current.getBoundingClientRect()
+      setAlignLeft(r.left < 200)
+    }
+    setOpen(!open)
+  }
+
   const colorMap = {
     amber: 'bg-amber-500 hover:bg-amber-600 text-white',
     teal: 'bg-teal-600 hover:bg-teal-700 text-white',
@@ -38,12 +49,12 @@ function DropdownMenu({ label, color, children }) {
 
   return (
     <div className="relative shrink-0" ref={ref}>
-      <button onClick={() => setOpen(!open)}
+      <button onClick={toggle}
         className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors ${colorMap[color] || colorMap.neutral}`}>
         {label} {open ? '▲' : '▼'}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 overflow-hidden"
+        <div className={`absolute top-full mt-1 z-50 min-w-[180px] max-w-[calc(100vw-2rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 overflow-hidden ${alignLeft ? 'left-0' : 'right-0'}`}
           onClick={() => setOpen(false)}>
           {children}
         </div>
@@ -343,6 +354,22 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       const d = await r.json()
       if (d.ok) { setPrefs(d.data); setPrefsEditing(false); loadPacing() }
     } catch {}
+  }
+
+  // Quick-session + audio ratings earn FSRS credit. Know it = Good (3),
+  // Skip = Again (1) on the same schedule everything else uses — a review
+  // that schedules nothing is a trap. Node ids resolve server-side from
+  // Hebrew text when missing.
+  const rateKnownSkip = async (hebrew, nodeId, known) => {
+    const t0 = Date.now()
+    try {
+      await fetch('/api/v1/hebrew/fsrs/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...sessionHeaders() },
+        body: JSON.stringify({ hebrew, node_id: nodeId || undefined, rating: known ? 3 : 1, session_token: currentSessionToken() }),
+      })
+    } catch {}
+    reportIdleAnswer(known, Date.now() - t0, { source: 'quick', hebrew })
   }
 
   // Audio-review ratings earn FSRS credit via Hebrew-text node resolution
@@ -837,10 +864,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium cursor-pointer transition-colors">
             Practice this word
           </button>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">Know it schedules further out · Skip brings it back soon</p>
           <div className="flex gap-2 justify-center mt-3">
-            <button onClick={() => { setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1)); setQuickScore(s => s + 1) }}
+            <button onClick={() => { const q = quickQuestions[quickIdx]; rateKnownSkip(q?.hebrew || q?.title, q?.id, true); setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1)); setQuickScore(s => s + 1) }}
               className="px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium cursor-pointer transition-colors">Know it ✓</button>
-            <button onClick={() => setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1))}
+            <button onClick={() => { const q = quickQuestions[quickIdx]; rateKnownSkip(q?.hebrew || q?.title, q?.id, false); setQuickIdx(prev => Math.min(prev + 1, quickQuestions.length - 1)) }}
               className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-medium cursor-pointer transition-colors">Skip →</button>
           </div>
         </div>
@@ -979,32 +1007,39 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
               const r = await fetch(`/api/v1/hebrew/review-queue?limit=30${uq}`, { headers: sessionHeaders() })
               const d = await r.json()
               if (d.ok && d.data?.reviews?.length) {
-                dueCards = d.data.reviews
-                  // All categories, not just 'word' — consonants/vowels/grammar
-                  // need spaced review too (Math Academy review principle).
+                // P1: the Review deck is letter/vocab flashcards. Grammar,
+                // syntax, reading and verb nodes have no Hebrew stimulus —
+                // reverse-mode would show their description as a fake gloss
+                // (seen live: "English → Hebrew: Read maqqef-bound words…").
+                // Those skills are covered by Grammar Focus, Verb Drills,
+                // PassageReader; filter them here rather than misrender.
+                const flattenReviews = (rs) => rs.flatMap(r =>
+                  r.type === 'compressed' && Array.isArray(r.items) ? r.items : [r])
+                // Queue rows carry only title/description; the curriculum
+                // (already loaded) carries the node's hebrew/gloss fields.
+                const byId = Object.fromEntries((curriculum?.nodes || []).map(n => [n.id, n]))
+                dueCards = flattenReviews(d.data.reviews)
+                  .filter(item => ['consonant', 'vowel', 'word'].includes(item.category))
                   .map((item, i) => {
-                    // Parse "יהוה — LORD" (word) or "Aleph (א)" / "Patah (ַ)"
-                    // (consonant/vowel/grammar). The Hebrew stimulus is the glyph
-                    // when present; the gloss is the description for non-words.
-                    const title = item.title || ''
-                    let hebrew = '', gloss = ''
-                    const hasEmDash = title.includes('—')
-                    const emDash = title.split('—').map(s => (s || '').trim())
-                    if (hasEmDash && emDash.length > 1 && emDash[1]) {
-                      hebrew = emDash[0]
-                      gloss = emDash[1]
-                    } else {
-                      // Final-form titles: 'Kaf (final) (ך)' — take the LAST
-                      // parenthetical that contains Hebrew characters.
+                    const node = byId[item.node_id] || {}
+                    // Prefer node fields; fall back to title parsing for
+                    // nodes missing from the curriculum payload.
+                    const hebrew = node.hebrew || (() => {
+                      const title = item.title || ''
+                      if (title.includes('—')) {
+                        const parts = title.split('—').map(s => (s || '').trim())
+                        if (parts.length > 1 && parts[1]) return parts[0]
+                      }
                       const parens = [...title.matchAll(/\(([^)]+)\)/g)].map(m => m[1])
                       const hebParen = parens.length ? [...parens].reverse().find(p => /[\u0590-\u05FF]/.test(p)) : ''
-                      hebrew = hebParen || title
-                      gloss = item.description || ''
-                    }
-                    return { id: `due-${i}`, type: 'vocab', modes: item.due_modes, data: {
+                      return hebParen || title
+                    })()
+                    const gloss = node.gloss || item.title?.split('—')?.[1]?.trim() || item.description || ''
+                    return { id: `due-${i}`, type: item.category === 'consonant' ? 'hebrew_letter' : 'vocab', modes: item.due_modes, data: {
                       node_id: item.node_id, hebrew, gloss,
+                      transliteration: node.transliteration || '',
                       definition: gloss || item.description || '',
-                      language: item.language || 'hebrew',
+                      language: item.language || node.language || 'hebrew',
                     } }
                   })
               }
@@ -1020,7 +1055,7 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
             } catch {}
             setHebrewReviewCards(interleaveCards([nodeCards, drillCards]))
             setShowHebrewReview(true)
-          }} icon="🔄" label="Review 🔀" desc="Spaced repetition cards" />
+          }} icon="🔄" label="Review 🔀" desc="Letters, vowels & vocab due" />
         </DropdownMenu>
 
         {/* Reading dropdown */}
@@ -1176,6 +1211,20 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </div>
       )}
 
+      {/* Placement CTA for brand-new learners — then "Continue Learning" */}
+      {profile && (profile?.frontier_level ?? 1) <= 1 && (profile?.skills || []).reduce((s, k) => s + (k.practiced || 0), 0) < 10 && (
+        <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-sky-50 to-indigo-50 dark:from-sky-900/20 dark:to-indigo-900/20 border border-sky-200 dark:border-sky-800 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center text-sm shrink-0">📝</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-0.5">New here? Find your level</div>
+            <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">5-minute placement quiz — skip what you already know</div>
+          </div>
+          <button onClick={() => onOpenLesson?.('diagnostic')}
+            className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium cursor-pointer transition-colors shrink-0">
+            Start →
+          </button>
+        </div>
+      )}
       {/* Suggested next lesson — "Continue Learning" */}
       {(() => {
         // Find best next lesson: unlocked, not mastered, lowest level first, then lowest mastery

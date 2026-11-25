@@ -183,6 +183,11 @@ def validate(db_path: Path) -> list[str]:
                 )
         if re.match(r"^Is '.+' a .+ in Biblical Hebrew\?$", row["question_text"]):
             errors.append(f"practice {row['id']} ({row['node_id']}): tautological generated question")
+        # Lesson scaffolding must never be interpolated as a grammatical
+        # entity (seen live: "function of the Introduction to Binyanim
+        # binyan?" — a lesson title where a stem name belongs).
+        if "Introduction to" in (row["question_text"] or ""):
+            errors.append(f"practice {row['id']} ({row['node_id']}): lesson title interpolated as content")
         if "dss." in f"{row['question_text']} {row['explanation'] or ''}".casefold():
             errors.append(f"practice {row['id']} ({row['node_id']}): non-OT source")
 

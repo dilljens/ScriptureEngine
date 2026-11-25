@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { ScriptureMarkdown } from '../lib/scripture-markdown'
+import HebrewKeyboard from './HebrewKeyboard'
 import { reportIdleAnswer } from './HebrewIdleBar'
 
 /**
@@ -28,6 +29,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
   const [category, setCategory] = useState('all')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [showKeyboard, setShowKeyboard] = useState(false)
   const qStartRef = useRef(Date.now()) // question-shown time → honest responseMs for the idle answer bus
 
   const loadDrills = useCallback(async (cat) => {
@@ -98,6 +100,7 @@ export default function HebrewVerbDrill({ onNavigate }) {
       setSelected(null)
       setSubmitted(false)
       setGrade(null)
+      setShowKeyboard(false)
     } else {
       setDone(true)
     }
@@ -215,12 +218,35 @@ export default function HebrewVerbDrill({ onNavigate }) {
             </div>
           )}
 
-          {/* Submit button — open (typed) questions only; MC submits on tap */}
+          {/* Open (typed) questions: text input + Hebrew keyboard (input was
+              missing — Submit stayed disabled forever with no way to type).
+              MC submits on tap. */}
           {!submitted && isOpen && (
-            <button onClick={() => handleSubmit()} disabled={selected === null}
-              className="mt-4 w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-              Submit
-            </button>
+            <div className="mt-4 space-y-2">
+              <input value={typeof selected === 'string' ? selected : ''}
+                onChange={(e) => setSelected(e.target.value)}
+                onFocus={() => setShowKeyboard(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e.target.value) }}
+                placeholder="Type your answer in Hebrew…"
+                dir="auto"
+                autoFocus
+                className="w-full px-3 py-2.5 rounded-lg text-sm border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 outline-none focus:border-indigo-400 font-hebrew-biblical" />
+              {showKeyboard && (
+                <div>
+                  <HebrewKeyboard onCharClick={(c) => setSelected(s => (typeof s === 'string' ? s : '') + c)}
+                    onBackspace={() => setSelected(s => (typeof s === 'string' ? s : '').slice(0, -1))}
+                    onClear={() => setSelected('')} value={typeof selected === 'string' ? selected : ''} />
+                  <button onClick={() => setShowKeyboard(false)}
+                    className="mt-1 text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer">
+                    Hide keyboard
+                  </button>
+                </div>
+              )}
+              <button onClick={() => handleSubmit(selected)} disabled={!String(selected ?? '').trim()}
+                className="w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                Submit
+              </button>
+            </div>
           )}
 
           {/* After submission: server grade + correct answer */}

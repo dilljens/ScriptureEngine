@@ -381,9 +381,11 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
       .finally(() => setLoading(false))
   }, [nodeId])
 
-  // Fetch a word image when the lesson is a vocabulary word with a gloss
+  // Fetch a word image for vocabulary lessons with a real Hebrew word.
+  // Verb/root/phrase lessons carry glyph keys ('qal_pf') or nothing —
+  // requesting those 404s noisily and shows nothing, so skip them.
   useEffect(() => {
-    if (!node || !node.hebrew) return
+    if (!node || !node.hebrew || !/[\u0590-\u05FF]/.test(node.hebrew)) return
     let cancelled = false
     fetch(`/api/v1/hebrew/image/${encodeURIComponent(node.hebrew)}`)
       .then(r => r.json())
