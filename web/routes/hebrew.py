@@ -2621,9 +2621,20 @@ def _practice_to_quiz_question(item, node):
         "node_title": node["title"],
     }
     if item["question_type"] == "dictation":
-        # Node-id URL: the surface never leaks in the URL; the quiz UI
-        # renders a player from this (R3). Seeder guarantees the wav.
-        q["audio_url"] = f"/api/v1/audio/word/{node['id']}"
+        # Verse dictation (gloss-cued, question carries the verse ref):
+        # the player gets full-verse audio, not the isolated word.
+        # Word dictation keeps the node-id URL (surface never leaks).
+        # (item is a sqlite3.Row here, so index access, not .get().)
+        import re as _re
+        try:
+            qtext = item["question_text"] or ""
+        except (IndexError, KeyError, TypeError):
+            qtext = item.get("question_text", "") if hasattr(item, "get") else ""
+        m = _re.match(r"[^\(]*\(([a-z0-9]+\.\d+\.\d+)\)", qtext or "")
+        if m:
+            q["audio_url"] = f"/api/v1/audio/play/{m.group(1)}"
+        else:
+            q["audio_url"] = f"/api/v1/audio/word/{node['id']}"
     return q
 
 
@@ -4228,9 +4239,14 @@ def _new_practice_nodes(conn, user_id: str, limit: int, exclude=(),
                         cloze_only: bool = False, qtype: str = ""):
     """Least-practiced nodes as fresh cards (a new mode has no rows yet)."""
     want = qtype or ("cloze" if cloze_only else "")
-    cloze_filter = ("AND EXISTS (SELECT 1 FROM hebrew_practice_items p"
-                    f" WHERE p.node_id=n.id AND p.question_type='{want}')"
-                    if want else "")
+    if want == "verse_dictation":
+        cloze_filter = ("AND EXISTS (SELECT 1 FROM hebrew_practice_items p"
+                        " WHERE p.node_id=n.id AND p.question_type='dictation'"
+                        " AND p.question_text LIKE '🎧 Verse dictation%')")
+    else:
+        cloze_filter = ("AND EXISTS (SELECT 1 FROM hebrew_practice_items p"
+                        f" WHERE p.node_id=n.id AND p.question_type='{want}')"
+                        if want else "")
     rows = conn.execute(f"""
         SELECT n.id, n.title, n.level, n.category,
                COALESCE(p.attempts, 0) as attempts
@@ -4539,6 +4555,116 @@ def get_dictation_next(user_id: str = "default", limit: int = 10,
     finally:
         conn.close()
     return {"ok": True, "data": {"cards": cards, "count": len(cards)}}
+
+
+def _word_dictation_retention(conn, user_id: str):
+    """Last-30d accuracy over word-level dictation attempts (None = no data)."""
+    try:
+        row = conn.execute("""
+            SELECT SUM(e.correct), COUNT(*) FROM hebrew_attempt_events e
+            JOIN hebrew_practice_items pi ON pi.id = e.question_id
+            WHERE e.user_id=? AND pi.question_type='dictation'
+              AND pi.question_text NOT LIKE '🎧 Verse dictation%'
+              AND e.created_at >= datetime('now','-30 days')
+        """, (user_id,)).fetchone()
+        if not row or not row[1]:
+            return None
+        return row[0] / row[1]
+    except Exception:
+        return None
+
+
+@router.get("/api/v1/hebrew/verse-dictation/next")
+def get_verse_dictation_next(user_id: str = "default", limit: int = 10,
+                             unlock: int = 0,
+                             session_token: str = "", authorization: str = Header("")):
+    """Verse-level dictation queue (R3-verse, opt-in or retention-gated).
+
+    Cards: gloss cue + FULL-VERSE audio (`/api/v1/audio/play/{ref}`);
+    the learner segments the target word out of continuous speech.
+    Answer is the same skeleton as the word card, graded identically.
+    Serving rule (kept, not invented): word-level retention >= 80%, OR
+    explicit `unlock=1` (learner opt-in from the UI). The response always
+    reports `word_retention` and `gated` so the UI can explain, not hide.
+    """
+    user_id = _require_hebrew_user(user_id, session_token)
+    conn = sqlite3.connect(str(MEM_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        ensure_hebrew_schema_once()
+        retention = _word_dictation_retention(conn, user_id)
+        gated = (retention is not None and retention < 0.8) and not unlock
+        cards: list = []
+        if not gated:
+            # Verse-specific pool: only nodes that actually have a verse
+            # dictation card (38 Genesis-1 nodes with real audio), not any
+            # node with a word card. The generic qtype fallback would serve
+            # nodes whose verse card doesn't exist.
+            _all_verse_nodes = [r[0] for r in conn.execute(
+                "SELECT DISTINCT node_id FROM hebrew_practice_items"
+                " WHERE question_type='dictation' AND question_text LIKE '🎧 Verse dictation%'").fetchall()]
+            due_nodes = [r["node_id"] for r in _due_mode_rows(
+                conn, user_id, ("",), max(1, min(limit, 50)) * 2)
+                if r["node_id"] in set(_all_verse_nodes)]
+            import re as _re2
+            vpat = r"\(([a-z0-9]+\.\d+\.\d+)\)"
+            def _gloss_for(node_id: str) -> str:
+                try:
+                    cj = conn.execute(
+                        "SELECT content_json FROM hebrew_lessons WHERE node_id=?",
+                        (node_id,)).fetchone()
+                    import json as _json
+                    return (_json.loads(cj[0] or "{}").get("gloss") or "").strip()
+                except Exception:
+                    return ""
+            seen: set = set()
+            for node_id in due_nodes:
+                item = conn.execute("""
+                    SELECT id, question_text FROM hebrew_practice_items
+                    WHERE node_id=? AND question_type='dictation'
+                      AND question_text LIKE '🎧 Verse dictation%'
+                    ORDER BY id LIMIT 1
+                """, (node_id,)).fetchone()
+                if not item:
+                    continue
+                seen.add(node_id)
+                vm = _re2.search(vpat, item["question_text"] or "")
+                vref = vm.group(1) if vm else None
+                cards.append({
+                    "node_id": node_id, "question_id": item["id"],
+                    "verse_ref": vref, "gloss": _gloss_for(node_id),
+                    "audio_url": f"/api/v1/audio/play/{vref}" if vref else None,
+                    "is_new": False,
+                })
+                if len(cards) >= max(1, min(limit, 50)):
+                    break
+            if len(cards) < max(1, min(limit, 50)):
+                for n in _new_practice_nodes(conn, user_id,
+                                             max(1, min(limit, 50)) - len(cards),
+                                             exclude=seen,
+                                             qtype="verse_dictation"):
+                    item = conn.execute("""
+                        SELECT id, question_text FROM hebrew_practice_items
+                        WHERE node_id=? AND question_type='dictation'
+                          AND question_text LIKE '🎧 Verse dictation%'
+                        ORDER BY id LIMIT 1
+                    """, (n["id"],)).fetchone()
+                    if not item:
+                        continue
+                    vm2 = _re2.search(vpat, item["question_text"] or "")
+                    vref2 = vm2.group(1) if vm2 else None
+                    cards.append({
+                        "node_id": n["id"], "question_id": item["id"],
+                        "verse_ref": vref2, "gloss": _gloss_for(n["id"]),
+                        "audio_url": f"/api/v1/audio/play/{vref2}" if vref2 else None,
+                        "is_new": True,
+                    })
+        return {"ok": True, "data": {"cards": cards,
+                                         "count": len(cards),
+                                         "word_retention": retention,
+                                         "gated": gated}}
+    finally:
+        conn.close()
 
 
 # ── Tutor memory surfaces (P2-A) ─────────────────────────────────────

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import GameReviewModal from './GameReviewModal'
 import TutorTurn from './TutorTurn'
+import VerseDictation from './VerseDictation'
 import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /**
@@ -17,6 +18,7 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
   const [loading, setLoading] = useState(true)
   const [reviewTarget, setReviewTarget] = useState(null)
   const [showTutor, setShowTutor] = useState(false)
+  const [showDictation, setShowDictation] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -102,6 +104,10 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
           className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors text-left">
           💬 Talk it through — tutor asks, you produce, it corrects
         </button>
+        <button onClick={() => setShowDictation(true)}
+          className="px-4 py-3 rounded-xl bg-white dark:bg-neutral-800 border border-teal-300 dark:border-teal-700 hover:border-teal-500 text-teal-700 dark:text-teal-300 text-sm font-medium cursor-pointer transition-colors text-left">
+          🎧 Verse dictation — hear the word inside real verses
+        </button>
         <button onClick={() => setReviewTarget('due')}
           className="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors text-left">
           🔁 Review due ({session?.due_count ?? 0}) — interleaved, all modes
@@ -122,6 +128,19 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
           onClose={() => { setShowTutor(false); load() }}
           onOpenLesson={(nid) => { setShowTutor(false); onOpenLesson?.(nid) }}
         />
+      )}
+
+      {showDictation && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto"
+          role="dialog" aria-modal="true" aria-label="Verse dictation"
+          onClick={() => setShowDictation(false)}>
+          <div className="min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="w-full max-w-2xl bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl my-2 sm:my-6 overflow-hidden">
+              <VerseDictation onBack={() => { setShowDictation(false); load() }} onOpenLesson={onOpenLesson} />
+            </div>
+          </div>
+        </div>
       )}
 
       {reviewTarget && (
