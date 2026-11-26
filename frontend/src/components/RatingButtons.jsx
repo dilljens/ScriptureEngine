@@ -30,10 +30,10 @@ export default function RatingButtons({ intervals, onRate, variant = 'row', show
           className={`pressable flex flex-col items-center justify-center rounded-lg text-white cursor-pointer transition-colors disabled:opacity-40 ${b.color} ${
             variant === 'grid' ? 'py-3 text-xs font-medium' : 'px-4 py-2 text-sm font-medium min-w-[70px]'
           }`}>
-          {showKeys && <span className="text-sm leading-tight">{b.val}</span>}
+          {showKeys && <span className="text-sm leading-tight" aria-hidden="true">{b.val}</span>}
           <span>{b.label}</span>
           {intervals?.[b.val]?.label && (
-            <span className="text-[11px] font-semibold opacity-95 leading-tight">{intervals[b.val].label}</span>
+            <span className="text-[11px] font-semibold opacity-95 leading-tight" aria-label={`Review in ${intervals[b.val].label}`}>{intervals[b.val].label}</span>
           )}
           <span className="text-[9px] opacity-80">{b.desc}</span>
         </button>

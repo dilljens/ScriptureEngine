@@ -17,6 +17,8 @@ export const CHOICE_QUESTION_TYPES = new Set([
   'letter_name',
   'letter_recognition',
   'classification',
+  'discourse_function',
+  'syntax_parse',
 ])
 
 export function normalizeQuizAnswer(value) {

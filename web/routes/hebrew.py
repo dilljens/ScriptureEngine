@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 
 HEBREW_CHOICE_TYPES = frozenset({
     "multiple_choice", "true_false", "letter_name", "letter_recognition", "classification",
+    "discourse_function", "syntax_parse",
 })
 ANSWER_MODE_CHOICE_INDEX = "choice_index"
 ANSWER_MODE_FREE_TEXT = "free_text"
@@ -1803,9 +1804,9 @@ def _placement_pick_question(conn, skill_idx, level):
     if level <= 2:
         qtypes = "('multiple_choice','letter_recognition','classification')"
     elif level <= 4:
-        qtypes = "('multiple_choice','transliteration','cloze','recall')"
+        qtypes = "('multiple_choice','transliteration','cloze','recall','syntax_parse')"
     else:
-        qtypes = "('multiple_choice','recall','typing','cloze','contrast','parse')"
+        qtypes = "('multiple_choice','recall','typing','cloze','contrast','parse','discourse_function','syntax_parse')"
     rows = conn.execute(f"""
         SELECT n.id as node_id, n.title, n.level, n.category, p.id as qid,
                p.question_type, p.question_text, p.options_json, p.correct_answer
@@ -5539,7 +5540,7 @@ def _tutor_item_for_node(conn, node_id: str):
                correct_answer, difficulty
         FROM hebrew_practice_items
         WHERE node_id=? AND question_type IN
-            ('typing','parse','dictation','recall','cloze')
+            ('typing','parse','dictation','recall','cloze','syntax_parse','discourse_function')
         ORDER BY difficulty DESC LIMIT 1
     """, (node_id,)).fetchone()
     return dict(row) if row else None
@@ -6283,7 +6284,7 @@ def get_hebrew_quiz(
         items = conn.execute("""
             SELECT id, question_type, question_text, options_json, correct_answer, difficulty
             FROM hebrew_practice_items
-            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing','dictation','true_false')
+            WHERE node_id = ? AND question_type IN ('multiple_choice','transliteration','cloze','parse','typing','dictation','true_false','discourse_function','syntax_parse')
         """, (nid,)).fetchall()
         items.sort(key=lambda it: (
             0 if (nid, it["question_type"]) not in weak
@@ -6359,7 +6360,7 @@ def get_hebrew_quiz(
 #   recall      = retrieve from cues (cloze, transliteration, discrimination)
 #   production  = generate from scratch (typing, sentence)
 KP_STAGE_RECOGNITION = {"multiple_choice", "true_false", "letter_recognition", "classification"}
-KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall", "parse", "dictation"}
+KP_STAGE_RECALL = {"cloze", "transliteration", "contrast", "recall", "parse", "dictation", "discourse_function", "syntax_parse"}
 KP_STAGE_PRODUCTION = {"typing", "sentence"}
 KP_STAGE_ORDER = ["recognition", "recall", "production"]
 

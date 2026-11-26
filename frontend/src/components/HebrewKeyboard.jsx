@@ -194,10 +194,11 @@ export default function HebrewKeyboard({ onCharClick, onBackspace, onClear, onDo
                   longPressTimer.current = null
                 }
               }}
-              className="w-10 h-10 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-neutral-200 dark:border-neutral-600 text-lg font-serif cursor-pointer transition-colors active:scale-95 select-none"
-              style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
+              className="hebrew-key w-10 h-10 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-neutral-200 dark:border-neutral-600 text-lg font-serif cursor-pointer transition-colors active:scale-95 select-none"
+              style={{ fontFamily: "'Ezra SIL','SBL_Hebrew','Times_New_Roman',serif" }}
               title={LETTER_NAMES[letter] || letter}
-              dir="rtl"
+              aria-label={LETTER_NAMES[letter] ? `${LETTER_NAMES[letter]} (${letter})` : letter}
+              dir="rtl" lang="he"
             >
               {letter}
             </button>
@@ -223,9 +224,10 @@ export default function HebrewKeyboard({ onCharClick, onBackspace, onClear, onDo
                 <button
                   key={combo}
                   onClick={() => handleVowelComboClick(combo)}
-                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700 text-lg font-serif cursor-pointer transition-colors active:scale-95"
-                  style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}
-                  dir="rtl"
+                  className="hebrew-key w-10 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700 text-lg font-serif cursor-pointer transition-colors active:scale-95"
+                  style={{ fontFamily: "'Ezra SIL','SBL_Hebrew','Times_New_Roman',serif" }}
+                  aria-label={`Type ${combo}`}
+                  dir="rtl" lang="he"
                 >
                   {combo}
                 </button>

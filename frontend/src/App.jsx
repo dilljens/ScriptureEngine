@@ -841,6 +841,10 @@ const [showAssessment, setShowAssessment] = useState(false)
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 transition-colors" style={{ fontSize: `${fontSize}%` }}>
+      {/* Skip link — first tabbable element (WCAG 2.4.1). Visible on focus. */}
+      <a href="#main-content"
+        onClick={(e) => { e.preventDefault(); document.getElementById('main-content')?.focus({ preventScroll: false }) }}
+        className="skip-link">Skip to main content</a>
       {/* Toolbar — desktop only */}
       <header className={`hidden sm:flex sticky top-0 z-40 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-transform duration-200 ${uiVisible ? 'translate-y-0' : '-translate-y-full sm:translate-y-0'}`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between h-9 px-2">
@@ -1065,7 +1069,7 @@ const [showAssessment, setShowAssessment] = useState(false)
 
       {/* Main */}
       <ErrorBoundary>
-        <main ref={mainRef} className="flex-1 min-h-0"
+        <main ref={mainRef} id="main-content" tabIndex={-1} className="flex-1 min-h-0"
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onTouchMove={handleTouchMove}
           onScroll={handleMainScroll} onClick={handleMainClick}
           style={{ touchAction: 'pan-y', overscrollBehaviorX: 'none' }}>

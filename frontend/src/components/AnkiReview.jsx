@@ -49,6 +49,145 @@ export function relearnInsertAt(pos, total) {
   return Math.min(total, Math.max(0, pos) + 1 + RELEARN_REDEAL_GAP)
 }
 
+/**
+ * CardFront — pure presentational face of a flashcard (no state, no effects).
+ * Exported so the front/back stimulus invariants (card-rules rule 1/2:
+ * front = ONE stimulus, never the answer) are executable assertions in
+ * `src/__tests__/ankiCardFaces.test.js` instead of eyeball checks.
+ *
+ * Props: mode, hebrew, gloss, transliteration, img ({image_url} | null),
+ * audioUrl (string | null), onReplay (replay-audio callback).
+ */
+export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl, onReplay }) {
+  switch (mode) {
+    case 'hearing':
+      return (
+        <div className="text-center">
+          <div className="text-lg text-neutral-400 mb-4">🔊 Listen & Translate</div>
+          <button onClick={(e) => { e.stopPropagation(); onReplay?.() }}
+            aria-label={audioUrl ? 'Replay pronunciation audio' : 'Play pronunciation audio'}
+            className="touch-target px-4 py-2 min-h-[44px] rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
+            ▶ {audioUrl ? 'Replay' : 'Loading… tap to play'}
+          </button>
+        </div>
+      )
+    case 'reverse':
+      return (
+        <div className="text-center">
+          <div className="text-lg text-neutral-400 mb-4">🇺🇸 English → Hebrew</div>
+          <div className="text-3xl font-semibold text-neutral-800 dark:text-neutral-200">
+            {gloss}
+          </div>
+        </div>
+      )
+    case 'forward':
+      return (
+        <div className="text-center">
+          <div className="text-lg text-neutral-400 mb-4">🇮🇱 Hebrew → English</div>
+          <div className="text-4xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200 font-hebrew-biblical"
+            dir="rtl" lang="he">
+            {hebrew}
+          </div>
+          {transliteration && (
+            <div className="text-sm text-neutral-500 mt-2">{transliteration}</div>
+          )}
+        </div>
+      )
+    case 'picture':
+      return (
+        <div className="text-center">
+          <div className="text-lg text-neutral-400 mb-4">🖼️ Picture → Hebrew</div>
+          {img?.image_url ? (
+            <img
+              src={img.image_url}
+              alt="Think of the Hebrew word"
+              className="w-full h-48 object-cover rounded-lg"
+              loading="lazy"
+              onError={(e) => { e.target.style.display = 'none' }}
+            />
+          ) : (
+            <div className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+              Loading picture...
+            </div>
+          )}
+        </div>
+      )
+    default:
+      return null
+  }
+}
+
+/**
+ * CardBack — the answer face: writing + audio replay + gloss (+ image).
+ * Rule 2: the back always carries the full answer, whatever the front was.
+ *
+ * Props: hebrew, gloss, transliteration, img, audioUrl, intervals,
+ * onRate (rating 1-4), onSuspend (wholeWord: boolean).
+ */
+export function CardBack({ hebrew, gloss, transliteration, img, audioUrl, intervals, onRate, onSuspend }) {
+  return (
+    <div className="space-y-4">
+      {/* Answer display */}
+      <div className="text-center">
+        <div className="text-3xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200 font-hebrew-biblical"
+          dir="rtl" lang="he">
+          {hebrew}
+        </div>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+          {transliteration}
+        </div>
+        <div className="text-lg font-medium text-blue-600 dark:text-blue-400 mt-2">
+          {gloss}
+        </div>
+      </div>
+
+      {/* Image (Anki-style Extra field) */}
+      {img?.image_url && (
+        <div className="relative w-full overflow-hidden rounded-lg bg-neutral-50 dark:bg-neutral-800 max-h-64">
+          <img
+            src={img.image_url}
+            alt={hebrew}
+            className="w-full h-48 object-cover"
+            loading="lazy"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        </div>
+      )}
+
+      {/* Verse context fallback if no image */}
+      {!img?.image_url && gloss && (
+        <div className="text-xs text-neutral-400 text-center italic">
+          {gloss}
+        </div>
+      )}
+
+      {/* Audio replay on the back (hear the answer, link sound to meaning) */}
+      {audioUrl && (
+        <div className="text-center">
+          <button onClick={(e) => { e.stopPropagation(); playUrl(audioUrl) }}
+            className="text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer">
+            🔊 Replay audio
+          </button>
+        </div>
+      )}
+
+      {/* Rating buttons */}
+      <RatingButtons intervals={intervals} onRate={(v) => onRate?.(v)} variant="grid" showKeys />
+      {/* B2: suspend controls */}
+      <div className="flex items-center justify-center gap-3 pt-1">
+        <button onClick={() => onSuspend?.(false)}
+          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
+          🚫 Suspend this direction
+        </button>
+        <button onClick={() => onSuspend?.(true)}
+          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
+          suspend whole word
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AnkiReview({ cards: initialCards, onComplete, title, onBack }) {
   // Two-pass build: prefetch Tier-0 pictures first, then assign modes so the
   // picture direction is only dealt to words that actually have a picture.
@@ -313,10 +452,31 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   // Loading state while the two-pass build prefetches pictures + deals modes
   if (!cards) {
     return (
-      <div className="max-w-lg mx-auto px-6 py-12 text-center">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
+      <div className="max-w-lg mx-auto px-6 py-12 text-center" role="status" aria-live="polite">
+        <div className="animate-pulse space-y-4" aria-hidden="true">
+          <div className="h-6 w-32 mx-auto rounded bg-neutral-200 dark:bg-neutral-700" />
+          <div className="h-40 rounded-xl bg-neutral-100 dark:bg-neutral-800" />
+          <div className="h-4 w-48 mx-auto rounded bg-neutral-200 dark:bg-neutral-700" />
+        </div>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-4">
           Loading cards…
         </p>
+      </div>
+    )
+  }
+
+  // Empty state: never leave a blank review (audit skill: icon + message + CTA).
+  if (cards.length === 0) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-12 text-center">
+        <div className="text-4xl mb-3" aria-hidden="true">📭</div>
+        <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-1">No cards due</h2>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">Nothing to review right now — new cards appear as lessons unlock or reviews come due.</p>
+        {onBack ? (
+          <button onClick={onBack} className="px-5 py-2.5 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">← Back to lessons</button>
+        ) : onComplete ? (
+          <button onClick={onComplete} className="px-5 py-2.5 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium cursor-pointer transition-colors">Done</button>
+        ) : null}
       </div>
     )
   }
@@ -363,124 +523,15 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const { hebrew, gloss, transliteration, mode } = currentCard
   const img = imageCache[hebrew]
 
-  const frontContent = () => {
-    switch (mode) {
-      case 'hearing':
-        return (
-          <div className="text-center">
-            <div className="text-lg text-neutral-400 mb-4">🔊 Listen & Translate</div>
-            <button onClick={(e) => { e.stopPropagation(); replayAudio() }}
-              className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
-              ▶ {audioUrl ? 'Replay' : 'Loading… tap to play'}
-            </button>
-          </div>
-        )
-      case 'reverse':
-        return (
-          <div className="text-center">
-            <div className="text-lg text-neutral-400 mb-4">🇺🇸 English → Hebrew</div>
-            <div className="text-3xl font-semibold text-neutral-800 dark:text-neutral-200">
-              {gloss}
-            </div>
-          </div>
-        )
-      case 'forward':
-        return (
-          <div className="text-center">
-            <div className="text-lg text-neutral-400 mb-4">🇮🇱 Hebrew → English</div>
-            <div className="text-4xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200"
-              style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
-              {hebrew}
-            </div>
-            {transliteration && (
-              <div className="text-sm text-neutral-500 mt-2">{transliteration}</div>
-            )}
-          </div>
-        )
-      case 'picture':
-        return (
-          <div className="text-center">
-            <div className="text-lg text-neutral-400 mb-4">🖼️ Picture → Hebrew</div>
-            {img?.image_url ? (
-              <img
-                src={img.image_url}
-                alt="Think of the Hebrew word"
-                className="w-full h-48 object-cover rounded-lg"
-                loading="lazy"
-                onError={(e) => { e.target.style.display = 'none' }}
-              />
-            ) : (
-              <div className="text-sm text-neutral-500 dark:text-neutral-400 animate-pulse">
-                Loading picture...
-              </div>
-            )}
-          </div>
-        )
-      default:
-        return null
-    }
-  }
+  const frontContent = () => (
+    <CardFront mode={mode} hebrew={hebrew} gloss={gloss} transliteration={transliteration}
+      img={img} audioUrl={audioUrl} onReplay={replayAudio} />
+  )
 
   const backContent = () => (
-    <div className="space-y-4">
-      {/* Answer display */}
-      <div className="text-center">
-        <div className="text-3xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200"
-          style={{ fontFamily: "'SBL_Hebrew','Ezra_SIL','Times_New_Roman',serif" }}>
-          {hebrew}
-        </div>
-        <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          {transliteration}
-        </div>
-        <div className="text-lg font-medium text-blue-600 dark:text-blue-400 mt-2">
-          {gloss}
-        </div>
-      </div>
-
-      {/* Image (Anki-style Extra field) */}
-      {img?.image_url && (
-        <div className="relative w-full overflow-hidden rounded-lg bg-neutral-50 dark:bg-neutral-800 max-h-64">
-          <img
-            src={img.image_url}
-            alt={hebrew}
-            className="w-full h-48 object-cover"
-            loading="lazy"
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
-        </div>
-      )}
-
-      {/* Verse context fallback if no image */}
-      {!img?.image_url && gloss && (
-        <div className="text-xs text-neutral-400 text-center italic">
-          {gloss}
-        </div>
-      )}
-
-      {/* Audio replay on the back (hear the answer, link sound to meaning) */}
-      {audioUrl && (
-        <div className="text-center">
-          <button onClick={(e) => { e.stopPropagation(); playUrl(audioUrl) }}
-            className="text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer">
-            🔊 Replay audio
-          </button>
-        </div>
-      )}
-
-      {/* Rating buttons */}
-      <RatingButtons intervals={intervals} onRate={(v) => handleRate(v)} variant="grid" showKeys />
-      {/* B2: suspend controls */}
-      <div className="flex items-center justify-center gap-3 pt-1">
-        <button onClick={() => handleSuspend(false)}
-          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
-          🚫 Suspend this direction
-        </button>
-        <button onClick={() => handleSuspend(true)}
-          className="text-[11px] text-neutral-400 hover:text-amber-500 transition-colors">
-          suspend whole word
-        </button>
-      </div>
-    </div>
+    <CardBack hebrew={hebrew} gloss={gloss} transliteration={transliteration}
+      img={img} audioUrl={audioUrl} intervals={intervals}
+      onRate={handleRate} onSuspend={(whole) => handleSuspend(whole)} />
   )
 
   return (
@@ -510,7 +561,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         </span>
       </div>
       {(undoMsg || suspendedUndo) && (
-        <p className="text-xs text-center mb-2 text-neutral-500 dark:text-neutral-400">{undoMsg}
+        <p role="status" aria-live="polite" className="text-xs text-center mb-2 text-neutral-500 dark:text-neutral-400">{undoMsg}
           {suspendedUndo && (
             <button onClick={handleUnsuspend}
               className="ml-2 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 underline cursor-pointer">
@@ -530,6 +581,8 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
 
       {/* Card */}
       <div
+        role="button" tabIndex={0} aria-label={flipped ? 'Answer shown. Rate this card 1 to 4.' : 'Flashcard. Activate to reveal the answer.'}
+        onKeyDown={(e) => { if (!flipped && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); handleFlip() } }}
         className="bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 p-6 min-h-[300px] flex flex-col justify-center cursor-pointer select-none"
         onClick={handleFlip}
       >

@@ -21,6 +21,8 @@ const TYPE_COLORS = {
   recall: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20',
   typing: 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20',
   contrast: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20',
+  discourse_function: 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/20',
+  syntax_parse: 'border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20',
   parse: 'border-lime-200 dark:border-lime-800 bg-lime-50 dark:bg-lime-900/20',
   dictation: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20',
 }
@@ -35,7 +37,7 @@ const CATEGORY_BADGES = {
 function getTimeLimit(q) {
   if (!q) return 15
   const wordCount = (q.question || '').split(/\s+/).filter(Boolean).length
-  let base = { multiple_choice: 8, true_false: 6, transliteration: 15, cloze: 20, parse: 20, dictation: 20 }[q.type] || 12
+  let base = { multiple_choice: 8, true_false: 6, transliteration: 15, cloze: 20, parse: 20, dictation: 20, discourse_function: 25, syntax_parse: 25 }[q.type] || 12
   const wordBonus = Math.max(0, Math.floor((wordCount - 10) / 5)) * 2
   return Math.round(base + wordBonus)
 }
@@ -480,7 +482,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         )}
 
         {/* Question text */}
-        <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed">{current.question}</p>
+        <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed" dir="auto" lang={/[\u0590-\u05FF]/.test(current.question || '') ? 'he' : undefined}>{current.question}</p>
 
         {/* Answer area */}
         {!showResult ? (
@@ -512,7 +514,8 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
               <div className={current.type === 'true_false' ? 'flex gap-3' : 'space-y-2'}>
                 {current.options.map((opt, i) => (
                   <button key={i} onClick={() => chooseAndSubmit(i)}
-                    className={`${current.type === 'true_false' ? 'flex-1' : 'w-full text-left'} px-4 py-3 rounded-lg text-sm border transition-all cursor-pointer ${
+                    aria-label={`Answer: ${opt}`}
+                    className={`${current.type === 'true_false' ? 'flex-1' : 'w-full text-left'} quiz-option px-4 py-3 min-h-[44px] rounded-lg text-sm border transition-all cursor-pointer ${
                       answers[idx] === i
                         ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300'
                         : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-indigo-300 dark:hover:border-indigo-600'
@@ -527,6 +530,8 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
                 <input type="text" value={answers[idx] || ''}
                   onChange={e => setAnswer(e.target.value)}
                   onFocus={() => setShowKeyboard(true)}
+                  aria-label="Type your answer"
+                  enterKeyHint="done"
                   placeholder={current.type === 'typing' || current.type === 'letter_name'
                     ? 'Type Hebrew characters...'
                     : 'Type your answer...'}
@@ -539,7 +544,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
           </>
         ) : (
           /* Result display */
-           <div className={`p-4 rounded-lg ${submitted[idx] === true
+           <div role="status" aria-live="polite" className={`p-4 rounded-lg ${submitted[idx] === true
              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
              : submitted[idx] === false
                ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
@@ -572,7 +577,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
       </div>
 
       {/* Action buttons */}
-      {submissionError && <p className="text-center text-sm text-red-600 dark:text-red-400 mt-4">{submissionError}</p>}
+      {submissionError && <p role="alert" className="text-center text-sm text-red-600 dark:text-red-400 mt-4">{submissionError}</p>}
       <div className="flex gap-3 mt-4">
         {showResult ? (
           <button onClick={nextQuestion} disabled={submitted[idx] === null}

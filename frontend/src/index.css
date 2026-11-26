@@ -29,3 +29,70 @@ button, [role="button"] {
     transform: scale(0.97);
   }
 }
+
+/* ── UI audit fixes (2026-11-26): focus, motion, Hebrew clipping ── */
+
+/* Keyboard focus must always be visible (WCAG 2.4.7). Tailwind's
+   outline-none on inputs otherwise hides it. */
+:where(button, a, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.dark :where(button, a, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline-color: #a5b4fc;
+}
+
+/* Honor reduced-motion: kill transitions/animations for vestibular safety. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Pointed Hebrew needs line-height headroom or niqqud/cantillation clips.
+   Any element with lang="he" or .font-hebrew-biblical gets it by default. */
+:where([lang="he"], .font-hebrew-biblical) {
+  line-height: 1.9;
+  overflow-wrap: break-word;
+}
+
+/* Minimum 44px touch target on coarse pointers (WCAG 2.5.8 floor).
+   Applies to quiz options, keyboard keys, and icon-only buttons. */
+@media (pointer: coarse) {
+  .touch-target, .hebrew-key, .quiz-option {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Long curriculum lists (696 rows): skip off-screen rendering work.
+   contain-intrinsic-size keeps the scrollbar stable while rows are skipped. */
+.lesson-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+/* Skip-to-content link (WCAG 2.4.1): visually hidden until focused. */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: top 150ms ease-out;
+}
+.skip-link:focus-visible {
+  top: 0.5rem;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

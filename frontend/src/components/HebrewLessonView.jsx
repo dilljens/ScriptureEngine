@@ -106,7 +106,8 @@ function renderTextWithRefs(text, onNavigate) {
               detail: { word: clean, wordIndex: 0, verseId: '', transliteration: '', english: '' }
             }))
           }}
-          className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          className="cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-hebrew-biblical"
+          dir="rtl" lang="he"
           title={`Click to explore: ${clean}`}>
           {t.value}
         </span>
@@ -168,7 +169,7 @@ function StageItemCard({ card, onSubmitted, onContinue, isLast }) {
       />
       {submitted && (
         <button onClick={onContinue} disabled={grading}
-          className="mt-4 w-full px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
+          className="touch-target mt-4 w-full px-4 py-2 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium cursor-pointer transition-colors">
           {grading ? 'Checking…' : isLast ? 'Continue →' : 'Next →'}
         </button>
       )}

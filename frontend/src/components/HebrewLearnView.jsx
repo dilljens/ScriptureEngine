@@ -50,7 +50,8 @@ function DropdownMenu({ label, color, children }) {
   return (
     <div className="relative shrink-0" ref={ref}>
       <button onClick={toggle}
-        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium cursor-pointer transition-colors ${colorMap[color] || colorMap.neutral}`}>
+        aria-haspopup="menu" aria-expanded={open} aria-label={`${label} menu`}
+        className={`touch-target px-2.5 py-1.5 min-h-[36px] rounded-lg text-[10px] font-medium cursor-pointer transition-colors ${colorMap[color] || colorMap.neutral}`}>
         {label} {open ? '▲' : '▼'}
       </button>
       {open && (
@@ -128,7 +129,7 @@ const LessonRow = memo(function LessonRow({ node, onOpenLesson, onOpenPassage })
       }
       onOpenLesson?.(node.id)
     }} disabled={isLocked}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
+      className={`lesson-row w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left cursor-pointer group
         ${isLocked ? 'opacity-40 cursor-not-allowed border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/30'
           : isMastered ? `${cs.bg} ${cs.border} hover:shadow-sm`
           : isLearning ? 'border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:shadow-sm'
@@ -1359,6 +1360,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       )}
 
       {/* Lessons by level */}
+      {!showMasteryMap && filtered.length > 0 && (
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mb-3" role="status">
+          {filtered.length} lesson{filtered.length === 1 ? '' : 's'}{filter !== 'all' ? ` in ${(CATEGORY_STYLES[filter]?.label || filter)}` : ''} · grouped by level
+        </p>
+      )}
       {!showMasteryMap && (
         <div className="space-y-6">
           {Object.entries(byLevel).map(([level, levelNodes]) => (
@@ -1375,8 +1381,14 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
       )}
 
       {filtered.length === 0 && filter !== 'tracks' && (
-        <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          No lessons in this category. Try another filter.
+        <div className="p-8 text-center" role="status">
+          <div className="text-3xl mb-2" aria-hidden="true">🔍</div>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No lessons in this category</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 mb-4">Try another filter, or start with Letters (L1).</p>
+          <button onClick={() => setFilter('all')}
+            className="px-4 py-2 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer transition-colors">
+            Show all lessons
+          </button>
         </div>
       )}
     </div>

@@ -36,7 +36,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
   const serverIssued = quizData?.question_id != null && quizData?.node_id != null
 
   const isProductionType = ['typing', 'transliteration', 'recall', 'cloze', 'contrast'].includes(questionType)
-  const isChoiceType = ['multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification'].includes(questionType)
+  const isChoiceType = ['multiple_choice', 'true_false', 'letter_name', 'letter_recognition', 'classification', 'discourse_function', 'syntax_parse'].includes(questionType)
   const isAudioType = questionType === 'recitation'
   const hasHebrewText = hebrewGlyph || (question && /[\u0590-\u05FF]/.test(question))
   const choiceAnswerMode = isChoiceType ? ANSWER_MODES.CHOICE_INDEX : ANSWER_MODES.FREE_TEXT

@@ -23,7 +23,7 @@ FORBIDDEN_CLAIMS = {
     "סֵפֶר (book/scroll) also derives from this root": "sefer belongs to root ספר",
 }
 
-ASSESSED_TYPES = {"multiple_choice", "true_false", "classification", "contrast"}
+ASSESSED_TYPES = {"multiple_choice", "true_false", "classification", "contrast", "discourse_function", "syntax_parse"}
 
 # True/false questions are banned outright (Math Academy Way review decision).
 NO_TRUE_FALSE = True
