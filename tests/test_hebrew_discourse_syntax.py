@@ -61,3 +61,46 @@ def test_choice_index_grading_for_new_types():
         "discourse_function", opts) is False
     assert _hebrew_quiz_answer_matches(0, "יִלָּחֵם", "syntax_parse",
                                        ["יִלָּחֵם", "יְהוָה", "אֵת"]) is True
+
+
+def test_mc_distractor_pool_stable_across_shuffles():
+    """Convertibility must not flip per process: the script filter runs before
+    shuffle+truncate, so a bank with enough same-script distractors always
+    converts (deploy-gate flake: _distractor_pool truncated first, then the
+    script filter sometimes left <4 options and dropped the item)."""
+    import random as _random
+    import sqlite3 as _sqlite3
+
+    from web.routes.hebrew import _to_mc_question
+
+    conn = _sqlite3.connect(":memory:")
+    conn.row_factory = _sqlite3.Row
+    conn.execute("CREATE TABLE hebrew_nodes (id TEXT PRIMARY KEY, title TEXT, category TEXT)")
+    conn.execute("CREATE TABLE hebrew_practice_items (id INTEGER PRIMARY KEY, node_id TEXT,"
+                 " question_type TEXT, question_text TEXT, options_json TEXT,"
+                 " correct_answer TEXT, difficulty REAL)")
+    conn.execute("INSERT INTO hebrew_nodes VALUES ('target','T','verb')")
+    heb = ["\u05d0\u05b8\u05de\u05b7\u05e8", "\u05d4\u05b8\u05dc\u05b7\u05da",
+           "\u05e9\u05b8\u05de\u05b7\u05e2", "\u05e8\u05b8\u05d0\u05b8\u05d4",
+           "\u05d9\u05b8\u05d3\u05b7\u05e2", "\u05d1\u05b8\u05e8\u05b8\u05d0"]
+    nid = 1
+    for h in heb:
+        conn.execute("INSERT INTO hebrew_nodes VALUES (?,?,?)", (f"s{nid}", "S", "verb"))
+        conn.execute("INSERT INTO hebrew_practice_items VALUES (?,?,?,?,?,?,?)",
+                     (nid, f"s{nid}", "multiple_choice", "q", "[]", h, 0.5))
+        nid += 1
+    for i in range(20):
+        conn.execute("INSERT INTO hebrew_nodes VALUES (?,?,?)", (f"s{nid}", "S", "verb"))
+        conn.execute("INSERT INTO hebrew_practice_items VALUES (?,?,?,?,?,?,?)",
+                     (nid, f"s{nid}", "multiple_choice", "q", "[]", f"gloss-{i}", 0.5))
+        nid += 1
+    node = {"id": "target", "title": "T", "category": "verb"}
+    for seed in range(200):
+        _random.seed(seed)
+        q = {"question_id": 999, "type": "typing",
+             "question": "Apply this lesson to 'he will fall'",
+             "options": [], "category": "verb", "difficulty": 0.5,
+             "_correct": "\u05d9\u05b4\u05e4\u05bb\u05dc"}
+        out = _to_mc_question(conn, q, node)
+        assert out is not None, f"seed {seed}: convertible item dropped"
+        assert out["options"].count("\u05d9\u05b4\u05e4\u05bb\u05dc") == 1

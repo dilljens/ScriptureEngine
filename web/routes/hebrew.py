@@ -2662,10 +2662,14 @@ MC_ANSWERABLE_TYPES = frozenset({
 MC_OPTION_COUNT = 5
 
 
-def _distractor_pool(conn, node_id, correct, limit=12):
+def _distractor_pool(conn, node_id, correct, limit=12, want_hebrew=None):
     """Plausible wrong answers: correct answers of sibling nodes in the same
     category (letters vs letters, glosses vs glosses). Realistic distractors
-    make the choice informative instead of obviously wrong."""
+    make the choice informative instead of obviously wrong.
+
+    The script filter runs BEFORE the shuffle+truncate so convertibility is
+    a stable property of the bank (enough same-script distractors exist or
+    not), not a per-process coin flip that flaps the deploy gate."""
     row = conn.execute("SELECT category FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone()
     if not row:
         return []
@@ -2675,7 +2679,9 @@ def _distractor_pool(conn, node_id, correct, limit=12):
         JOIN hebrew_nodes n ON n.id = p.node_id
         WHERE n.category = ? AND p.node_id <> ? AND p.correct_answer IS NOT NULL AND p.correct_answer <> ''
     """, (row[0], node_id)).fetchall()
-    pool = [r[0] for r in rows if r[0] and r[0] != correct]
+    pool = [r[0] for r in rows
+            if r[0] and r[0] != correct
+            and (want_hebrew is None or _is_hebrew_script(r[0]) == want_hebrew)]
     random.shuffle(pool)
     return pool[:limit]
 
@@ -2698,7 +2704,7 @@ def _to_mc_question(conn, q, node, n_options=MC_OPTION_COUNT):
             and _is_hebrew_script(o) == want_hebrew]
     if correct not in opts:
         opts.insert(0, correct)
-    for d in _distractor_pool(conn, node["id"], correct, n_options * 3):
+    for d in _distractor_pool(conn, node["id"], correct, n_options * 3, want_hebrew):
         if len(opts) >= n_options:
             break
         if d and d not in opts and _is_hebrew_script(d) == want_hebrew:
