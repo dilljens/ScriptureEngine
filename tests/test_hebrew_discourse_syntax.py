@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from web.routes.hebrew import (
     HEBREW_CHOICE_TYPES,
+    MC_ANSWERABLE_TYPES,
     _hebrew_quiz_answer_matches,
     build_kp_stages,
     practice_stage,
@@ -40,6 +41,13 @@ def test_new_types_in_recall_stage_group():
     assert stages["recognition"] == [1]
     assert sorted(stages["recall"]) == [2, 3]
     assert stages["production"] == [4]
+
+
+def test_new_types_convert_to_mc_lesson_quiz():
+    # Default lesson quizzes run in mc mode: choice-format analytic items
+    # must convert like classification, never hit the None-drop contract.
+    assert "discourse_function" in MC_ANSWERABLE_TYPES
+    assert "syntax_parse" in MC_ANSWERABLE_TYPES
 
 
 def test_choice_index_grading_for_new_types():

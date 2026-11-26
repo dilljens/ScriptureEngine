@@ -2649,9 +2649,12 @@ MC_ANSWERABLE_TYPES = frozenset({
     # answers apart; verb-parse distractors are sibling nodes' parses —
     # genuinely discriminating). Dictation keeps its audio_url through the
     # conversion, so mc mode is hear-and-pick (easier rung, same item).
+    # discourse_function / syntax_parse are choice-format analytic items —
+    # they convert exactly like classification (options ship as-is).
     # Unconvertible items (<5 distinct distractors) are dropped, never
     # shipped degenerate — the _to_mc_question None contract.
     "cloze", "typing", "parse", "dictation",
+    "discourse_function", "syntax_parse",
 })
 
 # Five options as the default (was four): one more distractor is a cheap
@@ -2843,7 +2846,8 @@ def get_hebrew_lesson_quiz(node_id: str, count: int = 8, user_id: str = "default
     # types first (exposure), then lowest accuracy from attempt history.
     order = {"multiple_choice": 0, "true_false": 0, "letter_recognition": 0, "classification": 0,
              "transliteration": 1, "contrast": 1, "cloze": 2, "recall": 2,
-             "letter_name": 2, "parse": 2, "dictation": 2, "typing": 3}
+             "letter_name": 2, "parse": 2, "dictation": 2, "typing": 3,
+             "discourse_function": 2, "syntax_parse": 2}
     _weak = _type_weakness(conn, user_id, [node_id])
     _wkey = lambda q: -1.0 if (node_id, q["type"]) not in _weak else _weak[(node_id, q["type"])]
     questions.sort(key=lambda q: (q.get("is_distractor", False), order.get(q["type"], 2), _wkey(q), q["difficulty"]))
