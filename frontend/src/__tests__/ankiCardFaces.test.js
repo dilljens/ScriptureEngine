@@ -136,3 +136,35 @@ describe('answer-side audio is always offered, never pre-revealed', () => {
     expect(text).not.toMatch(/Play audio|Replay/)
   })
 })
+
+describe('prompt-side audio: forward + hearing speak, reverse stays silent', () => {
+  it('forward front offers pronunciation audio above the written word', async () => {
+    const { CardFront } = await import('../components/AnkiReview')
+    const el = CardFront({
+      mode: 'forward', hebrew: 'מֶלֶךְ', gloss: 'sovereign ruler',
+      transliteration: 'melekh', img: null, audioUrl: null,
+      onReplay: () => {}, onShowHint: () => {}, hintShown: false,
+    })
+    const text = harvest(el).text.join(' ')
+    expect(text).toMatch(/▶\s+Play/)
+    expect(text).toContain('מֶלֶךְ')
+    // Meaning still hidden on the prompt side.
+    expect(text).not.toContain('sovereign ruler')
+  })
+
+  it('hearing front shows a Show-word hint instead of the answer text', async () => {
+    const { CardFront } = await import('../components/AnkiReview')
+    const base = {
+      mode: 'hearing', hebrew: 'מֶלֶךְ', gloss: 'sovereign ruler',
+      transliteration: 'melekh', img: null, audioUrl: null,
+      onReplay: () => {}, onShowHint: () => {},
+    }
+    const hidden = harvest(CardFront({ ...base, hintShown: false })).text.join(' ')
+    expect(hidden).toMatch(/Show word/)
+    expect(hidden).not.toContain('מֶלֶךְ')
+    const shown = harvest(CardFront({ ...base, hintShown: true })).text.join(' ')
+    expect(shown).toContain('מֶלֶךְ')
+    // The gloss (English answer) never appears on the hearing front either way.
+    expect(shown).not.toContain('sovereign ruler')
+  })
+})

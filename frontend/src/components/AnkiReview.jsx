@@ -102,7 +102,7 @@ export function relearnInsertAt(pos, total) {
  * Props: mode, hebrew, gloss, transliteration, img ({image_url} | null),
  * audioUrl (string | null), onReplay (replay-audio callback).
  */
-export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl, onReplay }) {
+export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl, onReplay, onShowHint, hintShown }) {
   switch (mode) {
     case 'hearing':
       return (
@@ -113,6 +113,23 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
             className="touch-target px-4 py-2 min-h-[44px] rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
             ▶ {audioUrl ? 'Replay' : 'Loading… tap to play'}
           </button>
+          {/* Optional peek at the written word: it IS the answer, so it is
+              gated behind an explicit hint tap — autoplaying audio is the
+              graded retrieval stimulus, the text is the fallback. */}
+          {!hintShown ? (
+            <div>
+              <button onClick={(e) => { e.stopPropagation(); onShowHint?.() }}
+                className="mt-3 text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer"
+                aria-label="Show written word as a hint">
+                Show word
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 text-3xl font-serif leading-relaxed text-neutral-500 dark:text-neutral-400 font-hebrew-biblical"
+              dir="rtl" lang="he" aria-label={`Written hint: ${hebrew}`}>
+              {hebrew}
+            </div>
+          )}
         </div>
       )
     case 'reverse':
@@ -128,6 +145,15 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
       return (
         <div className="text-center">
           <span className="sr-only">Hebrew shown — think of the English, then flip to check</span>
+          {/* Sound accompanies the written stimulus: the retrieval work is
+              meaning from form, and either channel counts as the prompt —
+              hearing the word cannot leak the English answer. Same rule as
+              the back face (audio via onReplay, which no-ops when absent). */}
+          <button onClick={(e) => { e.stopPropagation(); onReplay?.() }}
+            aria-label={audioUrl ? 'Replay pronunciation audio' : 'Play pronunciation audio'}
+            className="mb-3 px-4 py-2 min-h-[44px] rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
+            ▶ {audioUrl ? 'Replay' : 'Play'}
+          </button>
           <div className="text-4xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200 font-hebrew-biblical"
             dir="rtl" lang="he">
             {hebrew}
@@ -274,6 +300,9 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
 
   const [currentIdx, setCurrentIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
+  // Hearing-mode hint: the written word is the answer, so it stays hidden
+  // behind an explicit "Show word" tap (per card — reset on every advance).
+  const [hintShown, setHintShown] = useState(false)
   const [ratings, setRatings] = useState({})
   const [saveFailed, setSaveFailed] = useState(0)
   const [audioUrl, setAudioUrl] = useState(null)
@@ -315,14 +344,13 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   // NOTE: image prefetch now happens in the two-pass build above (modes need
   // to know which words have Tier-0 pictures before cards are dealt).
 
-  // On-arrival audio prefetch for dictation-prone modes: the answer face
-  // always offers replay, so warm the cache when the card appears instead
-  // of on first tap. Known-missing audio resolves to null here (fetched
-  // once, then free) — reverse/forward/picture/dirll fall back to forward
-  // per the repair rule; hearing keeps its show-time handling below.
+  // On-arrival audio prefetch: the prompt AND the answer both speak now —
+  // forward prompts read the Hebrew aloud, hearing auto-plays (below),
+  // reverse fronts deliberately stay silent (sound would be the answer).
+  // Known-missing audio resolves to null here (fetched once, then free).
   useEffect(() => {
     if (!currentCard?.hebrew) return
-    if (!['reverse', 'forward', 'picture', 'drill'].includes(currentCard.mode)) return
+    if (!['forward', 'hearing', 'picture', 'drill'].includes(currentCard.mode)) return
     let cancelled = false
     fetchAudioUrl(currentCard.hebrew).then(url => {
       if (cancelled || !url) return
@@ -441,6 +469,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
     } catch (_) { setSaveFailed(n => n + 1) }
     // Advance
     setFlipped(false)
+    setHintShown(false)
     setAudioUrl(null)
     setCurrentIdx(i => i + 1)
   }, [currentCard, flipped])
@@ -472,6 +501,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       })
       setCurrentIdx(i => Math.max(0, i - 1))
       setFlipped(false)
+      setHintShown(false)
       setLastRated(null)
       setUndoMsg('Undone — card restored, rate it again.')
     } catch (_) {
@@ -503,6 +533,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       })
       setUndoMsg(wholeNode ? 'Suspended whole word — it will no longer appear.' : 'Suspended this direction — it will no longer appear.')
       setFlipped(false)
+      setHintShown(false)
       setAudioUrl(null)
       setCurrentIdx(i => i + 1)
     } catch (_) { setSaveFailed(n => n + 1) }
@@ -607,7 +638,8 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
 
   const frontContent = () => (
     <CardFront mode={mode} hebrew={hebrew} gloss={gloss} transliteration={transliteration}
-      img={img} audioUrl={audioUrl} onReplay={replayAudio} />
+      img={img} audioUrl={audioUrl} onReplay={replayAudio}
+      onShowHint={() => setHintShown(true)} hintShown={hintShown} />
   )
 
   const backContent = () => (
