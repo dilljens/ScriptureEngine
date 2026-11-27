@@ -1,6 +1,19 @@
 import React from 'react'
 import { currentSessionToken } from '../api'
 
+/**
+ * Chunk-load failure after a deploy: the open tab's shell references
+ * hashed lazy chunks the server no longer has (rsync --delete), so a
+ * React.lazy import rejects and this boundary catches it. That state is
+ * never fixed by retrying in place — but one full reload fetches a fresh
+ * shell and heals it. Detect the signature and reload once per session
+ * instead of stranding the user on the error card. Pure + unit-tested.
+ */
+export function isChunkLoadError(message) {
+  return /dynamically imported module|loading chunk|chunk failed|failed to fetch/i
+    .test(String(message || ''))
+}
+
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -15,6 +28,18 @@ export default class ErrorBoundary extends React.Component {
     this.setState({ errorInfo })
     // Log to console for debugging
     console.error('React Error Boundary caught:', error)
+    // Self-heal stale-chunk failures (see isChunkLoadError): a tab left
+    // open across a deploy holds chunk URLs the server deleted. Reload
+    // once per session; if we already tried, fall through to the card.
+    try {
+      if (isChunkLoadError(error?.message) && !sessionStorage.getItem('chunk-reload-done')) {
+        sessionStorage.setItem('chunk-reload-done', '1')
+        window.location.reload()
+        return
+      }
+    } catch (e) {
+      // Storage unavailable — fall through to the error card.
+    }
     if (errorInfo?.componentStack) {
       console.error('Component stack:', errorInfo.componentStack)
     }
