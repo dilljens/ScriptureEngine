@@ -68,6 +68,14 @@ function reducer(state, action) {
           if (!t.viewRef) t.viewRef = null
           if (!t.highlights) t.highlights = []
           if (!t.companion) t.companion = null
+          // Dashboard is home: never boot straight into a persisted Hebrew
+          // lesson — the last session's viewRef would auto-open it even
+          // though the user exited. Lesson progress itself is server-side
+          // and unaffected; resume is one tap from the curriculum list.
+          if (t.view === 'hebrew' && t.viewRef) {
+            t.viewRef = null
+            t.label = 'Hebrew'
+          }
         }
       }
       if (!loaded.workspaces.find(w => w.id === loaded.activeWorkspace)) {
@@ -363,10 +371,16 @@ export function TabProvider({ children }) {
       const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
       const existing = ws?.tabs.find(t => t.view === 'hebrew')
       if (existing) {
-        dispatch({ type: 'SELECT_TAB', id: existing.id })
+        // Dashboard is home: entering Hebrew without a lesson target drops
+        // any stale lesson viewRef (persisted from the last session or left
+        // over mid-study) instead of auto-opening it. Explicit lesson opens
+        // still set the viewRef below.
         if (lessonId) {
           dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: lessonId, label: label || `Hebrew: ${lessonId}` } })
+        } else {
+          dispatch({ type: 'UPDATE_TAB', id: existing.id, updates: { viewRef: null, label: 'Hebrew' } })
         }
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
       } else {
         dispatch({
           type: 'NEW_TAB',
