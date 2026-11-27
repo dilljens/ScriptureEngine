@@ -140,6 +140,10 @@ def commons_search(gloss):
         "gsrnamespace": "6", "gsrlimit": "8",
         "prop": "imageinfo",
         "iiprop": "url|size|extmetadata",
+        # Card display is at most ~600px wide: download the 800px thumbnail
+        # instead of the full-resolution original. Wikimedia asks API users
+        # to prefer listed thumbnail sizes (full-res hotlinking earns 429s).
+        "iiurlwidth": "800",
         "iiextmetadatafilter": "LicenseShortName|Artist|Credit|UsageTerms",
     }
     url = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(params)
@@ -166,7 +170,9 @@ def commons_search(gloss):
     pages = data.get("query", {}).get("pages", {})
     for page in pages.values():
         info = (page.get("imageinfo") or [{}])[0]
-        url = info.get("url", "")
+        # Prefer the 800px thumbnail (see iiurlwidth above); fall back to
+        # the original only when no thumbnail was generated.
+        url = info.get("thumburl") or info.get("url", "")
         if not url:
             continue
         meta = info.get("extmetadata", {})
