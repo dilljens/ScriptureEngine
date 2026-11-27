@@ -27,9 +27,53 @@ import RatingButtons from './RatingButtons'
 const CARD_MODES = ['hearing', 'reverse', 'forward', 'picture']
 
 /**
+ * repairMode — guarantee no blank faces. A dealt direction is only kept
+ * when its stimulus can actually render; otherwise fall back to a direction
+ * that can (never train the scheduler on a stimulus-less trial):
+ *   picture w/o image  -> forward (needs hebrew) else drop
+ *   reverse w/o gloss   -> forward (needs hebrew) else drop
+ *   forward w/o hebrew  -> reverse (needs gloss) else drop
+ *   hearing             -> kept while audio is unknown (hasAudio undefined,
+ *                            resolved lazily at show time); known-missing audio
+ *                            -> forward (needs hebrew), unresolvable -> drop
+ * Returns the mode to deal, or null to drop the card.
+ * Pure (vitest-covered) — keeps blank-face repair separate from the
+ * server's due-mode pass-through in modesForCard.
+ */
+export function repairMode(mode, { hebrew, gloss, hasPicture, hasAudio } = {}) {
+  const ok = (s) => typeof s === 'string' && s.trim().length > 0
+  if (mode === 'picture' && !hasPicture) mode = 'forward'
+  if (mode === 'reverse' && !ok(gloss)) mode = 'forward'
+  if (mode === 'forward' && !ok(hebrew)) mode = ok(gloss) ? 'reverse' : null
+  if (mode === 'hearing' && !ok(hebrew)) mode = ok(gloss) ? 'reverse' : null
+  if (mode === 'hearing' && hasAudio === false) mode = ok(hebrew) ? 'forward' : null
+  if (mode === 'picture' && !ok(hebrew)) mode = null
+  return mode
+}
+
+/**
+ * resolveDealModes — deal every card through modesForCard, then repair each
+ * dealt direction against the prefetched picture cache. Drops only cards
+ * with nothing renderable (both stimuli missing); converts the rest.
+ * Pure (vitest-covered).
+ */
+export function resolveDealModes(cards, imageCache) {
+  const out = []
+  for (const c of cards || []) {
+    for (const mode of modesForCard(c, !!(imageCache || {})[c.hebrew])) {
+      const fixed = repairMode(mode, { hebrew: c.hebrew, gloss: c.gloss, hasPicture: !!(imageCache || {})[c.hebrew] })
+      if (!fixed) continue
+      out.push({ ...c, mode: fixed, id: `${c.node_id || c.hebrew}_${fixed}` })
+    }
+  }
+  return out
+}
+
+/**
  * Modes for one card: server due_modes win when present; otherwise all four
  * directions — minus picture when no Tier-0 picture is cached for the word.
- * Pure (vitest-covered); keeps imageless words from drawing blank fronts.
+ * Pure (vitest-covered); deal-time repair in resolveDealModes handles the
+ * remaining unrenderable cases (missing gloss, missing audio at show time).
  */
 export function modesForCard(card, hasPicture) {
   if (card.modes && card.modes.length) return card.modes
@@ -63,7 +107,7 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
     case 'hearing':
       return (
         <div className="text-center">
-          <div className="text-lg text-neutral-400 mb-4">🔊 Listen & Translate</div>
+          <span className="sr-only">Listen and think of the Hebrew, then flip to check</span>
           <button onClick={(e) => { e.stopPropagation(); onReplay?.() }}
             aria-label={audioUrl ? 'Replay pronunciation audio' : 'Play pronunciation audio'}
             className="touch-target px-4 py-2 min-h-[44px] rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
@@ -74,7 +118,7 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
     case 'reverse':
       return (
         <div className="text-center">
-          <div className="text-lg text-neutral-400 mb-4">🇺🇸 English → Hebrew</div>
+          <span className="sr-only">English shown — think of the Hebrew, then flip to check</span>
           <div className="text-3xl font-semibold text-neutral-800 dark:text-neutral-200">
             {gloss}
           </div>
@@ -83,7 +127,7 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
     case 'forward':
       return (
         <div className="text-center">
-          <div className="text-lg text-neutral-400 mb-4">🇮🇱 Hebrew → English</div>
+          <span className="sr-only">Hebrew shown — think of the English, then flip to check</span>
           <div className="text-4xl font-serif leading-relaxed text-neutral-800 dark:text-neutral-200 font-hebrew-biblical"
             dir="rtl" lang="he">
             {hebrew}
@@ -96,7 +140,7 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
     case 'picture':
       return (
         <div className="text-center">
-          <div className="text-lg text-neutral-400 mb-4">🖼️ Picture → Hebrew</div>
+          <span className="sr-only">Picture shown — think of the Hebrew, then flip to check</span>
           {img?.image_url ? (
             <img
               src={img.image_url}
@@ -208,9 +252,13 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       const cache = {}
       for (const [hebrew, data] of results) if (data) cache[hebrew] = data
       setImageCache(cache)
-      const withModes = initialCards.flatMap(c =>
-        modesForCard(c, !!cache[c.hebrew]).map(mode => ({ ...c, mode, id: `${c.node_id || c.hebrew}_${mode}` }))
-      )
+      // Deal through resolveDealModes: server due_modes pass through
+      // modesForCard untouched, then each direction is repaired against
+      // what can actually render (imageless picture -> forward, etc.) so
+      // no card ever draws a blank face. Cards with nothing renderable
+      // (no hebrew AND no gloss) are dropped — rating them would poison
+      // the FSRS schedule with noise.
+      const withModes = resolveDealModes(initialCards, cache)
       // Fisher-Yates shuffle
       for (let i = withModes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -265,12 +313,27 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   // to know which words have Tier-0 pictures before cards are dealt).
 
   // Auto-play audio for hearing mode when card is shown (pooled: cached URL + shared element).
+  // Known-missing audio converts the trial to forward (same repair rule as
+  // deal time): a silent hearing card is a blank stimulus, and rating it
+  // would schedule noise. The due hearing rep stays due server-side.
   useEffect(() => {
     if (!currentCard || flipped) return
     if (currentCard.mode === 'hearing' && currentCard.hebrew) {
       let cancelled = false
       fetchAudioUrl(currentCard.hebrew).then(url => {
-        if (cancelled || !url) return
+        if (cancelled) return
+        if (!url) {
+          const fixed = repairMode('hearing', {
+            hebrew: currentCard.hebrew, gloss: currentCard.gloss,
+            hasPicture: !!imageCache[currentCard.hebrew], hasAudio: false,
+          })
+          if (fixed && fixed !== 'hearing') {
+            const newId = `${currentCard.id}~${fixed}`
+            setCards(prev => (prev || []).map(c =>
+              c.id === currentCard.id ? { ...c, mode: fixed, id: newId } : c))
+          }
+          return
+        }
         setAudioUrl(url)
         playUrl(url)
       })

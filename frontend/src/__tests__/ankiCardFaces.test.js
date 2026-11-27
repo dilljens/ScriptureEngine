@@ -95,3 +95,17 @@ describe('AnkiReview card faces (rule 1/2: image-before ordering)', () => {
     expect(b.text).toContain(SAMPLE.gloss)
   })
 })
+
+describe('direction labels stay off the visual front (sr-only for AT)', () => {
+  it('shows no visible English/Hebrew direction text on any front', async () => {
+    const { CardFront } = await import('../components/AnkiReview')
+    const noop = () => {}
+    const base = { hebrew: 'מֶלֶךְ', gloss: 'sovereign ruler', transliteration: 'melekh', img: { image_url: 'https://example.com/k.png' }, audioUrl: 'u', onReplay: noop }
+    for (const mode of ['hearing', 'reverse', 'forward', 'picture']) {
+      const h = harvest(CardFront({ mode, ...base }))
+      const text = h.text.join(' ')
+      expect(text).not.toMatch(/English → Hebrew|Hebrew → English|Listen & Translate|Picture → Hebrew/)
+      expect(text.length).toBeGreaterThan(0)
+    }
+  })
+})
