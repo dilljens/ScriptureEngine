@@ -121,6 +121,24 @@ const [showAssessment, setShowAssessment] = useState(false)
     return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
   }, [])
   
+  useEffect(() => {
+    // Lock page zoom everywhere: pinch/wheel zoom on the shell leaves users
+    // stranded on a white viewport with no visible reset, and the app's own
+    // font-size control is the supported text-size path. Safari gestures +
+    // desktop ctrl+wheel are the two routes past the viewport meta tag;
+    // graph canvases keep their own internal zoom (separate listeners).
+    const stop = (e) => e.preventDefault()
+    const stopWheel = (e) => { if (e.ctrlKey || e.metaKey) e.preventDefault() }
+    document.addEventListener('gesturestart', stop, { passive: false })
+    document.addEventListener('gesturechange', stop, { passive: false })
+    document.addEventListener('wheel', stopWheel, { passive: false })
+    return () => {
+      document.removeEventListener('gesturestart', stop)
+      document.removeEventListener('gesturechange', stop)
+      document.removeEventListener('wheel', stopWheel)
+    }
+  }, [])
+  
   // Stable anonymous user_id — persists across sessions via localStorage
   const [userId, setUserId] = useState(() => {
     let uid = localStorage.getItem('scripture_user_id')
@@ -697,7 +715,9 @@ const [showAssessment, setShowAssessment] = useState(false)
     setShowCommand(false)
   }, [])
 
-  // ── Touch / pinch handlers for mobile zoom ──
+  // Pinch is navigation (in = up a level), never page zoom: page zoom is
+  // locked off (viewport maximum-scale=1 + gesture/wheel guards) because a
+  // zoomed shell strands users on a white viewport with no visible reset.
   const touchRef = useRef(null)
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length === 2) {

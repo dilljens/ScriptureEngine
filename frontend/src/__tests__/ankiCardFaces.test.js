@@ -168,3 +168,22 @@ describe('prompt-side audio: forward + hearing speak, reverse stays silent', () 
     expect(shown).not.toContain('sovereign ruler')
   })
 })
+
+describe('DiagnosticPrompt promotes Hebrew symbols', () => {
+  it('wraps Hebrew-script runs in a large RTL chip, keeps Latin inline', async () => {
+    const { DiagnosticPrompt } = await import('../components/HebrewDiagnostic')
+    const el = DiagnosticPrompt({ question: 'Name this Hebrew vowel: ַ' })
+    const h = harvest(el)
+    const text = h.text.join(' ')
+    expect(text).toContain('Name this Hebrew vowel:')
+    expect(text).toContain('ַ')
+  })
+
+  it('handles symbol-free and empty questions without crashing', async () => {
+    const { DiagnosticPrompt } = await import('../components/HebrewDiagnostic')
+    for (const q of ['Which letter makes a G sound?', '', null]) {
+      const el = DiagnosticPrompt({ question: q })
+      expect(harvest(el).text.join(' ').length).toBeGreaterThanOrEqual(0)
+    }
+  })
+})

@@ -15,6 +15,31 @@ import { currentSessionToken, hebrewSessionUser, hebrewDeviceId } from '../api'
 // is ever unanswerable — an empty option list used to soft-lock the test.
 const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name', 'parse', 'dictation', 'contrast'])
 
+/**
+ * DiagnosticPrompt — the placement question with Hebrew symbols promoted.
+ * A bare vowel point at 14px body size is near-invisible, and "Name this
+ * vowel: 'Patah'" tests the English label rather than the script. So every
+ * Hebrew-script run renders large + RTL + biblical font on a chip; the
+ * Latin remainder keeps body styling. Pure presentational.
+ */
+export function DiagnosticPrompt({ question }) {
+  const parts = String(question ?? '').split(/([\u0590-\u05FF\u05B0-\u05C7]+)/g)
+  return (
+    <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed" dir="auto">
+      {parts.map((part, i) =>
+        /[\u0590-\u05FF]/.test(part) ? (
+          <span key={i} dir="rtl" lang="he"
+            className="font-hebrew-biblical text-3xl leading-relaxed align-middle mx-1 inline-block min-w-[1.5em] text-center rounded-lg bg-neutral-100 dark:bg-neutral-700/60 px-2 py-0.5">
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </p>
+  )
+}
+
 export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
   const [sessionId, setSessionId] = useState(null)
   const [skill, setSkill] = useState('')
@@ -212,7 +237,11 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
             {question.type.replace(/_/g, ' ')} · Level {question.level}
           </span>
-          <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed">{question.question}</p>
+          {/* Hebrew-aware prompt: vowel/letter symbols render large, RTL,
+              with proper type — so "which vowel makes this sound" shows the
+              actual mark instead of depending on whatever the English word
+              "Patah" means to a first-timer. Latin echoes land below. */}
+          <DiagnosticPrompt question={question.question} />
 
           {isTextInput ? (
             <input type="text" value={answer} autoFocus
