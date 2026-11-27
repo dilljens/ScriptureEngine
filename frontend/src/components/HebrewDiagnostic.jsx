@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import HebrewPrompt from './HebrewPrompt'
 import { currentSessionToken, hebrewSessionUser, hebrewDeviceId } from '../api'
 
 /**
@@ -16,28 +17,11 @@ import { currentSessionToken, hebrewSessionUser, hebrewDeviceId } from '../api'
 const TEXT_INPUT_TYPES = new Set(['transliteration', 'cloze', 'recall', 'typing', 'letter_name', 'parse', 'dictation', 'contrast'])
 
 /**
- * DiagnosticPrompt — the placement question with Hebrew symbols promoted.
- * A bare vowel point at 14px body size is near-invisible, and "Name this
- * vowel: 'Patah'" tests the English label rather than the script. So every
- * Hebrew-script run renders large + RTL + biblical font on a chip; the
- * Latin remainder keeps body styling. Pure presentational.
+ * DiagnosticPrompt — placement alias for the shared HebrewPrompt (kept for
+ * existing imports/tests; renders identically).
  */
 export function DiagnosticPrompt({ question }) {
-  const parts = String(question ?? '').split(/([\u0590-\u05FF\u05B0-\u05C7]+)/g)
-  return (
-    <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed" dir="auto">
-      {parts.map((part, i) =>
-        /[\u0590-\u05FF]/.test(part) ? (
-          <span key={i} dir="rtl" lang="he"
-            className="font-hebrew-biblical text-3xl leading-relaxed align-middle mx-1 inline-block min-w-[1.5em] text-center rounded-lg bg-neutral-100 dark:bg-neutral-700/60 px-2 py-0.5">
-            {part}
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
-    </p>
-  )
+  return <HebrewPrompt text={question} />
 }
 
 export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {

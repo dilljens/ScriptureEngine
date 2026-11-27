@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import HebrewPrompt from './HebrewPrompt'
 import {
   ANSWER_MODES,
   getChoiceFeedback,
@@ -168,10 +169,9 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
       {/* Hebrew letter display (large) */}
       {renderLetter()}
 
-      {/* Question */}
-      <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-3 font-medium">
-        {question}
-      </p>
+      {/* Question — Hebrew symbols promoted to large chips, same as
+          placement and the quiz view. */}
+      <HebrewPrompt text={question} className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 mb-3 font-medium" />
 
       {/* Render by question type */}
       {isChoiceType && (

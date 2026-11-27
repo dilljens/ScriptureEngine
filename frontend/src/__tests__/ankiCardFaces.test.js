@@ -169,14 +169,17 @@ describe('prompt-side audio: forward + hearing speak, reverse stays silent', () 
   })
 })
 
-describe('DiagnosticPrompt promotes Hebrew symbols', () => {
-  it('wraps Hebrew-script runs in a large RTL chip, keeps Latin inline', async () => {
+describe('DiagnosticPrompt (placement alias of HebrewPrompt)', () => {
+  it('renders through the shared component', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
     const { DiagnosticPrompt } = await import('../components/HebrewDiagnostic')
-    const el = DiagnosticPrompt({ question: 'Name this Hebrew vowel: ַ' })
-    const h = harvest(el)
-    const text = h.text.join(' ')
-    expect(text).toContain('Name this Hebrew vowel:')
-    expect(text).toContain('ַ')
+    const HP = (await import('../components/HebrewPrompt')).default
+    const { createElement: h } = await import('react')
+    const a = renderToStaticMarkup(h(DiagnosticPrompt, { question: 'Name this Hebrew vowel: ַ' }))
+    const b = renderToStaticMarkup(h(HP, { text: 'Name this Hebrew vowel: ַ' }))
+    expect(a).toBe(b)
+    expect(a).toContain('Name this Hebrew vowel:')
+    expect(a).toContain('ַ')
   })
 
   it('handles symbol-free and empty questions without crashing', async () => {
@@ -184,6 +187,23 @@ describe('DiagnosticPrompt promotes Hebrew symbols', () => {
     for (const q of ['Which letter makes a G sound?', '', null]) {
       const el = DiagnosticPrompt({ question: q })
       expect(harvest(el).text.join(' ').length).toBeGreaterThanOrEqual(0)
+    }
+  })
+})
+
+describe('HebrewPrompt (shared prompt treatment)', () => {
+  it('renders symbol-free Latin prompts unchanged', async () => {
+    const m = await import('../components/HebrewPrompt')
+    const el = m.default({ text: 'Which letter makes a G sound?' })
+    expect(harvest(el).text.join(' ')).toBe('Which letter makes a G sound?')
+  })
+
+  it('promotes Hebrew runs, including bare vowel points', async () => {
+    const m = await import('../components/HebrewPrompt')
+    for (const q of ['Name this Hebrew vowel: ַ', 'Which letter is this: שׁ?', 'יַעֲמֹד — what class?']) {
+      const h = harvest(m.default({ text: q }))
+      const text = h.text.join(' ')
+      expect(text.length).toBeGreaterThan(q.replace(/[\u0590-\u05FF\u05B0-\u05C7]/g, '').length)
     }
   })
 })

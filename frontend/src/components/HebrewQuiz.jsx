@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
+import HebrewPrompt from './HebrewPrompt'
 import { reportIdleAnswer } from './HebrewIdleBar'
 import {
   ANSWER_MODES,
@@ -481,8 +482,9 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
           </div>
         )}
 
-        {/* Question text */}
-        <p className="text-sm text-neutral-800 dark:text-neutral-200 mt-3 mb-4 leading-relaxed" dir="auto" lang={/[\u0590-\u05FF]/.test(current.question || '') ? 'he' : undefined}>{current.question}</p>
+        {/* Question text — Hebrew symbols promoted to large chips (same as
+            placement): bare vowel points are invisible at body size. */}
+        <HebrewPrompt text={current.question} />
 
         {/* Answer area */}
         {!showResult ? (
