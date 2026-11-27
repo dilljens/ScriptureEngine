@@ -1732,9 +1732,58 @@ def _parse_matches(answer, expected) -> bool:
     return True
 
 
+def _hebrew_cloze_variants(word):
+    """Surface forms a learner may legitimately produce for a verse blank.
+
+    The folded form plus proclitic-stripped forms (conjunction /
+    preposition / article / relative — the same _HEBREW_PREFIXES the node
+    resolver strips), so ולחנה ≡ חנה: knowing the word counts even when
+    the verse prints it with prefixes. Deliberately narrower than node
+    resolution: suffixes (person/number/gender) and tense letters are NOT
+    stripped — getting those wrong is a real error, not a spelling variant.
+    Remainder must stay >= 2 chars so short words never strip to nothing."""
+    base = _normalize_hebrew_answer(word)
+    out = {base}
+    if not re.search(r"[\u0590-\u05ff]", str(word or "")):
+        return out
+    pres = sorted(_HEBREW_PREFIXES, key=len, reverse=True)
+    frontier = {base}
+    for _ in range(3):
+        nxt = set()
+        for form in frontier:
+            for pre in pres:
+                if pre and form.startswith(pre) and len(form) - len(pre) >= 2:
+                    cand = form[len(pre):]
+                    if cand not in out:
+                        out.add(cand)
+                        nxt.add(cand)
+        frontier = nxt
+        if not frontier:
+            break
+    return out
+
+
+def _hebrew_cloze_matches(answer, expected):
+    """Verse-blank grading: exact free-text match, or a shared surface
+    variant (proclitic tolerance). חנה for ולחנה passes; שמעו for שמע
+    still fails (suffixes are never stripped)."""
+    if _hebrew_free_text_matches(answer, expected):
+        return True
+    actual = _normalize_hebrew_answer(answer)
+    if not actual:
+        return False
+    expected_text = str(expected if expected is not None else "")
+    exp_vars = set()
+    for alt in [expected_text, *re.split(r"\s+or\s+|[|/]", expected_text, flags=re.IGNORECASE)]:
+        exp_vars |= _hebrew_cloze_variants(alt)
+    return bool(_hebrew_cloze_variants(answer) & exp_vars)
+
+
 def _hebrew_quiz_answer_matches(answer, expected, question_type, options=None, answer_mode=None):
     if question_type == "parse":
         return _parse_matches(answer, expected)
+    if question_type == "cloze":
+        return _hebrew_cloze_matches(answer, expected)
     options = options or []
     mode = answer_mode or (
         ANSWER_MODE_CHOICE_INDEX

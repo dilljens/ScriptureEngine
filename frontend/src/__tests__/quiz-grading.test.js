@@ -98,3 +98,32 @@ describe('canonical quiz grading', () => {
     expect(feedback.isIncorrectSelection).toBe(true)
   })
 })
+
+describe('cloze proclitic tolerance (verse blanks)', () => {
+  it('accepts the bare word for a prefixed verse form', () => {
+    expect(gradeQuizAnswer({
+      answer: 'חנה', correctAnswer: 'ולחנה', questionType: 'cloze',
+    })).toBe(true)
+    expect(gradeQuizAnswer({
+      answer: 'ולחנה', correctAnswer: 'חנה', questionType: 'cloze',
+    })).toBe(true)
+  })
+
+  it('still rejects suffix/person errors and unrelated words', () => {
+    expect(gradeQuizAnswer({
+      answer: 'שמעו', correctAnswer: 'שמע', questionType: 'cloze',
+    })).toBe(false)
+    expect(gradeQuizAnswer({
+      answer: 'מלך', correctAnswer: 'שלום', questionType: 'cloze',
+    })).toBe(false)
+  })
+
+  it('does not leak leniency into typing/recall', () => {
+    expect(gradeQuizAnswer({
+      answer: 'חנה', correctAnswer: 'ולחנה', questionType: 'typing',
+    })).toBe(false)
+    expect(gradeQuizAnswer({
+      answer: 'חנה', correctAnswer: 'ולחנה',
+    })).toBe(false)
+  })
+})

@@ -56,11 +56,41 @@ function answerAlternatives(value) {
   return [text, ...text.split(/\s+or\s+|[|/]/i)]
 }
 
+// Proclitics mirrored from backend _HEBREW_PREFIXES (longest-first):
+// conjunction / preposition / article / relative. Verse blanks accept a
+// clitic-stripped surface (ולחנה ≡ חנה); suffixes and tense letters are
+// never stripped, so person/number errors still fail.
+const HEBREW_PROCLITICS = ['מת', 'ו', 'ה', 'ב', 'ל', 'כ', 'מ', 'ש']
+
+export function hebrewClozeVariants(value) {
+  const base = normalizeQuizAnswer(value)
+  const out = new Set([base])
+  if (!/[\u0590-\u05ff]/.test(String(value ?? ''))) return out
+  let frontier = [base]
+  for (let i = 0; i < 3 && frontier.length > 0; i++) {
+    const nxt = []
+    for (const form of frontier) {
+      for (const pre of HEBREW_PROCLITICS) {
+        if (pre && form.startsWith(pre) && form.length - pre.length >= 2) {
+          const cand = form.slice(pre.length)
+          if (!out.has(cand)) {
+            out.add(cand)
+            nxt.push(cand)
+          }
+        }
+      }
+    }
+    frontier = nxt
+  }
+  return out
+}
+
 export function gradeQuizAnswer({
   answer,
   correctAnswer,
   options = [],
   mode = ANSWER_MODES.FREE_TEXT,
+  questionType,
 } = {}) {
   if (mode === ANSWER_MODES.CHOICE_INDEX) {
     const actualIndex = getChoiceIndex(answer, options)
@@ -70,9 +100,21 @@ export function gradeQuizAnswer({
 
   const actual = normalizeQuizAnswer(answer)
   if (!actual) return false
-  return answerAlternatives(correctAnswer)
-    .map(normalizeQuizAnswer)
-    .some(candidate => candidate === actual)
+  const candidates = answerAlternatives(correctAnswer).map(normalizeQuizAnswer)
+  if (candidates.some(candidate => candidate === actual)) return true
+  // Verse blanks: knowing the word counts even when the verse prints it
+  // with proclitic prefixes (backend grades identically and is authoritative
+  // for recorded items; this keeps instant feedback consistent with it).
+  if (questionType === 'cloze' && /[\u0590-\u05ff]/.test(String(answer ?? ''))) {
+    const actualVars = hebrewClozeVariants(actual)
+    return candidates.some(candidate => {
+      for (const v of hebrewClozeVariants(candidate)) {
+        if (actualVars.has(v)) return true
+      }
+      return false
+    })
+  }
+  return false
 }
 
 export function answerModeForQuestion(question = {}) {

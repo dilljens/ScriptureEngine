@@ -59,6 +59,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
       answer: textInput,
       correctAnswer,
       mode: ANSWER_MODES.FREE_TEXT,
+      questionType,
     })
     void finishAnswer(isCorrect, textInput, ANSWER_MODES.FREE_TEXT)
   }
@@ -70,6 +71,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
       correctAnswer,
       options,
       mode: choiceAnswerMode,
+      questionType,
     })
     // Post the chosen label TEXT, not the index: the server shuffles MC options
     // per request, so an index is meaningless to it. Local UI keeps `selected`.
@@ -115,6 +117,7 @@ export default function HebrewQuizCard({ quizData, onComplete }) {
         correctAnswer,
         options,
         mode: choiceAnswerMode,
+        questionType,
       })
   const isCorrect = submitted
     ? isAudioType

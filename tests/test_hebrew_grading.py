@@ -47,3 +47,25 @@ def test_verb_grader_sofit():
     assert _grade_verb_answer(drill, "מלך") is False
     assert _grade_verb_answer(drill, "A") is True
     assert _grade_verb_answer({"correct": ""}, "שלום") is False
+
+
+def test_cloze_accepts_proclitic_variants():
+    from web.routes.hebrew import _hebrew_quiz_answer_matches
+    # ולחנה (with conjunction+preposition) vs חנה (bare): same word,
+    # realistic learner answer for a verse blank.
+    assert _hebrew_quiz_answer_matches("חנה", "ולחנה", "cloze") is True
+    assert _hebrew_quiz_answer_matches("ולחנה", "ולחנה", "cloze") is True
+    assert _hebrew_quiz_answer_matches("ולחנה", "חנה", "cloze") is True
+    # Pointed input folds to the same surface.
+    assert _hebrew_quiz_answer_matches("וּלְחַנָּה", "ולחנה", "cloze") is True
+
+
+def test_cloze_still_rejects_real_errors():
+    from web.routes.hebrew import _hebrew_quiz_answer_matches
+    # Suffixes (person/number) are never stripped: שמעו ≠ שמע.
+    assert _hebrew_quiz_answer_matches("שמעו", "שמע", "cloze") is False
+    assert _hebrew_quiz_answer_matches("מלך", "שלום", "cloze") is False
+    assert _hebrew_quiz_answer_matches("", "שלום", "cloze") is False
+    # Exact matching still rules non-cloze production: no leniency leak.
+    assert _hebrew_quiz_answer_matches("חנה", "ולחנה", "typing") is False
+    assert _hebrew_quiz_answer_matches("חנה", "ולחנה", "recall") is False
