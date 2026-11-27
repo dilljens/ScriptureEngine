@@ -63,7 +63,15 @@ ABSTRACT_GLOSSES = {
 
 def is_abstract(gloss):
     g = gloss.strip().lower()
-    return g in ABSTRACT_GLOSSES or len(g) <= 2
+    if g in ABSTRACT_GLOSSES or len(g) <= 2:
+        return True
+    # Glosses carry annotations ("this (m. sg.)", "I (first person)",
+    # "what?") — check the bare word too, or pronouns and demonstratives
+    # slip through and get nonsense photos (a skyline for "this").
+    # A wrong picture is worse than none: picture mode would train a false
+    # association instead of being skipped for a real direction.
+    bare = re.sub(r"\s*\(.*?\)\s*", "", g).strip().rstrip("?")
+    return bare in ABSTRACT_GLOSSES
 
 
 def log(msg):
