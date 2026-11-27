@@ -166,9 +166,10 @@ export function CardFront({ mode, hebrew, gloss, transliteration, img, audioUrl,
  * Rule 2: the back always carries the full answer, whatever the front was.
  *
  * Props: hebrew, gloss, transliteration, img, audioUrl, intervals,
+ * onReplay (prefetched replay — free for cached audio, silent when absent),
  * onRate (rating 1-4), onSuspend (wholeWord: boolean).
  */
-export function CardBack({ hebrew, gloss, transliteration, img, audioUrl, intervals, onRate, onSuspend }) {
+export function CardBack({ hebrew, gloss, transliteration, img, audioUrl, intervals, onReplay, onRate, onSuspend }) {
   return (
     <div className="space-y-4">
       {/* Answer display */}
@@ -206,11 +207,13 @@ export function CardBack({ hebrew, gloss, transliteration, img, audioUrl, interv
       )}
 
       {/* Audio replay on the back (hear the answer, link sound to meaning) */}
-      {audioUrl && (
+      {/* Reverse keeps audio here only: sound on the front would BE the answer. */}
+      {(audioUrl || onReplay) && (
         <div className="text-center">
-          <button onClick={(e) => { e.stopPropagation(); playUrl(audioUrl) }}
-            className="text-xs text-neutral-400 hover:text-indigo-500 transition-colors cursor-pointer">
-            🔊 Replay audio
+          <button onClick={(e) => { e.stopPropagation(); audioUrl ? playUrl(audioUrl) : onReplay?.() }}
+            aria-label="Play pronunciation audio"
+            className="touch-target px-4 py-2 min-h-[44px] rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-sm text-neutral-700 dark:text-neutral-300 cursor-pointer transition-colors">
+            🔊 {audioUrl ? 'Replay audio' : 'Play audio'}
           </button>
         </div>
       )}
@@ -312,6 +315,22 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   // NOTE: image prefetch now happens in the two-pass build above (modes need
   // to know which words have Tier-0 pictures before cards are dealt).
 
+  // On-arrival audio prefetch for dictation-prone modes: the answer face
+  // always offers replay, so warm the cache when the card appears instead
+  // of on first tap. Known-missing audio resolves to null here (fetched
+  // once, then free) — reverse/forward/picture/dirll fall back to forward
+  // per the repair rule; hearing keeps its show-time handling below.
+  useEffect(() => {
+    if (!currentCard?.hebrew) return
+    if (!['reverse', 'forward', 'picture', 'drill'].includes(currentCard.mode)) return
+    let cancelled = false
+    fetchAudioUrl(currentCard.hebrew).then(url => {
+      if (cancelled || !url) return
+      setAudioUrl(prev => prev || url)
+    })
+    return () => { cancelled = true }
+  }, [currentCard?.id])
+
   // Auto-play audio for hearing mode when card is shown (pooled: cached URL + shared element).
   // Known-missing audio converts the trial to forward (same repair rule as
   // deal time): a silent hearing card is a blank stimulus, and rating it
@@ -365,7 +384,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         body: JSON.stringify({
           node_id: suspendedUndo.node_id, card_mode: suspendedUndo.mode,
           hebrew: suspendedUndo.hebrew || '', lemma: suspendedUndo.lemma || '',
-          user_id: 'default', session_token: sessionToken,
+          user_id: await hebrewSessionUser(), session_token: sessionToken,
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +408,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
       const res = await fetchJSON('/hebrew/fsrs/review', {
         method: 'POST',
         body: JSON.stringify({
-          node_id: currentCard.node_id, rating, user_id: 'default',
+          node_id: currentCard.node_id, rating, user_id: await hebrewSessionUser(),
           hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
           session_token: sessionToken, card_mode: currentCard.mode,
         }),
@@ -437,7 +456,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         body: JSON.stringify({
           node_id: lastRated.node_id, card_mode: lastRated.mode,
           hebrew: lastRated.hebrew || '', lemma: lastRated.lemma || '',
-          user_id: 'default', session_token: sessionToken,
+          user_id: await hebrewSessionUser(), session_token: sessionToken,
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -470,7 +489,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
         body: JSON.stringify({
           node_id: currentCard.node_id, card_mode: wholeNode ? '' : currentCard.mode,
           hebrew: currentCard.hebrew || '', lemma: currentCard.lemma || '',
-          user_id: 'default', session_token: sessionToken,
+          user_id: await hebrewSessionUser(), session_token: sessionToken,
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -594,6 +613,7 @@ export default function AnkiReview({ cards: initialCards, onComplete, title, onB
   const backContent = () => (
     <CardBack hebrew={hebrew} gloss={gloss} transliteration={transliteration}
       img={img} audioUrl={audioUrl} intervals={intervals}
+      onReplay={replayAudio}
       onRate={handleRate} onSuspend={(whole) => handleSuspend(whole)} />
   )
 

@@ -215,7 +215,7 @@ export default function HebrewQuiz({ count = 8, onComplete, onBack, onOpenLesson
         : (ans ?? '')
       const progress = {
         node_id: question.node_id,
-        user_id: 'default',
+        user_id: await hebrewSessionUser(),
         session_token: token,
         question_id: question.question_id,
         answer: postAnswer,

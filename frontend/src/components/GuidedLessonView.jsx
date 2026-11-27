@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { currentSessionToken } from '../api'
+import { currentSessionToken, hebrewSessionUser } from '../api'
 import { submitHebrewProgressDetailed } from './HebrewQuiz'
 import { fetchAudioUrl, playUrl } from '../lib/audio-pool'
 
@@ -27,7 +27,7 @@ export default function GuidedLessonView({ nodeId, onBack, onOpenLesson }) {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ user_id: 'default', session_token: token, node_id: nodeId || '' }),
+          body: JSON.stringify({ user_id: await hebrewSessionUser(), session_token: token, node_id: nodeId || '' }),
         })
         const d = await r.json()
         if (!cancelled) {
@@ -68,7 +68,7 @@ export default function GuidedLessonView({ nodeId, onBack, onOpenLesson }) {
     }
     const res = await submitHebrewProgressDetailed({
       node_id: drill.node_id,
-      user_id: 'default',
+      user_id: await hebrewSessionUser(),
       session_token: currentSessionToken(),
       question_id: drill.id,
       answer: drill.options?.[optIdx] ?? '',

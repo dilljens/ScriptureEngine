@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import HebrewKeyboard from './HebrewKeyboard'
-import { currentSessionToken, hebrewSessionUser } from '../api'
+import { currentSessionToken, hebrewSessionUser, hebrewDeviceId } from '../api'
 
 /**
  * HebrewDiagnostic — adaptive placement test (1-up-3-down staircase).
@@ -43,7 +43,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ user_id, session_token: token }),
+          body: JSON.stringify({ user_id: user_id === 'default' ? hebrewDeviceId() : user_id, session_token: token }),
         })
         const d = await response.json()
         if (cancelled) return
@@ -77,7 +77,7 @@ export default function HebrewDiagnostic({ onComplete, user_id = 'default' }) {
       },
       body: JSON.stringify({
         session_id: sessionId,
-        user_id,
+        user_id: user_id === 'default' ? hebrewDeviceId() : user_id,
         session_token: token,
         question_id: question.question_id,
         question_nonce: question.question_nonce,

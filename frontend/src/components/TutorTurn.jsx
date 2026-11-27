@@ -51,7 +51,7 @@ export default function TutorTurn({ onClose, onOpenLesson }) {
       const token = currentSessionToken()
       const r = await fetchJSON('/hebrew/tutor/turn', {
         method: 'POST',
-        body: JSON.stringify({ user_id: 'default', session_token: token, ...payload }),
+        body: JSON.stringify({ user_id: await hebrewSessionUser(), session_token: token, ...payload }),
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

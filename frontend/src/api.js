@@ -150,10 +150,32 @@ export function currentSessionToken() {
  * Hebrew reads (curriculum / gamification / review-queue / verb-drill) take
  * `user_id`, while the writes (progress / fsrs-review / diagnostic-apply) take
  * `session_token` in the body. This helper resolves the real user id from the
- * token via /auth/me and returns 'default' (anonymous) when there is no valid
+ * token via /auth/me and returns the per-device anonymous id when there is no valid
  * session — so anonymous learners never hit a hard failure on a stale/absent
  * token. Mirrors the getSessionToken() no-op-when-absent fallback.
  */
+const ANON_ID_RE = /^anon_[A-Za-z0-9]{4,64}$/
+
+/**
+ * Stable per-device anonymous id (same `anon_` scheme + localStorage key as
+ * App.jsx). Signed-out callers MUST use this instead of the shared
+ * 'default' profile — 'default' is one global bucket, so every anonymous
+ * browser (and every automated test run) would otherwise read and write
+ * each other's mastery, XP, streaks, and FSRS schedules. Signed-in callers
+ * keep their real account id via hebrewSessionUser() below.
+ */
+export function hebrewDeviceId() {
+  try {
+    let id = localStorage.getItem('scripture_user_id')
+    if (!id || !ANON_ID_RE.test(id)) {
+      id = 'anon_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+      localStorage.setItem('scripture_user_id', id)
+    }
+    return id
+  } catch {
+    return 'default'
+  }
+}
 let _hebrewUserCache = null
 let _hebrewUserCacheToken = null
 export function resetHebrewSessionUser() {
@@ -165,7 +187,7 @@ export async function hebrewSessionUser() {
   const token = currentSessionToken()
   if (!token) {
     resetHebrewSessionUser()
-    return 'default'
+    return hebrewDeviceId()
   }
   if (_hebrewUserCache !== null && _hebrewUserCacheToken === token) return _hebrewUserCache
   try {
@@ -173,7 +195,7 @@ export async function hebrewSessionUser() {
     // Do not let an in-flight request from a signed-out session repopulate
     // the cache after the token has changed.
     if (currentSessionToken() !== token) return hebrewSessionUser()
-    _hebrewUserCache = r?.data?.user_id || 'default'
+    _hebrewUserCache = r?.data?.user_id || hebrewDeviceId()
     _hebrewUserCacheToken = token
   } catch (error) {
     if (currentSessionToken() !== token) return hebrewSessionUser()
@@ -183,7 +205,7 @@ export async function hebrewSessionUser() {
     if (String(error?.message || '').includes('API 401')) {
       try { localStorage.removeItem('scripture_session_token') } catch {}
     }
-    _hebrewUserCache = 'default' // 401 invalid/expired or offline → anonymous
+    _hebrewUserCache = hebrewDeviceId() // 401 invalid/expired or offline → per-device anonymous
     _hebrewUserCacheToken = token
   }
   return _hebrewUserCache

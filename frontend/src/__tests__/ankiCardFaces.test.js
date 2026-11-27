@@ -109,3 +109,30 @@ describe('direction labels stay off the visual front (sr-only for AT)', () => {
     }
   })
 })
+
+describe('answer-side audio is always offered, never pre-revealed', () => {
+  it('CardBack renders a labeled play button even before audio prefetches', async () => {
+    const { CardBack } = await import('../components/AnkiReview')
+    const el = CardBack({
+      hebrew: 'מֶלֶךְ', gloss: 'sovereign ruler', transliteration: 'melekh',
+      img: null, audioUrl: null, intervals: null,
+      onReplay: () => {}, onRate: () => {}, onSuspend: () => {},
+    })
+    const h = harvest(el)
+    const text = h.text.join(' ')
+    expect(text).toMatch(/Play audio/)
+    // The answer itself (writing + gloss) is still complete on the back.
+    expect(text).toContain('מֶלֶךְ')
+    expect(text).toContain('sovereign ruler')
+  })
+
+  it('reverse front carries no audio control (sound would be the answer)', async () => {
+    const { CardFront } = await import('../components/AnkiReview')
+    const el = CardFront({
+      mode: 'reverse', hebrew: 'מֶלֶךְ', gloss: 'sovereign ruler',
+      transliteration: 'melekh', img: null, audioUrl: null, onReplay: () => {},
+    })
+    const text = harvest(el).text.join(' ')
+    expect(text).not.toMatch(/Play audio|Replay/)
+  })
+})

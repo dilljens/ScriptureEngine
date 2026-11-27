@@ -10,7 +10,7 @@ import {
   gradeQuizAnswer,
   normalizeQuizAnswer,
 } from '../lib/quiz-grading'
-import { currentSessionToken } from '../api'
+import { currentSessionToken, hebrewSessionUser } from '../api'
 
 /** Book ID → display name mapping for user-facing verse references */
 const BOOK_NAMES = {
@@ -441,7 +441,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
 
     const progress = {
       node_id: card.data?.node_id || nodeId,
-      user_id: 'default',
+      user_id: await hebrewSessionUser(),
       session_token: currentSessionToken(),
       question_id: card.data.question_id,
       answer: answerState.answer ?? '',
@@ -511,7 +511,7 @@ export default function HebrewLessonView({ nodeId, onBack, onNavigate }) {
     if (card.data?.question_id === undefined || card.data?.question_id === null) return null
     const res = await submitHebrewProgress({
       node_id: card.data?.node_id || nodeId,
-      user_id: 'default',
+      user_id: await hebrewSessionUser(),
       session_token: currentSessionToken(),
       question_id: card.data.question_id,
       answer: answer ?? '',

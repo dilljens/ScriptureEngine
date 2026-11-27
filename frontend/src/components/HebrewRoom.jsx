@@ -24,7 +24,7 @@ export default function HebrewRoom({ onBack, onOpenLesson }) {
     setLoading(true)
     try {
       const uid = await hebrewSessionUser()
-      const uq = uid && uid !== 'default' ? `?user_id=${encodeURIComponent(uid)}` : ''
+      const uq = uid ? `?user_id=${encodeURIComponent(uid)}` : ''
       const token = currentSessionToken()
       const r = await fetch(`/api/v1/hebrew/daily-session?limit=20${uq}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},

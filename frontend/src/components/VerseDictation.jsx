@@ -56,7 +56,7 @@ export default function VerseDictation({ onBack, onOpenLesson }) {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           node_id: current.node_id, question_id: current.question_id,
-          answer: answer.trim(), user_id: 'default', session_token: token,
+          answer: answer.trim(), user_id: await hebrewSessionUser(), session_token: token,
         }),
       })
       const d = await r.json()

@@ -265,9 +265,11 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
   // gamification and the review queue are all per-user, so a logged-in session
   // lands review/progress data on the real account instead of the shared
   // 'default' user. Returns '' when anonymous so the API keeps its default.
+  // Reads land on the real session account when signed in, else the
+  // per-device anonymous id — never the shared 'default' bucket.
   const sessionQuery = async () => {
     const uid = await hebrewSessionUser()
-    return uid && uid !== 'default' ? `?user_id=${encodeURIComponent(uid)}` : ''
+    return uid ? `?user_id=${encodeURIComponent(uid)}` : ''
   }
 
   const sessionHeaders = () => {
@@ -565,10 +567,12 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
           setShowHebrewReview(false); setHebrewReviewCards([])
           try {
             const t = currentSessionToken()
-            fetch('/api/v1/hebrew/session-summary', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) },
-              body: JSON.stringify({ user_id: 'default', session_token: t }),
+            hebrewSessionUser().then(uid => {
+              fetch('/api/v1/hebrew/session-summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+                body: JSON.stringify({ user_id: uid, session_token: t }),
+              }).catch(() => {})
             }).catch(() => {})
           } catch {}
         }}
