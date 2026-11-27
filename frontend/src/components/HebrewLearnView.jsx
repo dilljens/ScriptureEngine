@@ -1108,6 +1108,20 @@ export default function HebrewLearnView({ onOpenLesson, onOpenPassage }) {
         </DropdownMenu>
       </div>
 
+      {/* What-do-what guide (native disclosure: no state, persists nothing).
+          First-time orientation for Map / Practice / Reading / Tools. */}
+      <details className="mb-4 px-3 text-[11px] text-neutral-500 dark:text-neutral-400">
+        <summary className="cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-300 select-none">
+          What do Map · Practice · Reading · Tools do?
+        </summary>
+        <ul className="mt-1.5 space-y-1 leading-relaxed list-none">
+          <li><span className="font-medium text-neutral-600 dark:text-neutral-300">🗺️ Map</span> — the whole curriculum: what's mastered, learning, or locked, and your frontier. Tap any lesson to study it.</li>
+          <li><span className="font-medium text-neutral-600 dark:text-neutral-300">⏱ Practice</span> — train: 5-min Quick sessions, Quizzes that test you, Reviews due today, dictation, and the Room (verse + due + new).</li>
+          <li><span className="font-medium text-neutral-600 dark:text-neutral-300">📖 Reading</span> — read real text: Verse of the Day and the full-chapter Passage Reader with tap-a-word help.</li>
+          <li><span className="font-medium text-neutral-600 dark:text-neutral-300">🔧 Tools</span> — drills and lists: verb conjugation drills, Top-100 vocab bands, listen-and-repeat audio, word/root tiles, and your stats.</li>
+        </ul>
+      </details>
+
       {/* Daily pacing (Anki-style deck options) */}
       <div className="flex flex-wrap items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-700">
         <span className="text-[11px] text-neutral-600 dark:text-neutral-400">

@@ -577,11 +577,15 @@ export default function ChatPanel({ open, onClose, onNavigate, onOpenTab, initia
             setSessionId(storedId)
             // Merge server messages with any local snapshot (covers the race
             // where an in-flight response finished after the server restore).
+            // The greeting is prepended OUTSIDE mergeMessages: the merge
+            // strips welcome content (it must never be sent to the LLM or
+            // saved twice), so merging it would delete the opening message
+            // on every restore. Exactly one fresh greeting anchors the top.
             const local = loadSnapshot(storedId) || []
-            const merged = mergeMessages(
-              [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
-              mergeMessages(s.messages, local),
-            )
+            const merged = [
+              mkMsg('assistant', welcomeMessage()),
+              ...mergeMessages(s.messages, local),
+            ]
             setMessages(merged)
             messagesRef.current = merged
             titleSet.current = s.messages.length > 0
@@ -1497,10 +1501,11 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
           if (msgs.length > baseline) {
             pendingPollRef.current = null
             clearPendingMarker(sid)
-            const merged = mergeMessages(
-              [{ role: 'assistant', content: welcomeMessage(), timestamp: new Date().toISOString() }],
-              mergeMessages(msgs, loadSnapshot(sid) || []),
-            )
+            // Same welcome-outside-merge rule as the main restore path.
+            const merged = [
+              mkMsg('assistant', welcomeMessage()),
+              ...mergeMessages(msgs, loadSnapshot(sid) || []),
+            ]
             setMessages(merged)
             messagesRef.current = merged
             return
@@ -1822,16 +1827,22 @@ Verse references like gen.1.1 are clickable — tap one to view the verse.`
   // ── Shared chat body (messages + input) ──
   const chatBody = (
     <>
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[300px]" onScroll={handleMessagesScroll}>
-        {messages.length > historyShown && (
+      {/* Messages — the inner list is the ONLY scroller (min-h-0 lets flex
+          shrink it): page chrome never hides because of chat, so the app
+          top bar and this header stay pinned without scrolling to the top. */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0" onScroll={handleMessagesScroll}>
+        {/* The opening message (session greeting) always renders as a
+            session anchor, even when the history window below would hide
+            it behind "Show earlier". New users see the greeting +
+            suggestions on every open, not just on empty sessions. */}
+        {messages.length > historyShown && messages.length - historyShown > 1 && (
           <button onClick={() => setHistoryShown(m => m + 50)}
             className="w-full py-1.5 rounded-lg text-[11px] text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
-            ↑ Show earlier ({messages.length - historyShown} more)
+            ↑ Show earlier ({messages.length - historyShown - 1} more)
           </button>
         )}
         {messages.map((msg, i) => {
-          if (i < messages.length - historyShown) return null
+          if (i > 0 && i < messages.length - historyShown) return null
           return (
           <div key={msg.id || i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             {/* Edit mode: textarea for user messages */}
