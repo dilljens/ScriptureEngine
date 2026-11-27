@@ -20,6 +20,7 @@ const MemorizeView = React.lazy(() => import('./MemorizeView'))
 const HebrewDiagnostic = React.lazy(() => import('./HebrewDiagnostic'))
 const HebrewLessonView = React.lazy(() => import('./HebrewLessonView'))
 const HebrewLearnView = React.lazy(() => import('./HebrewLearnView'))
+const ScrollView = React.lazy(() => import('./ScrollView'))
 const WikiArticleViewer = React.lazy(() => import('./WikiArticleViewer'))
 const ArticlesView = React.lazy(() => import('./ArticlesView'))
 const HebrewPassageReader = React.lazy(() => import('./HebrewPassageReader'))
@@ -245,11 +246,20 @@ export default function MainContentView(props) {
     )
   }
 
-  // Learn view
+  // Learn view (legacy slot — Scroll replaced it in nav; old tabs still render)
   if (viewLevel === 'learn') {
     return (
       <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading learn...</div>}>
         <LearnView userId={userId} onBack={() => {}} />
+      </Suspense>
+    )
+  }
+
+  // Scroll view — verse-unit feed (replaces Learn in nav)
+  if (viewLevel === 'scroll') {
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-neutral-400 animate-pulse">Loading scroll...</div>}>
+        <ScrollView />
       </Suspense>
     )
   }

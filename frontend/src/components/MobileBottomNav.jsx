@@ -9,7 +9,7 @@ const TABS = [
   { id: 'read', label: 'Read', icon: '📖' },
   { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'hebrew', label: 'Hebrew', icon: 'א' },
-  { id: 'learn', label: 'Learn', icon: '📚' },
+  { id: 'scroll', label: 'Scroll', icon: '📜' },
   { id: 'memorize', label: 'Memorize', icon: '🧠' },
 ]
 

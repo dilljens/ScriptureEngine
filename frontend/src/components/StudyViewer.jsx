@@ -58,7 +58,7 @@ function VerseText({ text, className }) {
  * clickable verse refs, connection graph paths, expand/collapse steps,
  * layer filtering, and an inline LLM Quick Ask bar.
  */
-export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, onOpenTab, showQuickAsk, onChatOpen, guideId }) {
+export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, onOpenTab, showQuickAsk, onChatOpen, guideId, variant }) {
   const [study, setStudy] = useState(initialStudy || null)
   const [loading, setLoading] = useState(!initialStudy)
   const [error, setError] = useState(null)
@@ -182,6 +182,78 @@ export default function StudyViewer({ study: initialStudy, onFetch, onNavigate, 
     return (
       <div className="mx-4 mt-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-sm">
         Study not found.
+      </div>
+    )
+  }
+
+  // ── Essay mode: custom essays read like essays — flowing prose, inline
+  // verse links only. No preview cards, graph paths, layer chips, collapse
+  // toggles, counts, or Quick Ask inside the piece. Trigger: variant="essay"
+  // prop or study.format / study.metadata.format === 'essay'.
+  const essayMode = variant === 'essay' || study?.format === 'essay' || study?.metadata?.format === 'essay'
+  if (essayMode) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <header className="mb-8">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 leading-tight">{study.title}</h1>
+          {study.description && (
+            <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">{study.description}</p>
+          )}
+          {(study.author?.name || study.seed_verse) && (
+            <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
+              {study.author?.name && <span>by {study.author.name}</span>}
+              {study.author?.name && study.seed_verse && <span> · </span>}
+              {study.seed_verse && <span>seed: {study.seed_verse}</span>}
+            </p>
+          )}
+        </header>
+        <div className="space-y-8">
+          {(study.steps || []).map((step, idx) => (
+            <section key={idx}>
+              {(step.title || step.verse) && step.title !== study.title && (
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 leading-snug mb-1">
+                  {step.title || step.verse}
+                </h2>
+              )}
+              {step.verse && (
+                <button
+                  onClick={() => {
+                    const p = String(step.verse).split('.')
+                    if (p.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {
+                      detail: { book: p[0], chapter: parseInt(p[1]) || 1, verse: p.length >= 3 ? (parseInt(p[2]) || undefined) : undefined },
+                    }))
+                  }}
+                  className="block text-xs font-mono text-neutral-400 dark:text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer mb-3">
+                  {step.verse}
+                </button>
+              )}
+              {step.explanation && (
+                <VerseText text={step.explanation}
+                  className="block text-[15px] text-neutral-800 dark:text-neutral-200 leading-[1.75]" />
+              )}
+              {step.choices?.length > 0 && (
+                <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+                  Continue:{' '}
+                  {step.choices.map((ch, ci) => (
+                    <React.Fragment key={ci}>
+                      {ci > 0 && <span> · </span>}
+                      <button
+                        onClick={() => {
+                          const cp = String(ch.verse || '').split('.')
+                          if (cp.length >= 2) window.dispatchEvent(new CustomEvent('scripture-navigate', {
+                            detail: { book: cp[0], chapter: parseInt(cp[1]) || 1, verse: cp.length >= 3 ? (parseInt(cp[2]) || undefined) : undefined },
+                          }))
+                        }}
+                        className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                        {ch.label || ch.verse}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </p>
+              )}
+            </section>
+          ))}
+        </div>
       </div>
     )
   }

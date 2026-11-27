@@ -18,7 +18,7 @@ test.describe('Mobile navigation — bottom tab bar', () => {
     await expect(nav.getByText('Read')).toBeVisible()
     await expect(nav.getByText('Chat')).toBeVisible()
     await expect(nav.getByText('Hebrew')).toBeVisible()
-    await expect(nav.getByText('Learn')).toBeVisible()
+    await expect(nav.getByText('Scroll')).toBeVisible()
     await expect(nav.getByText('Review')).toBeVisible()
     await expect(nav.getByText('More')).toBeVisible()
   })
@@ -41,8 +41,16 @@ test.describe('Mobile navigation — bottom tab bar', () => {
     await expect(page.getByRole('heading', { name: 'Biblical Hebrew' })).toBeVisible({ timeout: 10000 })
   })
 
-  test('Learn tab opens Learn view with module list', async ({ page }) => {
-    await page.getByText('Learn').click()
+  test('Scroll tab opens Scroll view with verse feed', async ({ page }) => {
+    await page.locator('nav').filter({ hasText: 'Read' }).getByText('Scroll').click()
+    await expect(page.getByRole('heading', { name: /Scroll/ })).toBeVisible({ timeout: 10000 })
+  })
+
+  test('Learn view still opens from the More drawer (legacy slot)', async ({ page }) => {
+    await page.getByRole('button', { name: 'More options' }).click()
+    const drawer = page.getByRole('dialog', { name: 'More options' })
+    await expect(drawer).toBeVisible()
+    await drawer.getByRole('button', { name: '📚 Learn' }).click()
     await expect(page.getByText('Learn Scripture')).toBeVisible({ timeout: 10000 })
     await expect(page.getByText('All Subjects')).toBeVisible()
   })
@@ -195,7 +203,10 @@ test.describe('Mobile — Learn view open-ended questions', () => {
   })
 
   test('Learn view has Next button after answering (no auto-advance)', async ({ page }) => {
-    await page.getByText('Learn').click()
+    await page.getByRole('button', { name: 'More options' }).click()
+    const drawer = page.getByRole('dialog', { name: 'More options' })
+    await expect(drawer).toBeVisible()
+    await drawer.getByRole('button', { name: '📚 Learn' }).click()
     await expect(page.getByText('Learn Scripture')).toBeVisible({ timeout: 10000 })
     const firstModule = page.locator('button').filter({ hasText: 'Covenants' }).first()
     const moduleBtn = (await firstModule.count() > 0)

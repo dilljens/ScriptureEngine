@@ -55,7 +55,7 @@ function AppInner() {
     selectWorkspace, newWorkspace, renameWorkspace, deleteWorkspace,
     openTab, closeTab, selectTab, updateTab, goToChapter, goToBook, goToWork, openChatTab,
     moveTab, openWikiTab, openKnowledgeTab, openHubNoteTab, openStudiesTab, openArticlesTab,
-    openHistoryTab, openHebrewTab, openLearnTab, openMemorizeTab,
+    openHistoryTab, openHebrewTab, openLearnTab, openScrollTab, openMemorizeTab,
   } = useTabs()
 
   const { fontSize, changeFontSize, darkMode, toggleDarkMode, getHotkey, setHotkey, DEFAULT_HOTKEYS, resetHotkeys, hotkeys, showQuickAsk, hebrewOnly, sessionToken, setSessionToken, syncStatus, persist } = useSettings()
@@ -226,7 +226,7 @@ const [showAssessment, setShowAssessment] = useState(false)
   const tabLabel = currentTab?.label || ''
   // Bottom-tab highlight follows the visible tab — no overlay paper-over needed
   // anymore (Hebrew/history/paths are all real tabs now).
-  const _tabForView = { chapter: 'read', book: 'read', work: 'read', library: 'read', chat: 'chat', hebrew: 'hebrew', learn: 'learn', memorize: 'memorize', tiles: 'tiles', wiki: 'wiki', history: 'menu' }
+  const _tabForView = { chapter: 'read', book: 'read', work: 'read', library: 'read', chat: 'chat', hebrew: 'hebrew', learn: 'learn', scroll: 'scroll', memorize: 'memorize', tiles: 'tiles', wiki: 'wiki', history: 'menu' }
   const mobileActiveTab = showMobileMenu ? 'menu' : showCommand ? 'command' : (_tabForView[viewLevel] || 'read')
   window.__bookData = bookData
 
@@ -384,7 +384,7 @@ const [showAssessment, setShowAssessment] = useState(false)
       // Lesson -> curriculum; curriculum -> tiles
       if (viewRef) updateTab(currentTab.id, { viewRef: null, label: 'Biblical Hebrew' })
       else updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
-    } else if (['learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study'].includes(viewLevel)) {
+    } else if (['learn', 'scroll', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study'].includes(viewLevel)) {
       updateTab(currentTab.id, { view: 'tiles', viewRef: null, label: 'Subjects' })
     }
   }, [currentTab?.id, viewLevel, viewRef, book, nav, bookData, updateTab, isDc, collection, studyWeek, setCollection, setStudyWeek])
@@ -653,14 +653,18 @@ const [showAssessment, setShowAssessment] = useState(false)
         if ((cmd.lesson || '').toLowerCase() === 'diagnostic') openHebrewTab('diagnostic', 'Hebrew Diagnostic')
         else openHebrewTab()
         break
+      case 'scroll':
+        openScrollTab()
+        break
       case 'learn':
-        openLearnTab()
+        // Legacy alias — Learn was replaced by Scroll; old commands land here.
+        openScrollTab()
         break
       case 'memorize':
         openMemorizeTab()
         break
     }
-  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id, openHistoryTab, openHebrewTab, openLearnTab, openMemorizeTab])
+  }, [handleOpenChat, toggleDarkMode, changeFontSize, toggleDispatch, updateTab, currentTab?.id, openHistoryTab, openHebrewTab, openLearnTab, openScrollTab, openMemorizeTab])
 
   const openTilesView = useCallback(() => {
     updateTab(currentTab?.id, { view: 'tiles', viewRef: null, label: 'Subjects' })

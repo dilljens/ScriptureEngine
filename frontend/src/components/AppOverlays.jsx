@@ -37,7 +37,7 @@ export default function AppOverlays(props) {
 
   const {
     currentTab, viewLevel, goToChapter, updateTab,
-    currentWorkspace, selectTab, openChatTab, openHebrewTab, openLearnTab,
+    currentWorkspace, selectTab, openChatTab, openHebrewTab, openLearnTab, openScrollTab,
     openMemorizeTab, openWikiTab, openHubNoteTab, openStudiesTab, openArticlesTab,
     openHistoryTab,
   } = useTabs()
@@ -235,8 +235,12 @@ export default function AppOverlays(props) {
               openHebrewTab()
             }
             break
+          case 'scroll':
+            setShowMobileMenu(false); openScrollTab()
+            break
           case 'learn':
-            setShowMobileMenu(false); openLearnTab()
+            // Legacy alias — old bottom-nav state / commands land on Scroll.
+            setShowMobileMenu(false); openScrollTab()
             break
           case 'memorize':
             setShowMobileMenu(false); openMemorizeTab()
@@ -265,6 +269,7 @@ export default function AppOverlays(props) {
         onPlacement={() => { setShowMobileMenu(false); openHebrewTab('diagnostic', 'Hebrew Diagnostic') }}
         onHubNotes={() => { setShowMobileMenu(false); openHubNoteTab() }}
         onStudies={() => { setShowMobileMenu(false); openStudiesTab() }}
+        onLearn={() => { setShowMobileMenu(false); openLearnTab() }}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         fontSize={fontSize}

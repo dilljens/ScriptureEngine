@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 
 /**
  * Mobile menu drawer — slide-out panel with overflow navigation.
- * Primary destinations (Hebrew, Memorize, Learn) live in the bottom nav;
+ * Primary destinations (Hebrew, Memorize, Scroll) live in the bottom nav;
  * this drawer holds everything else: placement quiz, paths, reading, tools.
  */
 export default function MobileMenuDrawer({
@@ -11,7 +11,7 @@ export default function MobileMenuDrawer({
   darkMode, onToggleDarkMode,
   fontSize, onChangeFontSize,
   onSettings,
-  onPlacement, onHubNotes, onStudies, onArticles,
+  onPlacement, onHubNotes, onStudies, onArticles, onLearn,
   authUser, authAvatar, onSignIn, onSignOut,
 }) {
   const touchStartY = useRef(null)
@@ -52,6 +52,7 @@ export default function MobileMenuDrawer({
           <MenuButton icon="📜" label="Articles" onClick={onArticles} />
           <MenuButton icon="📖" label="Wiki" onClick={onWiki} />
           <MenuButton icon="🎓" label="Studies" onClick={onStudies} />
+          <MenuButton icon="📚" label="Learn" onClick={onLearn} />
         </div>
 
         {/* Tools Row */}

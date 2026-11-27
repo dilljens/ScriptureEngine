@@ -124,10 +124,10 @@ function reducer(state, action) {
       s = { ...state }
       const ws = s.workspaces.find(w => w.id === s.activeWorkspace)
       if (!ws) return state
-      // Singleton views (hebrew/learn/chat): their openers already assume
+      // Singleton views (hebrew/learn/scroll/chat): their openers already assume
       // one instance, but racy double-dispatches slip past the check-then-act
       // in the opener. Enforce it here — focus the existing tab instead.
-      const SINGLETONS = ['hebrew', 'learn', 'chat']
+      const SINGLETONS = ['hebrew', 'learn', 'scroll', 'chat']
       if (SINGLETONS.includes(action.view || 'chapter')) {
         const dupe = ws.tabs.find(t => t.view === action.view && (t.viewRef || null) === (action.viewRef || null))
         if (dupe) {
@@ -428,6 +428,22 @@ export function TabProvider({ children }) {
       }
     }, [state]),
 
+    openScrollTab: useCallback((label) => {
+      const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
+      const existing = ws?.tabs.find(t => t.view === 'scroll')
+      if (existing) {
+        dispatch({ type: 'SELECT_TAB', id: existing.id })
+      } else {
+        dispatch({
+          type: 'NEW_TAB',
+          book: 'gen',
+          chapter: 1,
+          label: label || '📜 Scroll',
+          view: 'scroll',
+        })
+      }
+    }, [state]),
+
     openArticlesTab: useCallback((label) => {
       const ws = state?.workspaces.find(w => w.id === state?.activeWorkspace)
       const existing = ws?.tabs.find(t => t.view === 'articles')
@@ -489,7 +505,7 @@ export function TabProvider({ children }) {
 
   // Current view level — reading + essays + studies + solo views all ladder to tiles
   const viewLevel = currentTab?.view || 'chapter'
-  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : viewLevel === 'wiki' ? 'articles' : viewLevel === 'articles' ? 'tiles' : viewLevel === 'study' ? 'studies' : viewLevel === 'studies' ? 'tiles' : (viewLevel === 'hebrew' && currentTab?.viewRef) ? 'hebrew' : ['hebrew', 'learn', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study', 'history'].includes(viewLevel) ? 'tiles' : null
+  const viewUp = viewLevel === 'chapter' ? 'book' : viewLevel === 'book' ? 'work' : viewLevel === 'work' ? 'library' : viewLevel === 'library' ? 'tiles' : viewLevel === 'wiki' ? 'articles' : viewLevel === 'articles' ? 'tiles' : viewLevel === 'study' ? 'studies' : viewLevel === 'studies' ? 'tiles' : (viewLevel === 'hebrew' && currentTab?.viewRef) ? 'hebrew' : ['hebrew', 'learn', 'scroll', 'memorize', 'chat', 'hubnote', 'shared', 'passage-study', 'history'].includes(viewLevel) ? 'tiles' : null
   const isLibraryView = viewLevel === 'library'
 
   // Is the current view a chapter (showing verses)?
