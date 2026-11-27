@@ -113,44 +113,44 @@ LESSONS = [
 EXTRA_ITEMS = [
     # --- Discourse-aspect judgments (expert gap #2): use classification so the
     # KP recognition stage + choice grading accept them unchanged.
-    ("qal_perfect", "classification",
+    ("qal_perfect", "discourse_function",
      "בָּרָא אֱלֹהִים (Gen 1:1, qatal) — past, present, or gnomic? Why?",
      ["Past — completed event in narrative", "Present — ongoing action", "Gnomic — timeless truth"],
      "Past — completed event in narrative",
      "Qatal presents the event as complete; narrative context fixes past reference (aspect-over-tense)."),
-    ("qal_perfect", "classification",
+    ("qal_perfect", "discourse_function",
      "יָדַעְתִּי (1cs qatal) in a wisdom saying ('I know ...') — most likely?",
      ["Present state from completed experience", "Future event", "Command"],
      "Present state from completed experience",
      "Qatal of stative/cognitive verbs often yields present state; gloss by discourse, not morphology alone."),
-    ("qal_imperfect", "classification",
+    ("qal_imperfect", "discourse_function",
      "יֹאמַר (yiqtol) in direct speech ('he says / will say') — what decides the time?",
      ["Discourse context and genre, not the prefix alone", "The prefix always means future", "The suffix always means past"],
      "Discourse context and genre, not the prefix alone",
      "Yiqtol is non-complete; narrative vs speech vs instruction fixes its time reference."),
-    ("vav_consecutive", "classification",
+    ("vav_consecutive", "discourse_function",
      "וַיֹּאמֶר vs וְאָמַר — which advances past narrative?",
      ["וַיֹּאמֶר (wayyiqtol)", "וְאָמַר (weqatal)", "Both equally"],
      "וַיֹּאמֶר (wayyiqtol)",
      "Wayyiqtol chains the past storyline; weqatal projects instruction/sequence (weqatal_discourse)."),
-    ("weqatal_discourse", "classification",
+    ("weqatal_discourse", "discourse_function",
      "וְשָׁמַרְתָּ in a law code ('and you shall keep') — narrative past or projected instruction?",
      ["Projected instruction / sequence", "Past narrative event", "Question"],
      "Projected instruction / sequence",
      "Weqatal in legal/instructional genre projects the next step, not past time."),
     # --- Syntax-to-reading bridge (expert gap #4): parse/classification on
     # real verses — choose the verb / head noun from 4 verse words.
-    ("read_gen1", "parse",
+    ("read_gen1", "syntax_parse",
      "Gen 1:1 בְּרֵאשִׁית בָּרָא אֱלֹהִים — which word is the finite verb?",
      ["בָּרָא", "בְּרֵאשִׁית", "אֱלֹהִים", "אֵת"],
      "בָּרָא",
      "בָּרָא (3ms qatal) is the predicate; בְּרֵאשִׁית is a temporal adjunct, אֱלֹהִים the subject."),
-    ("read_gen1", "classification",
+    ("read_gen1", "syntax_parse",
      "Gen 1:1 אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ — what is אֵת marking?",
      ["Definite direct object", "The verb", "A preposition 'with'", "A pronoun"],
      "Definite direct object",
      "אֵת + definite noun marks the object; the head nouns are שָׁמַיִם / אָרֶץ."),
-    ("read_exo3", "parse",
+    ("read_exo3", "syntax_parse",
      "Exo 3:14 אֶהְיֶה אֲשֶׁר אֶהְיֶה — which word is the verb (and repeated)?",
      ["אֶהְיֶה", "אֲשֶׁר", "עַם", "הָר"],
      "אֶהְיֶה",
@@ -252,6 +252,7 @@ def seed(db_path: Path) -> int:
         count += 1
     migrate_to_first_class_types(conn)
     count += seed_phase2(conn)
+    count += seed_phase3(conn)
     conn.commit()
     conn.close()
     print(f"Seeded learning-gap content: 2 lessons + extras ({count} practice rows touched)")
@@ -283,12 +284,25 @@ MIGRATE_TYPES = [
 
 
 def migrate_to_first_class_types(conn) -> None:
+    # Idempotent across re-runs: the seed below re-inserts the legacy
+    # `classification`/`parse` rows (INSERT OR IGNORE), so a second run
+    # would collide migrating them into already-promoted rows. Delete the
+    # stale duplicate when the promoted row exists, else promote in place.
     for node_id, old, new, like in MIGRATE_TYPES:
-        conn.execute(
-            "UPDATE hebrew_practice_items SET question_type=? "
+        rows = conn.execute(
+            "SELECT id, question_text, correct_answer FROM hebrew_practice_items "
             "WHERE node_id=? AND question_type=? AND question_text LIKE ?",
-            (new, node_id, old, like),
-        )
+            (node_id, old, like)).fetchall()
+        for rid, qtext, correct in rows:
+            clash = conn.execute(
+                "SELECT 1 FROM hebrew_practice_items WHERE node_id=? "
+                "AND question_type=? AND question_text=? AND correct_answer=?",
+                (node_id, new, qtext, correct)).fetchone()
+            if clash:
+                conn.execute("DELETE FROM hebrew_practice_items WHERE id=?", (rid,))
+            else:
+                conn.execute("UPDATE hebrew_practice_items SET question_type=? WHERE id=?",
+                             (new, rid))
 
 
 # (node_id, question_type, question_text, options, correct_answer, explanation)
@@ -383,6 +397,72 @@ PHASE2_ITEMS = [
 def seed_phase2(conn) -> int:
     n = 0
     for node_id, qtype, qtext, options, answer, expl in PHASE2_ITEMS:
+        if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
+            continue
+        conn.execute(
+            """INSERT OR IGNORE INTO hebrew_practice_items
+               (node_id,question_type,question_text,options_json,correct_answer,difficulty,explanation)
+               VALUES (?,?,?,?,?,0.55,?)""",
+            (node_id, qtype, qtext,
+             json.dumps(options, ensure_ascii=False) if options else None,
+             answer, expl),
+        )
+        n += 1
+    return n
+
+
+# --- Phase 3: one discourse_function item per remaining verb lesson ---
+# (expert gap #2: "even 1 per verb lesson changes what the drills select
+# for"). Stem-voice judgments for the derived stems; discourse-role
+# judgments for participle/imperative. Choice format, staged as recall.
+PHASE3_ITEMS = [
+    ("niphal", "discourse_function",
+     "נִשְׁמַר (Niphal qatal, 'he was kept') — what does Niphal contribute?",
+     ["Passive/reflexive voice — not tense", "Simple active past", "A command"],
+     "Passive/reflexive voice — not tense",
+     "Niphal marks middle/passive voice; time reference still comes from discourse, not the stem."),
+    ("piel", "discourse_function",
+     "קִדֵּשׁ (Piel qatal, 'he sanctified') — what does Piel add over Qal?",
+     ["Intensive/factitive force — makes holy", "Future time", "Plural subject"],
+     "Intensive/factitive force — makes holy",
+     "Piel intensifies or factitivizes the root; aspect/time is judged from context as with Qal."),
+    ("pual", "discourse_function",
+     "קֻדַּשׁ (Pual qatal) beside קִדֵּשׁ (Piel) — what is the relation?",
+     ["Pual is the passive of Piel", "Pual is the command form", "Unrelated roots"],
+     "Pual is the passive of Piel",
+     "Pual mirrors Piel's force in passive voice; discourse fixes the time."),
+    ("hiphil", "discourse_function",
+     "הִמְלִיךְ (Hiphil, 'he made king') — what does Hiphil contribute?",
+     ["Causative force — causes the event", "A question", "Negation"],
+     "Causative force — causes the event",
+     "Hiphil causes the root event; whether past or future is a discourse judgment."),
+    ("hophal", "discourse_function",
+     "הָמְלַךְ (Hophal qatal) beside הִמְלִיךְ (Hiphil) — what is the relation?",
+     ["Hophal is the passive of Hiphil", "Hophal is future tense", "Hophal is plural"],
+     "Hophal is the passive of Hiphil",
+     "Hophal mirrors Hiphil's causation in passive voice; time comes from discourse."),
+    ("hithpael", "discourse_function",
+     "הִתְפַּלֵּל (Hithpael, 'he prayed') — what stem force is this?",
+     ["Reflexive/reciprocal — action directed on oneself", "Passive only", "A command"],
+     "Reflexive/reciprocal — action directed on oneself",
+     "Hithpael turns the action back on the subject; aspect is still context-driven."),
+    ("qal_participle", "discourse_function",
+     "הֹלֵךְ in narrative ('walking') vs הָלַךְ ('he walked') — what decides?",
+     ["Discourse role: participle for ongoing/background, qatal for completed",
+      "Spelling convention only", "Gender of the subject"],
+     "Discourse role: participle for ongoing/background, qatal for completed",
+     "Participles paint background/ongoing action; qatal advances the storyline."),
+    ("qal_imperative", "discourse_function",
+     "שְׁמַע (Deut 6:4) — why imperative rather than yiqtol?",
+     ["Direct address in speech — volitive mood commands", "Past narrative", "A question"],
+     "Direct address in speech — volitive mood commands",
+     "Imperative marks direct volition to a present addressee; genre, not morphology alone."),
+]
+
+
+def seed_phase3(conn) -> int:
+    n = 0
+    for node_id, qtype, qtext, options, answer, expl in PHASE3_ITEMS:
         if not conn.execute("SELECT 1 FROM hebrew_nodes WHERE id=?", (node_id,)).fetchone():
             continue
         conn.execute(
